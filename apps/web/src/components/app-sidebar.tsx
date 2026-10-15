@@ -305,7 +305,7 @@ export function AppSidebar({
                               <DropdownMenuTrigger asChild>
                                 <SidebarMenuAction
                                   aria-label={`Actions for ${conversation.title}`}
-                                  className="top-2.5 right-2"
+                                  className="right-2 peer-data-[size=default]/menu-button:top-2.5"
                                   showOnHover
                                 >
                                   <MoreHorizontal />
