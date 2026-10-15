@@ -5,6 +5,7 @@ import {
   withAbortSignal,
 } from "@earendil-works/chord/context";
 import { openRuntime } from "@lab/runtime";
+import { loadDefaultModel, loadModels } from "./models";
 import { serve } from "./server";
 
 async function main() {
@@ -36,6 +37,8 @@ async function main() {
           Bun.env.LAB_DATA_PATH ??
           join(homedir(), ".local", "share", "lab", "lab.sqlite"),
         model,
+        defaultModel: model === undefined ? loadDefaultModel() : undefined,
+        models: await loadModels(shutdown.signal),
         onReport: (error) => console.error("Lab runtime error:", error),
       },
       withAbortSignal(shutdown.signal, BACKGROUND_CONTEXT),

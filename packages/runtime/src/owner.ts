@@ -17,6 +17,7 @@ import type { RuntimeOwner } from "./runtime";
 export type RuntimeOptions = {
   path: string;
   model?: pi.ModelRef;
+  defaultModel?: pi.ModelRef;
   models?: pi.HarnessOptions["models"];
   extensions?: readonly pi.Extension[];
   onReport?: (error: unknown) => void;
@@ -129,7 +130,10 @@ function resolveConfiguration(
   options: RuntimeOptions,
 ): Configuration {
   const extensions = (options.extensions ?? []).map(({ name }) => name);
-  const configuration = stored ?? { model: options.model, extensions };
+  const configuration = stored ?? {
+    model: options.model ?? options.defaultModel,
+    extensions,
+  };
 
   if (!Check(ConfigurationSchema, configuration)) {
     throw new Error("A valid provider and model must be configured");

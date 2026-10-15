@@ -4,7 +4,7 @@
   "type": "module",
   "exports": {},
   "scripts": {
-    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "build": "bun build src/index.ts --target=bun --external=@earendil-works/pi-coding-agent --outdir=dist",
     "dev": "LAB_ORIGIN=http://127.0.0.1:5173 bun --watch src/index.ts",
     "start": "bun dist/index.js",
     "typecheck": "bun --bun tsc --project tsconfig.json"
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@earendil-works/chord": "1.3.0",
+    "@earendil-works/pi-coding-agent": "1.3.0",
     "@lab/contracts": "workspace:*",
     "@lab/runtime": "workspace:*"
   }

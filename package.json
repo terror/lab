@@ -13,7 +13,7 @@
   "scripts": {
     "build": "bun run --workspaces build",
     "check": "bun --bun biome check . --error-on-warnings",
-    "dev": "bun run --parallel --workspaces dev",
+    "dev": "bun run --parallel --filter @lab/server --filter @lab/web dev",
     "fmt": "bun --bun biome format --write .",
     "start": "bun run --filter @lab/server start",
     "typecheck": "bun run --workspaces typecheck"
