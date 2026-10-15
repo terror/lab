@@ -131,10 +131,10 @@ export function Composer({
               : undefined;
 
   return (
-    <div className="shrink-0 bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div className="shrink-0 border-t bg-background px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
       <div className="mx-auto w-full max-w-3xl space-y-3">
         {request?.kind === "submit" && (!sending || recovering) && (
-          <Alert className="rounded-xl bg-muted/40" role="status">
+          <Alert className="rounded-sm bg-muted/40" role="status">
             <AlertCircle />
             <AlertDescription className="w-full gap-2">
               <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -195,7 +195,7 @@ export function Composer({
           }
         />
         {submission.error && (
-          <Alert variant="destructive" className="rounded-xl">
+          <Alert variant="destructive" className="rounded-sm">
             <AlertCircle />
             <AlertDescription>{submission.error.message}</AlertDescription>
           </Alert>

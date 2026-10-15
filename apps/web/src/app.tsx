@@ -1,5 +1,6 @@
-import { ArrowRight, FlaskConical, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle } from "lucide-react";
 import { lazy, Suspense } from "react";
+import { LabMark } from "@/components/lab-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/lib/session";
@@ -15,16 +16,19 @@ export function App() {
 
   if (session.status !== "authenticated") {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
-        <div className="w-full max-w-sm space-y-8">
+      <main className="workspace-canvas flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
+        <div className="panel-frame w-full max-w-md space-y-8 border bg-card p-6 sm:p-10">
           <div className="space-y-3">
-            <div className="mb-6 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <FlaskConical aria-hidden="true" className="size-6" />
+            <div className="mb-8 flex items-center gap-3">
+              <LabMark className="size-10" />
+              <span className="font-mono text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                lab / workspace
+              </span>
             </div>
-            <h1 className="text-3xl font-medium tracking-tight">
+            <h1 className="text-4xl font-normal tracking-tight">
               Welcome to lab
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base leading-6 text-muted-foreground">
               Enter your workspace password to continue.
             </p>
           </div>
@@ -49,13 +53,16 @@ export function App() {
               }}
             >
               <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="password">
+                <label
+                  className="font-mono text-xs tracking-wider uppercase"
+                  htmlFor="password"
+                >
                   Password
                 </label>
                 <Input
                   aria-describedby={session.error ? "session-error" : undefined}
                   autoComplete="current-password"
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-sm bg-background/50 shadow-none"
                   disabled={session.pending}
                   id="password"
                   maxLength={1024}
@@ -65,7 +72,7 @@ export function App() {
                 />
               </div>
               <Button
-                className="h-11 w-full rounded-xl"
+                className="h-11 w-full rounded-sm"
                 disabled={session.pending}
                 type="submit"
               >
@@ -102,11 +109,11 @@ export function App() {
 function WorkspaceLoading() {
   return (
     <main
-      className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background text-muted-foreground"
+      className="workspace-canvas flex min-h-dvh flex-col items-center justify-center gap-4 bg-background text-muted-foreground"
       role="status"
     >
-      <FlaskConical className="size-7" aria-hidden="true" />
-      <span className="text-sm">Opening lab…</span>
+      <LabMark className="size-12" />
+      <span className="font-mono text-xs tracking-wide">Opening lab…</span>
     </main>
   );
 }

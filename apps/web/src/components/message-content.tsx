@@ -27,7 +27,7 @@ const components = {
   code: ({ children, className }) => (
     <code
       className={cn(
-        "rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.875em]",
+        "rounded-sm border border-primary/10 bg-primary/5 px-1.5 py-0.5 font-mono text-[0.8em]",
         className,
       )}
     >
@@ -74,9 +74,9 @@ const components = {
         : undefined;
 
     return (
-      <div className="my-5 min-w-0 overflow-hidden rounded-2xl border bg-muted/35">
-        <div className="flex min-h-10 items-center justify-between gap-3 border-b px-4 py-1">
-          <span className="truncate font-mono text-xs text-muted-foreground">
+      <div className="my-5 min-w-0 overflow-hidden rounded-sm border bg-card">
+        <div className="flex min-h-10 items-center justify-between gap-3 border-b bg-muted/40 px-4 py-1">
+          <span className="truncate font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
             {language || "Code"}
           </span>
           <CopyButton label="Copy code" text={text} />
@@ -89,7 +89,7 @@ const components = {
             tabIndex: 0,
           }}
         >
-          <pre className="w-max min-w-full p-4 text-[13px] leading-6 [&_code]:block [&_code]:rounded-none [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-inherit">
+          <pre className="w-max min-w-full p-4 text-[13px] leading-6 [&_code]:block [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-inherit">
             {children}
           </pre>
           <ScrollBar orientation="horizontal" />
@@ -99,7 +99,7 @@ const components = {
   },
   table: ({ children }) => (
     <ScrollArea
-      className="my-5 max-w-full rounded-xl border"
+      className="my-5 max-w-full rounded-sm border bg-card"
       viewportProps={{
         "aria-label": "Table",
         role: "region",
@@ -127,12 +127,12 @@ export const MessageContent = memo(function MessageContent({
     <div
       className={cn(
         "min-w-0 text-base leading-7 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        "[&_p]:my-4 [&_h1]:mt-7 [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:tracking-tight",
-        "[&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight",
-        "[&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h4]:mt-4 [&_h4]:font-semibold",
+        "[&_p]:my-4 [&_h1]:mt-7 [&_h1]:mb-3 [&_h1]:text-3xl [&_h1]:font-normal [&_h1]:tracking-tight",
+        "[&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-normal [&_h2]:tracking-tight",
+        "[&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-normal [&_h4]:mt-4 [&_h4]:font-semibold",
         "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_li>p]:my-2 [&_li>ul]:my-2 [&_li>ol]:my-2",
-        "[&_blockquote]:my-5 [&_blockquote]:border-l-2 [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_hr]:my-7 [&_strong]:font-semibold",
-        "[&_a]:rounded-sm [&_a]:font-medium [&_a]:underline [&_a]:decoration-foreground/35 [&_a]:underline-offset-4 [&_a:hover]:decoration-foreground [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-ring",
+        "[&_blockquote]:my-5 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_hr]:my-7 [&_strong]:font-semibold",
+        "[&_a]:rounded-sm [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/35 [&_a]:underline-offset-4 [&_a:hover]:decoration-primary [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-ring",
         "[&_th]:border-b [&_th]:bg-muted/60 [&_th]:px-4 [&_th]:py-2.5 [&_th]:font-medium [&_td]:border-b [&_td]:px-4 [&_td]:py-2.5 [&_tr:last-child_td]:border-b-0",
         "[&_.contains-task-list]:list-none [&_.contains-task-list]:pl-1 [&_input[type=checkbox]]:mr-2 [&_input[type=checkbox]]:accent-primary [&_.footnotes]:mt-7 [&_.footnotes]:text-sm [&_.footnotes]:text-muted-foreground",
       )}

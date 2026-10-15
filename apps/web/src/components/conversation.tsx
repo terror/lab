@@ -158,7 +158,7 @@ export function Conversation({
       </ChatHeader>
       {(stale || !connected) && value !== undefined && (
         <p
-          className="shrink-0 bg-muted/50 px-5 py-2 text-center text-xs text-muted-foreground"
+          className="shrink-0 bg-muted/50 px-5 py-2 text-center font-mono text-xs text-muted-foreground"
           role="status"
         >
           {connected
@@ -168,7 +168,7 @@ export function Conversation({
       )}
       {errors.length > 0 && (
         <div className="mx-auto w-full max-w-3xl shrink-0 px-5 pt-3">
-          <Alert className="rounded-xl py-3" variant="destructive">
+          <Alert className="rounded-sm py-3" variant="destructive">
             <CircleAlertIcon aria-hidden="true" />
             <AlertDescription>
               {errors.map((message) => (
@@ -196,7 +196,7 @@ export function Conversation({
                 ? "Loading your conversation…"
                 : "Waiting for connection…"}
             </span>
-            <Skeleton className="ml-auto h-16 w-2/3 rounded-3xl" />
+            <Skeleton className="ml-auto h-16 w-2/3 rounded-sm" />
             <div className="space-y-3">
               <Skeleton className="h-4 w-4/5" />
               <Skeleton className="h-4 w-full" />

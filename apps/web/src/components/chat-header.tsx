@@ -16,26 +16,24 @@ export function ChatHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 px-3 sm:px-5">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background/95 px-3 sm:px-5">
       <Tooltip>
         <TooltipTrigger asChild>
-          <SidebarTrigger className="size-9 shrink-0 rounded-lg text-muted-foreground" />
+          <SidebarTrigger className="size-9 shrink-0 rounded-sm text-muted-foreground" />
         </TooltipTrigger>
         <TooltipContent side="bottom">Toggle sidebar</TooltipContent>
       </Tooltip>
       {title && (
         <h1
-          className="max-w-[42%] shrink truncate text-sm font-medium sm:max-w-[45%]"
+          className="max-w-[42%] shrink truncate text-base sm:max-w-[45%] sm:text-lg"
           title={title}
         >
           {title}
         </h1>
       )}
-      <div className="min-w-0 shrink">{children}</div>
+      <div className="ml-auto min-w-0 shrink">{children}</div>
       {actions && (
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          {actions}
-        </div>
+        <div className="flex shrink-0 items-center gap-1">{actions}</div>
       )}
     </header>
   );

@@ -95,7 +95,7 @@ function WorkspaceContent({
       </a>
       <WorkspaceLayout sidebar={<AppSidebar session={session} />}>
         <SidebarInset
-          className="h-full min-h-0 min-w-0 overflow-hidden outline-none"
+          className="workspace-canvas h-full min-h-0 min-w-0 overflow-hidden outline-none"
           id="main-content"
           tabIndex={-1}
         >
@@ -230,7 +230,7 @@ function WorkspaceLayout({
         className={
           isMobile
             ? "hidden"
-            : "bg-transparent transition-colors hover:bg-border data-[separator=active]:bg-ring"
+            : "bg-border transition-colors hover:bg-ring data-[separator=active]:bg-ring"
         }
         disabled={isMobile}
       />

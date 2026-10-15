@@ -6,7 +6,6 @@ import {
 import {
   ChevronsUpDown,
   CircleUserRound,
-  FlaskConical,
   LogOut,
   Monitor,
   Moon,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
+import { LabMark } from "@/components/lab-mark";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -91,16 +91,16 @@ export function AppSidebar({
       className="h-full w-full border-0"
       collapsible={isMobile ? "offcanvas" : "none"}
     >
-      <SidebarHeader className="gap-3 px-3 pt-3 pb-2">
-        <div className="flex h-9 items-center justify-between px-1">
+      <SidebarHeader className="gap-4 border-b px-3 pt-3 pb-4">
+        <div className="flex h-10 items-center justify-between px-1">
           <Link
             aria-label="lab home"
-            className="flex items-center gap-2 rounded-lg font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center gap-3 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setOpenMobile(false)}
             to="/"
           >
-            <FlaskConical className="size-5" strokeWidth={1.7} />
-            <span>lab</span>
+            <LabMark className="size-7" />
+            <span className="font-serif text-3xl tracking-tight">lab</span>
           </Link>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -113,7 +113,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="h-10 gap-3 rounded-xl"
+              className="h-10 gap-3 rounded-sm border border-input bg-background/50 px-3 text-xs tracking-wide data-[active=true]:border-primary/50 data-[active=true]:text-primary"
               isActive={location.pathname === "/"}
             >
               <Link onClick={() => setOpenMobile(false)} to="/">
@@ -132,7 +132,7 @@ export function AppSidebar({
               />
               <Input
                 aria-label="Filter loaded chats"
-                className="h-9 rounded-xl border-transparent bg-background/60 pr-9 pl-9 text-sm shadow-none"
+                className="h-9 rounded-sm bg-background/60 pr-9 pl-9 text-xs shadow-none md:text-xs"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Filter loaded chats"
                 type="search"
@@ -153,10 +153,12 @@ export function AppSidebar({
             </div>
           )}
       </SidebarHeader>
-      <SidebarContent className="gap-0 px-1 pb-2">
+      <SidebarContent className="gap-0 px-1 pt-3 pb-2">
         <SidebarGroup>
           <div className="flex items-center justify-between pr-1">
-            <SidebarGroupLabel>Your chats</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-[10px] tracking-[0.16em] uppercase">
+              Your chats
+            </SidebarGroupLabel>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -220,7 +222,7 @@ export function AppSidebar({
                       <SidebarMenuItem key={conversation.id}>
                         <SidebarMenuButton
                           asChild
-                          className="h-9 rounded-lg px-3 font-normal"
+                          className="h-10 rounded-sm border-l-2 border-transparent px-3 text-xs font-normal data-[active=true]:border-primary data-[active=true]:text-primary"
                           isActive={
                             location.pathname ===
                             `/conversations/${conversation.id}`
@@ -236,7 +238,7 @@ export function AppSidebar({
                               {conversation.title}
                             </span>
                             {unconfirmed && (
-                              <span className="size-1.5 shrink-0 rounded-full bg-amber-500">
+                              <span className="size-1.5 shrink-0 bg-amber-500">
                                 <span className="sr-only">
                                   Message unconfirmed
                                 </span>
@@ -287,15 +289,15 @@ export function AppSidebar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              className="h-12 w-full justify-start gap-3 rounded-xl px-2 text-left font-normal"
+              className="h-12 w-full justify-start gap-3 rounded-sm px-2 text-left font-normal"
               type="button"
               variant="ghost"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-sm border bg-sidebar-accent text-primary">
                 <CircleUserRound className="size-4" />
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-medium">
+                <span className="truncate text-xs font-medium">
                   Your workspace
                 </span>
                 <ConnectionStatus />
@@ -377,14 +379,14 @@ function ConnectionStatus() {
 
   return (
     <span
-      className="flex items-center gap-1.5 text-xs text-muted-foreground"
+      className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
       role="status"
     >
       <span
         aria-hidden="true"
         className={cn(
-          "size-1.5 rounded-full bg-muted-foreground/50",
-          connection.status === "connected" && "bg-emerald-500",
+          "size-1.5 bg-muted-foreground/50",
+          connection.status === "connected" && "bg-primary",
         )}
       />
       {labels[connection.status]}

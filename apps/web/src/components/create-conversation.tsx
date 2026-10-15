@@ -10,10 +10,11 @@ import type {
   ModelReference,
 } from "@lab/contracts";
 import { useIsMutating, useMutation } from "@tanstack/react-query";
-import { AlertCircle, ArrowRight, FlaskConical } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSessionStorageState from "use-session-storage-state";
 import { ChatHeader } from "@/components/chat-header";
+import { LabMark } from "@/components/lab-mark";
 import { ModelPicker } from "@/components/model-picker";
 import { PromptInput } from "@/components/prompt-input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -155,7 +156,7 @@ export function CreateConversation({
 
   return (
     <>
-      <ChatHeader title="Untitled conversation">
+      <ChatHeader title="New conversation">
         <ModelPicker
           disabled={!connected || starting || request !== undefined}
           models={models}
@@ -167,20 +168,21 @@ export function CreateConversation({
         />
       </ChatHeader>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 py-8 sm:-translate-y-6">
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-foreground">
-              <FlaskConical
-                aria-hidden="true"
-                className="size-6"
-                strokeWidth={1.6}
-              />
+        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 py-10 sm:-translate-y-6">
+          <div className="space-y-6 text-center">
+            <div className="flex flex-col items-center gap-5">
+              <LabMark className="size-16 sm:size-20" />
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                Your personal workspace
+              </p>
             </div>
-            <div className="space-y-2">
-              <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-                What are you working on?
+            <div className="space-y-5">
+              <h1 className="text-4xl leading-[1.08] font-normal tracking-tight sm:text-6xl">
+                What are you
+                <br />
+                <span className="text-primary italic">working on?</span>
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base leading-7 text-muted-foreground sm:text-lg">
                 A little space to think, build, and figure things out.
               </p>
             </div>

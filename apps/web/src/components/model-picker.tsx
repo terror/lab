@@ -105,7 +105,7 @@ export function ModelPicker({
               : `Choose a model. Current: ${label}${unavailable ? ", unavailable" : ""}${pending ? ", changing model" : ""}`
           }
           className={cn(
-            "h-10 min-w-0 max-w-full gap-2 rounded-xl px-3 text-base font-medium",
+            "h-9 min-w-0 max-w-full gap-2 rounded-sm border border-border bg-card/60 px-3 font-mono text-xs font-normal",
             className,
           )}
           title={value === undefined ? undefined : label}
@@ -131,7 +131,7 @@ export function ModelPicker({
       <PopoverContent
         align="start"
         aria-label="Choose a model"
-        className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl p-0 shadow-lg"
+        className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-sm p-0 shadow-lg"
         sideOffset={8}
       >
         <Command
@@ -184,7 +184,7 @@ export function ModelPicker({
 
                   return (
                     <CommandItem
-                      className="gap-3 rounded-lg px-3 py-2.5"
+                      className="gap-3 rounded-sm px-3 py-2.5"
                       disabled={!canChoose || !available}
                       key={model.id}
                       keywords={[

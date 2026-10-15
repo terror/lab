@@ -87,10 +87,17 @@ export function PromptInput({
       <label className="sr-only" htmlFor={id}>
         Message
       </label>
-      <InputGroup className="min-h-14 items-end rounded-[1.75rem] border-border/60 bg-composer p-1.5 shadow-xs transition-none has-[[data-slot=input-group-control]:focus-visible]:border-border/60 has-[[data-slot=input-group-control]:focus-visible]:ring-0 dark:bg-composer">
+      <InputGroup className="panel-frame min-h-16 items-end rounded-sm border-input bg-composer p-2 shadow-none transition-colors has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:ring-2 has-[[data-slot=input-group-control]:focus-visible]:ring-primary/15 dark:bg-composer">
+        <InputGroupAddon
+          align="inline-start"
+          aria-hidden="true"
+          className="self-start py-2.5 pr-0 pl-2 font-mono text-base text-primary"
+        >
+          &gt;
+        </InputGroupAddon>
         <InputGroupTextarea
           aria-describedby={`${id}-status`}
-          className="max-h-[min(15rem,35dvh)] min-h-10 field-sizing-fixed px-3 py-2 text-base leading-6 outline-none focus-visible:border-transparent focus-visible:ring-0 md:text-base"
+          className="max-h-[min(15rem,35dvh)] min-h-11 field-sizing-fixed px-3 py-2.5 font-mono text-base leading-6 outline-none focus-visible:border-transparent focus-visible:ring-0 md:text-sm"
           id={id}
           maxLength={100_000}
           onChange={(event) => onValueChange(event.target.value)}
@@ -127,7 +134,7 @@ export function PromptInput({
                         ? "Sending message"
                         : "Send message"
                   }
-                  className="size-10 rounded-full disabled:opacity-40"
+                  className="size-11 rounded-sm disabled:opacity-40"
                   disabled={showStop ? !canStop || stopping : !canSubmit}
                   onClick={showStop ? onStop : undefined}
                   size="icon-sm"
@@ -151,7 +158,7 @@ export function PromptInput({
         </InputGroupAddon>
       </InputGroup>
       <p
-        className="min-h-7 px-3 pt-2 text-center text-xs text-muted-foreground"
+        className="min-h-7 px-3 pt-3 text-center font-mono text-[10px] tracking-wide text-muted-foreground sm:text-[11px]"
         id={`${id}-status`}
         role="status"
       >

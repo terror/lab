@@ -77,13 +77,13 @@ export function Transcript({
           >
             {empty ? (
               <div className="flex flex-col items-center px-3 py-16 text-center">
-                <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-muted">
+                <div className="panel-frame mb-5 flex size-12 items-center justify-center border bg-card text-primary">
                   <MessageSquare aria-hidden="true" className="size-5" />
                 </div>
-                <h2 className="text-2xl font-semibold tracking-tight">
+                <h2 className="text-3xl font-normal tracking-tight">
                   Where should we start?
                 </h2>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
+                <p className="mt-3 max-w-sm text-base leading-7 text-muted-foreground">
                   Ask a question, explore an idea, or work through something
                   together.
                 </p>
@@ -117,7 +117,7 @@ export function Transcript({
                     {state.partial && <MessageContent text={state.partial} />}
                     {status && (
                       <div
-                        className="flex items-center gap-2.5 text-sm text-muted-foreground"
+                        className="flex items-center gap-2.5 font-mono text-xs text-muted-foreground"
                         role="status"
                       >
                         {stale ? (
@@ -135,10 +135,10 @@ export function Transcript({
                 )}
                 {state.inbox.map((input) => (
                   <li
-                    className="ml-auto w-fit max-w-[90%] space-y-2 rounded-3xl border border-dashed bg-muted/35 px-5 py-3"
+                    className="ml-auto w-fit max-w-[90%] space-y-2 rounded-sm border border-dashed bg-card px-5 py-3"
                     key={input.submissionId}
                   >
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                       <CornerDownRight
                         aria-hidden="true"
                         className="size-3.5"
@@ -161,7 +161,7 @@ export function Transcript({
               <TooltipTrigger asChild>
                 <Button
                   aria-label="Jump to latest message"
-                  className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background shadow-md"
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-sm bg-card shadow-md"
                   onClick={() => void scrollToBottom("instant")}
                   size="icon"
                   type="button"
@@ -193,8 +193,8 @@ const TranscriptMessage = memo(function TranscriptMessage({
 
   if (role === "system") {
     return (
-      <li className="space-y-2 rounded-2xl border px-4 py-3 text-sm text-muted-foreground">
-        <p className="text-xs font-medium">System</p>
+      <li className="space-y-2 rounded-sm border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <p className="font-mono text-[10px] tracking-wider uppercase">System</p>
         <p className="leading-6 whitespace-pre-wrap break-words">
           {text || "No text content."}
         </p>
@@ -211,7 +211,7 @@ const TranscriptMessage = memo(function TranscriptMessage({
     >
       <span className="sr-only">{role === "user" ? "You" : "Assistant"}</span>
       {role === "user" ? (
-        <p className="rounded-3xl bg-muted px-5 py-3 text-base leading-7 whitespace-pre-wrap break-words">
+        <p className="rounded-sm border border-primary/20 bg-accent/60 px-5 py-3 text-base leading-7 whitespace-pre-wrap break-words">
           {text || "No text content."}
         </p>
       ) : (
@@ -250,10 +250,10 @@ const ToolOutput = memo(function ToolOutput({
           : undefined;
 
   return (
-    <Collapsible className="min-w-0 overflow-hidden rounded-xl border bg-muted/20">
+    <Collapsible className="min-w-0 overflow-hidden rounded-sm border bg-card">
       <CollapsibleTrigger asChild>
         <Button
-          className="group/tool h-auto min-h-11 w-full justify-start gap-2.5 rounded-xl px-3 py-2 text-left font-normal text-muted-foreground"
+          className="group/tool h-auto min-h-11 w-full justify-start gap-2.5 rounded-sm px-3 py-2 text-left text-xs font-normal text-muted-foreground"
           type="button"
           variant="ghost"
         >
