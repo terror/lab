@@ -87,7 +87,7 @@ export function PromptInput({
       <label className="sr-only" htmlFor={id}>
         Message
       </label>
-      <InputGroup className="panel-frame min-h-16 items-end rounded-sm border-input bg-composer p-2 shadow-none transition-colors has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[[data-slot=input-group-control]:focus-visible]:ring-2 has-[[data-slot=input-group-control]:focus-visible]:ring-primary/15 dark:bg-composer">
+      <InputGroup className="panel-frame min-h-16 items-end rounded-sm border-input bg-composer p-2 shadow-none transition-colors dark:bg-composer">
         <InputGroupAddon
           align="inline-start"
           aria-hidden="true"
@@ -97,7 +97,7 @@ export function PromptInput({
         </InputGroupAddon>
         <InputGroupTextarea
           aria-describedby={`${id}-status`}
-          className="max-h-[min(15rem,35dvh)] min-h-11 field-sizing-fixed px-3 py-2.5 font-mono text-base leading-6 outline-none focus-visible:border-transparent focus-visible:ring-0 md:text-sm"
+          className="max-h-[min(15rem,35dvh)] min-h-11 field-sizing-fixed px-3 py-2.5 font-mono text-base leading-6 outline-none md:text-sm"
           id={id}
           maxLength={100_000}
           onChange={(event) => onValueChange(event.target.value)}
