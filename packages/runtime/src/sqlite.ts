@@ -67,7 +67,10 @@ export class BunSqliteDatabase
     super(database);
   }
 
-  static async open(path: string): Promise<BunSqliteDatabase> {
+  static async open(
+    path: string,
+    options: { exclusive?: boolean } = {},
+  ): Promise<BunSqliteDatabase> {
     if (path.length === 0) {
       throw new Error("SQLite database path must not be empty");
     }
@@ -81,6 +84,18 @@ export class BunSqliteDatabase
     try {
       database.run("PRAGMA busy_timeout = 5000");
 
+      if (options.exclusive) {
+        const mode = database
+          .query<{ locking_mode: string }, []>(
+            "PRAGMA locking_mode = EXCLUSIVE",
+          )
+          .get();
+
+        if (mode?.locking_mode !== "exclusive") {
+          throw new Error("SQLite exclusive locking mode is unavailable");
+        }
+      }
+
       const mode = database
         .query<{ journal_mode: string }, []>("PRAGMA journal_mode = WAL")
         .get();
@@ -92,6 +107,11 @@ export class BunSqliteDatabase
       database.run("PRAGMA synchronous = FULL");
       database.run("PRAGMA wal_autocheckpoint = 1000");
       database.run("PRAGMA foreign_keys = ON");
+
+      if (options.exclusive) {
+        database.run("BEGIN EXCLUSIVE");
+        database.run("COMMIT");
+      }
 
       return new BunSqliteDatabase(database);
     } catch (error) {

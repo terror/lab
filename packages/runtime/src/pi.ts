@@ -13,7 +13,9 @@ import type {
 import { BunSqliteDatabase } from "./sqlite";
 
 export async function openStorage(path: string) {
-  return SqliteStorage.open(await BunSqliteDatabase.open(path));
+  return SqliteStorage.open(
+    await BunSqliteDatabase.open(path, { exclusive: true }),
+  );
 }
 
 export function openHarness(
@@ -128,6 +130,10 @@ export function runtimeError(error: unknown): LabError {
 
   if (error instanceof pi.SessionFailed) {
     return { code: "unavailable", message: "Runtime is unavailable." };
+  }
+
+  if (error instanceof pi.StorageRequestError) {
+    return { code: "invalid_input", message: "Invalid runtime request." };
   }
 
   return { code: "internal", message: "Runtime operation failed." };

@@ -1,8 +1,4 @@
-import type {
-  AttachedReplicatedState,
-  Context,
-  Ctx,
-} from "@earendil-works/chord";
+import type { Context, Ctx } from "@earendil-works/chord";
 import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
@@ -10,7 +6,6 @@ import {
 import type {
   ConversationId,
   ConversationPage,
-  ConversationState,
   ConversationSummary,
   CreateConversationInput,
   ListConversationsInput,
@@ -28,9 +23,6 @@ export interface RuntimeConversation {
     context: Context,
   ): Promise<Result<SubmissionReceipt>>;
   stop(input: StopInput, context: Context): Promise<Result<StopReceipt>>;
-  observe(
-    context: Context,
-  ): Promise<AttachedReplicatedState<ConversationState>>;
 }
 
 export interface Runtime {
@@ -50,8 +42,13 @@ export interface Runtime {
 
 export interface RuntimeOwner {
   readonly runtime: Runtime;
+  readonly closed: Promise<RuntimeEnd>;
   close(context: Context): Promise<void>;
 }
+
+export type RuntimeEnd =
+  | { reason: "closed" }
+  | { reason: "failed"; error: unknown };
 
 export function callContext(context: Ctx): Context {
   return withAbortSignal(context.signal, BACKGROUND_CONTEXT);
