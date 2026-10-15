@@ -1,3 +1,6 @@
+import { LabClient } from "@lab/client";
+import { LabProvider, useConnection } from "@lab/client/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/lib/session";
@@ -82,6 +85,26 @@ export function App() {
     );
   }
 
+  return <Workspace session={session} />;
+}
+
+function Workspace({ session }: { session: ReturnType<typeof useSession> }) {
+  const [client] = useState(
+    () => new LabClient({ onUnauthorized: () => void session.refresh() }),
+  );
+
+  return (
+    <LabProvider client={client}>
+      <WorkspaceContent session={session} />
+    </LabProvider>
+  );
+}
+
+function WorkspaceContent({
+  session,
+}: {
+  session: ReturnType<typeof useSession>;
+}) {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground md:flex-row">
       <aside className="flex flex-col gap-6 border-b bg-muted/30 p-6 md:w-64 md:border-r md:border-b-0">
@@ -99,6 +122,7 @@ export function App() {
           <p className="text-sm text-muted-foreground">No conversations yet.</p>
         </nav>
         <div className="mt-auto space-y-3">
+          <ConnectionStatus />
           {session.error && (
             <p className="text-sm text-destructive" role="alert">
               {session.error}
@@ -149,5 +173,24 @@ export function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ConnectionStatus() {
+  const connection = useConnection();
+
+  const labels = {
+    disconnected: "Disconnected",
+    connecting: "Connecting…",
+    connected: "Connected",
+    reconnecting: "Reconnecting…",
+    unauthorized: "Sign in to reconnect.",
+    incompatible: "Reload this page to reconnect.",
+  };
+
+  return (
+    <p className="text-sm text-muted-foreground" role="status">
+      {labels[connection.status]}
+    </p>
   );
 }

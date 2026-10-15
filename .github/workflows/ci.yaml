@@ -96,6 +96,7 @@ jobs:
           path: |
             apps/server/dist/
             apps/web/dist/
+            packages/client/dist/
             packages/contracts/dist/
             packages/runtime/dist/
           if-no-files-found: error

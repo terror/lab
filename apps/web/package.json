@@ -9,6 +9,7 @@
     "typecheck": "bun --bun tsc --project tsconfig.json && bun --bun tsc --project tsconfig.tools.json"
   },
   "dependencies": {
+    "@lab/client": "workspace:*",
     "@radix-ui/react-slot": "1.5.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

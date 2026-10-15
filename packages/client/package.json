@@ -1,0 +1,24 @@
+{
+  "name": "@lab/client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts src/react.tsx --target=browser --external=react --outdir=dist",
+    "typecheck": "bun --bun tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.3.0",
+    "@lab/contracts": "workspace:*",
+    "typebox": "1.3.27"
+  },
+  "peerDependencies": {
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0"
+  }
+}
