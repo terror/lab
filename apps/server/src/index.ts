@@ -38,7 +38,11 @@ async function main() {
           join(homedir(), ".local", "share", "lab", "lab.sqlite"),
         model,
         defaultModel: model === undefined ? loadDefaultModel() : undefined,
-        models: await loadModels(shutdown.signal),
+        models: await loadModels(shutdown.signal, {
+          modelsPath: Bun.env.LAB_MODELS_PATH,
+          authPath: Bun.env.LAB_AUTH_PATH,
+          providerModule: Bun.env.LAB_PROVIDER_MODULE,
+        }),
         onReport: (error) => console.error("Lab runtime error:", error),
       },
       withAbortSignal(shutdown.signal, BACKGROUND_CONTEXT),

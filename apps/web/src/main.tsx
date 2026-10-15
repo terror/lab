@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "@/app";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/lib/theme";
 import "@/index.css";
 
 const root = document.getElementById("root");
@@ -12,8 +14,12 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ThemeProvider>
+      <TooltipProvider delayDuration={350}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

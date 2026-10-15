@@ -1,5 +1,9 @@
 import type { ConversationId } from "@lab/contracts";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   createContext,
   type ReactNode,
@@ -108,5 +112,61 @@ export function useConversation(id: ConversationId) {
     submit: conversation.submit,
     retrySubmission: conversation.retrySubmission,
     stop: conversation.stop,
+    setModel: conversation.setModel,
+  };
+}
+
+export function useModels(enabled = true) {
+  const client = useLabClient();
+  const connection = useConnection();
+  const connected = connection.status === "connected";
+  const queries = useQueryClient();
+
+  const load = async (refresh: boolean, signal: AbortSignal) => {
+    const result = await client.listModels({ refresh }, signal);
+
+    if (!result.ok) {
+      throw new Error(result.error.message);
+    }
+
+    return result.value;
+  };
+
+  const options = {
+    queryKey: ["lab", "models"],
+    queryFn: ({ signal }: { signal: AbortSignal }) => load(false, signal),
+    networkMode: "always" as const,
+    retry: false,
+    staleTime: 60_000,
+  };
+
+  const query = useQuery({
+    ...options,
+    enabled: connected && enabled,
+  });
+
+  useEffect(() => {
+    if (!connected) {
+      void queries.cancelQueries({ queryKey: ["lab", "models"] });
+    }
+  }, [connected, queries]);
+
+  return {
+    ...query,
+    connected,
+    stale: !connected || query.data === undefined,
+    refresh: async () => {
+      await queries.cancelQueries({ queryKey: options.queryKey });
+
+      if (client.connection.getSnapshot().status === "connected") {
+        await queries
+          .fetchQuery({
+            ...options,
+            queryFn: ({ signal }) => load(true, signal),
+            staleTime: 0,
+          })
+          .catch(() => undefined);
+      }
+    },
   };
 }

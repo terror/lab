@@ -9,7 +9,11 @@ import {
   CreateConversationInputSchema,
   type ListConversationsInput,
   ListConversationsInputSchema,
+  type ListModelsInput,
+  ListModelsInputSchema,
+  type ModelCatalog,
   type Result,
+  SetModelInputSchema,
   StopInputSchema,
   SubmitInputSchema,
 } from "@lab/contracts";
@@ -20,8 +24,10 @@ import {
   ConversationDoc,
   CreationRequestDoc,
 } from "./metadata";
+import type { ModelRegistry } from "./models";
 import { conversation, runtimeError, stop, submit } from "./pi";
 import type { Runtime, RuntimeConversation } from "./runtime";
+import { TitleTask, UNTITLED_CONVERSATION } from "./titles";
 import { ConversationObservation } from "./view";
 
 const CursorSchema = Type.Object(
@@ -34,16 +40,28 @@ const CursorSchema = Type.Object(
 
 export class HarnessRuntime implements Runtime {
   private available = true;
+  private readonly admissions = new Map<string, Promise<void>>();
 
   constructor(
     private readonly harness: pi.Harness,
     private readonly storage: pi.Storage,
     private readonly configuration: Configuration,
     private readonly extensions: readonly pi.Extension[],
+    private readonly models: ModelRegistry,
   ) {
     harness.subscribeClose(() => {
       this.available = false;
     });
+  }
+
+  listModels(
+    input: ListModelsInput,
+    context: Context,
+  ): Promise<Result<ModelCatalog>> {
+    return this.perform(ListModelsInputSchema, input, context, async () => ({
+      ok: true,
+      value: await this.models.list(this.configuration.model, input, context),
+    }));
   }
 
   listConversations(
@@ -96,11 +114,33 @@ export class HarnessRuntime implements Runtime {
     input: CreateConversationInput,
     context: Context,
   ): Promise<Result<ConversationSummary>> {
-    return this.perform(
-      CreateConversationInputSchema,
-      input,
-      context,
-      async () => {
+    return this.perform(CreateConversationInputSchema, input, context, () =>
+      this.admit(`create:${input.requestId}`, context, async () => {
+        const request = await this.harness.snapshot(
+          CreationRequestDoc,
+          input.requestId,
+          context,
+        );
+
+        if (request?.conversationId != null) {
+          return {
+            ok: true,
+            value: await this.harness.commit(
+              (tx) => summary(tx, request.conversationId as pi.ConversationId),
+              context,
+            ),
+          };
+        }
+
+        const model = await this.models.validate(
+          input.model ?? this.configuration.model,
+          context,
+        );
+
+        if (!model.ok) {
+          return model;
+        }
+
         const value = await this.harness.commit(async (tx) => {
           const request = await tx.doc(
             CreationRequestDoc,
@@ -117,11 +157,23 @@ export class HarnessRuntime implements Runtime {
           });
 
           await pi.configure(tx, id, {
-            model: this.configuration.model,
+            model: model.value,
             extensions: this.extensions,
           });
 
           (await tx.doc(ConversationDoc, id)).title = input.title;
+
+          if (input.title === UNTITLED_CONVERSATION) {
+            await tx.createTask(
+              TitleTask,
+              {},
+              {
+                conversationId: id,
+                ownership: { kind: "conversation" },
+                background: true,
+              },
+            );
+          }
 
           request.conversationId = id;
 
@@ -129,7 +181,7 @@ export class HarnessRuntime implements Runtime {
         }, context);
 
         return { ok: true, value };
-      },
+      }),
     );
   }
 
@@ -162,10 +214,53 @@ export class HarnessRuntime implements Runtime {
               ),
             })),
           submit: (input, context) =>
-            this.perform(SubmitInputSchema, input, context, async () => ({
-              ok: true,
-              value: await submit(handle, input, context),
-            })),
+            this.perform(SubmitInputSchema, input, context, () =>
+              this.admit(
+                `submit:${id}:${input.requestId}`,
+                context,
+                async () => {
+                  const existing = await this.harness.commit(
+                    (tx) => tx.submissionByRequest(handle.id, input.requestId),
+                    context,
+                  );
+
+                  if (existing === undefined) {
+                    const model = await this.models.validate(
+                      (await handle.agent(context)).model,
+                      context,
+                    );
+
+                    if (!model.ok) {
+                      return model;
+                    }
+                  }
+
+                  return {
+                    ok: true,
+                    value: await submit(handle, input, context),
+                  };
+                },
+              ),
+            ),
+          setModel: (input, context) =>
+            this.perform(SetModelInputSchema, input, context, async () => {
+              const model = await this.models.validate(input.model, context);
+
+              if (!model.ok) {
+                return model;
+              }
+
+              await handle.configure({ model: model.value }, context);
+
+              return {
+                ok: true,
+                value: {
+                  conversationId: handle.id,
+                  model: model.value,
+                  appliesAt: "next_request_preparation",
+                },
+              };
+            }),
           stop: (input, context) =>
             this.perform(StopInputSchema, input, context, async () => ({
               ok: true,
@@ -174,6 +269,30 @@ export class HarnessRuntime implements Runtime {
         },
       };
     });
+  }
+
+  private async admit<T>(
+    key: string,
+    context: Context,
+    operation: () => Promise<Result<T>>,
+  ): Promise<Result<T>> {
+    const pending = (this.admissions.get(key) ?? Promise.resolve()).then(() => {
+      context.abortSignal?.throwIfAborted();
+      return operation();
+    });
+    const settled = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.admissions.set(key, settled);
+
+    try {
+      return await pending;
+    } finally {
+      if (this.admissions.get(key) === settled) {
+        this.admissions.delete(key);
+      }
+    }
   }
 
   private async perform<T>(

@@ -3,10 +3,18 @@ import {
   type useConversation,
   usePendingRequests,
 } from "@lab/client/react";
-import type { ConversationId } from "@lab/contracts";
-import { useMutation } from "@tanstack/react-query";
+import type { ConversationId, Result, SubmissionReceipt } from "@lab/contracts";
+import { useMutation, useMutationState } from "@tanstack/react-query";
+import { AlertCircle, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { PromptInput } from "@/components/prompt-input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export type Draft = {
   text: string;
@@ -20,14 +28,43 @@ export function Composer({
   conversation,
   draft,
   stopping,
+  changingModel,
+  onStop,
+  canStop,
 }: {
   id: ConversationId;
   conversation: ReturnType<typeof useConversation>;
   draft: Draft;
   stopping: boolean;
+  changingModel: boolean;
+  onStop: () => void;
+  canStop: boolean;
 }) {
   const connection = useConnection();
   const pending = usePendingRequests();
+  const [recovering, setRecovering] = useState(false);
+  const initialSubmissions = useMutationState({
+    filters: {
+      mutationKey: ["lab", "submit"],
+      predicate: ({ state }) => {
+        const variables = state.variables;
+        return (
+          typeof variables === "object" &&
+          variables !== null &&
+          "conversationId" in variables &&
+          variables.conversationId === id
+        );
+      },
+    },
+    select: ({ state }) => {
+      const result = state.data as Result<SubmissionReceipt> | undefined;
+      return {
+        pending: state.status === "pending",
+        receipt: result?.ok ? result.value : undefined,
+      };
+    },
+  });
+  const initialSubmission = initialSubmissions.at(-1);
 
   const request = pending.requests.find(
     (request) => request.kind === "submit" && request.conversationId === id,
@@ -56,10 +93,12 @@ export function Composer({
 
   const connected = connection.status === "connected";
 
+  const receipt = submission.data ?? initialSubmission?.receipt;
+  const sending = submission.isPending || initialSubmission?.pending === true;
   const awaitingState =
-    submission.data !== undefined &&
+    receipt !== undefined &&
     !conversation.value?.submissions.some(
-      ({ id }) => id === submission.data?.submissionId,
+      ({ id }) => id === receipt.submissionId,
     );
 
   const canSend =
@@ -69,98 +108,97 @@ export function Composer({
     !conversation.value.busy &&
     conversation.value.inbox.length === 0 &&
     !stopping &&
-    !submission.isPending &&
+    !changingModel &&
+    !sending &&
     !awaitingState &&
     request === undefined &&
     draft.text.trim() !== "" &&
     draft.text.length <= 100_000;
 
-  return (
-    <form
-      className="max-h-[50svh] shrink-0 overflow-y-auto border-t bg-background"
-      onSubmit={(event) => {
-        event.preventDefault();
+  const status = stopping
+    ? "Stopping response…"
+    : changingModel
+      ? "Switching model…"
+      : sending
+        ? "Sending message…"
+        : awaitingState
+          ? "Updating conversation…"
+          : !connected || conversation.stale
+            ? "Reconnecting… You can keep editing your draft."
+            : conversation.value?.busy ||
+                (conversation.value?.inbox.length ?? 0) > 0
+              ? "You can draft your next message while lab works."
+              : undefined;
 
-        if (canSend) {
-          submission.mutate();
-        }
-      }}
-    >
-      <div className="mx-auto w-full max-w-3xl space-y-3 p-4 md:p-6">
-        {request?.kind === "submit" && (
-          <div className="space-y-2 rounded-md border bg-muted/40 p-3">
-            <p className="text-sm" role="status">
-              {submission.isPending
-                ? "Confirming message admission…"
-                : "Message admission is unconfirmed. Retry to check whether it was accepted."}
-            </p>
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer">View message</summary>
-              <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words">
-                {request.input.content}
-              </p>
-            </details>
-            <Button
-              disabled={!connected || submission.isPending || stopping}
-              onClick={() => submission.mutate()}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              Retry admission
-            </Button>
-          </div>
+  return (
+    <div className="shrink-0 bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+      <div className="mx-auto w-full max-w-3xl space-y-3">
+        {request?.kind === "submit" && (!sending || recovering) && (
+          <Alert className="rounded-xl bg-muted/40" role="status">
+            <AlertCircle />
+            <AlertDescription className="w-full gap-2">
+              <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                <p>
+                  {sending
+                    ? "Confirming your message…"
+                    : "Your message hasn’t been confirmed yet."}
+                </p>
+                {!sending && (
+                  <Button
+                    disabled={!connected || stopping || changingModel}
+                    onClick={() => {
+                      setRecovering(true);
+                      submission.mutate(undefined, {
+                        onSettled: () => setRecovering(false),
+                      });
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Check message
+                  </Button>
+                )}
+              </div>
+              <Collapsible className="w-full">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    className="h-auto p-0 text-xs text-muted-foreground"
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    View message <ChevronDown className="size-3" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 max-h-28 overflow-y-auto whitespace-pre-wrap break-words text-xs">
+                  {request.input.content}
+                </CollapsibleContent>
+              </Collapsible>
+            </AlertDescription>
+          </Alert>
         )}
-        <label className="text-sm font-medium" htmlFor="message">
-          Message
-        </label>
-        <Textarea
-          aria-describedby="composer-status"
-          className="max-h-48 min-h-24 resize-y"
-          id="message"
-          maxLength={100_000}
-          onChange={(event) => draft.set(event.target.value)}
-          onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              (event.metaKey || event.ctrlKey) &&
-              !event.nativeEvent.isComposing
-            ) {
-              event.preventDefault();
-              event.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder="Write a message…"
+        <PromptInput
+          autoFocus
+          canStop={canStop}
+          canSubmit={canSend}
+          onStop={onStop}
+          onSubmit={() => submission.mutate()}
+          onValueChange={draft.set}
+          status={status}
+          stopping={stopping}
+          submitting={sending}
           value={draft.text}
+          working={
+            conversation.value?.busy ||
+            (conversation.value?.inbox.length ?? 0) > 0
+          }
         />
-        <div className="flex items-center justify-between gap-4">
-          <p
-            className="text-xs text-muted-foreground"
-            id="composer-status"
-            role="status"
-          >
-            {stopping
-              ? "Stopping current work…"
-              : submission.isPending
-                ? "Waiting for admission confirmation…"
-                : awaitingState
-                  ? "Message accepted. Waiting for the conversation to update…"
-                  : !connected || conversation.stale
-                    ? "Your draft is editable. Reconnect to send it."
-                    : conversation.value?.busy
-                      ? "Work is running. You can prepare your next message."
-                      : submission.isSuccess
-                        ? "Message accepted."
-                        : "Ctrl/⌘ + Enter to send. Drafts are saved in this tab."}
-          </p>
-          <Button disabled={!canSend} type="submit">
-            {submission.isPending ? "Sending…" : "Send"}
-          </Button>
-        </div>
         {submission.error && (
-          <p className="text-sm text-destructive" role="alert">
-            {submission.error.message}
-          </p>
+          <Alert variant="destructive" className="rounded-xl">
+            <AlertCircle />
+            <AlertDescription>{submission.error.message}</AlertDescription>
+          </Alert>
         )}
         {!draft.isPersistent && (
           <p className="text-sm text-destructive" role="alert">
@@ -168,6 +206,6 @@ export function Composer({
           </p>
         )}
       </div>
-    </form>
+    </div>
   );
 }

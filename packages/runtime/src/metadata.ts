@@ -1,15 +1,10 @@
 import { defineDoc, defineDocFamily } from "@earendil-works/pi-durable";
+import { ModelReferenceSchema } from "@lab/contracts";
 import { type Static, Type } from "typebox";
 
 export const ConfigurationSchema = Type.Object(
   {
-    model: Type.Object(
-      {
-        provider: Type.String({ minLength: 1 }),
-        modelId: Type.String({ minLength: 1 }),
-      },
-      { additionalProperties: false },
-    ),
+    model: Type.Optional(ModelReferenceSchema),
     extensions: Type.Array(Type.String({ minLength: 1 }), {
       uniqueItems: true,
     }),

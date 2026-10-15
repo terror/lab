@@ -1,3 +1,4 @@
+export type { ProviderFactory } from "./models";
 export { openRuntime, type RuntimeOptions } from "./owner";
 export * as pi from "./pi";
 export {

@@ -15,7 +15,11 @@ import {
   LabConversation,
   LabService,
   type ListConversationsInput,
+  type ListModelsInput,
+  type ModelCatalog,
+  type ModelSelectionReceipt,
   type Result,
+  type SetModelInput,
   type StopInput,
   type StopReceipt,
   type SubmissionReceipt,
@@ -101,6 +105,16 @@ export class LabClient {
     return new ConversationClient(this, id);
   }
 
+  listModels(
+    input: ListModelsInput = { refresh: false },
+    signal?: AbortSignal,
+  ): Promise<Result<ModelCatalog>> {
+    return this.call(async (context) => {
+      const service = await context.get(LabService, {}, { state: false });
+      return service.listModels(input, context);
+    }, signal);
+  }
+
   listConversations(
     input: ListConversationsInput,
     signal?: AbortSignal,
@@ -163,6 +177,21 @@ export class LabClient {
         { state: false },
       );
       return conversation.stop(input, context);
+    }, signal);
+  }
+
+  setModel(
+    id: ConversationId,
+    input: SetModelInput,
+    signal?: AbortSignal,
+  ): Promise<Result<ModelSelectionReceipt>> {
+    return this.call(async (context) => {
+      const conversation = await context.get(
+        LabConversation,
+        { id },
+        { state: false },
+      );
+      return conversation.setModel(input, context);
     }, signal);
   }
 
@@ -298,7 +327,7 @@ export class LabClient {
           this.block(
             current,
             "incompatible",
-            new Error("Lab was updated. Reload this page to reconnect."),
+            new Error("lab was updated. Reload this page to reconnect."),
           ),
       });
 
@@ -419,7 +448,7 @@ export class LabClient {
       current === undefined ||
       this.connection.getSnapshot().status !== "connected"
     ) {
-      throw new ChordError("unavailable", "Lab is not connected.");
+      throw new ChordError("unavailable", "lab is not connected.");
     }
 
     try {
@@ -485,7 +514,9 @@ export class LabClient {
           result.ok ||
           result.error.code === "invalid_input" ||
           result.error.code === "not_found" ||
-          result.error.code === "busy"
+          result.error.code === "busy" ||
+          result.error.code === "provider_unavailable" ||
+          result.error.code === "model_unavailable"
         ) {
           this.journal.complete(requestId);
         }

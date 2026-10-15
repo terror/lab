@@ -108,11 +108,15 @@ export class ConversationObservation
         cursor = page.next;
       } while (cursor !== undefined);
 
-      const metadata = await harness.snapshot(
+      const metadata = await harness.documentState(
         ConversationDoc,
         conversation.id,
         context,
       );
+
+      if (metadata !== undefined) {
+        observation.disposers.push(() => metadata.dispose());
+      }
 
       context.abortSignal?.throwIfAborted();
 
@@ -120,15 +124,29 @@ export class ConversationObservation
         throw new pi.SessionFailed("Runtime is unavailable");
       }
 
-      if (metadata === undefined) {
+      if (metadata === undefined || metadata.value === null) {
         throw new Error("Conversation metadata is unavailable");
       }
 
       observation.summary = {
         id: conversation.id,
-        title: metadata.title,
-        createdAt: metadata.createdAt,
+        title: metadata.value.title,
+        createdAt: metadata.value.createdAt,
       };
+      observation.disposers.push(
+        metadata.subscribe((value, context) => {
+          if (value === null) {
+            return;
+          }
+
+          observation.summary = {
+            id: conversation.id,
+            title: value.title,
+            createdAt: value.createdAt,
+          };
+          observation.schedule(context);
+        }),
+      );
       observation.state = replicatedState(observation.project());
       observation.changed.clear();
 
@@ -215,6 +233,9 @@ export class ConversationObservation
     }
 
     const source = this.source.value;
+    const agent = source.docs[pi.AgentDoc.definition.kind] as
+      | pi.AgentState
+      | undefined;
     const live = source.docs[pi.LiveDoc.definition.kind] as
       | pi.LiveState
       | undefined;
@@ -230,6 +251,7 @@ export class ConversationObservation
 
     return {
       conversation: this.summary,
+      ...(agent?.model === undefined ? {} : { model: { ...agent.model } }),
       busy: live?.run !== undefined,
       entries: source.entries.map((entry) => {
         const value = this.entries.get(entry) ?? {
@@ -306,6 +328,22 @@ function conversationError(
     latest.reason !== "aborted" &&
     latest.reason !== "reset"
   ) {
+    if (latest.reason === "no_model") {
+      return {
+        code: "model_unavailable",
+        message:
+          "The last request's model is unavailable. Select an available model and submit again.",
+      };
+    }
+
+    if (latest.reason === "model_error") {
+      return {
+        code: "unavailable",
+        message:
+          "Model request failed. Check provider availability and credentials.",
+      };
+    }
+
     return {
       code: "unavailable",
       message: "Conversation ended without an answer.",

@@ -25,6 +25,10 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
 
     return {
       variant: "default",
+      listModels: (input, context) => {
+        sessions.authorize(principal);
+        return runtime.listModels(input, callContext(context));
+      },
       listConversations: (input, context) => {
         sessions.authorize(principal);
         return runtime.listConversations(input, callContext(context));
@@ -80,6 +84,10 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
     return {
       variant: "default",
       view,
+      setModel: (input, context) => {
+        sessions.authorize(principal);
+        return conversation.value.setModel(input, callContext(context));
+      },
       submit: (input, context) => {
         sessions.authorize(principal);
         return conversation.value.submit(input, callContext(context));

@@ -59,7 +59,9 @@ export function useSession() {
       } catch (error) {
         if (!controller.signal.aborted) {
           if (method === "GET") {
-            setStatus("unavailable");
+            setStatus((current) =>
+              current === "checking" ? "unavailable" : current,
+            );
           }
 
           setError(

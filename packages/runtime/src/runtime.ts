@@ -14,7 +14,11 @@ import type {
   ConversationSummary,
   CreateConversationInput,
   ListConversationsInput,
+  ListModelsInput,
+  ModelCatalog,
+  ModelSelectionReceipt,
   Result,
+  SetModelInput,
   StopInput,
   StopReceipt,
   SubmissionReceipt,
@@ -30,10 +34,18 @@ export interface RuntimeConversation {
     input: SubmitInput,
     context: Context,
   ): Promise<Result<SubmissionReceipt>>;
+  setModel(
+    input: SetModelInput,
+    context: Context,
+  ): Promise<Result<ModelSelectionReceipt>>;
   stop(input: StopInput, context: Context): Promise<Result<StopReceipt>>;
 }
 
 export interface Runtime {
+  listModels(
+    input: ListModelsInput,
+    context: Context,
+  ): Promise<Result<ModelCatalog>>;
   listConversations(
     input: ListConversationsInput,
     context: Context,

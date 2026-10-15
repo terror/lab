@@ -11,8 +11,10 @@ import {
   ConfigurationSchema,
   ConversationDoc,
 } from "./metadata";
+import { ModelRegistry } from "./models";
 import { openHarness, openStorage } from "./pi";
 import type { RuntimeOwner } from "./runtime";
+import { TitleExtension } from "./titles";
 
 export type RuntimeOptions = {
   path: string;
@@ -32,6 +34,7 @@ export async function openRuntime(
   const models = options.models ?? defaultModels();
   const extensions = options.extensions ?? [];
   const registry = pi.createRegistry();
+  registry.install(TitleExtension);
 
   for (const extension of extensions) {
     registry.install(extension);
@@ -68,27 +71,10 @@ export async function openRuntime(
     const configuration = resolveConfiguration(stored?.configuration, options);
 
     if (
-      models.getModel(
-        configuration.model.provider,
-        configuration.model.modelId,
-      ) === undefined
+      stored?.configuration == null ||
+      stored.configuration.model?.provider !== configuration.model?.provider ||
+      stored.configuration.model?.modelId !== configuration.model?.modelId
     ) {
-      throw new Error(
-        `Model ${configuration.model.provider}/${configuration.model.modelId} is unavailable`,
-      );
-    }
-
-    if (
-      (await models.checkAuth(configuration.model.provider, {
-        signal: context.abortSignal,
-      })) === undefined
-    ) {
-      throw new Error(
-        `Provider ${configuration.model.provider} has no configured credentials`,
-      );
-    }
-
-    if (stored?.configuration == null) {
       await harness.commit(async (tx) => {
         (await tx.doc(ConfigurationDoc)).configuration = configuration;
       }, context);
@@ -101,6 +87,7 @@ export async function openRuntime(
       storage,
       configuration,
       extensions,
+      new ModelRegistry(models),
     );
 
     harness.resume();
@@ -130,21 +117,14 @@ function resolveConfiguration(
   options: RuntimeOptions,
 ): Configuration {
   const extensions = (options.extensions ?? []).map(({ name }) => name);
-  const configuration = stored ?? {
-    model: options.model ?? options.defaultModel,
-    extensions,
+  const model = options.model ?? stored?.model ?? options.defaultModel;
+  const configuration = {
+    ...(stored ?? { extensions }),
+    ...(model === undefined ? {} : { model }),
   };
 
   if (!Check(ConfigurationSchema, configuration)) {
-    throw new Error("A valid provider and model must be configured");
-  }
-
-  if (
-    options.model !== undefined &&
-    (options.model.provider !== configuration.model.provider ||
-      options.model.modelId !== configuration.model.modelId)
-  ) {
-    throw new Error("Configured model differs from the stored model");
+    throw new Error("Invalid runtime configuration");
   }
 
   if (

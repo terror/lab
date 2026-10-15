@@ -7,7 +7,11 @@ import {
   ConversationSummarySchema,
   CreateConversationInputSchema,
   ListConversationsInputSchema,
+  ListModelsInputSchema,
+  ModelCatalogSchema,
+  ModelSelectionReceiptSchema,
   resultSchema,
+  SetModelInputSchema,
   StopInputSchema,
   StopReceiptSchema,
   SubmissionReceiptSchema,
@@ -17,12 +21,16 @@ import {
 export * from "./schemas";
 
 export const LabService = remote("lab.service", {
-  version: 1,
+  version: 2,
   host: hostNamed("server"),
   input: Type.Object({}, { additionalProperties: false }),
   variants: {
     default: {
       methods: {
+        listModels: method(
+          ListModelsInputSchema,
+          resultSchema(ModelCatalogSchema),
+        ),
         listConversations: method(
           ListConversationsInputSchema,
           resultSchema(ConversationPageSchema),
@@ -37,12 +45,16 @@ export const LabService = remote("lab.service", {
 });
 
 const conversationMethods = {
+  setModel: method(
+    SetModelInputSchema,
+    resultSchema(ModelSelectionReceiptSchema),
+  ),
   submit: method(SubmitInputSchema, resultSchema(SubmissionReceiptSchema)),
   stop: method(StopInputSchema, resultSchema(StopReceiptSchema)),
 };
 
 export const LabConversation = remote("lab.conversation", {
-  version: 1,
+  version: 2,
   host: hostNamed("server"),
   input: Type.Object(
     { id: ConversationIdSchema },

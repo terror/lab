@@ -28,6 +28,8 @@ export const LabErrorSchema = Type.Object(
       Type.Literal("not_found"),
       Type.Literal("busy"),
       Type.Literal("unavailable"),
+      Type.Literal("provider_unavailable"),
+      Type.Literal("model_unavailable"),
       Type.Literal("internal"),
     ]),
     message: Type.String(),
@@ -47,6 +49,67 @@ export function resultSchema<T extends TSchema>(value: T) {
     ),
   ]);
 }
+
+export const ModelReferenceSchema = Type.Object(
+  {
+    provider: Type.String({ minLength: 1, maxLength: 200 }),
+    modelId: Type.String({ minLength: 1, maxLength: 500 }),
+  },
+  { additionalProperties: false },
+);
+
+export const ModelInfoSchema = Type.Object(
+  {
+    id: Type.String({ minLength: 1 }),
+    name: Type.String(),
+    contextWindow: Type.Number({ minimum: 0 }),
+    maxTokens: Type.Number({ minimum: 0 }),
+    reasoning: Type.Boolean(),
+    input: Type.Array(
+      Type.Union([Type.Literal("text"), Type.Literal("image")]),
+    ),
+    available: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
+export const ProviderInfoSchema = Type.Object(
+  {
+    id: Type.String({ minLength: 1 }),
+    name: Type.String(),
+    available: Type.Boolean(),
+    models: Type.Array(ModelInfoSchema),
+    error: Type.Optional(LabErrorSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const ListModelsInputSchema = Type.Object(
+  { refresh: Type.Boolean({ default: false }) },
+  { additionalProperties: false },
+);
+
+export const ModelCatalogSchema = Type.Object(
+  {
+    defaultModel: Type.Optional(ModelReferenceSchema),
+    providers: Type.Array(ProviderInfoSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const SetModelInputSchema = Type.Object(
+  { model: ModelReferenceSchema },
+  { additionalProperties: false },
+);
+
+export const ModelSelectionReceiptSchema = Type.Object(
+  {
+    conversationId: ConversationIdSchema,
+    model: ModelReferenceSchema,
+    appliesAt: Type.Literal("next_request_preparation"),
+  },
+  { additionalProperties: false },
+);
 
 export const ConversationSummarySchema = Type.Object(
   {
@@ -77,6 +140,7 @@ export const CreateConversationInputSchema = Type.Object(
   {
     requestId: RequestIdSchema,
     title: Type.String({ minLength: 1, maxLength: 200 }),
+    model: Type.Optional(ModelReferenceSchema),
   },
   { additionalProperties: false },
 );
@@ -200,6 +264,7 @@ export const QueuedInputSchema = Type.Object(
 export const ConversationStateSchema = Type.Object(
   {
     conversation: ConversationSummarySchema,
+    model: Type.Optional(ModelReferenceSchema),
     busy: Type.Boolean(),
     entries: Type.Array(TranscriptEntrySchema),
     partial: Type.Optional(Type.String()),
@@ -212,6 +277,13 @@ export const ConversationStateSchema = Type.Object(
 );
 
 export type ConversationId = Static<typeof ConversationIdSchema>;
+export type ModelReference = Static<typeof ModelReferenceSchema>;
+export type ModelInfo = Static<typeof ModelInfoSchema>;
+export type ProviderInfo = Static<typeof ProviderInfoSchema>;
+export type ListModelsInput = Static<typeof ListModelsInputSchema>;
+export type ModelCatalog = Static<typeof ModelCatalogSchema>;
+export type SetModelInput = Static<typeof SetModelInputSchema>;
+export type ModelSelectionReceipt = Static<typeof ModelSelectionReceiptSchema>;
 export type SubmissionId = Static<typeof SubmissionIdSchema>;
 export type RequestId = Static<typeof RequestIdSchema>;
 export type LabError = Static<typeof LabErrorSchema>;
