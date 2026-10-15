@@ -26,13 +26,19 @@ export const ConfigurationDoc = defineDoc<{
 export const ConversationDoc = defineDoc<{
   title: string;
   createdAt: number;
+  deleted: boolean;
 }>({
   kind: "lab.conversation",
-  version: 1,
+  version: 2,
   scope: "conversation",
   history: "latest",
   fork: "initial",
-  initial: () => ({ title: "", createdAt: Date.now() }),
+  initial: () => ({ title: "", createdAt: Date.now(), deleted: false }),
+  migrate: (value) => ({
+    title: value.title as string,
+    createdAt: value.createdAt as number,
+    deleted: false,
+  }),
 });
 
 export const CreationRequestDoc = defineDocFamily<

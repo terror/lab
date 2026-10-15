@@ -132,6 +132,26 @@ export class LabClient {
     return this.create(this.journal.create(input), signal);
   }
 
+  async deleteConversation(
+    id: ConversationId,
+    signal?: AbortSignal,
+  ): Promise<Result<null>> {
+    const result = await this.call(async (context) => {
+      const service = await context.get(LabService, {}, { state: false });
+      return service.deleteConversation(id, context);
+    }, signal);
+
+    if (result.ok || result.error.code === "not_found") {
+      for (const request of this.pending.getSnapshot().requests) {
+        if (request.kind === "submit" && request.conversationId === id) {
+          this.journal.complete(request.input.requestId);
+        }
+      }
+    }
+
+    return result;
+  }
+
   async retryCreation(
     signal?: AbortSignal,
   ): Promise<Result<ConversationSummary>> {

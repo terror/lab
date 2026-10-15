@@ -37,6 +37,10 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
         sessions.authorize(principal);
         return runtime.createConversation(input, callContext(context));
       },
+      deleteConversation: (id, context) => {
+        sessions.authorize(principal);
+        return runtime.deleteConversation(id, callContext(context));
+      },
     };
   });
 

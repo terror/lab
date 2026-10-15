@@ -21,7 +21,7 @@ import {
 export * from "./schemas";
 
 export const LabService = remote("lab.service", {
-  version: 2,
+  version: 3,
   host: hostNamed("server"),
   input: Type.Object({}, { additionalProperties: false }),
   variants: {
@@ -38,6 +38,10 @@ export const LabService = remote("lab.service", {
         createConversation: method(
           CreateConversationInputSchema,
           resultSchema(ConversationSummarySchema),
+        ),
+        deleteConversation: method(
+          ConversationIdSchema,
+          resultSchema(Type.Null()),
         ),
       },
     },

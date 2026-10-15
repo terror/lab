@@ -139,13 +139,18 @@ export class ConversationClient {
     error: Error | undefined,
   ) {
     const previous = this.getSnapshot();
+    const next = {
+      value,
+      stale: stale || value?.error?.code === "not_found",
+      error,
+    };
 
     if (
-      previous.value !== value ||
-      previous.stale !== stale ||
-      previous.error !== error
+      previous.value !== next.value ||
+      previous.stale !== next.stale ||
+      previous.error !== next.error
     ) {
-      this.state.set({ value, stale, error });
+      this.state.set(next);
     }
   }
 }

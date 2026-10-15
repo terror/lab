@@ -87,21 +87,34 @@ export class HarnessRuntime implements Runtime {
         }
 
         const page = await this.harness.commit(async (tx) => {
-          const page = await tx.scanConversations(
-            { order: "descending" },
-            input.limit,
-            cursor,
-          );
+          const items: ConversationSummary[] = [];
+          let next: pi.Cursor | undefined = cursor;
 
-          const items = await Promise.all(
-            page.items.map(({ id }) => summary(tx, id)),
-          );
+          do {
+            const page = await tx.scanConversations(
+              { order: "descending" },
+              input.limit - items.length,
+              next,
+            );
+
+            const summaries = await Promise.all(
+              page.items.map(async ({ id }) => {
+                const { title, createdAt, deleted } = await tx.doc(
+                  ConversationDoc,
+                  id,
+                );
+
+                return deleted ? [] : [{ id, title, createdAt }];
+              }),
+            );
+
+            items.push(...summaries.flat());
+            next = page.next;
+          } while (items.length < input.limit && next !== undefined);
 
           return {
             items,
-            ...(page.next === undefined
-              ? {}
-              : { next: JSON.stringify(page.next) }),
+            ...(next === undefined ? {} : { next: JSON.stringify(next) }),
           };
         }, context);
 
@@ -123,13 +136,17 @@ export class HarnessRuntime implements Runtime {
         );
 
         if (request?.conversationId != null) {
-          return {
-            ok: true,
-            value: await this.harness.commit(
-              (tx) => summary(tx, request.conversationId as pi.ConversationId),
-              context,
-            ),
-          };
+          return this.withConversation(
+            request.conversationId,
+            context,
+            async (handle) => ({
+              ok: true,
+              value: await this.harness.commit(
+                (tx) => summary(tx, handle.id),
+                context,
+              ),
+            }),
+          );
         }
 
         const model = await this.models.validate(
@@ -180,7 +197,36 @@ export class HarnessRuntime implements Runtime {
           return summary(tx, id);
         }, context);
 
-        return { ok: true, value };
+        return this.withConversation(value.id, context, async () => ({
+          ok: true,
+          value,
+        }));
+      }),
+    );
+  }
+
+  deleteConversation(
+    id: ConversationId,
+    context: Context,
+  ): Promise<Result<null>> {
+    return this.perform(ConversationIdSchema, id, context, () =>
+      this.admit(`conversation:${id}`, context, async () => {
+        const handle = await conversation(this.harness, id, context);
+
+        if (handle === undefined) {
+          return {
+            ok: false,
+            error: { code: "not_found", message: "Conversation not found." },
+          };
+        }
+
+        await handle.abort(context, { background: true });
+
+        await this.harness.commit(async (tx) => {
+          (await tx.doc(ConversationDoc, handle.id)).deleted = true;
+        }, context);
+
+        return { ok: true, value: null };
       }),
     );
   }
@@ -189,85 +235,101 @@ export class HarnessRuntime implements Runtime {
     id: ConversationId,
     context: Context,
   ): Promise<Result<RuntimeConversation>> {
-    return this.perform(ConversationIdSchema, id, context, async () => {
+    return this.perform(ConversationIdSchema, id, context, () =>
+      this.withConversation(id, context, async (handle) => ({
+        ok: true,
+        value: {
+          id: handle.id,
+          observe: (context) =>
+            this.perform(ConversationIdSchema, id, context, () =>
+              this.withConversation(id, context, async (handle) => ({
+                ok: true,
+                value: await ConversationObservation.open(
+                  this.harness,
+                  this.storage,
+                  handle,
+                  context,
+                ),
+              })),
+            ),
+          submit: (input, context) =>
+            this.perform(SubmitInputSchema, input, context, () =>
+              this.withConversation(id, context, async (handle) => {
+                const existing = await this.harness.commit(
+                  (tx) => tx.submissionByRequest(handle.id, input.requestId),
+                  context,
+                );
+
+                if (existing === undefined) {
+                  const model = await this.models.validate(
+                    (await handle.agent(context)).model,
+                    context,
+                  );
+
+                  if (!model.ok) {
+                    return model;
+                  }
+                }
+
+                return {
+                  ok: true,
+                  value: await submit(handle, input, context),
+                };
+              }),
+            ),
+          setModel: (input, context) =>
+            this.perform(SetModelInputSchema, input, context, () =>
+              this.withConversation(id, context, async (handle) => {
+                const model = await this.models.validate(input.model, context);
+
+                if (!model.ok) {
+                  return model;
+                }
+
+                await handle.configure({ model: model.value }, context);
+
+                return {
+                  ok: true,
+                  value: {
+                    conversationId: handle.id,
+                    model: model.value,
+                    appliesAt: "next_request_preparation",
+                  },
+                };
+              }),
+            ),
+          stop: (input, context) =>
+            this.perform(StopInputSchema, input, context, () =>
+              this.withConversation(id, context, async (handle) => ({
+                ok: true,
+                value: await stop(handle, input, context),
+              })),
+            ),
+        },
+      })),
+    );
+  }
+
+  private withConversation<T>(
+    id: ConversationId,
+    context: Context,
+    operation: (handle: pi.Conversation) => Promise<Result<T>>,
+  ): Promise<Result<T>> {
+    return this.admit(`conversation:${id}`, context, async () => {
       const handle = await conversation(this.harness, id, context);
 
-      if (handle === undefined) {
+      if (
+        handle === undefined ||
+        (await this.harness.snapshot(ConversationDoc, handle.id, context))
+          ?.deleted
+      ) {
         return {
           ok: false,
           error: { code: "not_found", message: "Conversation not found." },
         };
       }
 
-      return {
-        ok: true,
-        value: {
-          id: handle.id,
-          observe: (context) =>
-            this.perform(ConversationIdSchema, id, context, async () => ({
-              ok: true,
-              value: await ConversationObservation.open(
-                this.harness,
-                this.storage,
-                handle,
-                context,
-              ),
-            })),
-          submit: (input, context) =>
-            this.perform(SubmitInputSchema, input, context, () =>
-              this.admit(
-                `submit:${id}:${input.requestId}`,
-                context,
-                async () => {
-                  const existing = await this.harness.commit(
-                    (tx) => tx.submissionByRequest(handle.id, input.requestId),
-                    context,
-                  );
-
-                  if (existing === undefined) {
-                    const model = await this.models.validate(
-                      (await handle.agent(context)).model,
-                      context,
-                    );
-
-                    if (!model.ok) {
-                      return model;
-                    }
-                  }
-
-                  return {
-                    ok: true,
-                    value: await submit(handle, input, context),
-                  };
-                },
-              ),
-            ),
-          setModel: (input, context) =>
-            this.perform(SetModelInputSchema, input, context, async () => {
-              const model = await this.models.validate(input.model, context);
-
-              if (!model.ok) {
-                return model;
-              }
-
-              await handle.configure({ model: model.value }, context);
-
-              return {
-                ok: true,
-                value: {
-                  conversationId: handle.id,
-                  model: model.value,
-                  appliesAt: "next_request_preparation",
-                },
-              };
-            }),
-          stop: (input, context) =>
-            this.perform(StopInputSchema, input, context, async () => ({
-              ok: true,
-              value: await stop(handle, input, context),
-            })),
-        },
-      };
+      return operation(handle);
     });
   }
 

@@ -1,25 +1,40 @@
 import {
   useConnection,
   useConversations,
+  useLabClient,
   usePendingRequests,
 } from "@lab/client/react";
+import type { ConversationId, ConversationPage } from "@lab/contracts";
+import {
+  type InfiniteData,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   ChevronsUpDown,
   CircleUserRound,
   LogOut,
   Monitor,
   Moon,
+  MoreHorizontal,
   RefreshCw,
   Search,
   SquarePen,
   Sun,
   SunMoon,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { LabMark } from "@/components/lab-mark";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +58,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
@@ -60,11 +76,15 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar({
+  onDeleted,
   session,
 }: {
+  onDeleted: (id: ConversationId) => void;
   session: ReturnType<typeof useSession>;
 }) {
   const location = useLocation();
+  const client = useLabClient();
+  const queries = useQueryClient();
   const connection = useConnection();
   const conversations = useConversations();
   const pending = usePendingRequests();
@@ -78,6 +98,36 @@ export function AppSidebar({
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase()),
   );
+
+  const deletion = useMutation({
+    networkMode: "always",
+    retry: false,
+    mutationFn: async (id: ConversationId) => {
+      const result = await client.deleteConversation(id);
+
+      if (!result.ok && result.error.code !== "not_found") {
+        throw new Error(result.error.message);
+      }
+    },
+    onSuccess: async (_value, id) => {
+      await queries.cancelQueries({ queryKey: ["lab", "conversations"] });
+      queries.setQueryData<InfiniteData<ConversationPage>>(
+        ["lab", "conversations"],
+        (current) =>
+          current === undefined
+            ? current
+            : {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  items: page.items.filter((item) => item.id !== id),
+                })),
+              },
+      );
+      onDeleted(id);
+      void queries.invalidateQueries({ queryKey: ["lab", "conversations"] });
+    },
+  });
 
   useEffect(() => {
     if (previousLocation.current !== location.key) {
@@ -217,36 +267,76 @@ export function AppSidebar({
                         request.kind === "submit" &&
                         request.conversationId === conversation.id,
                     );
+                    const deleting =
+                      deletion.isPending &&
+                      deletion.variables === conversation.id;
 
                     return (
-                      <SidebarMenuItem key={conversation.id}>
-                        <SidebarMenuButton
-                          asChild
-                          className="h-10 rounded-sm border-l-2 border-transparent px-3 text-xs font-normal data-[active=true]:border-primary data-[active=true]:text-primary"
-                          isActive={
-                            location.pathname ===
-                            `/conversations/${conversation.id}`
-                          }
-                        >
-                          <NavLink
-                            end
-                            onClick={() => setOpenMobile(false)}
-                            title={conversation.title}
-                            to={`/conversations/${conversation.id}`}
-                          >
-                            <span className="min-w-0 flex-1 truncate">
-                              {conversation.title}
-                            </span>
-                            {unconfirmed && (
-                              <span className="size-1.5 shrink-0 bg-amber-500">
-                                <span className="sr-only">
-                                  Message unconfirmed
+                      <ContextMenu key={conversation.id}>
+                        <ContextMenuTrigger asChild>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton
+                              asChild
+                              className="h-10 rounded-sm border-l-2 border-transparent px-3 text-xs font-normal data-[active=true]:border-primary data-[active=true]:text-primary"
+                              isActive={
+                                location.pathname ===
+                                `/conversations/${conversation.id}`
+                              }
+                            >
+                              <NavLink
+                                end
+                                onClick={() => setOpenMobile(false)}
+                                title={conversation.title}
+                                to={`/conversations/${conversation.id}`}
+                              >
+                                <span className="min-w-0 flex-1 truncate">
+                                  {conversation.title}
                                 </span>
-                              </span>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                                {unconfirmed && (
+                                  <span className="size-1.5 shrink-0 bg-amber-500">
+                                    <span className="sr-only">
+                                      Message unconfirmed
+                                    </span>
+                                  </span>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <SidebarMenuAction
+                                  aria-label={`Actions for ${conversation.title}`}
+                                  className="top-2.5 right-2"
+                                  showOnHover
+                                >
+                                  <MoreHorizontal />
+                                </SidebarMenuAction>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" side="right">
+                                <DropdownMenuItem
+                                  disabled={!connected || deletion.isPending}
+                                  onSelect={() =>
+                                    deletion.mutate(conversation.id)
+                                  }
+                                  variant="destructive"
+                                >
+                                  <Trash2 />
+                                  {deleting ? "Deleting…" : "Delete"}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </SidebarMenuItem>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            disabled={!connected || deletion.isPending}
+                            onSelect={() => deletion.mutate(conversation.id)}
+                            variant="destructive"
+                          >
+                            <Trash2 />
+                            {deleting ? "Deleting…" : "Delete"}
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     );
                   })}
                 </SidebarMenu>
@@ -255,6 +345,11 @@ export function AppSidebar({
             {conversations.error && (
               <p className="px-2 py-2 text-xs text-destructive" role="alert">
                 {conversations.error.message}
+              </p>
+            )}
+            {deletion.error && (
+              <p className="px-2 py-2 text-xs text-destructive" role="alert">
+                {deletion.error.message}
               </p>
             )}
             {!connected && conversations.items !== undefined && (

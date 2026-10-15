@@ -93,7 +93,29 @@ function WorkspaceContent({
       >
         Skip to conversation
       </a>
-      <WorkspaceLayout sidebar={<AppSidebar session={session} />}>
+      <WorkspaceLayout
+        sidebar={
+          <AppSidebar
+            onDeleted={(id) => {
+              setDrafts((current) => {
+                const drafts = { ...current };
+                delete drafts[id];
+                return drafts;
+              });
+              setErrors((current) => {
+                const errors = { ...current };
+                delete errors[id];
+                return errors;
+              });
+
+              if (currentLocation.current.pathname === `/conversations/${id}`) {
+                void navigate("/", { replace: true });
+              }
+            }}
+            session={session}
+          />
+        }
+      >
         <SidebarInset
           className="workspace-canvas h-full min-h-0 min-w-0 overflow-hidden outline-none"
           id="main-content"

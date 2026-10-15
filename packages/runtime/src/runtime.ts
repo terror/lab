@@ -54,6 +54,10 @@ export interface Runtime {
     input: CreateConversationInput,
     context: Context,
   ): Promise<Result<ConversationSummary>>;
+  deleteConversation(
+    id: ConversationId,
+    context: Context,
+  ): Promise<Result<null>>;
   conversation(
     id: ConversationId,
     context: Context,

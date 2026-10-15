@@ -36,6 +36,7 @@ export class ConversationObservation
   private scheduled = false;
   private disposed = false;
   private unavailable = false;
+  private deleted = false;
 
   private constructor() {}
 
@@ -128,6 +129,7 @@ export class ConversationObservation
         throw new Error("Conversation metadata is unavailable");
       }
 
+      observation.deleted = metadata.value.deleted;
       observation.summary = {
         id: conversation.id,
         title: metadata.value.title,
@@ -139,6 +141,7 @@ export class ConversationObservation
             return;
           }
 
+          observation.deleted = value.deleted;
           observation.summary = {
             id: conversation.id,
             title: value.title,
@@ -221,7 +224,7 @@ export class ConversationObservation
 
       this.current.replace(withoutAbortSignal(context), value);
 
-      if (this.unavailable) {
+      if (this.unavailable || this.deleted) {
         this.dispose();
       }
     });
@@ -230,6 +233,18 @@ export class ConversationObservation
   private project(): ConversationState {
     if (this.source === undefined || this.summary === undefined) {
       throw new Error("Conversation observation is not ready");
+    }
+
+    if (this.deleted) {
+      return {
+        conversation: this.summary,
+        busy: false,
+        entries: [],
+        tools: [],
+        inbox: [],
+        submissions: [],
+        error: { code: "not_found", message: "Conversation not found." },
+      };
     }
 
     const source = this.source.value;
