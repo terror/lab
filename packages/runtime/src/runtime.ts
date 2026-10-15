@@ -1,4 +1,8 @@
-import type { Context, Ctx } from "@earendil-works/chord";
+import type {
+  AttachedReplicatedState,
+  Context,
+  Ctx,
+} from "@earendil-works/chord";
 import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
@@ -6,6 +10,7 @@ import {
 import type {
   ConversationId,
   ConversationPage,
+  ConversationState,
   ConversationSummary,
   CreateConversationInput,
   ListConversationsInput,
@@ -18,6 +23,9 @@ import type {
 
 export interface RuntimeConversation {
   readonly id: ConversationId;
+  observe(
+    context: Context,
+  ): Promise<Result<AttachedReplicatedState<ConversationState>>>;
   submit(
     input: SubmitInput,
     context: Context,

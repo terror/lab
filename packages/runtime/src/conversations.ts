@@ -22,6 +22,7 @@ import {
 } from "./metadata";
 import { conversation, runtimeError, stop, submit } from "./pi";
 import type { Runtime, RuntimeConversation } from "./runtime";
+import { ConversationObservation } from "./view";
 
 const CursorSchema = Type.Object(
   {
@@ -36,6 +37,7 @@ export class HarnessRuntime implements Runtime {
 
   constructor(
     private readonly harness: pi.Harness,
+    private readonly storage: pi.Storage,
     private readonly configuration: Configuration,
     private readonly extensions: readonly pi.Extension[],
   ) {
@@ -149,6 +151,16 @@ export class HarnessRuntime implements Runtime {
         ok: true,
         value: {
           id: handle.id,
+          observe: (context) =>
+            this.perform(ConversationIdSchema, id, context, async () => ({
+              ok: true,
+              value: await ConversationObservation.open(
+                this.harness,
+                this.storage,
+                handle,
+                context,
+              ),
+            })),
           submit: (input, context) =>
             this.perform(SubmitInputSchema, input, context, async () => ({
               ok: true,

@@ -95,7 +95,12 @@ export async function openRuntime(
 
     context.abortSignal?.throwIfAborted();
 
-    const runtime = new HarnessRuntime(harness, configuration, extensions);
+    const runtime = new HarnessRuntime(
+      harness,
+      storage,
+      configuration,
+      extensions,
+    );
 
     harness.resume();
 

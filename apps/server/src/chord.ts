@@ -3,7 +3,12 @@ import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { LabConversation, LabService } from "@lab/contracts";
+import {
+  ConversationStateSchema,
+  LabConversation,
+  LabService,
+  type Result,
+} from "@lab/contracts";
 import { callContext, type Runtime } from "@lab/runtime";
 import type { Principal, Sessions } from "./auth";
 
@@ -44,20 +49,37 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
           withAbortSignal(signal, BACKGROUND_CONTEXT),
         );
 
-        if (!result.ok) {
-          throw new ChordError(
-            result.error.code === "not_found" ? "gone" : "unavailable",
-            result.error.message,
-            { reason: result.error.code },
-          );
-        }
-
-        return result.value;
+        return unwrap(result);
       },
     });
 
+    const observation = self.resource("observation", {
+      version: 1,
+      deps: [conversation],
+      open: async ({ signal }) => {
+        sessions.authorize(principal);
+
+        return unwrap(
+          await conversation.value.observe(
+            withAbortSignal(signal, BACKGROUND_CONTEXT),
+          ),
+        );
+      },
+      close: (observation) => observation.dispose(),
+    });
+
+    const view = self.state("view", ConversationStateSchema, {
+      init: () => observation.value.value,
+    });
+
+    self.on("view", observation, (value, context) => {
+      sessions.authorize(principal);
+      view.replace(context, value, { diff: true });
+    });
+
     return {
-      variant: "commands",
+      variant: "default",
+      view,
       submit: (input, context) => {
         sessions.authorize(principal);
         return conversation.value.submit(input, callContext(context));
@@ -70,4 +92,16 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
   });
 
   return host;
+}
+
+function unwrap<T>(result: Result<T>): T {
+  if (!result.ok) {
+    throw new ChordError(
+      result.error.code === "not_found" ? "gone" : "unavailable",
+      result.error.message,
+      { reason: result.error.code },
+    );
+  }
+
+  return result.value;
 }
