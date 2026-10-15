@@ -30,6 +30,7 @@ export const LabErrorSchema = Type.Object(
       Type.Literal("unavailable"),
       Type.Literal("provider_unavailable"),
       Type.Literal("model_unavailable"),
+      Type.Literal("tool_unavailable"),
       Type.Literal("internal"),
     ]),
     message: Type.String(),
@@ -111,6 +112,48 @@ export const ModelSelectionReceiptSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const ToolNameSchema = Type.String({
+  minLength: 1,
+  maxLength: 64,
+  pattern: "^[A-Za-z_][A-Za-z0-9_-]*$",
+});
+
+export const ToolSelectionSchema = Type.Array(ToolNameSchema, {
+  uniqueItems: true,
+});
+
+export const ToolCatalogSchema = Type.Object(
+  {
+    defaultTools: ToolSelectionSchema,
+    tools: Type.Array(
+      Type.Object(
+        {
+          name: ToolNameSchema,
+          description: Type.String(),
+          extension: Type.String({ minLength: 1 }),
+          replay: Type.Union([Type.Literal("safe"), Type.Literal("unsafe")]),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export const SetToolsInputSchema = Type.Object(
+  { tools: ToolSelectionSchema },
+  { additionalProperties: false },
+);
+
+export const ToolSelectionReceiptSchema = Type.Object(
+  {
+    conversationId: ConversationIdSchema,
+    tools: ToolSelectionSchema,
+    appliesAt: Type.Literal("next_submission"),
+  },
+  { additionalProperties: false },
+);
+
 export const ConversationSummarySchema = Type.Object(
   {
     id: ConversationIdSchema,
@@ -141,6 +184,7 @@ export const CreateConversationInputSchema = Type.Object(
     requestId: RequestIdSchema,
     title: Type.String({ minLength: 1, maxLength: 200 }),
     model: Type.Optional(ModelReferenceSchema),
+    tools: Type.Optional(ToolSelectionSchema),
   },
   { additionalProperties: false },
 );
@@ -216,6 +260,15 @@ export const SubmissionStateSchema = Type.Union([
   ),
 ]);
 
+export const ToolCallSchema = Type.Object(
+  {
+    callId: Type.String({ minLength: 1 }),
+    name: Type.String({ minLength: 1 }),
+    arguments: Type.Record(Type.String(), Type.Unknown()),
+  },
+  { additionalProperties: false },
+);
+
 export const MessageSchema = Type.Object(
   {
     role: Type.Union([
@@ -225,6 +278,19 @@ export const MessageSchema = Type.Object(
       Type.Literal("system"),
     ]),
     text: Type.String(),
+    toolCalls: Type.Optional(Type.Array(ToolCallSchema)),
+    tool: Type.Optional(
+      Type.Object(
+        {
+          callId: Type.String({ minLength: 1 }),
+          name: Type.String({ minLength: 1 }),
+          isError: Type.Boolean(),
+          durationMs: Type.Optional(Type.Number({ minimum: 0 })),
+          details: Type.Optional(Type.Unknown()),
+        },
+        { additionalProperties: false },
+      ),
+    ),
   },
   { additionalProperties: false },
 );
@@ -248,6 +314,10 @@ export const ToolProgressSchema = Type.Object(
       Type.Literal("done"),
     ]),
     output: Type.String(),
+    arguments: Type.Optional(ToolCallSchema.properties.arguments),
+    durationMs: Type.Optional(Type.Number({ minimum: 0 })),
+    details: Type.Optional(Type.Unknown()),
+    isError: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -265,6 +335,7 @@ export const ConversationStateSchema = Type.Object(
   {
     conversation: ConversationSummarySchema,
     model: Type.Optional(ModelReferenceSchema),
+    selectedTools: ToolSelectionSchema,
     busy: Type.Boolean(),
     entries: Type.Array(TranscriptEntrySchema),
     partial: Type.Optional(Type.String()),
@@ -284,6 +355,9 @@ export type ListModelsInput = Static<typeof ListModelsInputSchema>;
 export type ModelCatalog = Static<typeof ModelCatalogSchema>;
 export type SetModelInput = Static<typeof SetModelInputSchema>;
 export type ModelSelectionReceipt = Static<typeof ModelSelectionReceiptSchema>;
+export type ToolCatalog = Static<typeof ToolCatalogSchema>;
+export type SetToolsInput = Static<typeof SetToolsInputSchema>;
+export type ToolSelectionReceipt = Static<typeof ToolSelectionReceiptSchema>;
 export type SubmissionId = Static<typeof SubmissionIdSchema>;
 export type RequestId = Static<typeof RequestIdSchema>;
 export type LabError = Static<typeof LabErrorSchema>;

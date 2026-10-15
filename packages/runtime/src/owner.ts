@@ -5,6 +5,7 @@ import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
 import * as pi from "@earendil-works/pi-durable";
 import { Check } from "typebox/value";
 import { HarnessRuntime } from "./conversations";
+import { loadExtensions, type ToolRegistry } from "./extensions";
 import {
   type Configuration,
   ConfigurationDoc,
@@ -22,6 +23,7 @@ export type RuntimeOptions = {
   defaultModel?: pi.ModelRef;
   models?: pi.HarnessOptions["models"];
   extensions?: readonly pi.Extension[];
+  extensionModules?: readonly string[];
   onReport?: (error: unknown) => void;
 };
 
@@ -32,13 +34,9 @@ export async function openRuntime(
   context.abortSignal?.throwIfAborted();
 
   const models = options.models ?? defaultModels();
-  const extensions = options.extensions ?? [];
+  const extensions: pi.Extension[] = [];
   const registry = pi.createRegistry();
   registry.install(TitleExtension);
-
-  for (const extension of extensions) {
-    registry.install(extension);
-  }
 
   const storage = await openStorage(options.path);
 
@@ -68,12 +66,31 @@ export async function openRuntime(
 
   try {
     const stored = await harness.snapshot(ConfigurationDoc, context);
-    const configuration = resolveConfiguration(stored?.configuration, options);
 
     if (
-      stored?.configuration == null ||
-      stored.configuration.model?.provider !== configuration.model?.provider ||
-      stored.configuration.model?.modelId !== configuration.model?.modelId
+      stored?.configuration != null &&
+      !Check(ConfigurationSchema, stored.configuration)
+    ) {
+      throw new Error("Invalid stored runtime configuration");
+    }
+
+    const tools = await loadExtensions(
+      options.extensionModules === undefined
+        ? (stored?.configuration?.extensionModules ?? [])
+        : options.extensionModules,
+      options.extensions ?? [],
+      registry,
+      context,
+    );
+    extensions.push(...tools.extensions);
+    const configuration = resolveConfiguration(
+      stored?.configuration,
+      options,
+      tools,
+    );
+
+    if (
+      JSON.stringify(stored?.configuration) !== JSON.stringify(configuration)
     ) {
       await harness.commit(async (tx) => {
         (await tx.doc(ConfigurationDoc)).configuration = configuration;
@@ -86,7 +103,7 @@ export async function openRuntime(
       harness,
       storage,
       configuration,
-      extensions,
+      tools,
       new ModelRegistry(models),
     );
 
@@ -115,23 +132,16 @@ function defaultModels() {
 function resolveConfiguration(
   stored: Configuration | null | undefined,
   options: RuntimeOptions,
+  tools: ToolRegistry,
 ): Configuration {
-  const extensions = (options.extensions ?? []).map(({ name }) => name);
   const model = options.model ?? stored?.model ?? options.defaultModel;
   const configuration = {
-    ...(stored ?? { extensions }),
+    ...tools.configuration(stored),
     ...(model === undefined ? {} : { model }),
   };
 
   if (!Check(ConfigurationSchema, configuration)) {
     throw new Error("Invalid runtime configuration");
-  }
-
-  if (
-    extensions.length !== configuration.extensions.length ||
-    extensions.some((name, index) => name !== configuration.extensions[index])
-  ) {
-    throw new Error("Configured extensions differ from the stored extensions");
   }
 
   return configuration;

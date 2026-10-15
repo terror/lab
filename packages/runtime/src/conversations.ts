@@ -14,11 +14,14 @@ import {
   type ModelCatalog,
   type Result,
   SetModelInputSchema,
+  SetToolsInputSchema,
   StopInputSchema,
   SubmitInputSchema,
+  type ToolCatalog,
 } from "@lab/contracts";
 import { type TSchema, Type } from "typebox";
 import { Check } from "typebox/value";
+import type { ToolRegistry } from "./extensions";
 import {
   type Configuration,
   ConversationDoc,
@@ -46,12 +49,19 @@ export class HarnessRuntime implements Runtime {
     private readonly harness: pi.Harness,
     private readonly storage: pi.Storage,
     private readonly configuration: Configuration,
-    private readonly extensions: readonly pi.Extension[],
+    private readonly tools: ToolRegistry,
     private readonly models: ModelRegistry,
   ) {
     harness.subscribeClose(() => {
       this.available = false;
     });
+  }
+
+  listTools(context: Context): Promise<Result<ToolCatalog>> {
+    return this.perform(Type.Object({}), {}, context, async () => ({
+      ok: true,
+      value: this.tools.catalog(),
+    }));
   }
 
   listModels(
@@ -158,6 +168,14 @@ export class HarnessRuntime implements Runtime {
           return model;
         }
 
+        const tools = this.tools.select(
+          input.tools ?? this.tools.catalog().defaultTools,
+        );
+
+        if (!tools.ok) {
+          return tools;
+        }
+
         const value = await this.harness.commit(async (tx) => {
           const request = await tx.doc(
             CreationRequestDoc,
@@ -175,7 +193,8 @@ export class HarnessRuntime implements Runtime {
 
           await pi.configure(tx, id, {
             model: model.value,
-            extensions: this.extensions,
+            extensions: this.tools.extensions,
+            tools: tools.value,
           });
 
           (await tx.doc(ConversationDoc, id)).title = input.title;
@@ -248,6 +267,7 @@ export class HarnessRuntime implements Runtime {
                   this.harness,
                   this.storage,
                   handle,
+                  this.tools,
                   context,
                 ),
               })),
@@ -261,6 +281,18 @@ export class HarnessRuntime implements Runtime {
                 );
 
                 if (existing === undefined) {
+                  const error = this.tools.error(
+                    await this.harness.snapshot(
+                      pi.AgentDoc,
+                      handle.id,
+                      context,
+                    ),
+                  );
+
+                  if (error !== undefined) {
+                    return { ok: false, error };
+                  }
+
                   const model = await this.models.validate(
                     (await handle.agent(context)).model,
                     context,
@@ -294,6 +326,39 @@ export class HarnessRuntime implements Runtime {
                     conversationId: handle.id,
                     model: model.value,
                     appliesAt: "next_request_preparation",
+                  },
+                };
+              }),
+            ),
+          setTools: (input, context) =>
+            this.perform(SetToolsInputSchema, input, context, () =>
+              this.withConversation(id, context, async (handle) => {
+                const tools = this.tools.select(input.tools);
+
+                if (!tools.ok) {
+                  return tools;
+                }
+
+                await this.harness.commit(async (tx) => {
+                  const live = await tx.doc(pi.LiveDoc, handle.id);
+                  const inbox = await tx.doc(pi.InboxDoc, handle.id);
+
+                  if (live.run !== undefined || inbox.items.length > 0) {
+                    throw new pi.ConversationBusy(handle.id);
+                  }
+
+                  await pi.configure(tx, handle.id, {
+                    extensions: this.tools.extensions,
+                    tools: tools.value,
+                  });
+                }, context);
+
+                return {
+                  ok: true,
+                  value: {
+                    conversationId: handle.id,
+                    tools: [...input.tools],
+                    appliesAt: "next_submission",
                   },
                 };
               }),

@@ -20,10 +20,13 @@ import {
   type ModelSelectionReceipt,
   type Result,
   type SetModelInput,
+  type SetToolsInput,
   type StopInput,
   type StopReceipt,
   type SubmissionReceipt,
   type SubmitInput,
+  type ToolCatalog,
+  type ToolSelectionReceipt,
 } from "@lab/contracts";
 import { ConversationClient } from "./conversation";
 import { type PendingRequest, RequestJournal } from "./requests";
@@ -112,6 +115,13 @@ export class LabClient {
     return this.call(async (context) => {
       const service = await context.get(LabService, {}, { state: false });
       return service.listModels(input, context);
+    }, signal);
+  }
+
+  listTools(signal?: AbortSignal): Promise<Result<ToolCatalog>> {
+    return this.call(async (context) => {
+      const service = await context.get(LabService, {}, { state: false });
+      return service.listTools({}, context);
     }, signal);
   }
 
@@ -212,6 +222,21 @@ export class LabClient {
         { state: false },
       );
       return conversation.setModel(input, context);
+    }, signal);
+  }
+
+  setTools(
+    id: ConversationId,
+    input: SetToolsInput,
+    signal?: AbortSignal,
+  ): Promise<Result<ToolSelectionReceipt>> {
+    return this.call(async (context) => {
+      const conversation = await context.get(
+        LabConversation,
+        { id },
+        { state: false },
+      );
+      return conversation.setTools(input, context);
     }, signal);
   }
 
@@ -536,7 +561,8 @@ export class LabClient {
           result.error.code === "not_found" ||
           result.error.code === "busy" ||
           result.error.code === "provider_unavailable" ||
-          result.error.code === "model_unavailable"
+          result.error.code === "model_unavailable" ||
+          result.error.code === "tool_unavailable"
         ) {
           this.journal.complete(requestId);
         }

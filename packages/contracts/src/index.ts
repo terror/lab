@@ -12,21 +12,28 @@ import {
   ModelSelectionReceiptSchema,
   resultSchema,
   SetModelInputSchema,
+  SetToolsInputSchema,
   StopInputSchema,
   StopReceiptSchema,
   SubmissionReceiptSchema,
   SubmitInputSchema,
+  ToolCatalogSchema,
+  ToolSelectionReceiptSchema,
 } from "./schemas";
 
 export * from "./schemas";
 
 export const LabService = remote("lab.service", {
-  version: 3,
+  version: 4,
   host: hostNamed("server"),
   input: Type.Object({}, { additionalProperties: false }),
   variants: {
     default: {
       methods: {
+        listTools: method(
+          Type.Object({}, { additionalProperties: false }),
+          resultSchema(ToolCatalogSchema),
+        ),
         listModels: method(
           ListModelsInputSchema,
           resultSchema(ModelCatalogSchema),
@@ -49,6 +56,10 @@ export const LabService = remote("lab.service", {
 });
 
 const conversationMethods = {
+  setTools: method(
+    SetToolsInputSchema,
+    resultSchema(ToolSelectionReceiptSchema),
+  ),
   setModel: method(
     SetModelInputSchema,
     resultSchema(ModelSelectionReceiptSchema),
@@ -58,7 +69,7 @@ const conversationMethods = {
 };
 
 export const LabConversation = remote("lab.conversation", {
-  version: 2,
+  version: 4,
   host: hostNamed("server"),
   input: Type.Object(
     { id: ConversationIdSchema },

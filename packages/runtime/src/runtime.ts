@@ -19,10 +19,13 @@ import type {
   ModelSelectionReceipt,
   Result,
   SetModelInput,
+  SetToolsInput,
   StopInput,
   StopReceipt,
   SubmissionReceipt,
   SubmitInput,
+  ToolCatalog,
+  ToolSelectionReceipt,
 } from "@lab/contracts";
 
 export interface RuntimeConversation {
@@ -38,10 +41,15 @@ export interface RuntimeConversation {
     input: SetModelInput,
     context: Context,
   ): Promise<Result<ModelSelectionReceipt>>;
+  setTools(
+    input: SetToolsInput,
+    context: Context,
+  ): Promise<Result<ToolSelectionReceipt>>;
   stop(input: StopInput, context: Context): Promise<Result<StopReceipt>>;
 }
 
 export interface Runtime {
+  listTools(context: Context): Promise<Result<ToolCatalog>>;
   listModels(
     input: ListModelsInput,
     context: Context,

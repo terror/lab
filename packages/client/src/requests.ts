@@ -75,7 +75,8 @@ export class RequestJournal extends Store<PendingRequestsState> {
       if (
         pending.input.title !== input.title ||
         pending.input.model?.provider !== input.model?.provider ||
-        pending.input.model?.modelId !== input.model?.modelId
+        pending.input.model?.modelId !== input.model?.modelId ||
+        JSON.stringify(pending.input.tools) !== JSON.stringify(input.tools)
       ) {
         throw new Error("Retry the unresolved conversation creation first.");
       }
@@ -89,6 +90,7 @@ export class RequestJournal extends Store<PendingRequestsState> {
         requestId: crypto.randomUUID(),
         title: input.title,
         ...(input.model === undefined ? {} : { model: { ...input.model } }),
+        ...(input.tools === undefined ? {} : { tools: [...input.tools] }),
       },
     });
   }
@@ -192,6 +194,10 @@ function freeze(requests: readonly PendingRequest[]) {
   for (const request of requests) {
     if (request.kind === "create" && request.input.model !== undefined) {
       Object.freeze(request.input.model);
+    }
+
+    if (request.kind === "create" && request.input.tools !== undefined) {
+      Object.freeze(request.input.tools);
     }
 
     Object.freeze(request.input);

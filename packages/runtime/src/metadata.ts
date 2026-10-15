@@ -1,5 +1,5 @@
 import { defineDoc, defineDocFamily } from "@earendil-works/pi-durable";
-import { ModelReferenceSchema } from "@lab/contracts";
+import { ModelReferenceSchema, ToolNameSchema } from "@lab/contracts";
 import { type Static, Type } from "typebox";
 
 export const ConfigurationSchema = Type.Object(
@@ -8,6 +8,31 @@ export const ConfigurationSchema = Type.Object(
     extensions: Type.Array(Type.String({ minLength: 1 }), {
       uniqueItems: true,
     }),
+    extensionModules: Type.Optional(
+      Type.Array(Type.String({ minLength: 1 }), { uniqueItems: true }),
+    ),
+    toolDefinitions: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            name: ToolNameSchema,
+            extension: Type.String({ minLength: 1 }),
+          },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
+    taskDefinitions: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            name: Type.String({ minLength: 1 }),
+            extension: Type.String({ minLength: 1 }),
+          },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
   },
   { additionalProperties: false },
 );

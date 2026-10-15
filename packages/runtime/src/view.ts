@@ -17,6 +17,7 @@ import type {
   LabError,
   SubmissionState,
 } from "@lab/contracts";
+import type { ToolRegistry } from "./extensions";
 import { ConversationDoc } from "./metadata";
 import { observe, submissionState } from "./pi";
 
@@ -38,15 +39,16 @@ export class ConversationObservation
   private unavailable = false;
   private deleted = false;
 
-  private constructor() {}
+  private constructor(private readonly tools: ToolRegistry) {}
 
   static async open(
     harness: pi.Harness,
     storage: pi.Storage,
     conversation: pi.Conversation,
+    tools: ToolRegistry,
     context: Context,
   ): Promise<ConversationObservation> {
-    const observation = new ConversationObservation();
+    const observation = new ConversationObservation(tools);
 
     try {
       observation.disposers.push(
@@ -238,6 +240,7 @@ export class ConversationObservation
     if (this.deleted) {
       return {
         conversation: this.summary,
+        selectedTools: [],
         busy: false,
         entries: [],
         tools: [],
@@ -262,11 +265,12 @@ export class ConversationObservation
       (a, b) => a.id - b.id,
     );
     const latest = submissions.findLast(({ status }) => status !== "queued");
-    const error = conversationError(live, latest);
+    const error = this.tools.error(agent) ?? conversationError(live, latest);
 
     return {
       conversation: this.summary,
       ...(agent?.model === undefined ? {} : { model: { ...agent.model } }),
+      selectedTools: this.tools.selection(agent),
       busy: live?.run !== undefined,
       entries: source.entries.map((entry) => {
         const value = this.entries.get(entry) ?? {
@@ -275,6 +279,36 @@ export class ConversationObservation
           messages: (entry.model ?? []).map((message) => ({
             role: message.role === "toolResult" ? "tool" : message.role,
             text: contentText(message.content),
+            ...(message.role === "assistant"
+              ? {
+                  toolCalls: message.content.flatMap((block) =>
+                    block.type === "toolCall"
+                      ? [
+                          {
+                            callId: block.id,
+                            name: block.name,
+                            arguments: block.arguments,
+                          },
+                        ]
+                      : [],
+                  ),
+                }
+              : {}),
+            ...(message.role === "toolResult"
+              ? {
+                  tool: {
+                    callId: message.toolCallId,
+                    name: message.toolName,
+                    isError: message.isError,
+                    ...(message.durationMs === undefined
+                      ? {}
+                      : { durationMs: message.durationMs }),
+                    ...(message.details === undefined
+                      ? {}
+                      : { details: message.details }),
+                  },
+                }
+              : {}),
           })),
         };
 
@@ -285,23 +319,39 @@ export class ConversationObservation
         ? {}
         : { partial: contentText(partial.content) }),
       tools: [
-        ...(live?.tools ?? []).map((tool) => ({
-          callId: tool.callId,
-          name: tool.name,
-          status: tool.status,
-          output:
-            tool.output ??
-            source.entries
-              .find(({ id }) => id === tool.entry)
-              ?.model?.map((message) => contentText(message.content))
-              .join("\n") ??
-            "",
-        })),
+        ...(live?.tools ?? []).map((tool) => {
+          const result = source.entries
+            .find(({ id }) => id === tool.entry)
+            ?.model?.find((message) => message.role === "toolResult");
+          const details = result === undefined ? tool.details : result.details;
+
+          return {
+            callId: tool.callId,
+            name: tool.name,
+            status: tool.status,
+            output:
+              tool.output ??
+              (result === undefined ? "" : contentText(result.content)),
+            ...(details === undefined ? {} : { details }),
+            ...(result === undefined ? {} : { isError: result.isError }),
+            ...(result?.durationMs === undefined
+              ? {}
+              : { durationMs: result.durationMs }),
+          };
+        }),
         ...(live?.nestedTools ?? []).map((tool) => ({
           callId: tool.callId,
           name: tool.name,
           status: tool.status,
           output: tool.output ?? tool.summary?.error ?? "",
+          arguments: tool.arguments,
+          ...(tool.summary?.durationMs === undefined
+            ? {}
+            : { durationMs: tool.summary.durationMs }),
+          ...(tool.details === undefined ? {} : { details: tool.details }),
+          ...(tool.summary === undefined
+            ? {}
+            : { isError: tool.summary.isError }),
         })),
       ],
       inbox: (inbox?.items ?? []).flatMap((item) =>

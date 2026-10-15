@@ -4,6 +4,7 @@ import {
   type ConversationState,
   LabConversation,
   type SetModelInput,
+  type SetToolsInput,
   type StopInput,
   type SubmitInput,
 } from "@lab/contracts";
@@ -72,6 +73,9 @@ export class ConversationClient {
 
   readonly setModel = (input: SetModelInput, signal?: AbortSignal) =>
     this.client.setModel(this.id, input, signal);
+
+  readonly setTools = (input: SetToolsInput, signal?: AbortSignal) =>
+    this.client.setTools(this.id, input, signal);
 
   attach(host: Host) {
     if (this.reference !== undefined && this.reference.status !== "gone") {
