@@ -1,0 +1,15 @@
+{
+  "name": "@lab/server",
+  "private": true,
+  "type": "module",
+  "exports": {},
+  "scripts": {
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun dist/index.js",
+    "typecheck": "bun --bun tsc --project tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3"
+  }
+}

@@ -6,5 +6,7 @@
 .env.local
 .idea/
 .vscode/
-/target
+dist/
+node_modules/
+*.tsbuildinfo
 Thumbs.db

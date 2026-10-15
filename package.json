@@ -1,0 +1,24 @@
+{
+  "name": "lab",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "bun": "1.4.3"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "bun run --workspaces build",
+    "check": "bun --bun biome check . --error-on-warnings",
+    "dev": "bun run --parallel --workspaces dev",
+    "fmt": "bun --bun biome format --write .",
+    "start": "bun run --filter @lab/server start",
+    "typecheck": "bun run --workspaces typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "typescript": "7.0.2"
+  }
+}

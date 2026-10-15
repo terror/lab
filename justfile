@@ -8,15 +8,25 @@ default:
   @just --list
 
 fmt:
-  cargo fmt
+  bun run fmt
 
 forbid:
   ./bin/forbid
 
 ci: forbid
-  cargo lclippy --workspace --all-targets -- --deny warnings
-  cargo fmt --all -- --check
-  cargo ltest --workspace -- --include-ignored
+  bun install --frozen-lockfile
+  bun run check
+  bun run typecheck
+  bun run build
+
+dev:
+  bun run dev
+
+build:
+  bun run build
+
+typecheck:
+  bun run typecheck
 
 rebuild:
   nixos-rebuild switch
