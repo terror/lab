@@ -291,7 +291,7 @@ const ToolOutput = memo(function ToolOutput({
             tabIndex: 0,
           }}
         >
-          <pre className="px-4 py-3 font-mono text-xs leading-6">
+          <pre className="px-4 py-3 font-mono text-sm leading-6">
             {output ||
               (status === undefined ? "No text output." : "No output yet.")}
           </pre>

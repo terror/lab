@@ -1,6 +1,8 @@
+import { toText } from "hast-util-to-text";
 import { ExternalLink } from "lucide-react";
 import { createContext, memo, useContext, useId } from "react";
 import Markdown, { type Components } from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { CopyButton } from "@/components/copy-button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -27,7 +29,7 @@ const components = {
   code: ({ children, className }) => (
     <code
       className={cn(
-        "rounded-sm border border-primary/10 bg-primary/5 px-1.5 py-0.5 font-mono text-[0.8em]",
+        "rounded-sm border border-primary/10 bg-primary/5 px-1.5 py-0.5 font-mono text-[0.875em]",
         className,
       )}
     >
@@ -57,11 +59,7 @@ const components = {
       (child) => child.type === "element" && child.tagName === "code",
     );
     const text =
-      code?.type === "element"
-        ? code.children
-            .flatMap((child) => (child.type === "text" ? [child.value] : []))
-            .join("")
-        : "";
+      code?.type === "element" ? toText(code, { whitespace: "pre" }) : "";
     const language =
       code?.type === "element" && Array.isArray(code.properties.className)
         ? code.properties.className
@@ -89,7 +87,7 @@ const components = {
             tabIndex: 0,
           }}
         >
-          <pre className="w-max min-w-full p-4 text-[13px] leading-6 [&_code]:block [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-inherit">
+          <pre className="w-max min-w-full p-4 text-sm leading-6 [&_code]:block [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-sm [&_code]:text-inherit">
             {children}
           </pre>
           <ScrollBar orientation="horizontal" />
@@ -114,7 +112,8 @@ const components = {
   ),
 } satisfies Components;
 
-const plugins = [remarkGfm];
+const rehypePlugins = [rehypeHighlight];
+const remarkPlugins = [remarkGfm];
 
 export const MessageContent = memo(function MessageContent({
   text,
@@ -139,7 +138,8 @@ export const MessageContent = memo(function MessageContent({
     >
       <Markdown
         components={components}
-        remarkPlugins={plugins}
+        rehypePlugins={rehypePlugins}
+        remarkPlugins={remarkPlugins}
         remarkRehypeOptions={{ clobberPrefix: `${id}-` }}
       >
         {text}
