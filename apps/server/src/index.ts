@@ -5,6 +5,7 @@ import {
   withAbortSignal,
 } from "@earendil-works/chord/context";
 import { openRuntime } from "@lab/runtime";
+import { serve } from "./server";
 
 async function main() {
   const shutdown = new AbortController();
@@ -42,22 +43,15 @@ async function main() {
         });
       });
 
-      const server = Bun.serve({
-        hostname: "127.0.0.1",
+      const server = await serve(owner.runtime, {
         port: Number(Bun.env.PORT ?? 3000),
-        routes: {
-          "/health": Response.json({ status: "ok" }),
-        },
-        fetch() {
-          return new Response("Not found", { status: 404 });
-        },
       });
 
       try {
         console.info(`Lab service listening on ${server.url}`);
         await Promise.race([stopped, owner.closed]);
       } finally {
-        await server.stop(true);
+        await server.close();
       }
     } finally {
       await owner.close(BACKGROUND_CONTEXT);

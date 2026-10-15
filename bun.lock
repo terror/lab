@@ -13,6 +13,7 @@
       "name": "@lab/server",
       "dependencies": {
         "@earendil-works/chord": "1.3.0",
+        "@lab/contracts": "workspace:*",
         "@lab/runtime": "workspace:*",
       },
       "devDependencies": {

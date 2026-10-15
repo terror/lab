@@ -36,6 +36,11 @@ export const LabService = remote("lab.service", {
   },
 });
 
+const conversationMethods = {
+  submit: method(SubmitInputSchema, resultSchema(SubmissionReceiptSchema)),
+  stop: method(StopInputSchema, resultSchema(StopReceiptSchema)),
+};
+
 export const LabConversation = remote("lab.conversation", {
   version: 1,
   host: hostNamed("server"),
@@ -44,15 +49,12 @@ export const LabConversation = remote("lab.conversation", {
     { additionalProperties: false },
   ),
   variants: {
+    commands: {
+      methods: conversationMethods,
+    },
     default: {
       state: { view: ConversationStateSchema },
-      methods: {
-        submit: method(
-          SubmitInputSchema,
-          resultSchema(SubmissionReceiptSchema),
-        ),
-        stop: method(StopInputSchema, resultSchema(StopReceiptSchema)),
-      },
+      methods: conversationMethods,
     },
   },
 });
