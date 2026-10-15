@@ -33,6 +33,9 @@ export async function staticAssets(directory: string) {
       headers: {
         "Content-Type": file.type,
         "Content-Length": String(file.size),
+        "Content-Security-Policy":
+          "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": path.startsWith("/assets/")
           ? "public, max-age=31536000, immutable"
           : "no-cache",

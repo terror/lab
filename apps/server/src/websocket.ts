@@ -4,8 +4,9 @@ import {
   webSocketLink,
 } from "@earendil-works/chord";
 import type { ServerWebSocket, WebSocketHandler } from "bun";
+import type { BrowserPrincipal, Principal, Sessions } from "./auth";
 
-type SocketData = { adapter?: BunWebSocket };
+type SocketData = { principal: BrowserPrincipal; adapter?: BunWebSocket };
 type SocketEvent = "open" | "message" | "close" | "error";
 type SocketListener = (event: { readonly data: unknown }) => void;
 
@@ -63,22 +64,35 @@ class BunWebSocket implements WebSocketLike {
   }
 }
 
-export function webSockets(host: Host): WebSocketHandler<SocketData> {
+export function webSockets(
+  host: Host<Principal>,
+  sessions: Sessions,
+): WebSocketHandler<SocketData> {
   return {
     data: {} as SocketData,
     maxPayloadLength: 1024 * 1024,
     backpressureLimit: 4 * 1024 * 1024,
     closeOnBackpressureLimit: true,
     open(socket) {
+      if (!sessions.active(socket.data.principal)) {
+        socket.close(1008, "Session expired or revoked");
+        return;
+      }
+
       const adapter = new BunWebSocket(socket);
       socket.data.adapter = adapter;
 
       host.accept(
         webSocketLink(adapter, { compress: true, acceptPacked: false }),
-        { principal: { kind: "local" }, kind: "client", maxCalls: 64 },
+        { principal: socket.data.principal, kind: "client", maxCalls: 64 },
       );
     },
     message(socket, message) {
+      if (!sessions.active(socket.data.principal)) {
+        socket.data.adapter?.close(1008, "Session expired or revoked");
+        return;
+      }
+
       socket.data.adapter?.message(message);
     },
     close(socket) {

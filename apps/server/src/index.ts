@@ -8,6 +8,13 @@ import { openRuntime } from "@lab/runtime";
 import { serve } from "./server";
 
 async function main() {
+  const password = Bun.env.LAB_PASSWORD;
+
+  if (password === undefined || password.length === 0) {
+    throw new Error("LAB_PASSWORD must be configured");
+  }
+
+  const port = Number(Bun.env.PORT ?? 3000);
   const shutdown = new AbortController();
 
   const stop = () => shutdown.abort();
@@ -44,7 +51,11 @@ async function main() {
       });
 
       const server = await serve(owner.runtime, {
-        port: Number(Bun.env.PORT ?? 3000),
+        port,
+        authentication: {
+          password,
+          origin: Bun.env.LAB_ORIGIN ?? `http://127.0.0.1:${port}`,
+        },
       });
 
       try {

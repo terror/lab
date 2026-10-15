@@ -58,6 +58,23 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    cors: false,
+    headers: {
+      "Content-Security-Policy":
+        "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    },
+    proxy: {
+      "/auth/session": {
+        target: `http://127.0.0.1:${process.env.PORT ?? 3000}`,
+        changeOrigin: false,
+      },
+      "/chord": {
+        target: `http://127.0.0.1:${process.env.PORT ?? 3000}`,
+        changeOrigin: false,
+        rewriteWsOrigin: false,
+        ws: true,
+      },
+    },
   },
   preview: {
     host: "127.0.0.1",
