@@ -1,0 +1,22 @@
+{
+  "name": "@lab/runtime",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "typecheck": "bun --bun tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.3.0",
+    "@earendil-works/pi-durable": "1.3.0",
+    "@lab/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3"
+  }
+}

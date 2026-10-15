@@ -1,0 +1,232 @@
+import { type Static, type TSchema, Type } from "typebox";
+
+export const ConversationIdSchema = Type.Integer({
+  minimum: 1,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
+
+export const SubmissionIdSchema = Type.Integer({
+  minimum: 1,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
+
+export const EntryIdSchema = Type.Integer({
+  minimum: 1,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
+
+export const RequestIdSchema = Type.String({
+  minLength: 1,
+  maxLength: 128,
+  pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+});
+
+export const LabErrorSchema = Type.Object(
+  {
+    code: Type.Union([
+      Type.Literal("invalid_input"),
+      Type.Literal("not_found"),
+      Type.Literal("busy"),
+      Type.Literal("unavailable"),
+      Type.Literal("internal"),
+    ]),
+    message: Type.String(),
+  },
+  { additionalProperties: false },
+);
+
+export function resultSchema<T extends TSchema>(value: T) {
+  return Type.Union([
+    Type.Object(
+      { ok: Type.Literal(true), value },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { ok: Type.Literal(false), error: LabErrorSchema },
+      { additionalProperties: false },
+    ),
+  ]);
+}
+
+export const ConversationSummarySchema = Type.Object(
+  {
+    id: ConversationIdSchema,
+    title: Type.String({ maxLength: 200 }),
+    createdAt: Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER }),
+  },
+  { additionalProperties: false },
+);
+
+export const ListConversationsInputSchema = Type.Object(
+  {
+    limit: Type.Integer({ minimum: 1, maximum: 100, default: 50 }),
+    cursor: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
+  },
+  { additionalProperties: false },
+);
+
+export const ConversationPageSchema = Type.Object(
+  {
+    items: Type.Array(ConversationSummarySchema, { maxItems: 100 }),
+    next: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
+  },
+  { additionalProperties: false },
+);
+
+export const CreateConversationInputSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    title: Type.String({ minLength: 1, maxLength: 200 }),
+  },
+  { additionalProperties: false },
+);
+
+export const SubmitInputSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    content: Type.String({ minLength: 1, maxLength: 100_000 }),
+    whenBusy: Type.Union(
+      [Type.Literal("reject"), Type.Literal("followUp"), Type.Literal("steer")],
+      { default: "reject" },
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export const SubmissionReceiptSchema = Type.Object(
+  {
+    conversationId: ConversationIdSchema,
+    submissionId: SubmissionIdSchema,
+    requestId: RequestIdSchema,
+    status: Type.Literal("admitted"),
+  },
+  { additionalProperties: false },
+);
+
+export const StopInputSchema = Type.Object(
+  {
+    scope: Type.Union([Type.Literal("foreground"), Type.Literal("all")]),
+  },
+  { additionalProperties: false },
+);
+
+export const StopReceiptSchema = Type.Object(
+  {
+    conversationId: ConversationIdSchema,
+    scope: StopInputSchema.properties.scope,
+    status: Type.Literal("stopped"),
+  },
+  { additionalProperties: false },
+);
+
+export const SubmissionStateSchema = Type.Union([
+  Type.Object(
+    { id: SubmissionIdSchema, status: Type.Literal("queued") },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      id: SubmissionIdSchema,
+      status: Type.Literal("placed"),
+      entryId: EntryIdSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      id: SubmissionIdSchema,
+      status: Type.Literal("done"),
+      entryId: EntryIdSchema,
+      answerId: EntryIdSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      id: SubmissionIdSchema,
+      status: Type.Literal("unanswered"),
+      entryId: Type.Optional(EntryIdSchema),
+      reason: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
+export const MessageSchema = Type.Object(
+  {
+    role: Type.Union([
+      Type.Literal("user"),
+      Type.Literal("assistant"),
+      Type.Literal("tool"),
+      Type.Literal("system"),
+    ]),
+    text: Type.String(),
+  },
+  { additionalProperties: false },
+);
+
+export const TranscriptEntrySchema = Type.Object(
+  {
+    id: EntryIdSchema,
+    kind: Type.String({ minLength: 1 }),
+    messages: Type.Array(MessageSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const ToolProgressSchema = Type.Object(
+  {
+    callId: Type.String({ minLength: 1 }),
+    name: Type.String({ minLength: 1 }),
+    status: Type.Union([
+      Type.Literal("pending"),
+      Type.Literal("running"),
+      Type.Literal("done"),
+    ]),
+    output: Type.String(),
+  },
+  { additionalProperties: false },
+);
+
+export const QueuedInputSchema = Type.Object(
+  {
+    submissionId: SubmissionIdSchema,
+    content: Type.String(),
+    mode: Type.Union([Type.Literal("steer"), Type.Literal("followUp")]),
+  },
+  { additionalProperties: false },
+);
+
+export const ConversationStateSchema = Type.Object(
+  {
+    conversation: ConversationSummarySchema,
+    busy: Type.Boolean(),
+    entries: Type.Array(TranscriptEntrySchema),
+    partial: Type.Optional(Type.String()),
+    tools: Type.Array(ToolProgressSchema),
+    inbox: Type.Array(QueuedInputSchema),
+    submissions: Type.Array(SubmissionStateSchema),
+    error: Type.Optional(LabErrorSchema),
+  },
+  { additionalProperties: false },
+);
+
+export type ConversationId = Static<typeof ConversationIdSchema>;
+export type SubmissionId = Static<typeof SubmissionIdSchema>;
+export type RequestId = Static<typeof RequestIdSchema>;
+export type LabError = Static<typeof LabErrorSchema>;
+export type Result<T> = { ok: true; value: T } | { ok: false; error: LabError };
+export type ConversationSummary = Static<typeof ConversationSummarySchema>;
+export type ListConversationsInput = Static<
+  typeof ListConversationsInputSchema
+>;
+export type ConversationPage = Static<typeof ConversationPageSchema>;
+export type CreateConversationInput = Static<
+  typeof CreateConversationInputSchema
+>;
+export type SubmitInput = Static<typeof SubmitInputSchema>;
+export type SubmissionReceipt = Static<typeof SubmissionReceiptSchema>;
+export type StopInput = Static<typeof StopInputSchema>;
+export type StopReceipt = Static<typeof StopReceiptSchema>;
+export type SubmissionState = Static<typeof SubmissionStateSchema>;
+export type ConversationState = Static<typeof ConversationStateSchema>;

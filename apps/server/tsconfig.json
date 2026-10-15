@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "customConditions": ["bun"],
     "lib": ["ES2023"],
     "types": ["bun"],
     "rootDir": "src"

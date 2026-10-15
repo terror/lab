@@ -1,0 +1,14 @@
+{
+  "name": "@lab/contracts",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "bun build src/index.ts --target=browser --outdir=dist",
+    "typecheck": "bun --bun tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.3.0",
+    "typebox": "1.3.27"
+  }
+}

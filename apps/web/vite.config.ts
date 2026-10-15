@@ -18,7 +18,9 @@ function browserBoundary(): Plugin {
         source.startsWith("node:") ||
         source === "bun" ||
         source.startsWith("bun:") ||
-        /^@lab\/(server|runtime)(\/|$)/.test(source)
+        /^@lab\/(server|runtime)(\/|$)/.test(source) ||
+        /^@earendil-works\/pi-(ai|durable|codemode)(\/|$)/.test(source) ||
+        source === "@earendil-works/chord/node"
       ) {
         this.error(
           `Backend-only import is not allowed in the browser: ${source}`,
