@@ -5,3 +5,4 @@ export {
   type RuntimeConversation,
   type RuntimeOwner,
 } from "./runtime";
+export { BunSqliteDatabase } from "./sqlite";

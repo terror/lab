@@ -1,9 +1,6 @@
 import type { Context } from "@earendil-works/chord";
 import * as pi from "@earendil-works/pi-durable";
-import {
-  type SqliteDatabase,
-  SqliteStorage,
-} from "@earendil-works/pi-durable/storage/sqlite";
+import { SqliteStorage } from "@earendil-works/pi-durable/storage/sqlite";
 import type {
   ConversationId,
   LabError,
@@ -13,9 +10,10 @@ import type {
   SubmissionState,
   SubmitInput,
 } from "@lab/contracts";
+import { BunSqliteDatabase } from "./sqlite";
 
-export function openStorage(database: SqliteDatabase) {
-  return SqliteStorage.open(database);
+export async function openStorage(path: string) {
+  return SqliteStorage.open(await BunSqliteDatabase.open(path));
 }
 
 export function openHarness(
