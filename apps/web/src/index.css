@@ -24,7 +24,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-composer: var(--composer);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -59,7 +58,6 @@
   --border: #8b847d59;
   --input: #8b847d80;
   --ring: #4b607c;
-  --composer: #f3f2f0;
   --sidebar: #e2ded9;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -96,7 +94,6 @@
   --border: #49505980;
   --input: #757d8975;
   --ring: #6a9fcc;
-  --composer: #212730;
   --sidebar: #111720;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);

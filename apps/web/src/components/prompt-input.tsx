@@ -87,11 +87,11 @@ export function PromptInput({
       <label className="sr-only" htmlFor={id}>
         Message
       </label>
-      <InputGroup className="panel-frame min-h-16 items-end rounded-sm border-input bg-composer p-2 shadow-none transition-colors dark:bg-composer">
+      <InputGroup className="min-h-16 items-center rounded-sm border-0 bg-card p-2 shadow-none dark:bg-card">
         <InputGroupAddon
           align="inline-start"
           aria-hidden="true"
-          className="self-start py-2.5 pr-0 pl-2 font-mono text-base text-primary"
+          className="py-2.5 pr-0 pl-2 font-mono text-base leading-6 font-normal text-primary md:text-sm"
         >
           &gt;
         </InputGroupAddon>
@@ -158,13 +158,11 @@ export function PromptInput({
         </InputGroupAddon>
       </InputGroup>
       <p
-        className="min-h-7 px-3 pt-3 text-center font-mono text-[10px] tracking-wide text-muted-foreground sm:text-[11px]"
+        className="px-3 pt-3 text-center font-mono text-[10px] tracking-wide text-muted-foreground empty:sr-only sm:text-[11px]"
         id={`${id}-status`}
         role="status"
       >
-        {status ?? (
-          <span className="hidden sm:inline">Shift + Enter for a new line</span>
-        )}
+        {status}
       </p>
     </form>
   );

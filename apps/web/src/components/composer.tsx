@@ -131,7 +131,7 @@ export function Composer({
               : undefined;
 
   return (
-    <div className="shrink-0 border-t bg-background px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div className="shrink-0 px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
       <div className="mx-auto w-full max-w-3xl space-y-3">
         {request?.kind === "submit" && (!sending || recovering) && (
           <Alert className="rounded-sm bg-muted/40" role="status">
