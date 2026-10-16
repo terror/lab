@@ -1,9 +1,3 @@
-import {
-  useConnection,
-  useConversations,
-  useDeleteConversation,
-  useOutbox,
-} from "@lab/client/react";
 import type { ConversationId } from "@lab/wire";
 import {
   ChevronsUpDown,
@@ -65,8 +59,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { useSession } from "@/lib/session";
-import { useTheme } from "@/lib/theme";
+import { useConnection } from "@/hooks/use-connection";
+import { useConversations } from "@/hooks/use-conversations";
+import { useDeleteConversation } from "@/hooks/use-delete-conversation";
+import { useOutbox } from "@/hooks/use-outbox";
+import type { useSession } from "@/hooks/use-session";
+import { useTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar({

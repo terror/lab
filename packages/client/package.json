@@ -3,23 +3,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./react": "./src/react.tsx"
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "bun build src/index.ts src/react.tsx --target=browser --external=react --external=@tanstack/react-query --outdir=dist",
+    "build": "bun build src/index.ts --target=browser --outdir=dist",
     "typecheck": "bun --bun tsc --project tsconfig.json"
   },
   "dependencies": {
     "@earendil-works/chord": "1.3.0",
     "@lab/wire": "workspace:*",
-    "@tanstack/react-query": "5.104.3",
     "typebox": "1.3.27"
-  },
-  "peerDependencies": {
-    "react": "19.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "19.3.0"
   }
 }

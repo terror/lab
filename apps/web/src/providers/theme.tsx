@@ -1,14 +1,13 @@
 import {
   createContext,
   type ReactNode,
-  useContext,
   useLayoutEffect,
   useState,
 } from "react";
 
 type Theme = "light" | "dark" | "system";
 
-const ThemeContext = createContext<{
+export const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (theme: Theme) => void;
 } | null>(null);
@@ -54,12 +53,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext>
   );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === null) {
-    throw new Error("Theme controls require a ThemeProvider.");
-  }
-  return context;
 }

@@ -1,4 +1,3 @@
-import type { useSend } from "@lab/client/react";
 import { AlertCircle, ChevronDown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import type { useSend } from "@/hooks/use-send";
 
 export function SendFeedback({
   send,

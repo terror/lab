@@ -1,5 +1,4 @@
 import { LabClient } from "@lab/client";
-import { LabProvider } from "@lab/client/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   type Dispatch,
@@ -35,7 +34,8 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { useSession } from "@/lib/session";
+import type { useSession } from "@/hooks/use-session";
+import { LabProvider } from "@/providers/lab";
 
 export default function Workspace({
   session,

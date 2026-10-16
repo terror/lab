@@ -1,4 +1,3 @@
-import type { useModels } from "@lab/client/react";
 import type { ModelReference } from "@lab/wire";
 import {
   CheckIcon,
@@ -27,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { useModels } from "@/hooks/use-models";
 import { modelAvailable, modelKey } from "@/lib/models";
 import { cn } from "@/lib/utils";
 

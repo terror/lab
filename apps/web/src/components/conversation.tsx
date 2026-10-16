@@ -1,4 +1,3 @@
-import { useConnection, useConversation, useModels } from "@lab/client/react";
 import type {
   ConversationId,
   ConversationState,
@@ -13,6 +12,9 @@ import { ModelPicker } from "@/components/model-picker";
 import { Transcript } from "@/components/transcript";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useConnection } from "@/hooks/use-connection";
+import { useConversation } from "@/hooks/use-conversation";
+import { useModels } from "@/hooks/use-models";
 import { modelAvailable, modelKey } from "@/lib/models";
 
 export function Conversation({

@@ -1,4 +1,3 @@
-import { useConnection, useModels, useSend } from "@lab/client/react";
 import { type ModelReference, omitUndefined } from "@lab/wire";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -8,6 +7,9 @@ import { LabMark } from "@/components/lab-mark";
 import { ModelPicker } from "@/components/model-picker";
 import { PromptInput } from "@/components/prompt-input";
 import { SendFeedback } from "@/components/send-feedback";
+import { useConnection } from "@/hooks/use-connection";
+import { useModels } from "@/hooks/use-models";
+import { useSend } from "@/hooks/use-send";
 import { modelAvailable } from "@/lib/models";
 
 export function CreateConversation() {

@@ -1,11 +1,9 @@
-import {
-  useConnection,
-  type useConversation,
-  useSend,
-} from "@lab/client/react";
 import type { ConversationId } from "@lab/wire";
 import { PromptInput } from "@/components/prompt-input";
 import { SendFeedback } from "@/components/send-feedback";
+import { useConnection } from "@/hooks/use-connection";
+import type { useConversation } from "@/hooks/use-conversation";
+import { useSend } from "@/hooks/use-send";
 
 export type Draft = {
   text: string;

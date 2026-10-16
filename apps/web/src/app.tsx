@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { LabMark } from "@/components/lab-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSession } from "@/lib/session";
+import { useSession } from "@/hooks/use-session";
 
 const Workspace = lazy(() => import("@/components/workspace"));
 
