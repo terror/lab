@@ -28,26 +28,6 @@ import type {
   ToolSelectionReceipt,
 } from "@lab/contracts";
 
-export interface RuntimeConversation {
-  readonly id: ConversationId;
-  observe(
-    context: Context,
-  ): Promise<Result<AttachedReplicatedState<ConversationState>>>;
-  submit(
-    input: SubmitInput,
-    context: Context,
-  ): Promise<Result<SubmissionReceipt>>;
-  setModel(
-    input: SetModelInput,
-    context: Context,
-  ): Promise<Result<ModelSelectionReceipt>>;
-  setTools(
-    input: SetToolsInput,
-    context: Context,
-  ): Promise<Result<ToolSelectionReceipt>>;
-  stop(input: StopInput, context: Context): Promise<Result<StopReceipt>>;
-}
-
 export interface Runtime {
   listTools(context: Context): Promise<Result<ToolCatalog>>;
   listModels(
@@ -66,10 +46,30 @@ export interface Runtime {
     id: ConversationId,
     context: Context,
   ): Promise<Result<null>>;
-  conversation(
+  observeConversation(
     id: ConversationId,
     context: Context,
-  ): Promise<Result<RuntimeConversation>>;
+  ): Promise<Result<AttachedReplicatedState<ConversationState>>>;
+  submit(
+    id: ConversationId,
+    input: SubmitInput,
+    context: Context,
+  ): Promise<Result<SubmissionReceipt>>;
+  setModel(
+    id: ConversationId,
+    input: SetModelInput,
+    context: Context,
+  ): Promise<Result<ModelSelectionReceipt>>;
+  setTools(
+    id: ConversationId,
+    input: SetToolsInput,
+    context: Context,
+  ): Promise<Result<ToolSelectionReceipt>>;
+  stop(
+    id: ConversationId,
+    input: StopInput,
+    context: Context,
+  ): Promise<Result<StopReceipt>>;
 }
 
 export interface RuntimeOwner {

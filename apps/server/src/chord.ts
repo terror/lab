@@ -51,28 +51,14 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
   host.serve(LabConversation, ({ id }, principal, self) => {
     sessions.authorize(principal);
 
-    const conversation = self.resource("conversation", {
-      version: 1,
-      open: async ({ signal }) => {
-        sessions.authorize(principal);
-
-        const result = await runtime.conversation(
-          id,
-          withAbortSignal(signal, BACKGROUND_CONTEXT),
-        );
-
-        return unwrap(result);
-      },
-    });
-
     const observation = self.resource("observation", {
       version: 1,
-      deps: [conversation],
       open: async ({ signal }) => {
         sessions.authorize(principal);
 
         return unwrap(
-          await conversation.value.observe(
+          await runtime.observeConversation(
+            id,
             withAbortSignal(signal, BACKGROUND_CONTEXT),
           ),
         );
@@ -94,19 +80,19 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
       view,
       setTools: (input, context) => {
         sessions.authorize(principal);
-        return conversation.value.setTools(input, callContext(context));
+        return runtime.setTools(id, input, callContext(context));
       },
       setModel: (input, context) => {
         sessions.authorize(principal);
-        return conversation.value.setModel(input, callContext(context));
+        return runtime.setModel(id, input, callContext(context));
       },
       submit: (input, context) => {
         sessions.authorize(principal);
-        return conversation.value.submit(input, callContext(context));
+        return runtime.submit(id, input, callContext(context));
       },
       stop: (input, context) => {
         sessions.authorize(principal);
-        return conversation.value.stop(input, callContext(context));
+        return runtime.stop(id, input, callContext(context));
       },
     };
   });
