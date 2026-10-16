@@ -157,11 +157,13 @@ export class Harness implements Runtime {
           input.requestId,
           context,
         );
+
         const request =
           snapshot === undefined ? undefined : parseStartRequestDoc(snapshot);
 
         if (request?.receipt != null) {
           const { receipt } = request;
+
           return this.withConversation(
             receipt.conversationId,
             context,
