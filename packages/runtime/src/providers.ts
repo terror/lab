@@ -1,6 +1,6 @@
 import { Type } from "typebox";
+import { Check } from "typebox/value";
 import type { ProviderFactory } from "./models";
-import { validate } from "./validation";
 
 const ProviderModuleSchema = Type.Object({
   default: Type.Function([Type.Unknown()], Type.Unknown()),
@@ -13,21 +13,23 @@ const ProvidersSchema = Type.Array(
 export async function loadProviders(module: unknown, signal: AbortSignal) {
   signal.throwIfAborted();
 
-  const { default: factory } = validate(
-    ProviderModuleSchema,
-    module,
-    "The provider module must default-export a provider factory",
-  );
+  if (!Check(ProviderModuleSchema, module)) {
+    throw new Error(
+      "The provider module must default-export a provider factory",
+    );
+  }
+
+  const { default: factory } = module;
 
   const providers = await (factory as ProviderFactory)({ signal });
 
   signal.throwIfAborted();
 
-  validate(
-    ProvidersSchema,
-    providers,
-    "The provider factory must return an array of providers with valid IDs",
-  );
+  if (!Check(ProvidersSchema, providers)) {
+    throw new Error(
+      "The provider factory must return an array of providers with valid IDs",
+    );
+  }
 
   const ids = new Set<string>();
 

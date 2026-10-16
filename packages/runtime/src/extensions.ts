@@ -10,8 +10,8 @@ import {
 } from "@lab/wire";
 import { Type } from "typebox";
 import { Compile } from "typebox/compile";
+import { Check } from "typebox/value";
 import type { Configuration } from "./metadata";
-import { validate } from "./validation";
 
 const ModulePathsSchema = Type.Array(Type.String({ minLength: 1 }), {
   uniqueItems: true,
@@ -44,11 +44,13 @@ export async function loadExtensions(
   registry: pi.Registry,
   context: Context,
 ) {
-  const modules = validate(
-    ModulePathsSchema,
-    paths,
-    "Extension modules must be an array of non-empty file paths",
-  ).map((path) => resolve(path));
+  if (!Check(ModulePathsSchema, paths)) {
+    throw new Error(
+      "Extension modules must be an array of non-empty file paths",
+    );
+  }
+
+  const modules = paths.map((path) => resolve(path));
 
   if (new Set(modules).size !== modules.length) {
     throw new Error("Duplicate extension module paths");
@@ -64,11 +66,13 @@ export async function loadExtensions(
 
       context.abortSignal?.throwIfAborted();
 
-      const { default: extension } = validate(
-        ModuleSchema,
-        module,
-        "The extension module must default-export a Pi extension",
-      );
+      if (!Check(ModuleSchema, module)) {
+        throw new Error(
+          "The extension module must default-export a Pi extension",
+        );
+      }
+
+      const { default: extension } = module;
 
       extensions.push(validateExtension(extension as pi.Extension));
     } catch (cause) {
@@ -249,11 +253,11 @@ export class ToolRegistry {
 }
 
 function validateExtension(extension: pi.Extension) {
-  validate(
-    ExtensionRequirementsSchema,
-    extension,
-    "Expected a Pi extension with valid names and tool schemas",
-  );
+  if (!Check(ExtensionRequirementsSchema, extension)) {
+    throw new Error(
+      "Expected a Pi extension with valid names and tool schemas",
+    );
+  }
 
   for (const tool of extension.tools ?? []) {
     try {

@@ -5,7 +5,7 @@ import {
   ToolNameSchema,
 } from "@lab/wire";
 import { type Static, Type } from "typebox";
-import { validate } from "./validation";
+import { Check } from "typebox/value";
 
 export const ConfigurationSchema = Type.Object(
   {
@@ -95,25 +95,25 @@ export const StartRequestDoc = defineDocFamily<
 });
 
 export function parseConfigurationDoc(value: unknown) {
-  return validate(
-    ConfigurationDocSchema,
-    value,
-    "Invalid stored runtime configuration",
-  );
+  if (!Check(ConfigurationDocSchema, value)) {
+    throw new Error("Invalid stored runtime configuration");
+  }
+
+  return value;
 }
 
 export function parseConversationDoc(value: unknown) {
-  return validate(
-    ConversationDocSchema,
-    value,
-    "Invalid stored conversation metadata",
-  );
+  if (!Check(ConversationDocSchema, value)) {
+    throw new Error("Invalid stored conversation metadata");
+  }
+
+  return value;
 }
 
 export function parseStartRequestDoc(value: unknown) {
-  return validate(
-    StartRequestDocSchema,
-    value,
-    "Invalid stored conversation start request",
-  );
+  if (!Check(StartRequestDocSchema, value)) {
+    throw new Error("Invalid stored conversation start request");
+  }
+
+  return value;
 }
