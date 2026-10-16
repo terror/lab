@@ -1221,11 +1221,11 @@ export type ToolResult = Static<typeof ToolResultSchema>;
 export type ToolSelectionReceipt = Static<typeof ToolSelectionReceiptSchema>;
 
 /**
- * Defines commands shared by both conversation contract variants.
+ * Defines conversation commands exposed by the service contract.
  *
  * @remarks
- * Every command returns an application-level {@link Result}. Sharing these
- * descriptors keeps the commands-only and state-bearing variants consistent.
+ * Every command addresses a conversation by its ID and returns an
+ * application-level {@link Result}.
  *
  * @internal
  */
@@ -1343,10 +1343,8 @@ export function resultSchema<T extends TSchema>(value: T) {
  * Defines the server-hosted contract for one conversation addressed by its ID.
  *
  * @remarks
- * Both variants expose the same commands. The `commands` variant declares no
- * replicated state, while the `default` variant also exposes the live `view`.
- * Command responses use {@link Result} envelopes independently of transport
- * errors and state subscription failures.
+ * The default variant exposes the live `view`. Conversation commands are
+ * available through {@link LabService}.
  *
  * @see {@link ConversationStateSchema}
  * @see {@link LabService}
@@ -1364,11 +1362,8 @@ export const LabConversation = remote("lab.conversation", {
   ),
   /** Supported conversation member sets. */
   variants: {
-    /** Commands-only shape with no replicated conversation state. */
-    /** Shared commands for configuration, input submission, and stopping. */
-    /** Full shape combining conversation commands with the replicated view. */
+    /** Conversation shape exposing the replicated view. */
     default: {
-      /** The same commands exposed by the commands-only variant. */
       /** Replicated values available to conversation subscribers. */
       state: {
         /** Current transcript, selected configuration, and live activity. */
