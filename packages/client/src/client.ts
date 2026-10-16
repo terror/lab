@@ -10,8 +10,6 @@ import {
 import {
   type ConversationId,
   type ConversationPage,
-  type ConversationSummary,
-  type CreateConversationInput,
   LabConversation,
   LabService,
   type ListConversationsInput,
@@ -23,13 +21,11 @@ import {
   type SetToolsInput,
   type StopInput,
   type StopReceipt,
-  type SubmissionReceipt,
-  type SubmitInput,
   type ToolCatalog,
   type ToolSelectionReceipt,
 } from "@lab/contracts";
 import { ConversationClient } from "./conversation";
-import { type PendingRequest, RequestJournal } from "./requests";
+import { SendOperations } from "./sends";
 import { clientError, Store } from "./store";
 import { browserLink } from "./websocket";
 
@@ -67,20 +63,33 @@ export class LabClient {
   private readonly state = new Store<ConnectionState>({
     status: "disconnected",
   });
-  private readonly journal: RequestJournal;
   readonly connection: Pick<
     Store<ConnectionState>,
     "getSnapshot" | "subscribe"
   > = this.state;
-  readonly pending: Pick<RequestJournal, "getSnapshot" | "subscribe">;
+  readonly sends: SendOperations;
   private readonly conversations = new Set<ConversationClient>();
-  private readonly admissions = new Map<string, Promise<Result<unknown>>>();
   private current: Connection | undefined;
   private owners = 0;
 
   constructor(private readonly options: ClientOptions = {}) {
-    this.journal = new RequestJournal(() => options.storage ?? sessionStorage);
-    this.pending = this.journal;
+    this.sends = new SendOperations(() => options.storage ?? sessionStorage, {
+      create: (input) =>
+        this.call(async (context) => {
+          const service = await context.get(LabService, {}, { state: false });
+          return service.createConversation(input, context);
+        }),
+      submit: (id, input) =>
+        this.call(async (context) => {
+          const conversation = await context.get(
+            LabConversation,
+            { id },
+            { state: false },
+          );
+          return conversation.submit(input, context);
+        }),
+      conversation: (id) => this.conversation(id),
+    });
   }
 
   readonly connect = () => {
@@ -135,13 +144,6 @@ export class LabClient {
     }, signal);
   }
 
-  async createConversation(
-    input: Omit<CreateConversationInput, "requestId">,
-    signal?: AbortSignal,
-  ): Promise<Result<ConversationSummary>> {
-    return this.create(this.journal.create(input), signal);
-  }
-
   async deleteConversation(
     id: ConversationId,
     signal?: AbortSignal,
@@ -152,47 +154,10 @@ export class LabClient {
     }, signal);
 
     if (result.ok || result.error.code === "not_found") {
-      for (const request of this.pending.getSnapshot().requests) {
-        if (request.kind === "submit" && request.conversationId === id) {
-          this.journal.complete(request.input.requestId);
-        }
-      }
+      this.sends.forget(id);
     }
 
     return result;
-  }
-
-  async retryCreation(
-    signal?: AbortSignal,
-  ): Promise<Result<ConversationSummary>> {
-    const request = this.journal.creation();
-
-    if (request === undefined) {
-      throw new Error("There is no unresolved conversation creation.");
-    }
-
-    return this.create(request, signal);
-  }
-
-  async submit(
-    id: ConversationId,
-    input: Omit<SubmitInput, "requestId">,
-    signal?: AbortSignal,
-  ): Promise<Result<SubmissionReceipt>> {
-    return this.send(this.journal.submit(id, input), signal);
-  }
-
-  async retrySubmission(
-    id: ConversationId,
-    signal?: AbortSignal,
-  ): Promise<Result<SubmissionReceipt>> {
-    const request = this.journal.submission(id);
-
-    if (request === undefined) {
-      throw new Error("There is no unresolved submission.");
-    }
-
-    return this.send(request, signal);
   }
 
   stop(
@@ -281,7 +246,7 @@ export class LabClient {
   }
 
   private start() {
-    this.journal.load();
+    this.sends.load();
 
     const current: Connection = {
       host: createHost({
@@ -511,67 +476,5 @@ export class LabClient {
 
       throw error;
     }
-  }
-
-  private create(
-    request: Extract<PendingRequest, { kind: "create" }>,
-    signal?: AbortSignal,
-  ) {
-    return this.admit(request, () =>
-      this.call(async (context) => {
-        const service = await context.get(LabService, {}, { state: false });
-        return service.createConversation(request.input, context);
-      }, signal),
-    );
-  }
-
-  private send(
-    request: Extract<PendingRequest, { kind: "submit" }>,
-    signal?: AbortSignal,
-  ) {
-    return this.admit(request, () =>
-      this.call(async (context) => {
-        const conversation = await context.get(
-          LabConversation,
-          { id: request.conversationId },
-          { state: false },
-        );
-        return conversation.submit(request.input, context);
-      }, signal),
-    );
-  }
-
-  private admit<T>(
-    request: PendingRequest,
-    operation: () => Promise<Result<T>>,
-  ) {
-    const { requestId } = request.input;
-    const pending = this.admissions.get(requestId);
-
-    if (pending !== undefined) {
-      return pending as Promise<Result<T>>;
-    }
-
-    const result = Promise.resolve()
-      .then(operation)
-      .then((result) => {
-        if (
-          result.ok ||
-          result.error.code === "invalid_input" ||
-          result.error.code === "not_found" ||
-          result.error.code === "busy" ||
-          result.error.code === "provider_unavailable" ||
-          result.error.code === "model_unavailable" ||
-          result.error.code === "tool_unavailable"
-        ) {
-          this.journal.complete(requestId);
-        }
-
-        return result;
-      })
-      .finally(() => this.admissions.delete(requestId));
-
-    this.admissions.set(requestId, result);
-    return result;
   }
 }

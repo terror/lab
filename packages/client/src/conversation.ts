@@ -6,7 +6,6 @@ import {
   type SetModelInput,
   type SetToolsInput,
   type StopInput,
-  type SubmitInput,
 } from "@lab/contracts";
 import type { LabClient } from "./client";
 import { clientError, Store } from "./store";
@@ -59,14 +58,6 @@ export class ConversationClient {
       }
     };
   };
-
-  readonly submit = (
-    input: Omit<SubmitInput, "requestId">,
-    signal?: AbortSignal,
-  ) => this.client.submit(this.id, input, signal);
-
-  readonly retrySubmission = (signal?: AbortSignal) =>
-    this.client.retrySubmission(this.id, signal);
 
   readonly stop = (input: StopInput, signal?: AbortSignal) =>
     this.client.stop(this.id, input, signal);

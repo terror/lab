@@ -2,7 +2,7 @@ import {
   useConnection,
   useConversations,
   useLabClient,
-  usePendingRequests,
+  useSends,
 } from "@lab/client/react";
 import type { ConversationId, ConversationPage } from "@lab/contracts";
 import {
@@ -87,7 +87,7 @@ export function AppSidebar({
   const queries = useQueryClient();
   const connection = useConnection();
   const conversations = useConversations();
-  const pending = usePendingRequests();
+  const sends = useSends();
   const { isMobile, setOpenMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
   const [search, setSearch] = useState("");
@@ -262,10 +262,10 @@ export function AppSidebar({
               <nav aria-label="Chats">
                 <SidebarMenu className="gap-0.5">
                   {items.map((conversation) => {
-                    const unconfirmed = pending.requests.some(
-                      (request) =>
-                        request.kind === "submit" &&
-                        request.conversationId === conversation.id,
+                    const unconfirmed = sends.operations.some(
+                      (operation) =>
+                        operation.phase !== "complete" &&
+                        operation.conversationId === conversation.id,
                     );
                     const deleting =
                       deletion.isPending &&
@@ -376,9 +376,9 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarSeparator className="mx-3" />
       <SidebarFooter className="p-3">
-        {(session.error || pending.error) && (
+        {(session.error || sends.error) && (
           <p className="px-2 text-xs text-destructive" role="alert">
-            {session.error ?? pending.error?.message}
+            {session.error ?? sends.error?.message}
           </p>
         )}
         <DropdownMenu>

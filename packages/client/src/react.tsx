@@ -23,7 +23,36 @@ export function LabProvider({
   client: LabClient;
   children: ReactNode;
 }) {
+  const queries = useQueryClient();
+
   useEffect(() => client.connect(), [client]);
+
+  useEffect(() => {
+    const created = new Set<ConversationId>();
+
+    const update = () => {
+      const conversations = client.sends
+        .getSnapshot()
+        .operations.filter(({ creation }) => creation !== undefined)
+        .map(({ conversationId }) => conversationId)
+        .filter((id) => id !== undefined)
+        .filter((id) => !created.has(id));
+
+      for (const id of conversations) {
+        created.add(id);
+      }
+
+      if (conversations.length > 0) {
+        void queries.invalidateQueries({ queryKey: ["lab", "conversations"] });
+      }
+    };
+
+    const unsubscribe = client.sends.subscribe(update);
+
+    update();
+
+    return unsubscribe;
+  }, [client, queries]);
 
   return <LabContext value={client}>{children}</LabContext>;
 }
@@ -43,9 +72,35 @@ export function useConnection() {
   return useSyncExternalStore(connection.subscribe, connection.getSnapshot);
 }
 
-export function usePendingRequests() {
-  const { pending } = useLabClient();
-  return useSyncExternalStore(pending.subscribe, pending.getSnapshot);
+export function useSends() {
+  const { sends } = useLabClient();
+  return useSyncExternalStore(sends.subscribe, sends.getSnapshot);
+}
+
+export function useSend(conversationId?: ConversationId) {
+  const { sends } = useLabClient();
+
+  const snapshot = useSends();
+
+  const operation = snapshot.operations.find((operation) =>
+    conversationId === undefined
+      ? operation.target === "new"
+      : operation.conversationId === conversationId,
+  );
+
+  useEffect(() => {
+    if (conversationId !== undefined && operation?.target === "new") {
+      sends.acknowledge(operation.input.requestId);
+    }
+  }, [conversationId, operation, sends]);
+
+  return {
+    operation,
+    error: snapshot.error,
+    start: sends.start,
+    retry: sends.retry,
+    acknowledge: sends.acknowledge,
+  };
 }
 
 export function useConversations() {
@@ -109,8 +164,6 @@ export function useConversation(id: ConversationId) {
 
   return {
     ...snapshot,
-    submit: conversation.submit,
-    retrySubmission: conversation.retrySubmission,
     stop: conversation.stop,
     setModel: conversation.setModel,
     setTools: conversation.setTools,
@@ -150,8 +203,10 @@ export function useTools() {
 
 export function useModels(enabled = true) {
   const client = useLabClient();
+
   const connection = useConnection();
   const connected = connection.status === "connected";
+
   const queries = useQueryClient();
 
   const load = async (refresh: boolean, signal: AbortSignal) => {
