@@ -37,7 +37,7 @@ const SendOperationSchema = Type.Object(
   { additionalProperties: false },
 );
 
-const SendOperationsSchema = Type.Array(SendOperationSchema, { maxItems: 64 });
+const OutboxSchema = Type.Array(SendOperationSchema, { maxItems: 64 });
 
 export type SendOperation = Static<typeof SendOperationSchema>;
 
@@ -50,7 +50,7 @@ export type SendInput = Omit<SubmitInput, "requestId"> &
       }
   );
 
-export type SendOperationsSnapshot = {
+export type OutboxSnapshot = {
   readonly operations: readonly SendOperation[];
   readonly error: Error | undefined;
 };
@@ -66,13 +66,13 @@ type Transport = {
   conversation: (id: ConversationId) => ConversationClient;
 };
 
-export class SendOperations {
+export class Outbox {
   private loaded = false;
 
   private readonly key = "lab.sends.v1";
   private readonly observations = new Map<string, () => void>();
   private readonly running = new Set<string>();
-  private readonly state = new Store<SendOperationsSnapshot>({
+  private readonly state = new Store<OutboxSnapshot>({
     operations: [],
     error: undefined,
   });
@@ -96,7 +96,7 @@ export class SendOperations {
 
       const operations: unknown = stored === null ? [] : JSON.parse(stored);
 
-      if (!Check(SendOperationsSchema, operations) || !valid(operations)) {
+      if (!Check(OutboxSchema, operations) || !valid(operations)) {
         throw new Error("Saved send operations are invalid.");
       }
 
@@ -171,7 +171,7 @@ export class SendOperations {
 
       const next = [...retained, operation];
 
-      if (!Check(SendOperationsSchema, next) || !valid(next)) {
+      if (!Check(OutboxSchema, next) || !valid(next)) {
         throw new Error("Invalid message or too many saved send operations.");
       }
 

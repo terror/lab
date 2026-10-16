@@ -68,7 +68,7 @@ export class ConversationClient {
   readonly setTools = (input: SetToolsInput, signal?: AbortSignal) =>
     this.client.setTools(this.id, input, signal);
 
-  attach(host: Host) {
+  attach(host: Host, onFailure: (error: unknown) => void) {
     if (this.reference !== undefined && this.reference.status !== "gone") {
       return;
     }
@@ -101,7 +101,7 @@ export class ConversationClient {
             true,
             clientError(reference.error),
           );
-          this.client.referenceFailed(reference.error);
+          onFailure(reference.error);
         } else {
           this.publish(this.getSnapshot().value, true, undefined);
         }
@@ -113,6 +113,7 @@ export class ConversationClient {
     } catch (error) {
       this.detach();
       this.publish(this.getSnapshot().value, true, clientError(error));
+      onFailure(error);
     }
   }
 

@@ -39,7 +39,7 @@ export function LabProvider({
     const created = new Set<ConversationId>();
 
     const update = () => {
-      const conversations = client.sends
+      const conversations = client.outbox
         .getSnapshot()
         .operations.filter(({ creation }) => creation !== undefined)
         .map(({ conversationId }) => conversationId)
@@ -55,7 +55,7 @@ export function LabProvider({
       }
     };
 
-    const unsubscribe = client.sends.subscribe(update);
+    const unsubscribe = client.outbox.subscribe(update);
 
     update();
 
@@ -80,15 +80,15 @@ export function useConnection() {
   return useSyncExternalStore(connection.subscribe, connection.getSnapshot);
 }
 
-export function useSends() {
-  const { sends } = useLabClient();
-  return useSyncExternalStore(sends.subscribe, sends.getSnapshot);
+export function useOutbox() {
+  const { outbox } = useLabClient();
+  return useSyncExternalStore(outbox.subscribe, outbox.getSnapshot);
 }
 
 export function useSend(conversationId?: ConversationId) {
-  const { sends } = useLabClient();
+  const { outbox } = useLabClient();
 
-  const snapshot = useSends();
+  const snapshot = useOutbox();
 
   const operation = snapshot.operations.find((operation) =>
     conversationId === undefined
@@ -98,16 +98,16 @@ export function useSend(conversationId?: ConversationId) {
 
   useEffect(() => {
     if (conversationId !== undefined && operation?.target === "new") {
-      sends.acknowledge(operation.input.requestId);
+      outbox.acknowledge(operation.input.requestId);
     }
-  }, [conversationId, operation, sends]);
+  }, [conversationId, operation, outbox]);
 
   return {
     operation,
     error: snapshot.error,
-    start: sends.start,
-    retry: sends.retry,
-    acknowledge: sends.acknowledge,
+    start: outbox.start,
+    retry: outbox.retry,
+    acknowledge: outbox.acknowledge,
   };
 }
 

@@ -2,7 +2,7 @@ import {
   useConnection,
   useConversations,
   useDeleteConversation,
-  useSends,
+  useOutbox,
 } from "@lab/client/react";
 import type { ConversationId } from "@lab/contracts";
 import {
@@ -81,7 +81,7 @@ export function AppSidebar({
   const connection = useConnection();
   const conversations = useConversations();
   const deletion = useDeleteConversation(onDeleted);
-  const sends = useSends();
+  const outbox = useOutbox();
   const { isMobile, setOpenMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
   const [search, setSearch] = useState("");
@@ -226,7 +226,7 @@ export function AppSidebar({
               <nav aria-label="Chats">
                 <SidebarMenu className="gap-0.5">
                   {items.map((conversation) => {
-                    const unconfirmed = sends.operations.some(
+                    const unconfirmed = outbox.operations.some(
                       (operation) =>
                         operation.phase !== "complete" &&
                         operation.conversationId === conversation.id,
@@ -340,9 +340,9 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarSeparator className="mx-3" />
       <SidebarFooter className="p-3">
-        {(session.error || sends.error) && (
+        {(session.error || outbox.error) && (
           <p className="px-2 text-xs text-destructive" role="alert">
-            {session.error ?? sends.error?.message}
+            {session.error ?? outbox.error?.message}
           </p>
         )}
         <DropdownMenu>

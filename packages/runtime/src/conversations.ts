@@ -441,10 +441,12 @@ export class HarnessRuntime implements Runtime {
       context.abortSignal?.throwIfAborted();
       return operation();
     });
+
     const settled = pending.then(
       () => undefined,
       () => undefined,
     );
+
     this.admissions.set(key, settled);
 
     try {
