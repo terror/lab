@@ -27,29 +27,6 @@ export function openHarness(
   return pi.Harness.open(storage, options, context);
 }
 
-export function listConversations(
-  harness: pi.Harness,
-  limit: number,
-  cursor: pi.Cursor | undefined,
-  context: Context,
-) {
-  return harness.commit(
-    (tx) => tx.scanConversations({ order: "descending" }, limit, cursor),
-    context,
-  );
-}
-
-export function createConversation(
-  harness: pi.Harness,
-  options: Omit<pi.ConversationCreateOptions, "ownership">,
-  context: Context,
-) {
-  return harness.createConversation(
-    { ...options, ownership: { kind: "ownerless" } },
-    context,
-  );
-}
-
 export function conversation(
   harness: pi.Harness,
   id: ConversationId,
