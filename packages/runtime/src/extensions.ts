@@ -11,7 +11,7 @@ import {
 import { Type } from "typebox";
 import { Compile } from "typebox/compile";
 import type { Configuration } from "./metadata";
-import { functionSchema, validate } from "./validation";
+import { validate } from "./validation";
 
 const ModulePathsSchema = Type.Array(Type.String({ minLength: 1 }), {
   uniqueItems: true,
@@ -19,7 +19,7 @@ const ModulePathsSchema = Type.Array(Type.String({ minLength: 1 }), {
 
 const ModuleSchema = Type.Object({ default: Type.Unknown() });
 
-const ExtensionSchema = Type.Object({
+const ExtensionRequirementsSchema = Type.Object({
   name: Type.String({
     minLength: 1,
     maxLength: 128,
@@ -29,115 +29,18 @@ const ExtensionSchema = Type.Object({
     Type.Array(
       Type.Object({
         name: ToolNameSchema,
-        description: Type.String(),
         parameters: Type.Object({ type: Type.Literal("object") }),
-        constrainedSampling: Type.Optional(
-          Type.Union([
-            Type.Literal(false),
-            Type.Object({
-              type: Type.Literal("json_schema"),
-              strict: Type.Union([
-                Type.Literal("prefer"),
-                Type.Literal("require"),
-              ]),
-            }),
-            Type.Object({
-              type: Type.Literal("grammar"),
-              variants: Type.Object({
-                openai_lark: Type.Optional(Type.String()),
-                openai_regex: Type.Optional(Type.String()),
-              }),
-            }),
-          ]),
-        ),
-        execute: functionSchema<pi.ToolRegistration["execute"]>(),
-        replay: Type.Optional(
-          Type.Union([Type.Literal("safe"), Type.Literal("unsafe")]),
-        ),
-        executionMode: Type.Optional(
-          Type.Union([Type.Literal("parallel"), Type.Literal("sequential")]),
-        ),
-        prepareArguments: Type.Optional(
-          functionSchema<
-            NonNullable<pi.ToolRegistration["prepareArguments"]>
-          >(),
-        ),
         structuredOutputSchema: Type.Optional(
           Type.Union([Type.Boolean(), Type.Object({})]),
         ),
-        callers: Type.Optional(
-          Type.Array(
-            Type.Union([Type.Literal("model"), Type.Literal("tools")]),
-          ),
-        ),
-        deferred: Type.Optional(Type.Literal(true)),
-        outputLimits: Type.Optional(
-          Type.Object({
-            maxBytes: Type.Optional(Type.Number()),
-            maxLines: Type.Optional(Type.Number()),
-            retain: Type.Optional(
-              Type.Union([Type.Literal("head"), Type.Literal("tail")]),
-            ),
-          }),
-        ),
       }),
-    ),
-  ),
-  tasks: Type.Optional(
-    Type.Array(
-      Type.Object({
-        definition: Type.Object({
-          name: Type.String({ minLength: 1 }),
-          version: Type.Integer({ minimum: 1 }),
-          initial: Type.Function([Type.Unknown()], Type.Unknown()),
-          phases: Type.Record(Type.String(), Type.Function([], Type.Unknown())),
-          abort: Type.Function([], Type.Unknown()),
-          migrate: Type.Optional(Type.Function([], Type.Unknown())),
-          hooks: Type.Optional(Type.Object({})),
-        }),
-      }),
-    ),
-  ),
-  hooks: Type.Optional(
-    Type.Array(
-      Type.Object({
-        task: Type.String(),
-        handlers: Type.Object({}),
-      }),
-    ),
-  ),
-  sections: Type.Optional(
-    Type.Array(
-      Type.Object({
-        key: Type.String(),
-        render: functionSchema<pi.PromptSection["render"]>(),
-        tag: Type.Optional(Type.Boolean()),
-      }),
-    ),
-  ),
-  wraps: Type.Optional(
-    Type.Array(
-      Type.Union([
-        Type.Object({
-          tool: Type.String(),
-          wrap: functionSchema<
-            (tool: pi.ToolRegistration) => pi.ToolRegistration
-          >(),
-        }),
-        Type.Object({
-          section: Type.String(),
-          wrap: functionSchema<
-            (section: pi.PromptSection) => pi.PromptSection
-          >(),
-        }),
-      ]),
     ),
   ),
 });
 
 export async function loadExtensions(
   paths: unknown,
-  definitions: readonly unknown[],
+  definitions: readonly pi.Extension[],
   registry: pi.Registry,
   context: Context,
 ) {
@@ -167,7 +70,7 @@ export async function loadExtensions(
         "The extension module must default-export a Pi extension",
       );
 
-      extensions.push(validateExtension(extension));
+      extensions.push(validateExtension(extension as pi.Extension));
     } catch (cause) {
       context.abortSignal?.throwIfAborted();
       throw new Error(`Failed to load extension module "${path}"`, { cause });
@@ -345,11 +248,11 @@ export class ToolRegistry {
   }
 }
 
-function validateExtension(value: unknown) {
-  const extension = validate(
-    ExtensionSchema,
-    value,
-    "Expected a Pi extension with valid tool definitions",
+function validateExtension(extension: pi.Extension) {
+  validate(
+    ExtensionRequirementsSchema,
+    extension,
+    "Expected a Pi extension with valid names and tool schemas",
   );
 
   for (const tool of extension.tools ?? []) {

@@ -1,4 +1,4 @@
-import { type Static, type TSchema, Type } from "typebox";
+import type { Static, TSchema } from "typebox";
 import { Check } from "typebox/value";
 
 export function validate<S extends TSchema>(
@@ -11,8 +11,4 @@ export function validate<S extends TSchema>(
   }
 
   return value;
-}
-
-export function functionSchema<T extends (...args: never[]) => unknown>() {
-  return Type.Unsafe<T>(Type.Function([], Type.Unknown()));
 }
