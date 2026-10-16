@@ -167,7 +167,7 @@ export function AppSidebar({
           )}
       </SidebarHeader>
       <SidebarContent className="gap-0 px-1 pt-3 pb-2">
-        <SidebarGroup>
+        <SidebarGroup className="gap-2">
           <div className="flex items-center justify-between pr-1">
             <SidebarGroupLabel className="text-[10px] tracking-[0.16em] uppercase">
               Your chats
