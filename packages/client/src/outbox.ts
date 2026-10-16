@@ -10,40 +10,20 @@ import {
   type SubmitInput,
   SubmitInputSchema,
 } from "@lab/wire";
-import { type Static, Type } from "typebox";
+import { type Static, type TProperties, Type } from "typebox";
 import { Check } from "typebox/value";
 import { clientError, Store } from "./store";
 
-const SendProperties = {
-  requestId: SubmitInputSchema.properties.requestId,
-  input: Type.Omit(SubmitInputSchema, ["requestId"]),
-  phase: Type.Union([
-    Type.Literal("submitting"),
-    Type.Literal("rejected"),
-    Type.Literal("uncertain"),
-  ]),
-  error: Type.Optional(LabErrorSchema),
-};
-
 const SendOperationSchema = Type.Union([
-  Type.Object(
-    {
-      ...SendProperties,
-      target: ConversationIdSchema,
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      ...SendProperties,
-      target: Type.Literal("new"),
-      creation: Type.Omit(StartConversationInputSchema, [
-        "requestId",
-        "content",
-      ]),
-    },
-    { additionalProperties: false },
-  ),
+  sendOperationSchema({ phase: Type.Literal("submitting") }),
+  sendOperationSchema({
+    phase: Type.Literal("rejected"),
+    error: LabErrorSchema,
+  }),
+  sendOperationSchema({
+    phase: Type.Literal("uncertain"),
+    error: Type.Optional(LabErrorSchema),
+  }),
   Type.Object(
     {
       requestId: SubmitInputSchema.properties.requestId,
@@ -253,26 +233,22 @@ export class Outbox {
       return;
     }
 
-    const { error: _error, ...properties } = operation;
-    const next = {
-      ...properties,
-      phase: "submitting" as const,
-    };
-
     if (operation.phase === "uncertain") {
-      this.update(next);
+      const { error: _error, ...properties } = operation;
+
+      this.update({ ...properties, phase: "submitting" });
     }
 
     const result =
-      next.target === "new"
+      operation.target === "new"
         ? await this.transport.start({
-            ...next.creation,
-            requestId: next.requestId,
-            content: next.input.content,
+            ...operation.creation,
+            requestId: operation.requestId,
+            content: operation.input.content,
           })
-        : await this.transport.submit(next.target, {
-            ...next.input,
-            requestId: next.requestId,
+        : await this.transport.submit(operation.target, {
+            ...operation.input,
+            requestId: operation.requestId,
           });
 
     if (!result.ok) {
@@ -280,7 +256,7 @@ export class Outbox {
       return;
     }
 
-    if (next.target === "new") {
+    if (operation.target === "new") {
       this.update({
         requestId,
         target: "new",
@@ -366,14 +342,39 @@ export class Outbox {
   }
 }
 
+function sendOperationSchema<T extends TProperties>(phase: T) {
+  const properties = {
+    requestId: SubmitInputSchema.properties.requestId,
+    input: Type.Omit(SubmitInputSchema, ["requestId"]),
+    ...phase,
+  };
+
+  return Type.Union([
+    Type.Object(
+      {
+        ...properties,
+        target: ConversationIdSchema,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        ...properties,
+        target: Type.Literal("new"),
+        creation: Type.Omit(StartConversationInputSchema, [
+          "requestId",
+          "content",
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+  ]);
+}
+
 function valid(operations: readonly SendOperation[]) {
   return (
     unique(operations.map(({ requestId }) => requestId)) &&
-    unique(operations.map(({ target }) => target)) &&
-    operations.every(
-      (operation) =>
-        operation.phase !== "rejected" || operation.error !== undefined,
-    )
+    unique(operations.map(({ target }) => target))
   );
 }
 
@@ -396,7 +397,7 @@ function freeze(operations: readonly SendOperation[]) {
         Object.freeze(operation.creation);
       }
 
-      if (operation.error !== undefined) {
+      if (operation.phase !== "submitting" && operation.error !== undefined) {
         Object.freeze(operation.error);
       }
 
