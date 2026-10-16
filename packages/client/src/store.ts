@@ -7,6 +7,7 @@ export class Store<T> {
 
   readonly subscribe = (listener: () => void) => {
     const notify = () => listener();
+
     this.listeners.add(notify);
 
     return () => {

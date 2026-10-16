@@ -11,12 +11,14 @@ export function useSend(conversationId?: ConversationId) {
   const operation = snapshot.operations.find((operation) =>
     conversationId === undefined
       ? operation.target === "new"
-      : operation.conversationId === conversationId,
+      : operation.target === conversationId ||
+        (operation.phase === "complete" &&
+          operation.conversationId === conversationId),
   );
 
   useEffect(() => {
-    if (conversationId !== undefined && operation?.target === "new") {
-      outbox.acknowledge(operation.input.requestId);
+    if (conversationId !== undefined && operation?.phase === "complete") {
+      outbox.acknowledge(operation.requestId);
     }
   }, [conversationId, operation, outbox]);
 
@@ -25,6 +27,5 @@ export function useSend(conversationId?: ConversationId) {
     error: snapshot.error,
     start: outbox.start,
     retry: outbox.retry,
-    acknowledge: outbox.acknowledge,
   };
 }

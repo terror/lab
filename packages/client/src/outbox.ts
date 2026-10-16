@@ -7,7 +7,6 @@ import {
   type StartConversationInput,
   StartConversationInputSchema,
   type SubmissionReceipt,
-  SubmissionReceiptSchema,
   type SubmitInput,
   SubmitInputSchema,
 } from "@lab/wire";
@@ -15,24 +14,46 @@ import { type Static, Type } from "typebox";
 import { Check } from "typebox/value";
 import { clientError, Store } from "./store";
 
-const SendOperationSchema = Type.Object(
-  {
-    target: Type.Union([Type.Literal("new"), ConversationIdSchema]),
-    creation: Type.Optional(
-      Type.Omit(StartConversationInputSchema, ["requestId", "content"]),
-    ),
-    conversationId: Type.Optional(ConversationIdSchema),
-    input: SubmitInputSchema,
-    phase: Type.Union([
-      Type.Literal("submitting"),
-      Type.Literal("complete"),
-      Type.Literal("uncertain"),
-    ]),
-    receipt: Type.Optional(SubmissionReceiptSchema),
-    error: Type.Optional(LabErrorSchema),
-  },
-  { additionalProperties: false },
-);
+const SendProperties = {
+  requestId: SubmitInputSchema.properties.requestId,
+  input: Type.Omit(SubmitInputSchema, ["requestId"]),
+  phase: Type.Union([
+    Type.Literal("submitting"),
+    Type.Literal("rejected"),
+    Type.Literal("uncertain"),
+  ]),
+  error: Type.Optional(LabErrorSchema),
+};
+
+const SendOperationSchema = Type.Union([
+  Type.Object(
+    {
+      ...SendProperties,
+      target: ConversationIdSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      ...SendProperties,
+      target: Type.Literal("new"),
+      creation: Type.Omit(StartConversationInputSchema, [
+        "requestId",
+        "content",
+      ]),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      requestId: SubmitInputSchema.properties.requestId,
+      target: Type.Literal("new"),
+      phase: Type.Literal("complete"),
+      conversationId: ConversationIdSchema,
+    },
+    { additionalProperties: false },
+  ),
+]);
 
 const OutboxSchema = Type.Array(SendOperationSchema, { maxItems: 64 });
 
@@ -63,7 +84,7 @@ type Transport = {
 export class Outbox {
   private loaded = false;
 
-  private readonly key = "lab.sends.v2";
+  private readonly key = "lab.sends.v3";
   private readonly running = new Set<string>();
   private readonly state = new Store<OutboxSnapshot>({
     operations: [],
@@ -93,16 +114,11 @@ export class Outbox {
         throw new Error("Saved send operations are invalid.");
       }
 
-      const recovered = operations.map((operation) => {
-        if (operation.receipt !== undefined) {
-          const { error: _error, ...properties } = operation;
-          return { ...properties, phase: "complete" as const };
-        }
-
-        return operation.phase === "submitting"
+      const recovered = operations.map((operation) =>
+        operation.phase === "submitting"
           ? { ...operation, phase: "uncertain" as const }
-          : operation;
-      });
+          : operation,
+      );
 
       this.loaded = true;
 
@@ -120,23 +136,21 @@ export class Outbox {
       if (
         operations.some(
           (operation) =>
-            operation.phase !== "complete" &&
-            (operation.target === target ||
-              (target !== "new" && operation.conversationId === target)),
+            operation.phase !== "rejected" && operation.target === target,
         )
       ) {
         throw new Error("Resolve the previous send operation first.");
       }
 
       const operation: SendOperation = {
-        target,
+        requestId: crypto.randomUUID(),
         ...(input.creation === undefined
-          ? { conversationId: input.conversationId }
+          ? { target: input.conversationId }
           : {
+              target: "new" as const,
               creation: structuredClone(input.creation),
             }),
         input: {
-          requestId: crypto.randomUUID(),
           content: input.content,
           whenBusy: input.whenBusy,
         },
@@ -144,21 +158,8 @@ export class Outbox {
       };
 
       const retained = operations.filter(
-        (operation) =>
-          operation.target !== target &&
-          (target === "new" || operation.conversationId !== target),
+        (operation) => operation.target !== target,
       );
-
-      if (retained.length >= 64) {
-        const completed = retained.findIndex(
-          (operation) =>
-            operation.phase === "complete" && operation.error === undefined,
-        );
-
-        if (completed !== -1) {
-          retained.splice(completed, 1);
-        }
-      }
 
       const next = [...retained, operation];
 
@@ -173,7 +174,7 @@ export class Outbox {
         return undefined;
       }
 
-      this.run(operation.input.requestId);
+      this.run(operation.requestId);
       return operation;
     } catch (error) {
       this.state.set({ ...this.getSnapshot(), error: clientError(error) });
@@ -188,12 +189,12 @@ export class Outbox {
   readonly acknowledge = (requestId: string) => {
     const operation = this.find(requestId);
 
-    if (operation?.conversationId === undefined) {
+    if (operation?.phase !== "complete") {
       return;
     }
 
     try {
-      this.update(requestId, { target: operation.conversationId });
+      this.remove(requestId);
     } catch {}
   };
 
@@ -203,7 +204,10 @@ export class Outbox {
     try {
       this.save(
         operations.filter(
-          (operation) => operation.conversationId !== conversationId,
+          (operation) =>
+            operation.target !== conversationId &&
+            (operation.phase !== "complete" ||
+              operation.conversationId !== conversationId),
         ),
       );
     } catch {}
@@ -221,7 +225,7 @@ export class Outbox {
 
   private find(requestId: string) {
     return this.getSnapshot().operations.find(
-      (operation) => operation.input.requestId === requestId,
+      (operation) => operation.requestId === requestId,
     );
   }
 
@@ -241,112 +245,120 @@ export class Outbox {
   private async execute(requestId: string) {
     const operation = this.find(requestId);
 
-    if (operation === undefined || operation.phase === "complete") {
+    if (
+      operation === undefined ||
+      operation.phase === "complete" ||
+      operation.phase === "rejected"
+    ) {
       return;
     }
 
-    if (operation.receipt !== undefined) {
-      this.update(requestId, {
-        phase: "complete",
-        error: undefined,
-      });
-      return;
-    }
+    const { error: _error, ...properties } = operation;
+    const next = {
+      ...properties,
+      phase: "submitting" as const,
+    };
 
-    const next = this.update(requestId, {
-      phase: "submitting",
-      error: undefined,
-    });
-
-    if (next === undefined) {
-      return;
+    if (operation.phase === "uncertain") {
+      this.update(next);
     }
 
     const result =
-      next.creation !== undefined
+      next.target === "new"
         ? await this.transport.start({
             ...next.creation,
-            requestId: next.input.requestId,
+            requestId: next.requestId,
             content: next.input.content,
           })
-        : next.conversationId !== undefined
-          ? await this.transport.submit(next.conversationId, next.input)
-          : undefined;
-
-    if (result === undefined) {
-      throw new Error("The send operation has no conversation.");
-    }
+        : await this.transport.submit(next.target, {
+            ...next.input,
+            requestId: next.requestId,
+          });
 
     if (!result.ok) {
       this.reject(requestId, result.error);
       return;
     }
 
-    this.update(requestId, {
-      conversationId: result.value.conversationId,
-      phase: "complete",
-      receipt: result.value,
-    });
+    if (next.target === "new") {
+      this.update({
+        requestId,
+        target: "new",
+        conversationId: result.value.conversationId,
+        phase: "complete",
+      });
+    } else {
+      this.remove(requestId);
+    }
   }
 
   private reject(requestId: string, error: LabError) {
-    this.update(requestId, {
+    const operation = this.find(requestId);
+
+    if (operation === undefined || operation.phase === "complete") {
+      return;
+    }
+
+    this.update({
+      ...operation,
       phase:
         error.code === "internal" || error.code === "unavailable"
           ? "uncertain"
-          : "complete",
+          : "rejected",
       error,
     });
   }
 
   private fail(requestId: string, error: unknown) {
-    if (this.find(requestId)?.receipt !== undefined) {
+    const operation = this.find(requestId);
+
+    if (
+      operation === undefined ||
+      operation.phase === "complete" ||
+      operation.phase === "rejected"
+    ) {
       return;
     }
 
     try {
-      this.update(requestId, {
-        phase: "uncertain",
-        error: { code: "unavailable", message: clientError(error).message },
+      this.reject(requestId, {
+        code: "unavailable",
+        message: clientError(error).message,
       });
     } catch {}
   }
 
-  private update(
-    requestId: string,
-    changes: Partial<Omit<SendOperation, "error">> & {
-      error?: LabError | undefined;
-    },
-  ) {
-    const operation = this.find(requestId);
-
-    if (operation === undefined) {
-      return undefined;
-    }
-
-    const { error, ...properties } = { ...operation, ...changes };
-    const next = {
-      ...properties,
-      ...(error === undefined ? {} : { error }),
-    };
-
+  private update(next: SendOperation) {
     this.save(
       this.getSnapshot().operations.map((operation) =>
-        operation.input.requestId === requestId ? next : operation,
+        operation.requestId === next.requestId ? next : operation,
       ),
     );
+  }
 
-    return next;
+  private remove(requestId: string) {
+    this.save(
+      this.getSnapshot().operations.filter(
+        (operation) => operation.requestId !== requestId,
+      ),
+    );
   }
 
   private save(operations: readonly SendOperation[]) {
     try {
-      this.storage().setItem(this.key, JSON.stringify(operations));
+      const storage = this.storage();
+
+      if (operations.length === 0) {
+        storage.removeItem(this.key);
+      } else {
+        storage.setItem(this.key, JSON.stringify(operations));
+      }
     } catch (error) {
       this.state.set({
         operations: freeze(operations),
         error: clientError(error),
       });
+
       throw error;
     }
 
@@ -355,19 +367,13 @@ export class Outbox {
 }
 
 function valid(operations: readonly SendOperation[]) {
-  const requests = operations.map(({ input }) => input.requestId);
-
-  const conversations = operations
-    .map(({ conversationId }) => conversationId)
-    .filter((id) => id !== undefined);
-
-  const targets = operations.map(({ target }) => target);
-
   return (
-    unique(requests) &&
-    unique(conversations) &&
-    unique(targets) &&
-    operations.every(validOperation)
+    unique(operations.map(({ requestId }) => requestId)) &&
+    unique(operations.map(({ target }) => target)) &&
+    operations.every(
+      (operation) =>
+        operation.phase !== "rejected" || operation.error !== undefined,
+    )
   );
 }
 
@@ -375,59 +381,28 @@ function unique<T>(values: readonly T[]) {
   return new Set(values).size === values.length;
 }
 
-function validOperation(operation: SendOperation) {
-  const { target, conversationId, creation, input, phase, receipt, error } =
-    operation;
-
-  if (target !== "new" && target !== conversationId) {
-    return false;
-  }
-
-  if (conversationId === undefined && creation === undefined) {
-    return false;
-  }
-
-  if (
-    receipt !== undefined &&
-    (receipt.conversationId !== conversationId ||
-      receipt.requestId !== input.requestId)
-  ) {
-    return false;
-  }
-
-  switch (phase) {
-    case "submitting":
-      return receipt === undefined;
-    case "complete":
-      return receipt !== undefined || error !== undefined;
-    case "uncertain":
-      return true;
-  }
-}
-
 function freeze(operations: readonly SendOperation[]) {
   for (const operation of operations) {
-    if (operation.creation !== undefined) {
-      if (operation.creation.model !== undefined) {
-        Object.freeze(operation.creation.model);
+    if (operation.phase !== "complete") {
+      if (operation.target === "new") {
+        if (operation.creation.model !== undefined) {
+          Object.freeze(operation.creation.model);
+        }
+
+        if (operation.creation.tools !== undefined) {
+          Object.freeze(operation.creation.tools);
+        }
+
+        Object.freeze(operation.creation);
       }
 
-      if (operation.creation.tools !== undefined) {
-        Object.freeze(operation.creation.tools);
+      if (operation.error !== undefined) {
+        Object.freeze(operation.error);
       }
 
-      Object.freeze(operation.creation);
+      Object.freeze(operation.input);
     }
 
-    if (operation.receipt !== undefined) {
-      Object.freeze(operation.receipt);
-    }
-
-    if (operation.error !== undefined) {
-      Object.freeze(operation.error);
-    }
-
-    Object.freeze(operation.input);
     Object.freeze(operation);
   }
 

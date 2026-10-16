@@ -63,6 +63,7 @@ class ConnectionAttempt {
   private readonly cleanups: ((reason?: string) => void)[] = [];
 
   readonly controller = new AbortController();
+
   readonly host = createHost({
     kind: "client",
     self: "browser",

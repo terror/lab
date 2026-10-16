@@ -21,11 +21,13 @@ export function SendFeedback({
 }) {
   const { operation, error, retry } = send;
 
-  const uncertain = operation?.phase === "uncertain";
-  const rejected =
-    operation?.phase === "complete" && operation.error !== undefined;
+  const failure =
+    operation?.phase === "uncertain" || operation?.phase === "rejected"
+      ? operation
+      : undefined;
+  const uncertain = failure?.phase === "uncertain";
 
-  if (!uncertain && !rejected && error === undefined) {
+  if (failure === undefined && error === undefined) {
     return null;
   }
 
@@ -37,26 +39,26 @@ export function SendFeedback({
       <AlertCircle />
       <AlertDescription className="w-full gap-2">
         {uncertain && <p>Your message hasn’t been confirmed yet.</p>}
-        {operation?.error && <p>{operation.error.message}</p>}
-        {error && error.message !== operation?.error?.message && (
+        {failure?.error && <p>{failure.error.message}</p>}
+        {error && error.message !== failure?.error?.message && (
           <p>{error.message}</p>
         )}
-        {operation !== undefined && (uncertain || rejected) && (
+        {failure !== undefined && (
           <>
             <Button
               className="self-start"
               disabled={uncertain ? disabled : !canEdit}
               onClick={() =>
                 uncertain
-                  ? retry(operation.input.requestId)
-                  : onEdit(operation.input.content)
+                  ? retry(failure.requestId)
+                  : onEdit(failure.input.content)
               }
               size="sm"
               type="button"
               variant="outline"
             >
               {uncertain
-                ? operation.conversationId === undefined
+                ? failure.target === "new"
                   ? "Recover chat"
                   : "Check message"
                 : "Edit message"}
@@ -73,7 +75,7 @@ export function SendFeedback({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 max-h-28 overflow-y-auto whitespace-pre-wrap break-words text-xs">
-                {operation.input.content}
+                {failure.input.content}
               </CollapsibleContent>
             </Collapsible>
           </>

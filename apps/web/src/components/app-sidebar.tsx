@@ -225,8 +225,9 @@ export function AppSidebar({
                   {items.map((conversation) => {
                     const unconfirmed = outbox.operations.some(
                       (operation) =>
-                        operation.phase !== "complete" &&
-                        operation.conversationId === conversation.id,
+                        (operation.phase === "submitting" ||
+                          operation.phase === "uncertain") &&
+                        operation.target === conversation.id,
                     );
                     const deleting =
                       deletion.isPending &&

@@ -15,7 +15,7 @@ import { modelAvailable } from "@/lib/models";
 export function CreateConversation() {
   const connection = useConnection();
   const send = useSend();
-  const { operation, acknowledge } = send;
+  const { operation } = send;
   const navigate = useNavigate();
   const opened = useRef<string | undefined>(undefined);
   const [savedDraft, setDraft, { isPersistent }] = useSessionStorageState(
@@ -26,21 +26,24 @@ export function CreateConversation() {
   const [selection, setSelection] = useState<ModelReference>();
   const models = useModels();
   const model =
-    selection ?? operation?.creation?.model ?? models.data?.defaultModel;
+    selection ??
+    (operation?.target === "new" && operation.phase !== "complete"
+      ? operation.creation.model
+      : undefined) ??
+    models.data?.defaultModel;
   const connected = connection.status === "connected";
   const starting = operation?.phase === "submitting";
-  const unresolved = operation !== undefined && operation.phase !== "complete";
+  const unresolved = operation !== undefined && operation.phase !== "rejected";
 
   useEffect(() => {
     if (
-      operation?.conversationId !== undefined &&
-      opened.current !== operation.input.requestId
+      operation?.phase === "complete" &&
+      opened.current !== operation.requestId
     ) {
-      opened.current = operation.input.requestId;
-      acknowledge(operation.input.requestId);
+      opened.current = operation.requestId;
       void navigate(`/conversations/${operation.conversationId}`);
     }
-  }, [acknowledge, navigate, operation]);
+  }, [navigate, operation]);
 
   const canSubmit =
     connected &&

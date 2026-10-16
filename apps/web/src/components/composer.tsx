@@ -34,7 +34,7 @@ export function Composer({
   const { operation } = send;
   const connected = connection.status === "connected";
   const sending = operation?.phase === "submitting";
-  const unresolved = operation !== undefined && operation.phase !== "complete";
+  const unresolved = operation !== undefined && operation.phase !== "rejected";
 
   const canSend =
     connected &&
