@@ -6,22 +6,22 @@ import {
   type ConversationPage,
   type ConversationState,
   type ConversationSummary,
-  CreateConversationInputSchema,
-  ListConversationsInputSchema,
-  ListModelsInputSchema,
+  type CreateConversationInput,
+  type ListConversationsInput,
+  type ListModelsInput,
   type ModelCatalog,
   type ModelSelectionReceipt,
   type Result,
-  SetModelInputSchema,
-  SetToolsInputSchema,
-  StopInputSchema,
+  type SetModelInput,
+  type SetToolsInput,
+  type StopInput,
   type StopReceipt,
   type SubmissionReceipt,
-  SubmitInputSchema,
+  type SubmitInput,
   type ToolCatalog,
   type ToolSelectionReceipt,
 } from "@lab/contracts";
-import { type Static, type TSchema, Type } from "typebox";
+import { Type } from "typebox";
 import { Check } from "typebox/value";
 import type { ToolRegistry } from "./extensions";
 import {
@@ -63,80 +63,73 @@ export class Harness implements Runtime {
   }
 
   listTools(context: Context): Promise<Result<ToolCatalog>> {
-    return this.perform(Type.Object({}), {}, context, async () => ({
+    return this.perform(context, async () => ({
       ok: true,
       value: this.tools.catalog(),
     }));
   }
 
-  listModels(input: unknown, context: Context): Promise<Result<ModelCatalog>> {
-    return this.perform(
-      ListModelsInputSchema,
-      input,
-      context,
-      async (input) => ({
-        ok: true,
-        value: await this.models.list(this.configuration.model, input, context),
-      }),
-    );
+  listModels(
+    input: ListModelsInput,
+    context: Context,
+  ): Promise<Result<ModelCatalog>> {
+    return this.perform(context, async () => ({
+      ok: true,
+      value: await this.models.list(this.configuration.model, input, context),
+    }));
   }
 
   listConversations(
-    input: unknown,
+    input: ListConversationsInput,
     context: Context,
   ): Promise<Result<ConversationPage>> {
-    return this.perform(
-      ListConversationsInputSchema,
-      input,
-      context,
-      async (input) => {
-        const cursor =
-          input.cursor === undefined ? undefined : parseCursor(input.cursor);
+    return this.perform(context, async () => {
+      const cursor =
+        input.cursor === undefined ? undefined : parseCursor(input.cursor);
 
-        if (cursor === null) {
-          return {
-            ok: false,
-            error: {
-              code: "invalid_input",
-              message: "Invalid conversation cursor.",
-            },
-          };
-        }
+      if (cursor === null) {
+        return {
+          ok: false,
+          error: {
+            code: "invalid_input",
+            message: "Invalid conversation cursor.",
+          },
+        };
+      }
 
-        const page = await this.harness.commit(async (tx) => {
-          const items: ConversationSummary[] = [];
-          let next: pi.Cursor | undefined = cursor;
+      const page = await this.harness.commit(async (tx) => {
+        const items: ConversationSummary[] = [];
+        let next: pi.Cursor | undefined = cursor;
 
-          do {
-            const page = await tx.scanConversations(
-              { order: "descending" },
-              input.limit - items.length,
-              next,
-            );
+        do {
+          const page = await tx.scanConversations(
+            { order: "descending" },
+            input.limit - items.length,
+            next,
+          );
 
-            const summaries = await Promise.all(
-              page.items.map(async ({ id }) => {
-                const { title, createdAt, deleted } = parseConversationDoc(
-                  await tx.doc(ConversationDoc, id),
-                );
+          const summaries = await Promise.all(
+            page.items.map(async ({ id }) => {
+              const { title, createdAt, deleted } = parseConversationDoc(
+                await tx.doc(ConversationDoc, id),
+              );
 
-                return deleted ? [] : [{ id, title, createdAt }];
-              }),
-            );
+              return deleted ? [] : [{ id, title, createdAt }];
+            }),
+          );
 
-            items.push(...summaries.flat());
-            next = page.next;
-          } while (items.length < input.limit && next !== undefined);
+          items.push(...summaries.flat());
+          next = page.next;
+        } while (items.length < input.limit && next !== undefined);
 
-          return {
-            items,
-            ...(next === undefined ? {} : { next: JSON.stringify(next) }),
-          };
-        }, context);
+        return {
+          items,
+          ...(next === undefined ? {} : { next: JSON.stringify(next) }),
+        };
+      }, context);
 
-        return { ok: true, value: page };
-      },
-    );
+      return { ok: true, value: page };
+    });
   }
 
   subscribeConversations(listener: (revision: number) => void): () => void {
@@ -154,105 +147,104 @@ export class Harness implements Runtime {
   }
 
   createConversation(
-    input: unknown,
+    input: CreateConversationInput,
     context: Context,
   ): Promise<Result<ConversationSummary>> {
-    return this.perform(
-      CreateConversationInputSchema,
-      input,
-      context,
-      (input) =>
-        this.admit(`create:${input.requestId}`, context, async () => {
-          const snapshot = await this.harness.snapshot(
-            CreationRequestDoc,
-            input.requestId,
-            context,
-          );
-          const request =
-            snapshot === undefined
-              ? undefined
-              : parseCreationRequestDoc(snapshot);
+    return this.perform(context, () =>
+      this.admit(`create:${input.requestId}`, context, async () => {
+        const snapshot = await this.harness.snapshot(
+          CreationRequestDoc,
+          input.requestId,
+          context,
+        );
+        const request =
+          snapshot === undefined
+            ? undefined
+            : parseCreationRequestDoc(snapshot);
 
-          if (request?.conversationId != null) {
-            return this.withConversation(
-              request.conversationId,
-              context,
-              async (handle) => ({
-                ok: true,
-                value: await this.harness.commit(
-                  (tx) => summary(tx, handle.id),
-                  context,
-                ),
-              }),
+        if (request?.conversationId != null) {
+          return this.withConversation(
+            request.conversationId,
+            context,
+            async (handle) => ({
+              ok: true,
+              value: await this.harness.commit(
+                (tx) => summary(tx, handle.id),
+                context,
+              ),
+            }),
+          );
+        }
+
+        const model = await this.models.validate(
+          input.model ?? this.configuration.model,
+          context,
+        );
+
+        if (!model.ok) {
+          return model;
+        }
+
+        const tools = this.tools.select(
+          input.tools ?? this.tools.catalog().defaultTools,
+        );
+
+        if (!tools.ok) {
+          return tools;
+        }
+
+        const value = await this.harness.commit(async (tx) => {
+          const request = parseCreationRequestDoc(
+            await tx.doc(CreationRequestDoc, input.requestId, null),
+          );
+
+          if (request.conversationId !== null) {
+            return summary(tx, request.conversationId);
+          }
+
+          const { id } = await tx.createConversation({
+            ownership: { kind: "ownerless" },
+          });
+
+          await pi.configure(tx, id, {
+            model: model.value,
+            extensions: this.tools.extensions,
+            tools: tools.value,
+          });
+
+          parseConversationDoc(await tx.doc(ConversationDoc, id)).title =
+            input.title;
+
+          if (input.title === UNTITLED_CONVERSATION) {
+            await tx.createTask(
+              TitleTask,
+              {},
+              {
+                conversationId: id,
+                ownership: { kind: "conversation" },
+                background: true,
+              },
             );
           }
 
-          const model = await this.models.validate(
-            input.model ?? this.configuration.model,
-            context,
-          );
+          request.conversationId = id;
 
-          if (!model.ok) {
-            return model;
-          }
+          return summary(tx, id);
+        }, context);
 
-          const tools = this.tools.select(
-            input.tools ?? this.tools.catalog().defaultTools,
-          );
-
-          if (!tools.ok) {
-            return tools;
-          }
-
-          const value = await this.harness.commit(async (tx) => {
-            const request = parseCreationRequestDoc(
-              await tx.doc(CreationRequestDoc, input.requestId, null),
-            );
-
-            if (request.conversationId !== null) {
-              return summary(tx, request.conversationId);
-            }
-
-            const { id } = await tx.createConversation({
-              ownership: { kind: "ownerless" },
-            });
-
-            await pi.configure(tx, id, {
-              model: model.value,
-              extensions: this.tools.extensions,
-              tools: tools.value,
-            });
-
-            parseConversationDoc(await tx.doc(ConversationDoc, id)).title =
-              input.title;
-
-            if (input.title === UNTITLED_CONVERSATION) {
-              await tx.createTask(
-                TitleTask,
-                {},
-                {
-                  conversationId: id,
-                  ownership: { kind: "conversation" },
-                  background: true,
-                },
-              );
-            }
-
-            request.conversationId = id;
-
-            return summary(tx, id);
-          }, context);
-
-          return this.withConversation(value.id, context, async () => ({
-            ok: true,
-            value,
-          }));
-        }),
+        return this.withConversation(value.id, context, async () => ({
+          ok: true,
+          value,
+        }));
+      }),
     );
   }
 
-  deleteConversation(id: unknown, context: Context): Promise<Result<null>> {
-    return this.perform(ConversationIdSchema, id, context, (id) =>
+  deleteConversation(
+    id: ConversationId,
+    context: Context,
+  ): Promise<Result<null>> {
+    return this.perform(context, () =>
       this.withConversation(
         id,
         context,
@@ -273,10 +265,10 @@ export class Harness implements Runtime {
   }
 
   observeConversation(
-    id: unknown,
+    id: ConversationId,
     context: Context,
   ): Promise<Result<AttachedReplicatedState<ConversationState>>> {
-    return this.perform(ConversationIdSchema, id, context, (id) =>
+    return this.perform(context, () =>
       this.withConversation(id, context, async (handle) => ({
         ok: true,
         value: await ConversationObservation.open(
@@ -291,136 +283,120 @@ export class Harness implements Runtime {
   }
 
   submit(
-    id: unknown,
-    input: unknown,
+    id: ConversationId,
+    input: SubmitInput,
     context: Context,
   ): Promise<Result<SubmissionReceipt>> {
-    return this.perform(
-      Type.Tuple([ConversationIdSchema, SubmitInputSchema]),
-      [id, input],
-      context,
-      ([id, input]) =>
-        this.withConversation(id, context, async (handle) => {
-          const existing = await this.harness.commit(
-            (tx) => tx.submissionByRequest(handle.id, input.requestId),
-            context,
+    return this.perform(context, () =>
+      this.withConversation(id, context, async (handle) => {
+        const existing = await this.harness.commit(
+          (tx) => tx.submissionByRequest(handle.id, input.requestId),
+          context,
+        );
+
+        if (existing === undefined) {
+          const error = this.tools.error(
+            await this.harness.snapshot(pi.AgentDoc, handle.id, context),
           );
 
-          if (existing === undefined) {
-            const error = this.tools.error(
-              await this.harness.snapshot(pi.AgentDoc, handle.id, context),
-            );
-
-            if (error !== undefined) {
-              return { ok: false, error };
-            }
-
-            const model = await this.models.validate(
-              (await handle.agent(context)).model,
-              context,
-            );
-
-            if (!model.ok) {
-              return model;
-            }
+          if (error !== undefined) {
+            return { ok: false, error };
           }
 
-          return {
-            ok: true,
-            value: await submit(handle, input, context),
-          };
-        }),
-    );
-  }
-
-  setModel(
-    id: unknown,
-    input: unknown,
-    context: Context,
-  ): Promise<Result<ModelSelectionReceipt>> {
-    return this.perform(
-      Type.Tuple([ConversationIdSchema, SetModelInputSchema]),
-      [id, input],
-      context,
-      ([id, input]) =>
-        this.withConversation(id, context, async (handle) => {
-          const model = await this.models.validate(input.model, context);
+          const model = await this.models.validate(
+            (await handle.agent(context)).model,
+            context,
+          );
 
           if (!model.ok) {
             return model;
           }
+        }
 
-          await handle.configure({ model: model.value }, context);
+        return {
+          ok: true,
+          value: await submit(handle, input, context),
+        };
+      }),
+    );
+  }
 
-          return {
-            ok: true,
-            value: {
-              conversationId: handle.id,
-              model: model.value,
-              appliesAt: "next_request_preparation",
-            },
-          };
-        }),
+  setModel(
+    id: ConversationId,
+    input: SetModelInput,
+    context: Context,
+  ): Promise<Result<ModelSelectionReceipt>> {
+    return this.perform(context, () =>
+      this.withConversation(id, context, async (handle) => {
+        const model = await this.models.validate(input.model, context);
+
+        if (!model.ok) {
+          return model;
+        }
+
+        await handle.configure({ model: model.value }, context);
+
+        return {
+          ok: true,
+          value: {
+            conversationId: handle.id,
+            model: model.value,
+            appliesAt: "next_request_preparation",
+          },
+        };
+      }),
     );
   }
 
   setTools(
-    id: unknown,
-    input: unknown,
+    id: ConversationId,
+    input: SetToolsInput,
     context: Context,
   ): Promise<Result<ToolSelectionReceipt>> {
-    return this.perform(
-      Type.Tuple([ConversationIdSchema, SetToolsInputSchema]),
-      [id, input],
-      context,
-      ([id, input]) =>
-        this.withConversation(id, context, async (handle) => {
-          const tools = this.tools.select(input.tools);
+    return this.perform(context, () =>
+      this.withConversation(id, context, async (handle) => {
+        const tools = this.tools.select(input.tools);
 
-          if (!tools.ok) {
-            return tools;
+        if (!tools.ok) {
+          return tools;
+        }
+
+        await this.harness.commit(async (tx) => {
+          const live = await tx.doc(pi.LiveDoc, handle.id);
+          const inbox = await tx.doc(pi.InboxDoc, handle.id);
+
+          if (live.run !== undefined || inbox.items.length > 0) {
+            throw new pi.ConversationBusy(handle.id);
           }
 
-          await this.harness.commit(async (tx) => {
-            const live = await tx.doc(pi.LiveDoc, handle.id);
-            const inbox = await tx.doc(pi.InboxDoc, handle.id);
+          await pi.configure(tx, handle.id, {
+            extensions: this.tools.extensions,
+            tools: tools.value,
+          });
+        }, context);
 
-            if (live.run !== undefined || inbox.items.length > 0) {
-              throw new pi.ConversationBusy(handle.id);
-            }
-
-            await pi.configure(tx, handle.id, {
-              extensions: this.tools.extensions,
-              tools: tools.value,
-            });
-          }, context);
-
-          return {
-            ok: true,
-            value: {
-              conversationId: handle.id,
-              tools: [...input.tools],
-              appliesAt: "next_submission",
-            },
-          };
-        }),
+        return {
+          ok: true,
+          value: {
+            conversationId: handle.id,
+            tools: [...input.tools],
+            appliesAt: "next_submission",
+          },
+        };
+      }),
     );
   }
 
   stop(
-    id: unknown,
-    input: unknown,
+    id: ConversationId,
+    input: StopInput,
     context: Context,
   ): Promise<Result<StopReceipt>> {
-    return this.perform(
-      Type.Tuple([ConversationIdSchema, StopInputSchema]),
-      [id, input],
-      context,
-      ([id, input]) =>
-        this.withConversation(id, context, async (handle) => ({
-          ok: true,
-          value: await stop(handle, input, context),
-        })),
+    return this.perform(context, () =>
+      this.withConversation(id, context, async (handle) => ({
+        ok: true,
+        value: await stop(handle, input, context),
+      })),
     );
   }
 
@@ -432,6 +408,7 @@ export class Harness implements Runtime {
   ): Promise<Result<T>> {
     return this.admit(`conversation:${id}`, context, async () => {
       const handle = await conversation(this.harness, id, context);
+
       const metadata =
         handle === undefined || options.includeDeleted
           ? undefined
@@ -477,11 +454,9 @@ export class Harness implements Runtime {
     }
   }
 
-  private async perform<S extends TSchema, T>(
-    schema: S,
-    input: unknown,
+  private async perform<T>(
     context: Context,
-    operation: (input: Static<S>) => Promise<Result<T>>,
+    operation: () => Promise<Result<T>>,
   ): Promise<Result<T>> {
     context.abortSignal?.throwIfAborted();
 
@@ -492,15 +467,8 @@ export class Harness implements Runtime {
       };
     }
 
-    if (!Check(schema, input)) {
-      return {
-        ok: false,
-        error: { code: "invalid_input", message: "Invalid runtime input." },
-      };
-    }
-
     try {
-      return await operation(input);
+      return await operation();
     } catch (error) {
       context.abortSignal?.throwIfAborted();
 
@@ -521,6 +489,7 @@ async function summary(
   const { title, createdAt } = parseConversationDoc(
     await tx.doc(ConversationDoc, id),
   );
+
   return { id, title, createdAt };
 }
 

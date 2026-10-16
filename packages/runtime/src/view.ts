@@ -156,12 +156,15 @@ export class ConversationObservation
           }
 
           const value = parseConversationDoc(snapshot);
+
           observation.deleted = value.deleted;
+
           observation.summary = {
             id: conversation.id,
             title: value.title,
             createdAt: value.createdAt,
           };
+
           observation.schedule(context);
         }),
       );
