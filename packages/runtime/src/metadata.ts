@@ -62,10 +62,6 @@ const ConversationDocSchema = Type.Object(
   { additionalProperties: false },
 );
 
-const PreviousConversationDocSchema = Type.Omit(ConversationDocSchema, [
-  "deleted",
-]);
-
 const CreationRequestDocSchema = Type.Object(
   {
     conversationId: Type.Union([
@@ -92,15 +88,6 @@ export const ConversationDoc = defineDoc<Static<typeof ConversationDocSchema>>({
   history: "latest",
   fork: "initial",
   initial: () => ({ title: "", createdAt: Date.now(), deleted: false }),
-  migrate: (value) => {
-    const { title, createdAt } = validate(
-      PreviousConversationDocSchema,
-      value,
-      "Invalid stored conversation metadata",
-    );
-
-    return { title, createdAt, deleted: false };
-  },
 });
 
 export const CreationRequestDoc = defineDocFamily<
