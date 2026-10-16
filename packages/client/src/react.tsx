@@ -343,7 +343,7 @@ export function useModels(enabled = true) {
 
       if (client.connection.getSnapshot().status === "connected") {
         await queries
-          .fetchQuery({
+          .query({
             ...options,
             queryFn: ({ signal }) => load(true, signal),
             staleTime: 0,
