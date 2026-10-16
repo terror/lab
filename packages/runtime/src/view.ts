@@ -29,8 +29,8 @@ export class ConversationObservation
   implements AttachedReplicatedState<ConversationState>
 {
   private readonly disposers: (() => void)[] = [];
-  private readonly entries = new WeakMap<
-    pi.EntryRecord,
+  private readonly entries = new Map<
+    pi.EntryId,
     ConversationState["entries"][number]
   >();
 
@@ -42,6 +42,7 @@ export class ConversationObservation
   private source: AttachedReplicatedState<pi.ConversationView> | undefined;
   private state: MutableReplicatedState<ConversationState> | undefined;
   private summary: ConversationSummary | undefined;
+  private transcript: ConversationState["entries"] | undefined;
   private unavailable = false;
 
   private constructor(private readonly tools: ToolRegistry) {}
@@ -60,14 +61,20 @@ export class ConversationObservation
         harness.subscribeCommits((publication, context) => {
           for (const change of publication.changes) {
             if (
-              change.type !== "submission" ||
-              change.value.conversationId !== conversation.id ||
-              change.value.type !== "input"
+              (change.type !== "entry" && change.type !== "submission") ||
+              change.value.conversationId !== conversation.id
             ) {
               continue;
             }
 
-            observation.updateSubmission(change.value);
+            if (change.type === "entry") {
+              observation.updateEntry(change.value);
+            } else if (change.value.type === "input") {
+              observation.updateSubmission(change.value);
+            } else {
+              continue;
+            }
+
             observation.schedule(context);
           }
         }),
@@ -91,6 +98,23 @@ export class ConversationObservation
       );
 
       let cursor: pi.Cursor | undefined;
+
+      do {
+        context.abortSignal?.throwIfAborted();
+
+        const page = await storage.scanEntries(
+          { conversationId: conversation.id, order: "descending" },
+          100,
+          cursor,
+          context,
+        );
+
+        for (const record of page.items) {
+          observation.updateEntry(record);
+        }
+
+        cursor = page.next;
+      } while (cursor !== undefined);
 
       do {
         context.abortSignal?.throwIfAborted();
@@ -203,6 +227,8 @@ export class ConversationObservation
 
     this.source = undefined;
 
+    this.entries.clear();
+    this.transcript = undefined;
     this.latest = undefined;
     this.latestNonQueued = undefined;
   }
@@ -213,6 +239,20 @@ export class ConversationObservation
     }
 
     return this.state;
+  }
+
+  private updateEntry(record: pi.EntryRecord) {
+    if (pi.CompactionEntry.is(record) || this.entries.has(record.id)) {
+      return;
+    }
+
+    this.entries.set(record.id, {
+      id: record.id,
+      kind: record.kind,
+      messages: (record.model ?? []).map(projectMessage),
+    });
+
+    this.transcript = undefined;
   }
 
   private updateSubmission(record: InputSubmission, replace = true) {
@@ -302,36 +342,31 @@ export class ConversationObservation
     const error =
       this.tools.error(agent) ?? conversationError(live, this.latestNonQueued);
 
+    this.transcript ??= [...this.entries.values()].sort((a, b) => a.id - b.id);
+
     return {
       conversation: this.summary,
       ...(agent?.model === undefined ? {} : { model: { ...agent.model } }),
       selectedTools: this.tools.selection(agent),
       busy: live?.run !== undefined,
-      entries: source.entries.map((entry) => {
-        const value = this.entries.get(entry) ?? {
-          id: entry.id,
-          kind: entry.kind,
-          messages: (entry.model ?? []).map(projectMessage),
-        };
-
-        this.entries.set(entry, value);
-        return value;
-      }),
+      entries: this.transcript,
       ...(partial === undefined
         ? {}
         : { partial: contentText(partial.content) }),
       tools: [
         ...(live?.tools ?? []).map((tool) => {
-          const result = source.entries
-            .find(({ id }) => id === tool.entry)
-            ?.model?.find((message) => message.role === "toolResult");
+          const result =
+            tool.entry === undefined
+              ? undefined
+              : this.entries
+                  .get(tool.entry)
+                  ?.messages.find((message) => message.role === "tool");
 
           return projectTool(
             tool,
-            result,
-            tool.output ??
-              (result === undefined ? "" : contentText(result.content)),
-            result === undefined ? tool.details : result.details,
+            result?.tool,
+            tool.output ?? result?.text ?? "",
+            result === undefined ? tool.details : result.tool.details,
           );
         }),
         ...(live?.nestedTools ?? []).map((tool) =>
