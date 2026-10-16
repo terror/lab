@@ -139,6 +139,20 @@ export class Harness implements Runtime {
     );
   }
 
+  subscribeConversations(listener: (revision: number) => void): () => void {
+    return this.harness.subscribeCommits((publication) => {
+      if (
+        publication.changes.some(
+          (change) =>
+            (change.type === "document" || change.type === "document.copy") &&
+            change.record.kind === ConversationDoc.definition.kind,
+        )
+      ) {
+        listener(publication.seq);
+      }
+    });
+  }
+
   createConversation(
     input: unknown,
     context: Context,

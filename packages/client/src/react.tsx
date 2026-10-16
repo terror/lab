@@ -1,6 +1,5 @@
-import type { ConversationId, ConversationPage } from "@lab/contracts";
+import type { ConversationId } from "@lab/contracts";
 import {
-  type InfiniteData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -36,28 +35,14 @@ export function LabProvider({
   useEffect(() => client.connect(), [client]);
 
   useEffect(() => {
-    const created = new Set<ConversationId>();
-
-    const update = () => {
-      const conversations = client.outbox
-        .getSnapshot()
-        .operations.filter(({ creation }) => creation !== undefined)
-        .map(({ conversationId }) => conversationId)
-        .filter((id) => id !== undefined)
-        .filter((id) => !created.has(id));
-
-      for (const id of conversations) {
-        created.add(id);
-      }
-
-      if (conversations.length > 0) {
-        void queries.invalidateQueries({ queryKey: queryKeys.conversations });
-      }
+    const update = async () => {
+      await queries.cancelQueries({ queryKey: queryKeys.conversations });
+      await queries.invalidateQueries({ queryKey: queryKeys.conversations });
     };
 
-    const unsubscribe = client.outbox.subscribe(update);
+    const unsubscribe = client.subscribeConversations(() => void update());
 
-    update();
+    void update();
 
     return unsubscribe;
   }, [client, queries]);
@@ -162,7 +147,6 @@ export function useConversations() {
 
 export function useConversation(id: ConversationId) {
   const client = useLabClient();
-  const queries = useQueryClient();
 
   const conversation = useMemo(() => client.conversation(id), [client, id]);
 
@@ -170,52 +154,6 @@ export function useConversation(id: ConversationId) {
     conversation.subscribe,
     conversation.getSnapshot,
   );
-
-  const observedId = snapshot.value?.conversation.id;
-  const createdAt = snapshot.value?.conversation.createdAt;
-  const title = snapshot.value?.conversation.title;
-
-  useEffect(() => {
-    if (
-      observedId === undefined ||
-      createdAt === undefined ||
-      title === undefined
-    ) {
-      return;
-    }
-
-    queries.setQueryData<InfiniteData<ConversationPage>>(
-      queryKeys.conversations,
-      (current) => {
-        if (current === undefined) {
-          return current;
-        }
-
-        const pages = current.pages.map((page) => {
-          if (
-            !page.items.some(
-              (item) =>
-                item.id === observedId &&
-                (item.title !== title || item.createdAt !== createdAt),
-            )
-          ) {
-            return page;
-          }
-
-          return {
-            ...page,
-            items: page.items.map((item) =>
-              item.id === observedId ? { ...item, title, createdAt } : item,
-            ),
-          };
-        });
-
-        return pages.every((page, index) => page === current.pages[index])
-          ? current
-          : { ...current, pages };
-      },
-    );
-  }, [createdAt, observedId, queries, title]);
 
   return {
     ...snapshot,
@@ -229,7 +167,6 @@ export function useDeleteConversation(
   onDeleted?: (id: ConversationId) => void,
 ) {
   const client = useLabClient();
-  const queries = useQueryClient();
 
   return useMutation({
     networkMode: "always",
@@ -241,27 +178,7 @@ export function useDeleteConversation(
         throw new Error(result.error.message);
       }
     },
-    onSuccess: async (_value, id) => {
-      await queries.cancelQueries({ queryKey: queryKeys.conversations });
-
-      queries.setQueryData<InfiniteData<ConversationPage>>(
-        queryKeys.conversations,
-        (current) =>
-          current === undefined
-            ? current
-            : {
-                ...current,
-                pages: current.pages.map((page) => ({
-                  ...page,
-                  items: page.items.filter((item) => item.id !== id),
-                })),
-              },
-      );
-
-      void queries.invalidateQueries({ queryKey: queryKeys.conversations });
-
-      onDeleted?.(id);
-    },
+    onSuccess: (_value, id) => onDeleted?.(id),
   });
 }
 

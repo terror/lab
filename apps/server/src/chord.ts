@@ -4,6 +4,7 @@ import {
   withAbortSignal,
 } from "@earendil-works/chord/context";
 import {
+  ConversationListRevisionSchema,
   ConversationStateSchema,
   LabConversation,
   LabService,
@@ -20,11 +21,30 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
       principal.kind === "server" ? "server" : `browser:${principal.sessionId}`,
   });
 
-  host.serve(LabService, (_input, principal) => {
+  host.serve(LabService, (_input, principal, self) => {
     sessions.authorize(principal);
+
+    const conversations = self.state(
+      "conversations",
+      ConversationListRevisionSchema,
+      0,
+    );
+
+    self.on(
+      "conversations",
+      {
+        subscribe: (listener: (revision: number) => void) =>
+          runtime.subscribeConversations(listener),
+      },
+      (revision, context) => {
+        sessions.authorize(principal);
+        conversations.replace(context, revision);
+      },
+    );
 
     return {
       variant: "default",
+      conversations,
       listTools: (_input, context) => {
         sessions.authorize(principal);
         return runtime.listTools(callContext(context));

@@ -163,6 +163,11 @@ export const ConversationSummarySchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const ConversationListRevisionSchema = Type.Integer({
+  minimum: 0,
+  maximum: Number.MAX_SAFE_INTEGER,
+});
+
 export const ListConversationsInputSchema = Type.Object(
   {
     limit: Type.Integer({ minimum: 1, maximum: 100, default: 50 }),

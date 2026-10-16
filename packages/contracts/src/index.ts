@@ -2,6 +2,7 @@ import { hostNamed, method, remote } from "@earendil-works/chord";
 import { Type } from "typebox";
 import {
   ConversationIdSchema,
+  ConversationListRevisionSchema,
   ConversationPageSchema,
   ConversationStateSchema,
   ConversationSummarySchema,
@@ -25,11 +26,12 @@ export { omitUndefined } from "./omit-undefined";
 export * from "./schemas";
 
 export const LabService = remote("lab.service", {
-  version: 4,
+  version: 5,
   host: hostNamed("server"),
   input: Type.Object({}, { additionalProperties: false }),
   variants: {
     default: {
+      state: { conversations: ConversationListRevisionSchema },
       methods: {
         listTools: method(
           Type.Object({}, { additionalProperties: false }),

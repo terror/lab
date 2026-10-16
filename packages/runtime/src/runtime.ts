@@ -38,6 +38,7 @@ export interface Runtime {
     input: ListConversationsInput,
     context: Context,
   ): Promise<Result<ConversationPage>>;
+  subscribeConversations(listener: (revision: number) => void): () => void;
   createConversation(
     input: CreateConversationInput,
     context: Context,

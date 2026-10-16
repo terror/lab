@@ -108,11 +108,13 @@ export class Connection {
 
   private readonly snapshots = new Store(snapshot(this.current));
   private readonly conversations = new Set<ConversationClient>();
+  private readonly conversationChanges = new Store(0);
 
   constructor(private readonly onUnauthorized?: () => void) {}
 
   readonly getSnapshot = this.snapshots.getSnapshot;
   readonly subscribe = this.snapshots.subscribe;
+  readonly subscribeConversations = this.conversationChanges.subscribe;
 
   readonly connect = () => {
     this.owners += 1;
@@ -298,6 +300,21 @@ export class Connection {
               service,
               connectedAt: Date.now(),
             });
+
+            if (this.active(attempt)?.status === "connected") {
+              attempt.addCleanup(
+                service.conversations.subscribe(() => {
+                  if (
+                    this.active(attempt)?.status === "connected" &&
+                    service.status === "live"
+                  ) {
+                    this.conversationChanges.set(
+                      this.conversationChanges.getSnapshot() + 1,
+                    );
+                  }
+                }),
+              );
+            }
           }
         } else if (service.status === "gone") {
           this.failed(attempt, clientError(service.error));

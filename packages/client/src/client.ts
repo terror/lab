@@ -91,6 +91,10 @@ export class LabClient {
     }, signal);
   }
 
+  subscribeConversations(listener: () => void) {
+    return this.transport.subscribeConversations(listener);
+  }
+
   async deleteConversation(
     id: ConversationId,
     signal?: AbortSignal,
