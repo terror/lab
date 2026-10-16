@@ -146,7 +146,7 @@ export function AppSidebar({
               />
               <Input
                 aria-label="Filter loaded chats"
-                className="h-9 rounded-sm bg-background/60 pr-9 pl-9 text-xs shadow-none md:text-xs"
+                className="h-9 rounded-sm bg-background/60 pr-9 pl-9 text-xs shadow-none md:text-xs [&::-webkit-search-cancel-button]:hidden"
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Filter loaded chats"
                 type="search"
