@@ -1,5 +1,5 @@
 import type { Context } from "@earendil-works/chord";
-import type { Api, Model, Models, Provider } from "@earendil-works/pi-ai";
+import type { Api, Model, Models } from "@earendil-works/pi-ai";
 import type {
   ListModelsInput,
   ModelCatalog,
@@ -7,10 +7,6 @@ import type {
   ProviderInfo,
   Result,
 } from "@lab/wire";
-
-export type ProviderFactory = (options: {
-  signal: AbortSignal;
-}) => readonly Provider[] | Promise<readonly Provider[]>;
 
 export class ModelRegistry {
   constructor(private readonly models: Models) {}

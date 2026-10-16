@@ -1,9 +1,14 @@
-import { ChordError, createHost } from "@earendil-works/chord";
+import {
+  ChordError,
+  type Context,
+  type Ctx,
+  createHost,
+} from "@earendil-works/chord";
 import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { callContext, type Runtime } from "@lab/runtime";
+import type { Runtime } from "@lab/runtime";
 import {
   ConversationListRevisionSchema,
   ConversationStateSchema,
@@ -118,6 +123,10 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
   });
 
   return host;
+}
+
+function callContext(context: Ctx): Context {
+  return withAbortSignal(context.signal, BACKGROUND_CONTEXT);
 }
 
 function unwrap<T>(result: Result<T>): T {

@@ -1,7 +1,21 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { Provider } from "@earendil-works/pi-ai";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
-import { loadProviders } from "@lab/runtime";
+import { Type } from "typebox";
+import { Check } from "typebox/value";
+
+const ProviderModuleSchema = Type.Object({
+  default: Type.Function([Type.Unknown()], Type.Unknown()),
+});
+
+const ProvidersSchema = Type.Array(
+  Type.Object({ id: Type.String({ minLength: 1, pattern: "\\S" }) }),
+);
+
+type ProviderFactory = (options: {
+  signal: AbortSignal;
+}) => readonly Provider[] | Promise<readonly Provider[]>;
 
 export type ModelConfiguration = {
   modelsPath?: string;
@@ -29,7 +43,35 @@ export async function loadModels(
       pathToFileURL(resolve(configuration.providerModule)).href
     );
 
-    const providers = await loadProviders(module, signal);
+    signal.throwIfAborted();
+
+    if (!Check(ProviderModuleSchema, module)) {
+      throw new Error(
+        "The provider module must default-export a provider factory",
+      );
+    }
+
+    const { default: factory } = module;
+
+    const providers = await (factory as ProviderFactory)({ signal });
+
+    signal.throwIfAborted();
+
+    if (!Check(ProvidersSchema, providers)) {
+      throw new Error(
+        "The provider factory must return an array of providers with valid IDs",
+      );
+    }
+
+    const ids = new Set<string>();
+
+    for (const provider of providers) {
+      if (ids.has(provider.id)) {
+        throw new Error(`Duplicate custom provider "${provider.id}"`);
+      }
+
+      ids.add(provider.id);
+    }
 
     for (const provider of providers) {
       models.registerNativeProvider(provider);

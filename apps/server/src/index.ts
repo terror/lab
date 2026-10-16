@@ -4,7 +4,7 @@ import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { createBuiltinTools, openRuntime } from "@lab/runtime";
+import { BuiltinExtension, openRuntime } from "@lab/runtime";
 import { loadDefaultModel, loadModels } from "./models";
 import { serve } from "./server";
 
@@ -40,7 +40,7 @@ async function main() {
           join(homedir(), ".local", "share", "lab", "lab.sqlite"),
         ...(model === undefined ? {} : { model }),
         ...(defaultModel === undefined ? {} : { defaultModel }),
-        extensions: [createBuiltinTools()],
+        extensions: [BuiltinExtension],
         ...(Bun.env.LAB_EXTENSION_MODULES === undefined
           ? {}
           : { extensionModules: JSON.parse(Bun.env.LAB_EXTENSION_MODULES) }),
