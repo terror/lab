@@ -25,7 +25,7 @@ import {
 } from "@lab/wire";
 import { Type } from "typebox";
 import { Check } from "typebox/value";
-import { loadExtensions, type ToolRegistry } from "./extensions";
+import { loadExtensions } from "./extensions";
 import {
   type Configuration,
   ConfigurationDoc,
@@ -43,6 +43,7 @@ import {
   TitleTask,
   UNTITLED_CONVERSATION,
 } from "./tasks/titles";
+import type { ToolRegistry } from "./tool-registry";
 import { ConversationObservation } from "./view";
 
 export {

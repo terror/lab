@@ -20,8 +20,8 @@ import type {
   ToolProgress,
   ToolResult,
 } from "@lab/wire";
-import type { ToolRegistry } from "./extensions";
 import { ConversationDoc, parseConversationDoc } from "./metadata";
+import type { ToolRegistry } from "./tool-registry";
 
 type InputSubmission = Extract<pi.SubmissionRecord, { type: "input" }>;
 
