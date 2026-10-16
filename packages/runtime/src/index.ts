@@ -37,7 +37,7 @@ import {
   StartRequestDoc,
 } from "./metadata";
 import { ModelRegistry } from "./models";
-import { BunSqliteDatabase } from "./sqlite";
+import { BunSqliteDatabase } from "./storage/sqlite";
 import {
   TitleExtension,
   TitleTask,
@@ -51,7 +51,7 @@ export {
   type Extension,
   type ToolRegistration,
 } from "@earendil-works/pi-durable";
-export { BunSqliteDatabase } from "./sqlite";
+export { BunSqliteDatabase } from "./storage/sqlite";
 export { BuiltinExtension } from "./tools";
 
 export type RuntimeOptions = {
