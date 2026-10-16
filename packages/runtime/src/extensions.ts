@@ -10,12 +10,14 @@ import {
 } from "@lab/contracts";
 import { Type } from "typebox";
 import { Compile } from "typebox/compile";
-import { Check } from "typebox/value";
 import type { Configuration } from "./metadata";
+import { functionSchema, validate } from "./validation";
 
 const ModulePathsSchema = Type.Array(Type.String({ minLength: 1 }), {
   uniqueItems: true,
 });
+
+const ModuleSchema = Type.Object({ default: Type.Unknown() });
 
 const ExtensionSchema = Type.Object({
   name: Type.String({
@@ -29,55 +31,150 @@ const ExtensionSchema = Type.Object({
         name: ToolNameSchema,
         description: Type.String(),
         parameters: Type.Object({ type: Type.Literal("object") }),
-        execute: Type.Function([], Type.Unknown()),
+        constrainedSampling: Type.Optional(
+          Type.Union([
+            Type.Literal(false),
+            Type.Object({
+              type: Type.Literal("json_schema"),
+              strict: Type.Union([
+                Type.Literal("prefer"),
+                Type.Literal("require"),
+              ]),
+            }),
+            Type.Object({
+              type: Type.Literal("grammar"),
+              variants: Type.Object({
+                openai_lark: Type.Optional(Type.String()),
+                openai_regex: Type.Optional(Type.String()),
+              }),
+            }),
+          ]),
+        ),
+        execute: functionSchema<pi.ToolRegistration["execute"]>(),
         replay: Type.Optional(
           Type.Union([Type.Literal("safe"), Type.Literal("unsafe")]),
+        ),
+        executionMode: Type.Optional(
+          Type.Union([Type.Literal("parallel"), Type.Literal("sequential")]),
+        ),
+        prepareArguments: Type.Optional(
+          functionSchema<
+            NonNullable<pi.ToolRegistration["prepareArguments"]>
+          >(),
+        ),
+        structuredOutputSchema: Type.Optional(
+          Type.Union([Type.Boolean(), Type.Object({})]),
+        ),
+        callers: Type.Optional(
+          Type.Array(
+            Type.Union([Type.Literal("model"), Type.Literal("tools")]),
+          ),
+        ),
+        deferred: Type.Optional(Type.Literal(true)),
+        outputLimits: Type.Optional(
+          Type.Object({
+            maxBytes: Type.Optional(Type.Number()),
+            maxLines: Type.Optional(Type.Number()),
+            retain: Type.Optional(
+              Type.Union([Type.Literal("head"), Type.Literal("tail")]),
+            ),
+          }),
         ),
       }),
     ),
   ),
-  tasks: Type.Optional(Type.Array(Type.Unknown())),
-  hooks: Type.Optional(Type.Array(Type.Unknown())),
-  sections: Type.Optional(Type.Array(Type.Unknown())),
-  wraps: Type.Optional(Type.Array(Type.Unknown())),
+  tasks: Type.Optional(
+    Type.Array(
+      Type.Object({
+        definition: Type.Object({
+          name: Type.String({ minLength: 1 }),
+          version: Type.Integer({ minimum: 1 }),
+          initial: Type.Function([Type.Unknown()], Type.Unknown()),
+          phases: Type.Record(Type.String(), Type.Function([], Type.Unknown())),
+          abort: Type.Function([], Type.Unknown()),
+          migrate: Type.Optional(Type.Function([], Type.Unknown())),
+          hooks: Type.Optional(Type.Object({})),
+        }),
+      }),
+    ),
+  ),
+  hooks: Type.Optional(
+    Type.Array(
+      Type.Object({
+        task: Type.String(),
+        handlers: Type.Object({}),
+      }),
+    ),
+  ),
+  sections: Type.Optional(
+    Type.Array(
+      Type.Object({
+        key: Type.String(),
+        render: functionSchema<pi.PromptSection["render"]>(),
+        tag: Type.Optional(Type.Boolean()),
+      }),
+    ),
+  ),
+  wraps: Type.Optional(
+    Type.Array(
+      Type.Union([
+        Type.Object({
+          tool: Type.String(),
+          wrap: functionSchema<
+            (tool: pi.ToolRegistration) => pi.ToolRegistration
+          >(),
+        }),
+        Type.Object({
+          section: Type.String(),
+          wrap: functionSchema<
+            (section: pi.PromptSection) => pi.PromptSection
+          >(),
+        }),
+      ]),
+    ),
+  ),
 });
 
 export async function loadExtensions(
-  paths: readonly string[],
-  definitions: readonly pi.Extension[],
+  paths: unknown,
+  definitions: readonly unknown[],
   registry: pi.Registry,
   context: Context,
 ) {
-  if (!Check(ModulePathsSchema, paths)) {
-    throw new Error(
-      "Extension modules must be an array of non-empty file paths",
-    );
-  }
-
-  const modules = paths.map((path) => resolve(path));
+  const modules = validate(
+    ModulePathsSchema,
+    paths,
+    "Extension modules must be an array of non-empty file paths",
+  ).map((path) => resolve(path));
 
   if (new Set(modules).size !== modules.length) {
     throw new Error("Duplicate extension module paths");
   }
 
-  const extensions = [...definitions];
+  const extensions = definitions.map(validateExtension);
 
   for (const path of modules) {
     context.abortSignal?.throwIfAborted();
 
     try {
-      const module = await import(pathToFileURL(path).href);
+      const module: unknown = await import(pathToFileURL(path).href);
+
       context.abortSignal?.throwIfAborted();
-      extensions.push(validateExtension(module.default));
+
+      const { default: extension } = validate(
+        ModuleSchema,
+        module,
+        "The extension module must default-export a Pi extension",
+      );
+
+      extensions.push(validateExtension(extension));
     } catch (cause) {
       context.abortSignal?.throwIfAborted();
       throw new Error(`Failed to load extension module "${path}"`, { cause });
     }
   }
 
-  for (const definition of extensions) {
-    const extension = validateExtension(definition);
-
+  for (const extension of extensions) {
     if (registry.snapshot().extension(extension.name) !== undefined) {
       throw new Error(`Duplicate extension "${extension.name}"`);
     }
@@ -86,6 +183,7 @@ export async function loadExtensions(
   }
 
   context.abortSignal?.throwIfAborted();
+
   return new ToolRegistry(extensions, modules);
 }
 
@@ -114,9 +212,11 @@ export class ToolRegistry {
 
   configuration(stored: Configuration | null | undefined) {
     const extensions = this.extensions.map(({ name }) => name);
+
     const toolDefinitions = [...this.tools.values()].map(
       ({ extension, tool }) => ({ name: tool.name, extension: extension.name }),
     );
+
     const taskDefinitions = this.extensions.flatMap((extension) =>
       (extension.tasks ?? []).map(({ definition }) => ({
         name: definition.name,
@@ -175,7 +275,13 @@ export class ToolRegistry {
       const definition = this.tools.get(name);
 
       if (definition === undefined) {
-        return { ok: false, error: missingTool(name) };
+        return {
+          ok: false,
+          error: {
+            code: "tool_unavailable",
+            message: `Tool "${name}" is not available in the configured extensions.`,
+          },
+        };
       }
 
       tools.push(definition.tool);
@@ -186,7 +292,9 @@ export class ToolRegistry {
 
   selection(state: pi.AgentState | undefined) {
     const extensions = this.selectedExtensions(state);
+
     const tools = state?.tools;
+
     const names = [...this.tools.values()]
       .filter(({ extension }) => extensions.includes(extension.name))
       .map(({ tool }) => tool.name);
@@ -215,7 +323,10 @@ export class ToolRegistry {
         definition === undefined ||
         !extensions.includes(definition.extension.name)
       ) {
-        return missingTool(name);
+        return {
+          code: "tool_unavailable",
+          message: `Tool "${name}" is not available in the configured extensions.`,
+        };
       }
     }
 
@@ -234,19 +345,12 @@ export class ToolRegistry {
   }
 }
 
-function missingTool(name: string): LabError {
-  return {
-    code: "tool_unavailable",
-    message: `Tool "${name}" is not available in the configured extensions.`,
-  };
-}
-
-function validateExtension(value: unknown): pi.Extension {
-  if (!Check(ExtensionSchema, value)) {
-    throw new Error("Expected a Pi extension with valid tool definitions");
-  }
-
-  const extension = value as pi.Extension;
+function validateExtension(value: unknown) {
+  const extension = validate(
+    ExtensionSchema,
+    value,
+    "Expected a Pi extension with valid tool definitions",
+  );
 
   for (const tool of extension.tools ?? []) {
     try {

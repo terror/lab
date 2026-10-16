@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { omitUndefined } from "@lab/contracts";
-import type { ProviderFactory } from "@lab/runtime";
+import { loadProviders } from "@lab/runtime";
 
 export type ModelConfiguration = {
   modelsPath?: string;
@@ -24,35 +24,13 @@ export async function loadModels(
   );
 
   if (configuration.providerModule !== undefined) {
-    const module = await import(
+    const module: unknown = await import(
       pathToFileURL(resolve(configuration.providerModule)).href
     );
 
-    signal.throwIfAborted();
-
-    if (typeof module.default !== "function") {
-      throw new Error(
-        "The provider module must default-export a provider factory",
-      );
-    }
-
-    const factory = module.default as ProviderFactory;
-    const providers = await factory({ signal });
-
-    signal.throwIfAborted();
-
-    if (!Array.isArray(providers)) {
-      throw new Error("The provider factory must return an array of providers");
-    }
-
-    const ids = new Set<string>();
+    const providers = await loadProviders(module, signal);
 
     for (const provider of providers) {
-      if (ids.has(provider.id)) {
-        throw new Error(`Duplicate custom provider "${provider.id}"`);
-      }
-
-      ids.add(provider.id);
       models.registerNativeProvider(provider);
     }
   }

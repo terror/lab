@@ -11,8 +11,9 @@ type SocketEvent = "open" | "message" | "close" | "error";
 type SocketListener = (event: { readonly data: unknown }) => void;
 
 class BunWebSocket implements WebSocketLike {
-  private readonly listeners = new Map<SocketEvent, Set<SocketListener>>();
   private closed = false;
+
+  private readonly listeners = new Map<SocketEvent, Set<SocketListener>>();
 
   constructor(private readonly socket: ServerWebSocket<SocketData>) {}
 
@@ -38,6 +39,7 @@ class BunWebSocket implements WebSocketLike {
     }
 
     this.socket.close(code, reason);
+
     this.end();
   }
 
@@ -55,7 +57,9 @@ class BunWebSocket implements WebSocketLike {
     }
 
     this.closed = true;
+
     const listeners = this.listeners.get("close");
+
     this.listeners.clear();
 
     for (const listener of listeners ?? []) {
@@ -80,6 +84,7 @@ export function webSockets(
       }
 
       const adapter = new BunWebSocket(socket);
+
       socket.data.adapter = adapter;
 
       host.accept(

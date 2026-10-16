@@ -4,19 +4,20 @@ import { createModels } from "@earendil-works/pi-ai/models";
 import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
 import * as pi from "@earendil-works/pi-durable";
 import { omitUndefined } from "@lab/contracts";
-import { Check } from "typebox/value";
-import { HarnessRuntime } from "./conversations";
 import { loadExtensions, type ToolRegistry } from "./extensions";
+import { Harness } from "./harness";
 import {
   type Configuration,
   ConfigurationDoc,
   ConfigurationSchema,
   ConversationDoc,
+  parseConfigurationDoc,
 } from "./metadata";
 import { ModelRegistry } from "./models";
 import { openHarness, openStorage } from "./pi";
 import type { RuntimeOwner } from "./runtime";
 import { TitleExtension } from "./titles";
+import { validate } from "./validation";
 
 export type RuntimeOptions = {
   path: string;
@@ -36,6 +37,7 @@ export async function openRuntime(
 
   const models = options.models ?? defaultModels();
   const extensions: pi.Extension[] = [];
+
   const registry = pi.createRegistry();
   registry.install(TitleExtension);
 
@@ -66,33 +68,26 @@ export async function openRuntime(
   })();
 
   try {
-    const stored = await harness.snapshot(ConfigurationDoc, context);
-
-    if (
-      stored?.configuration != null &&
-      !Check(ConfigurationSchema, stored.configuration)
-    ) {
-      throw new Error("Invalid stored runtime configuration");
-    }
+    const snapshot: unknown = await harness.snapshot(ConfigurationDoc, context);
+    const stored =
+      snapshot === undefined
+        ? undefined
+        : parseConfigurationDoc(snapshot).configuration;
 
     const tools = await loadExtensions(
       options.extensionModules === undefined
-        ? (stored?.configuration?.extensionModules ?? [])
+        ? (stored?.extensionModules ?? [])
         : options.extensionModules,
       options.extensions ?? [],
       registry,
       context,
     );
-    extensions.push(...tools.extensions);
-    const configuration = resolveConfiguration(
-      stored?.configuration,
-      options,
-      tools,
-    );
 
-    if (
-      JSON.stringify(stored?.configuration) !== JSON.stringify(configuration)
-    ) {
+    extensions.push(...tools.extensions);
+
+    const configuration = resolveConfiguration(stored, options, tools);
+
+    if (JSON.stringify(stored) !== JSON.stringify(configuration)) {
       await harness.commit(async (tx) => {
         (await tx.doc(ConfigurationDoc)).configuration = configuration;
       }, context);
@@ -100,7 +95,7 @@ export async function openRuntime(
 
     context.abortSignal?.throwIfAborted();
 
-    const runtime = new HarnessRuntime(
+    const runtime = new Harness(
       harness,
       storage,
       configuration,
@@ -136,16 +131,17 @@ function resolveConfiguration(
   tools: ToolRegistry,
 ): Configuration {
   const model = options.model ?? stored?.model ?? options.defaultModel;
+
   const configuration = {
     ...tools.configuration(stored),
     ...omitUndefined({ model }),
   };
 
-  if (!Check(ConfigurationSchema, configuration)) {
-    throw new Error("Invalid runtime configuration");
-  }
-
-  return configuration;
+  return validate(
+    ConfigurationSchema,
+    configuration,
+    "Invalid runtime configuration",
+  );
 }
 
 async function closeAfterFailure(error: unknown, close: () => Promise<void>) {

@@ -1,6 +1,15 @@
-import { defineDoc, defineDocFamily } from "@earendil-works/pi-durable";
-import { ModelReferenceSchema, ToolNameSchema } from "@lab/contracts";
+import {
+  type ConversationId,
+  defineDoc,
+  defineDocFamily,
+} from "@earendil-works/pi-durable";
+import {
+  ConversationIdSchema,
+  ModelReferenceSchema,
+  ToolNameSchema,
+} from "@lab/contracts";
 import { type Static, Type } from "typebox";
+import { validate } from "./validation";
 
 export const ConfigurationSchema = Type.Object(
   {
@@ -39,35 +48,63 @@ export const ConfigurationSchema = Type.Object(
 
 export type Configuration = Static<typeof ConfigurationSchema>;
 
-export const ConfigurationDoc = defineDoc<{
-  configuration: Configuration | null;
-}>({
+const ConfigurationDocSchema = Type.Object(
+  { configuration: Type.Union([ConfigurationSchema, Type.Null()]) },
+  { additionalProperties: false },
+);
+
+const ConversationDocSchema = Type.Object(
+  {
+    title: Type.String(),
+    createdAt: Type.Number(),
+    deleted: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
+const PreviousConversationDocSchema = Type.Omit(ConversationDocSchema, [
+  "deleted",
+]);
+
+const CreationRequestDocSchema = Type.Object(
+  {
+    conversationId: Type.Union([
+      Type.Unsafe<ConversationId>(ConversationIdSchema),
+      Type.Null(),
+    ]),
+  },
+  { additionalProperties: false },
+);
+
+export const ConfigurationDoc = defineDoc<
+  Static<typeof ConfigurationDocSchema>
+>({
   kind: "lab.configuration",
   version: 1,
   scope: "session",
   initial: () => ({ configuration: null }),
 });
 
-export const ConversationDoc = defineDoc<{
-  title: string;
-  createdAt: number;
-  deleted: boolean;
-}>({
+export const ConversationDoc = defineDoc<Static<typeof ConversationDocSchema>>({
   kind: "lab.conversation",
   version: 2,
   scope: "conversation",
   history: "latest",
   fork: "initial",
   initial: () => ({ title: "", createdAt: Date.now(), deleted: false }),
-  migrate: (value) => ({
-    title: value.title as string,
-    createdAt: value.createdAt as number,
-    deleted: false,
-  }),
+  migrate: (value) => {
+    const { title, createdAt } = validate(
+      PreviousConversationDocSchema,
+      value,
+      "Invalid stored conversation metadata",
+    );
+
+    return { title, createdAt, deleted: false };
+  },
 });
 
 export const CreationRequestDoc = defineDocFamily<
-  { conversationId: number | null },
+  Static<typeof CreationRequestDocSchema>,
   null
 >({
   kind: "lab.creation-request",
@@ -76,3 +113,27 @@ export const CreationRequestDoc = defineDocFamily<
   family: true,
   initial: () => ({ conversationId: null }),
 });
+
+export function parseConfigurationDoc(value: unknown) {
+  return validate(
+    ConfigurationDocSchema,
+    value,
+    "Invalid stored runtime configuration",
+  );
+}
+
+export function parseConversationDoc(value: unknown) {
+  return validate(
+    ConversationDocSchema,
+    value,
+    "Invalid stored conversation metadata",
+  );
+}
+
+export function parseCreationRequestDoc(value: unknown) {
+  return validate(
+    CreationRequestDocSchema,
+    value,
+    "Invalid stored conversation creation request",
+  );
+}

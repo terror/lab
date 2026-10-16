@@ -1,7 +1,7 @@
 import type { Context } from "@earendil-works/chord";
 import type { Models } from "@earendil-works/pi-ai";
 import * as pi from "@earendil-works/pi-durable";
-import { ConversationDoc } from "./metadata";
+import { ConversationDoc, parseConversationDoc } from "./metadata";
 
 export const UNTITLED_CONVERSATION = "Untitled conversation";
 
@@ -27,7 +27,9 @@ export const TitleTask = pi.defineTask<
   phases: {
     input: async (_task, runtime, context) => {
       const entry = await firstInput(runtime, context);
+
       const message = entry?.model?.find(({ role }) => role === "user");
+
       const agent =
         entry === undefined
           ? undefined
@@ -37,6 +39,7 @@ export const TitleTask = pi.defineTask<
               entry.id,
               context,
             );
+
       const content =
         message === undefined
           ? ""
@@ -66,6 +69,7 @@ export const TitleTask = pi.defineTask<
     },
     generate: async (task, runtime, context) => {
       const { content, model } = task.state.checkpoint;
+
       const title = await generateTitle(
         runtime.models,
         model,
@@ -76,7 +80,9 @@ export const TitleTask = pi.defineTask<
       runtime.signal.throwIfAborted();
 
       await runtime.commit(async (tx) => {
-        const metadata = await tx.doc(ConversationDoc, runtime.conversationId);
+        const metadata = parseConversationDoc(
+          await tx.doc(ConversationDoc, runtime.conversationId),
+        );
 
         if (metadata.title === UNTITLED_CONVERSATION && title !== undefined) {
           metadata.title = title;
@@ -129,6 +135,7 @@ async function firstInput(runtime: TitleRuntime, context: Context) {
         entry = page.items.find(({ model }) =>
           model?.some(({ role }) => role === "user"),
         );
+
         cursor = page.next;
       } while (entry === undefined && cursor !== undefined);
 
@@ -161,6 +168,7 @@ async function firstInput(runtime: TitleRuntime, context: Context) {
     ]);
 
     runtime.signal.throwIfAborted();
+
     return entry;
   } finally {
     await watch.stop();

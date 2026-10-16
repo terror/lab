@@ -22,7 +22,7 @@ import {
   type ToolResult,
 } from "@lab/contracts";
 import type { ToolRegistry } from "./extensions";
-import { ConversationDoc } from "./metadata";
+import { ConversationDoc, parseConversationDoc } from "./metadata";
 import { observe, submissionState } from "./pi";
 
 export class ConversationObservation
@@ -89,8 +89,11 @@ export class ConversationObservation
       );
 
       const source = await observe(conversation, context);
+
       observation.source = source;
+
       observation.disposers.push(() => source.dispose());
+
       observation.disposers.push(
         source.subscribe((_value, context) => observation.schedule(context)),
       );
@@ -136,18 +139,23 @@ export class ConversationObservation
         throw new Error("Conversation metadata is unavailable");
       }
 
-      observation.deleted = metadata.value.deleted;
+      const value = parseConversationDoc(metadata.value);
+
+      observation.deleted = value.deleted;
+
       observation.summary = {
         id: conversation.id,
-        title: metadata.value.title,
-        createdAt: metadata.value.createdAt,
+        title: value.title,
+        createdAt: value.createdAt,
       };
+
       observation.disposers.push(
-        metadata.subscribe((value, context) => {
-          if (value === null) {
+        metadata.subscribe((snapshot, context) => {
+          if (snapshot === null) {
             return;
           }
 
+          const value = parseConversationDoc(snapshot);
           observation.deleted = value.deleted;
           observation.summary = {
             id: conversation.id,
@@ -157,7 +165,9 @@ export class ConversationObservation
           observation.schedule(context);
         }),
       );
+
       observation.state = replicatedState(observation.project());
+
       observation.changed.clear();
 
       return observation;
@@ -193,6 +203,7 @@ export class ConversationObservation
     }
 
     this.source = undefined;
+
     this.submissions.clear();
     this.changed.clear();
   }
