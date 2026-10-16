@@ -250,7 +250,7 @@ export function ModelPicker({
         )}
         <div className="flex items-center gap-3 border-t px-4 py-3">
           <p className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">
-            From your Pi configuration. Changes apply to the next model request.
+            Changes apply to the next model request.
           </p>
           <Tooltip>
             <TooltipTrigger asChild>
