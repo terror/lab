@@ -6,7 +6,6 @@ import {
   type ConversationPage,
   type ConversationState,
   type ConversationSummary,
-  type CreateConversationInput,
   type ListConversationsInput,
   type ListModelsInput,
   type ModelCatalog,
@@ -14,6 +13,7 @@ import {
   type Result,
   type SetModelInput,
   type SetToolsInput,
+  type StartConversationInput,
   type StopInput,
   type StopReceipt,
   type SubmissionReceipt,
@@ -27,12 +27,12 @@ import type { ToolRegistry } from "./extensions";
 import {
   type Configuration,
   ConversationDoc,
-  CreationRequestDoc,
   parseConversationDoc,
-  parseCreationRequestDoc,
+  parseStartRequestDoc,
+  StartRequestDoc,
 } from "./metadata";
 import type { ModelRegistry } from "./models";
-import { conversation, runtimeError, stop, submit } from "./pi";
+import { conversation, runtimeError, start, stop, submit } from "./pi";
 import type { Runtime } from "./runtime";
 import { TitleTask, UNTITLED_CONVERSATION } from "./titles";
 import { ConversationObservation } from "./view";
@@ -146,32 +146,28 @@ export class Harness implements Runtime {
     });
   }
 
-  createConversation(
-    input: CreateConversationInput,
+  startConversation(
+    input: StartConversationInput,
     context: Context,
-  ): Promise<Result<ConversationSummary>> {
+  ): Promise<Result<SubmissionReceipt>> {
     return this.perform(context, () =>
-      this.admit(`create:${input.requestId}`, context, async () => {
+      this.admit(`start:${input.requestId}`, context, async () => {
         const snapshot = await this.harness.snapshot(
-          CreationRequestDoc,
+          StartRequestDoc,
           input.requestId,
           context,
         );
         const request =
-          snapshot === undefined
-            ? undefined
-            : parseCreationRequestDoc(snapshot);
+          snapshot === undefined ? undefined : parseStartRequestDoc(snapshot);
 
-        if (request?.conversationId != null) {
+        if (request?.receipt != null) {
+          const { receipt } = request;
           return this.withConversation(
-            request.conversationId,
+            receipt.conversationId,
             context,
-            async (handle) => ({
+            async () => ({
               ok: true,
-              value: await this.harness.commit(
-                (tx) => summary(tx, handle.id),
-                context,
-              ),
+              value: receipt,
             }),
           );
         }
@@ -194,12 +190,12 @@ export class Harness implements Runtime {
         }
 
         const value = await this.harness.commit(async (tx) => {
-          const request = parseCreationRequestDoc(
-            await tx.doc(CreationRequestDoc, input.requestId, null),
+          const request = parseStartRequestDoc(
+            await tx.doc(StartRequestDoc, input.requestId, null),
           );
 
-          if (request.conversationId !== null) {
-            return summary(tx, request.conversationId);
+          if (request.receipt !== null) {
+            return { ...request.receipt };
           }
 
           const { id } = await tx.createConversation({
@@ -215,10 +211,18 @@ export class Harness implements Runtime {
           parseConversationDoc(await tx.doc(ConversationDoc, id)).title =
             input.title;
 
-          if (input.title === UNTITLED_CONVERSATION) {
+          const receipt = await start(tx, id, input);
+
+          if (
+            input.title === UNTITLED_CONVERSATION &&
+            input.content.trim() !== ""
+          ) {
             await tx.createTask(
               TitleTask,
-              {},
+              {
+                content: input.content.slice(0, 8000),
+                model: model.value,
+              },
               {
                 conversationId: id,
                 ownership: { kind: "conversation" },
@@ -227,15 +231,16 @@ export class Harness implements Runtime {
             );
           }
 
-          request.conversationId = id;
+          request.receipt = receipt;
 
-          return summary(tx, id);
+          return receipt;
         }, context);
 
-        return this.withConversation(value.id, context, async () => ({
-          ok: true,
-          value,
-        }));
+        return this.withConversation(
+          value.conversationId,
+          context,
+          async () => ({ ok: true, value }),
+        );
       }),
     );
   }
@@ -480,17 +485,6 @@ export class Harness implements Runtime {
       };
     }
   }
-}
-
-async function summary(
-  tx: pi.Tx,
-  id: pi.ConversationId,
-): Promise<ConversationSummary> {
-  const { title, createdAt } = parseConversationDoc(
-    await tx.doc(ConversationDoc, id),
-  );
-
-  return { id, title, createdAt };
 }
 
 function parseCursor(cursor: string) {

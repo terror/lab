@@ -28,8 +28,7 @@ export function CreateConversation() {
   const model =
     selection ?? operation?.creation?.model ?? models.data?.defaultModel;
   const connected = connection.status === "connected";
-  const starting =
-    operation?.phase === "creating" || operation?.phase === "submitting";
+  const starting = operation?.phase === "submitting";
   const unresolved = operation !== undefined && operation.phase !== "complete";
 
   useEffect(() => {

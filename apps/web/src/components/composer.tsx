@@ -30,10 +30,10 @@ export function Composer({
 }) {
   const connection = useConnection();
   const send = useSend(id);
+
   const { operation } = send;
   const connected = connection.status === "connected";
-  const sending =
-    operation?.phase === "creating" || operation?.phase === "submitting";
+  const sending = operation?.phase === "submitting";
   const unresolved = operation !== undefined && operation.phase !== "complete";
 
   const canSend =

@@ -4,6 +4,7 @@ import { SqliteStorage } from "@earendil-works/pi-durable/storage/sqlite";
 import type {
   ConversationId,
   LabError,
+  StartConversationInput,
   StopInput,
   StopReceipt,
   SubmissionReceipt,
@@ -32,6 +33,42 @@ export function conversation(
   context: Context,
 ) {
   return harness.conversation(id as pi.ConversationId, context);
+}
+
+export async function start(
+  tx: pi.Tx,
+  id: pi.ConversationId,
+  input: StartConversationInput,
+): Promise<SubmissionReceipt> {
+  const entry = await tx.appendEntry(pi.UserEntry, id, {
+    model: [{ role: "user", content: input.content, timestamp: Date.now() }],
+  });
+
+  const submission = await tx.createSubmission({
+    conversationId: id,
+    requestId: input.requestId,
+    type: "input",
+    status: "placed",
+    entry: entry.id,
+  });
+
+  const live = await tx.doc(pi.LiveDoc, id);
+
+  live.run = {
+    taskId: await tx.createTask(
+      pi.GenerationTask,
+      {},
+      { conversationId: id, ownership: { kind: "conversation" } },
+    ),
+    inputs: [submission.id],
+  };
+
+  return {
+    conversationId: id,
+    submissionId: submission.id,
+    requestId: input.requestId,
+    status: "admitted",
+  };
 }
 
 export async function submit(

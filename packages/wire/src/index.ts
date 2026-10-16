@@ -606,10 +606,11 @@ export const ConversationPageSchema = Type.Object(
  *
  * @see {@link CreateConversationInput}
  */
-export const CreateConversationInputSchema = Type.Object(
+export const StartConversationInputSchema = Type.Object(
   {
     /** Client-generated creation key, reused when retrying this operation. */
     requestId: RequestIdSchema,
+    content: SubmitInputSchema.properties.content,
     /** Initial display title, containing 1 to 200 characters. */
     title: Type.String({ minLength: 1, maxLength: 200 }),
     /** Initial model selection; omission uses the configured default model. */
@@ -940,8 +941,8 @@ export type ConversationSummary = Static<typeof ConversationSummarySchema>;
  *
  * @see {@link CreateConversationInputSchema}
  */
-export type CreateConversationInput = Static<
-  typeof CreateConversationInputSchema
+export type StartConversationInput = Static<
+  typeof StartConversationInputSchema
 >;
 
 /**
@@ -1412,9 +1413,9 @@ export const LabService = remote("lab.service", {
          * @see {@link CreateConversationInputSchema}
          * @see {@link ConversationSummarySchema}
          */
-        createConversation: method(
-          CreateConversationInputSchema,
-          resultSchema(ConversationSummarySchema),
+        startConversation: method(
+          StartConversationInputSchema,
+          resultSchema(SubmissionReceiptSchema),
         ),
         /**
          * Describes the RPC that stops a conversation and marks it deleted.
@@ -1481,5 +1482,5 @@ export const LabService = remote("lab.service", {
     },
   },
   /** Contract version identifying this service's wire definition. */
-  version: 6,
+  version: 7,
 });

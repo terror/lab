@@ -1,11 +1,7 @@
+import { defineDoc, defineDocFamily } from "@earendil-works/pi-durable";
 import {
-  type ConversationId,
-  defineDoc,
-  defineDocFamily,
-} from "@earendil-works/pi-durable";
-import {
-  ConversationIdSchema,
   ModelReferenceSchema,
+  SubmissionReceiptSchema,
   ToolNameSchema,
 } from "@lab/wire";
 import { type Static, Type } from "typebox";
@@ -62,12 +58,9 @@ const ConversationDocSchema = Type.Object(
   { additionalProperties: false },
 );
 
-const CreationRequestDocSchema = Type.Object(
+const StartRequestDocSchema = Type.Object(
   {
-    conversationId: Type.Union([
-      Type.Unsafe<ConversationId>(ConversationIdSchema),
-      Type.Null(),
-    ]),
+    receipt: Type.Union([SubmissionReceiptSchema, Type.Null()]),
   },
   { additionalProperties: false },
 );
@@ -90,15 +83,15 @@ export const ConversationDoc = defineDoc<Static<typeof ConversationDocSchema>>({
   initial: () => ({ title: "", createdAt: Date.now(), deleted: false }),
 });
 
-export const CreationRequestDoc = defineDocFamily<
-  Static<typeof CreationRequestDocSchema>,
+export const StartRequestDoc = defineDocFamily<
+  Static<typeof StartRequestDocSchema>,
   null
 >({
-  kind: "lab.creation-request",
+  kind: "lab.start-request",
   version: 1,
   scope: "session",
   family: true,
-  initial: () => ({ conversationId: null }),
+  initial: () => ({ receipt: null }),
 });
 
 export function parseConfigurationDoc(value: unknown) {
@@ -117,10 +110,10 @@ export function parseConversationDoc(value: unknown) {
   );
 }
 
-export function parseCreationRequestDoc(value: unknown) {
+export function parseStartRequestDoc(value: unknown) {
   return validate(
-    CreationRequestDocSchema,
+    StartRequestDocSchema,
     value,
-    "Invalid stored conversation creation request",
+    "Invalid stored conversation start request",
   );
 }

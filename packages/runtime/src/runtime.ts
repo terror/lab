@@ -11,8 +11,6 @@ import type {
   ConversationId,
   ConversationPage,
   ConversationState,
-  ConversationSummary,
-  CreateConversationInput,
   ListConversationsInput,
   ListModelsInput,
   ModelCatalog,
@@ -20,6 +18,7 @@ import type {
   Result,
   SetModelInput,
   SetToolsInput,
+  StartConversationInput,
   StopInput,
   StopReceipt,
   SubmissionReceipt,
@@ -39,10 +38,10 @@ export interface Runtime {
     context: Context,
   ): Promise<Result<ConversationPage>>;
   subscribeConversations(listener: (revision: number) => void): () => void;
-  createConversation(
-    input: CreateConversationInput,
+  startConversation(
+    input: StartConversationInput,
     context: Context,
-  ): Promise<Result<ConversationSummary>>;
+  ): Promise<Result<SubmissionReceipt>>;
   deleteConversation(
     id: ConversationId,
     context: Context,

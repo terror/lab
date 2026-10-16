@@ -35,10 +35,10 @@ export class LabClient {
     this.connection = this.transport;
 
     this.outbox = new Outbox(() => options.storage ?? sessionStorage, {
-      create: (input) =>
+      start: (input) =>
         this.transport.call(async (context) => {
           const service = await context.get(LabService, {}, { state: false });
-          return service.createConversation(input, context);
+          return service.startConversation(input, context);
         }),
       submit: (id, input) =>
         this.transport.call(async (context) => {

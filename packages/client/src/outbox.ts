@@ -1,12 +1,11 @@
 import {
   type ConversationId,
   ConversationIdSchema,
-  type ConversationSummary,
-  type CreateConversationInput,
-  CreateConversationInputSchema,
   type LabError,
   LabErrorSchema,
   type Result,
+  type StartConversationInput,
+  StartConversationInputSchema,
   type SubmissionReceipt,
   SubmissionReceiptSchema,
   type SubmitInput,
@@ -19,11 +18,12 @@ import { clientError, Store } from "./store";
 const SendOperationSchema = Type.Object(
   {
     target: Type.Union([Type.Literal("new"), ConversationIdSchema]),
-    creation: Type.Optional(CreateConversationInputSchema),
+    creation: Type.Optional(
+      Type.Omit(StartConversationInputSchema, ["requestId", "content"]),
+    ),
     conversationId: Type.Optional(ConversationIdSchema),
     input: SubmitInputSchema,
     phase: Type.Union([
-      Type.Literal("creating"),
       Type.Literal("submitting"),
       Type.Literal("complete"),
       Type.Literal("uncertain"),
@@ -43,7 +43,7 @@ export type SendInput = Omit<SubmitInput, "requestId"> &
     | { conversationId: ConversationId; creation?: never }
     | {
         conversationId?: never;
-        creation: Omit<CreateConversationInput, "requestId">;
+        creation: Omit<StartConversationInput, "requestId" | "content">;
       }
   );
 
@@ -53,9 +53,7 @@ export type OutboxSnapshot = {
 };
 
 type Transport = {
-  create: (
-    input: CreateConversationInput,
-  ) => Promise<Result<ConversationSummary>>;
+  start: (input: StartConversationInput) => Promise<Result<SubmissionReceipt>>;
   submit: (
     id: ConversationId,
     input: SubmitInput,
@@ -65,7 +63,7 @@ type Transport = {
 export class Outbox {
   private loaded = false;
 
-  private readonly key = "lab.sends.v1";
+  private readonly key = "lab.sends.v2";
   private readonly running = new Set<string>();
   private readonly state = new Store<OutboxSnapshot>({
     operations: [],
@@ -101,8 +99,7 @@ export class Outbox {
           return { ...properties, phase: "complete" as const };
         }
 
-        return operation.phase === "creating" ||
-          operation.phase === "submitting"
+        return operation.phase === "submitting"
           ? { ...operation, phase: "uncertain" as const }
           : operation;
       });
@@ -136,17 +133,14 @@ export class Outbox {
         ...(input.creation === undefined
           ? { conversationId: input.conversationId }
           : {
-              creation: {
-                ...structuredClone(input.creation),
-                requestId: crypto.randomUUID(),
-              },
+              creation: structuredClone(input.creation),
             }),
         input: {
           requestId: crypto.randomUUID(),
           content: input.content,
           whenBusy: input.whenBusy,
         },
-        phase: target === "new" ? "creating" : "submitting",
+        phase: "submitting",
       };
 
       const retained = operations.filter(
@@ -259,36 +253,29 @@ export class Outbox {
       return;
     }
 
-    if (operation.conversationId === undefined) {
-      if (operation.creation === undefined) {
-        throw new Error("The send operation has no conversation.");
-      }
-
-      this.update(requestId, { phase: "creating", error: undefined });
-
-      const result = await this.transport.create(operation.creation);
-
-      if (!result.ok) {
-        this.reject(requestId, result.error);
-        return;
-      }
-
-      this.update(requestId, {
-        conversationId: result.value.id,
-        phase: "submitting",
-      });
-    }
-
     const next = this.update(requestId, {
       phase: "submitting",
       error: undefined,
     });
 
-    if (next?.conversationId === undefined) {
+    if (next === undefined) {
       return;
     }
 
-    const result = await this.transport.submit(next.conversationId, next.input);
+    const result =
+      next.creation !== undefined
+        ? await this.transport.start({
+            ...next.creation,
+            requestId: next.input.requestId,
+            content: next.input.content,
+          })
+        : next.conversationId !== undefined
+          ? await this.transport.submit(next.conversationId, next.input)
+          : undefined;
+
+    if (result === undefined) {
+      throw new Error("The send operation has no conversation.");
+    }
 
     if (!result.ok) {
       this.reject(requestId, result.error);
@@ -296,6 +283,7 @@ export class Outbox {
     }
 
     this.update(requestId, {
+      conversationId: result.value.conversationId,
       phase: "complete",
       receipt: result.value,
     });
@@ -367,11 +355,7 @@ export class Outbox {
 }
 
 function valid(operations: readonly SendOperation[]) {
-  const requests = operations.flatMap(({ input, creation }) =>
-    creation === undefined
-      ? [input.requestId]
-      : [input.requestId, creation.requestId],
-  );
+  const requests = operations.map(({ input }) => input.requestId);
 
   const conversations = operations
     .map(({ conversationId }) => conversationId)
@@ -412,10 +396,8 @@ function validOperation(operation: SendOperation) {
   }
 
   switch (phase) {
-    case "creating":
-      return conversationId === undefined && receipt === undefined;
     case "submitting":
-      return conversationId !== undefined && receipt === undefined;
+      return receipt === undefined;
     case "complete":
       return receipt !== undefined || error !== undefined;
     case "uncertain":
