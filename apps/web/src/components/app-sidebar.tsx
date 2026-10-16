@@ -56,7 +56,6 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -105,7 +104,7 @@ export function AppSidebar({
       className="h-full w-full border-0"
       collapsible={isMobile ? "offcanvas" : "none"}
     >
-      <SidebarHeader className="gap-4 border-b px-3 pt-3 pb-4">
+      <SidebarHeader className="gap-4 px-3 pt-3 pb-4">
         <div className="flex h-10 items-center justify-between px-1">
           <Link
             aria-label="lab home"
@@ -338,7 +337,6 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarSeparator className="mx-3" />
       <SidebarFooter className="p-3">
         {(session.error || outbox.error) && (
           <p className="px-2 text-xs text-destructive" role="alert">
