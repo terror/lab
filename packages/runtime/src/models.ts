@@ -7,7 +7,7 @@ import {
   omitUndefined,
   type ProviderInfo,
   type Result,
-} from "@lab/contracts";
+} from "@lab/wire";
 
 export type ProviderFactory = (options: {
   signal: AbortSignal;

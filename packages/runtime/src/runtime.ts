@@ -26,7 +26,7 @@ import type {
   SubmitInput,
   ToolCatalog,
   ToolSelectionReceipt,
-} from "@lab/contracts";
+} from "@lab/wire";
 
 export interface Runtime {
   listTools(context: Context): Promise<Result<ToolCatalog>>;

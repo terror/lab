@@ -12,7 +12,7 @@ import {
   SubmissionReceiptSchema,
   type SubmitInput,
   SubmitInputSchema,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { type Static, Type } from "typebox";
 import { Check } from "typebox/value";
 import type { ConversationClient } from "./conversation";

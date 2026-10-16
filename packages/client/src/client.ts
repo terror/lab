@@ -14,7 +14,7 @@ import {
   type StopReceipt,
   type ToolCatalog,
   type ToolSelectionReceipt,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { Connection } from "./connection";
 import { ConversationClient } from "./conversation";
 import { Outbox } from "./outbox";

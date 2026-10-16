@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@lab/client": "workspace:*",
-    "@lab/contracts": "workspace:*",
+    "@lab/wire": "workspace:*",
     "@radix-ui/react-slot": "1.5.0",
     "@tanstack/react-query": "5.104.3",
     "class-variance-authority": "0.7.1",

@@ -3,14 +3,14 @@ import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
+import { callContext, type Runtime } from "@lab/runtime";
 import {
   ConversationListRevisionSchema,
   ConversationStateSchema,
   LabConversation,
   LabService,
   type Result,
-} from "@lab/contracts";
-import { callContext, type Runtime } from "@lab/runtime";
+} from "@lab/wire";
 import type { Principal, Sessions } from "./auth";
 
 export function createLabHost(runtime: Runtime, sessions: Sessions) {

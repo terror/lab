@@ -4,8 +4,8 @@ import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { omitUndefined } from "@lab/contracts";
 import { createBuiltinTools, openRuntime } from "@lab/runtime";
+import { omitUndefined } from "@lab/wire";
 import { loadDefaultModel, loadModels } from "./models";
 import { serve } from "./server";
 

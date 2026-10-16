@@ -3,7 +3,7 @@ import {
   type Message,
   omitUndefined,
   type ToolProgress,
-} from "@lab/contracts";
+} from "@lab/wire";
 
 type TranscriptMessage = Exclude<Message, { role: "tool" }> & { id: string };
 

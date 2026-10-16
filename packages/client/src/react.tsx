@@ -1,4 +1,4 @@
-import type { ConversationId } from "@lab/contracts";
+import type { ConversationId } from "@lab/wire";
 import {
   useInfiniteQuery,
   useMutation,

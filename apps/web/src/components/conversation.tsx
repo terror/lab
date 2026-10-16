@@ -3,7 +3,7 @@ import type {
   ConversationId,
   ConversationState,
   ModelReference,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { useMutation } from "@tanstack/react-query";
 import { CircleAlertIcon } from "lucide-react";
 import { useEffect } from "react";

@@ -1,4 +1,4 @@
-import type { ModelCatalog, ModelReference } from "@lab/contracts";
+import type { ModelCatalog, ModelReference } from "@lab/wire";
 
 export function modelKey(model: ModelReference | undefined) {
   return model === undefined

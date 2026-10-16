@@ -4,7 +4,7 @@ import {
   useDeleteConversation,
   useOutbox,
 } from "@lab/client/react";
-import type { ConversationId } from "@lab/contracts";
+import type { ConversationId } from "@lab/wire";
 import {
   ChevronsUpDown,
   CircleUserRound,

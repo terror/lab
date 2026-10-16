@@ -7,7 +7,7 @@ import {
   ConversationIdSchema,
   ModelReferenceSchema,
   ToolNameSchema,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { type Static, Type } from "typebox";
 import { validate } from "./validation";
 

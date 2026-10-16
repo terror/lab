@@ -7,7 +7,7 @@ import {
   type Result,
   type ToolCatalog,
   ToolNameSchema,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { Type } from "typebox";
 import { Compile } from "typebox/compile";
 import type { Configuration } from "./metadata";

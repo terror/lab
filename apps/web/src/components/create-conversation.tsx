@@ -1,5 +1,5 @@
 import { useConnection, useModels, useSend } from "@lab/client/react";
-import { type ModelReference, omitUndefined } from "@lab/contracts";
+import { type ModelReference, omitUndefined } from "@lab/wire";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import useSessionStorageState from "use-session-storage-state";

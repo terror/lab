@@ -1,5 +1,5 @@
 import type { useModels } from "@lab/client/react";
-import type { ModelReference } from "@lab/contracts";
+import type { ModelReference } from "@lab/wire";
 import {
   CheckIcon,
   ChevronDownIcon,

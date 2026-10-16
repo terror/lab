@@ -10,7 +10,7 @@ import {
   type SubmissionReceipt,
   type SubmissionState,
   type SubmitInput,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { BunSqliteDatabase } from "./sqlite";
 
 export async function openStorage(path: string) {

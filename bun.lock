@@ -14,8 +14,8 @@
       "dependencies": {
         "@earendil-works/chord": "1.3.0",
         "@earendil-works/pi-coding-agent": "1.3.0",
-        "@lab/contracts": "workspace:*",
         "@lab/runtime": "workspace:*",
+        "@lab/wire": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "1.4.3",
@@ -25,7 +25,7 @@
       "name": "@lab/web",
       "dependencies": {
         "@lab/client": "workspace:*",
-        "@lab/contracts": "workspace:*",
+        "@lab/wire": "workspace:*",
         "@radix-ui/react-slot": "1.5.0",
         "@tanstack/react-query": "5.104.3",
         "class-variance-authority": "0.7.1",
@@ -60,7 +60,7 @@
       "name": "@lab/client",
       "dependencies": {
         "@earendil-works/chord": "1.3.0",
-        "@lab/contracts": "workspace:*",
+        "@lab/wire": "workspace:*",
         "@tanstack/react-query": "5.104.3",
         "typebox": "1.3.27",
       },
@@ -71,26 +71,26 @@
         "react": "19.3.1",
       },
     },
-    "packages/contracts": {
-      "name": "@lab/contracts",
-      "dependencies": {
-        "@earendil-works/chord": "1.3.0",
-        "typebox": "1.3.27",
-      },
-    },
     "packages/runtime": {
       "name": "@lab/runtime",
       "dependencies": {
         "@earendil-works/chord": "1.3.0",
         "@earendil-works/pi-ai": "1.3.0",
         "@earendil-works/pi-durable": "1.3.0",
-        "@lab/contracts": "workspace:*",
+        "@lab/wire": "workspace:*",
         "@mozilla/readability": "0.6.0",
         "linkedom": "0.18.13",
         "typebox": "1.3.27",
       },
       "devDependencies": {
         "@types/bun": "1.4.3",
+      },
+    },
+    "packages/wire": {
+      "name": "@lab/wire",
+      "dependencies": {
+        "@earendil-works/chord": "1.3.0",
+        "typebox": "1.3.27",
       },
     },
   },
@@ -195,13 +195,13 @@
 
     "@lab/client": ["@lab/client@workspace:packages/client"],
 
-    "@lab/contracts": ["@lab/contracts@workspace:packages/contracts"],
-
     "@lab/runtime": ["@lab/runtime@workspace:packages/runtime"],
 
     "@lab/server": ["@lab/server@workspace:apps/server"],
 
     "@lab/web": ["@lab/web@workspace:apps/web"],
+
+    "@lab/wire": ["@lab/wire@workspace:packages/wire"],
 
     "@mozilla/readability": ["@mozilla/readability@0.6.0", "", {}, "sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ=="],
 

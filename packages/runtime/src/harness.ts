@@ -20,7 +20,7 @@ import {
   type SubmitInput,
   type ToolCatalog,
   type ToolSelectionReceipt,
-} from "@lab/contracts";
+} from "@lab/wire";
 import { Type } from "typebox";
 import { Check } from "typebox/value";
 import type { ToolRegistry } from "./extensions";

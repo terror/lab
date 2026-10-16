@@ -20,7 +20,7 @@ import {
   type SubmissionState,
   type ToolProgress,
   type ToolResult,
-} from "@lab/contracts";
+} from "@lab/wire";
 import type { ToolRegistry } from "./extensions";
 import { ConversationDoc, parseConversationDoc } from "./metadata";
 import { observe, submissionState } from "./pi";

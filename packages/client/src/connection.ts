@@ -6,7 +6,7 @@ import {
   type Link,
   type Ref,
 } from "@earendil-works/chord";
-import { LabService } from "@lab/contracts";
+import { LabService } from "@lab/wire";
 import type { ConversationClient } from "./conversation";
 import { clientError, Store } from "./store";
 import { browserLink } from "./websocket";

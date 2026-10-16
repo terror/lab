@@ -1,4 +1,4 @@
-import type { ConversationState, Message } from "@lab/contracts";
+import type { ConversationState, Message } from "@lab/wire";
 import {
   ArrowDown,
   CircleDashed,

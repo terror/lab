@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
-import { omitUndefined } from "@lab/contracts";
 import { loadProviders } from "@lab/runtime";
+import { omitUndefined } from "@lab/wire";
 
 export type ModelConfiguration = {
   modelsPath?: string;

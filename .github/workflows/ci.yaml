@@ -97,7 +97,7 @@ jobs:
             apps/server/dist/
             apps/web/dist/
             packages/client/dist/
-            packages/contracts/dist/
             packages/runtime/dist/
+            packages/wire/dist/
           if-no-files-found: error
           retention-days: 7

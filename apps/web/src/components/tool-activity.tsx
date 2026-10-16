@@ -1,4 +1,4 @@
-import type { ToolProgress } from "@lab/contracts";
+import type { ToolProgress } from "@lab/wire";
 import {
   Check,
   ChevronDown,

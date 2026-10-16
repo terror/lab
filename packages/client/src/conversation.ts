@@ -6,7 +6,7 @@ import {
   type SetModelInput,
   type SetToolsInput,
   type StopInput,
-} from "@lab/contracts";
+} from "@lab/wire";
 import type { LabClient } from "./client";
 import { clientError, Store } from "./store";
 

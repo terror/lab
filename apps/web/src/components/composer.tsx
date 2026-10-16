@@ -3,7 +3,7 @@ import {
   type useConversation,
   useSend,
 } from "@lab/client/react";
-import type { ConversationId } from "@lab/contracts";
+import type { ConversationId } from "@lab/wire";
 import { PromptInput } from "@/components/prompt-input";
 import { SendFeedback } from "@/components/send-feedback";
 

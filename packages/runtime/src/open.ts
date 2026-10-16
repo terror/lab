@@ -3,7 +3,7 @@ import { withoutAbortSignal } from "@earendil-works/chord/context";
 import { createModels } from "@earendil-works/pi-ai/models";
 import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
 import * as pi from "@earendil-works/pi-durable";
-import { omitUndefined } from "@lab/contracts";
+import { omitUndefined } from "@lab/wire";
 import { loadExtensions, type ToolRegistry } from "./extensions";
 import { Harness } from "./harness";
 import {
