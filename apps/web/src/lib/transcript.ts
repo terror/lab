@@ -1,9 +1,4 @@
-import {
-  type ConversationState,
-  type Message,
-  omitUndefined,
-  type ToolProgress,
-} from "@lab/wire";
+import type { ConversationState, Message, ToolProgress } from "@lab/wire";
 
 type TranscriptMessage = Exclude<Message, { role: "tool" }> & { id: string };
 
@@ -54,18 +49,20 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
               status: "interrupted",
               output: "",
             }),
-            ...omitUndefined({ arguments: args }),
+            ...(args === undefined ? {} : { arguments: args }),
           }
         : {
             callId: call.callId,
             name: call.name,
             status: result.tool.isError ? "failed" : "succeeded",
             output: result.text,
-            ...omitUndefined({
-              arguments: args,
-              details: result.tool.details,
-              durationMs: result.tool.durationMs,
-            }),
+            ...(args === undefined ? {} : { arguments: args }),
+            ...(result.tool.details === undefined
+              ? {}
+              : { details: result.tool.details }),
+            ...(result.tool.durationMs === undefined
+              ? {}
+              : { durationMs: result.tool.durationMs }),
           };
 
     const previous = items.at(-1);

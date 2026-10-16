@@ -5,7 +5,6 @@ import {
   withAbortSignal,
 } from "@earendil-works/chord/context";
 import { createBuiltinTools, openRuntime } from "@lab/runtime";
-import { omitUndefined } from "@lab/wire";
 import { loadDefaultModel, loadModels } from "./models";
 import { serve } from "./server";
 
@@ -39,19 +38,23 @@ async function main() {
         path:
           Bun.env.LAB_DATA_PATH ??
           join(homedir(), ".local", "share", "lab", "lab.sqlite"),
-        ...omitUndefined({ model, defaultModel }),
+        ...(model === undefined ? {} : { model }),
+        ...(defaultModel === undefined ? {} : { defaultModel }),
         extensions: [createBuiltinTools()],
         ...(Bun.env.LAB_EXTENSION_MODULES === undefined
           ? {}
           : { extensionModules: JSON.parse(Bun.env.LAB_EXTENSION_MODULES) }),
-        models: await loadModels(
-          shutdown.signal,
-          omitUndefined({
-            modelsPath: Bun.env.LAB_MODELS_PATH,
-            authPath: Bun.env.LAB_AUTH_PATH,
-            providerModule: Bun.env.LAB_PROVIDER_MODULE,
-          }),
-        ),
+        models: await loadModels(shutdown.signal, {
+          ...(Bun.env.LAB_MODELS_PATH === undefined
+            ? {}
+            : { modelsPath: Bun.env.LAB_MODELS_PATH }),
+          ...(Bun.env.LAB_AUTH_PATH === undefined
+            ? {}
+            : { authPath: Bun.env.LAB_AUTH_PATH }),
+          ...(Bun.env.LAB_PROVIDER_MODULE === undefined
+            ? {}
+            : { providerModule: Bun.env.LAB_PROVIDER_MODULE }),
+        }),
         onReport: (error) => console.error("Lab runtime error:", error),
       },
       withAbortSignal(shutdown.signal, BACKGROUND_CONTEXT),

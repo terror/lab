@@ -185,7 +185,7 @@ function runStatus(state: ConversationState) {
     return "Working";
   }
 
-  const latest = state.submissions.at(-1);
+  const latest = state.latestSubmission;
 
   switch (latest?.status) {
     case "queued":

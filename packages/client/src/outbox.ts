@@ -6,7 +6,6 @@ import {
   CreateConversationInputSchema,
   type LabError,
   LabErrorSchema,
-  omitUndefined,
   type Result,
   type SubmissionReceipt,
   SubmissionReceiptSchema,
@@ -15,7 +14,6 @@ import {
 } from "@lab/wire";
 import { type Static, Type } from "typebox";
 import { Check } from "typebox/value";
-import type { ConversationClient } from "./conversation";
 import { clientError, Store } from "./store";
 
 const SendOperationSchema = Type.Object(
@@ -27,7 +25,6 @@ const SendOperationSchema = Type.Object(
     phase: Type.Union([
       Type.Literal("creating"),
       Type.Literal("submitting"),
-      Type.Literal("awaiting-observation"),
       Type.Literal("complete"),
       Type.Literal("uncertain"),
     ]),
@@ -63,14 +60,12 @@ type Transport = {
     id: ConversationId,
     input: SubmitInput,
   ) => Promise<Result<SubmissionReceipt>>;
-  conversation: (id: ConversationId) => ConversationClient;
 };
 
 export class Outbox {
   private loaded = false;
 
   private readonly key = "lab.sends.v1";
-  private readonly observations = new Map<string, () => void>();
   private readonly running = new Set<string>();
   private readonly state = new Store<OutboxSnapshot>({
     operations: [],
@@ -100,21 +95,23 @@ export class Outbox {
         throw new Error("Saved send operations are invalid.");
       }
 
-      const recovered = operations.map((operation) =>
-        operation.phase === "creating" || operation.phase === "submitting"
+      const recovered = operations.map((operation) => {
+        if (operation.receipt !== undefined) {
+          const { error: _error, ...properties } = operation;
+          return { ...properties, phase: "complete" as const };
+        }
+
+        return operation.phase === "creating" ||
+          operation.phase === "submitting"
           ? { ...operation, phase: "uncertain" as const }
-          : operation,
-      );
+          : operation;
+      });
 
       this.loaded = true;
 
       this.save(recovered);
     } catch (error) {
       this.state.set({ ...this.getSnapshot(), error: clientError(error) });
-    }
-
-    for (const operation of this.getSnapshot().operations) {
-      this.observe(operation);
     }
   }
 
@@ -209,12 +206,6 @@ export class Outbox {
   forget(conversationId: ConversationId) {
     const operations = this.getSnapshot().operations;
 
-    for (const operation of operations) {
-      if (operation.conversationId === conversationId) {
-        this.unobserve(operation.input.requestId);
-      }
-    }
-
     try {
       this.save(
         operations.filter(
@@ -261,15 +252,10 @@ export class Outbox {
     }
 
     if (operation.receipt !== undefined) {
-      const next = this.update(requestId, {
-        phase: "awaiting-observation",
+      this.update(requestId, {
+        phase: "complete",
         error: undefined,
       });
-
-      if (next !== undefined) {
-        this.observe(next);
-      }
-
       return;
     }
 
@@ -309,14 +295,10 @@ export class Outbox {
       return;
     }
 
-    const submitted = this.update(requestId, {
-      phase: "awaiting-observation",
+    this.update(requestId, {
+      phase: "complete",
       receipt: result.value,
     });
-
-    if (submitted !== undefined) {
-      this.observe(submitted);
-    }
   }
 
   private reject(requestId: string, error: LabError) {
@@ -330,63 +312,16 @@ export class Outbox {
   }
 
   private fail(requestId: string, error: unknown) {
+    if (this.find(requestId)?.receipt !== undefined) {
+      return;
+    }
+
     try {
       this.update(requestId, {
         phase: "uncertain",
         error: { code: "unavailable", message: clientError(error).message },
       });
     } catch {}
-  }
-
-  private observe(operation: SendOperation) {
-    const { receipt } = operation;
-    const requestId = operation.input.requestId;
-
-    if (
-      receipt === undefined ||
-      operation.phase !== "awaiting-observation" ||
-      this.observations.has(requestId)
-    ) {
-      return;
-    }
-
-    const conversation = this.transport.conversation(receipt.conversationId);
-
-    const update = () => {
-      if (!this.observations.has(requestId)) {
-        return;
-      }
-
-      const { value, stale } = conversation.getSnapshot();
-
-      if (
-        (!stale &&
-          value?.submissions.some(({ id }) => id === receipt.submissionId)) ||
-        value?.error?.code === "not_found"
-      ) {
-        this.unobserve(requestId);
-
-        try {
-          this.update(requestId, {
-            phase: "complete",
-            error: value?.error?.code === "not_found" ? value.error : undefined,
-          });
-        } catch {}
-      }
-    };
-
-    this.observations.set(
-      requestId,
-      conversation.subscribe(() => queueMicrotask(update)),
-    );
-
-    update();
-  }
-
-  private unobserve(requestId: string) {
-    const unsubscribe = this.observations.get(requestId);
-    this.observations.delete(requestId);
-    unsubscribe?.();
   }
 
   private update(
@@ -401,7 +336,11 @@ export class Outbox {
       return undefined;
     }
 
-    const next = omitUndefined({ ...operation, ...changes });
+    const { error, ...properties } = { ...operation, ...changes };
+    const next = {
+      ...properties,
+      ...(error === undefined ? {} : { error }),
+    };
 
     this.save(
       this.getSnapshot().operations.map((operation) =>
@@ -477,8 +416,6 @@ function validOperation(operation: SendOperation) {
       return conversationId === undefined && receipt === undefined;
     case "submitting":
       return conversationId !== undefined && receipt === undefined;
-    case "awaiting-observation":
-      return receipt !== undefined;
     case "complete":
       return receipt !== undefined || error !== undefined;
     case "uncertain":

@@ -1,8 +1,6 @@
 import { hostNamed, method, remote } from "@earendil-works/chord";
 import { type Static, type TSchema, Type } from "typebox";
 
-export { omitUndefined } from "./omit-undefined";
-
 export const ConversationIdSchema = Type.Integer({
   minimum: 1,
   maximum: Number.MAX_SAFE_INTEGER,
@@ -237,31 +235,18 @@ export const StopReceiptSchema = Type.Object(
 
 export const SubmissionStateSchema = Type.Union([
   Type.Object(
-    { id: SubmissionIdSchema, status: Type.Literal("queued") },
-    { additionalProperties: false },
-  ),
-  Type.Object(
     {
-      id: SubmissionIdSchema,
-      status: Type.Literal("placed"),
-      entryId: EntryIdSchema,
+      status: Type.Union([
+        Type.Literal("queued"),
+        Type.Literal("placed"),
+        Type.Literal("done"),
+      ]),
     },
     { additionalProperties: false },
   ),
   Type.Object(
     {
-      id: SubmissionIdSchema,
-      status: Type.Literal("done"),
-      entryId: EntryIdSchema,
-      answerId: EntryIdSchema,
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      id: SubmissionIdSchema,
       status: Type.Literal("unanswered"),
-      entryId: Type.Optional(EntryIdSchema),
       reason: Type.String(),
     },
     { additionalProperties: false },
@@ -381,7 +366,7 @@ export const ConversationStateSchema = Type.Object(
     partial: Type.Optional(Type.String()),
     tools: Type.Array(ToolProgressSchema),
     inbox: Type.Array(QueuedInputSchema),
-    submissions: Type.Array(SubmissionStateSchema),
+    latestSubmission: Type.Optional(SubmissionStateSchema),
     error: Type.Optional(LabErrorSchema),
   },
   { additionalProperties: false },
@@ -468,7 +453,7 @@ const conversationMethods = {
 };
 
 export const LabConversation = remote("lab.conversation", {
-  version: 5,
+  version: 6,
   host: hostNamed("server"),
   input: Type.Object(
     { id: ConversationIdSchema },

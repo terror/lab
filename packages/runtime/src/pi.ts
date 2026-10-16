@@ -1,15 +1,14 @@
 import type { Context } from "@earendil-works/chord";
 import * as pi from "@earendil-works/pi-durable";
 import { SqliteStorage } from "@earendil-works/pi-durable/storage/sqlite";
-import {
-  type ConversationId,
-  type LabError,
-  omitUndefined,
-  type StopInput,
-  type StopReceipt,
-  type SubmissionReceipt,
-  type SubmissionState,
-  type SubmitInput,
+import type {
+  ConversationId,
+  LabError,
+  StopInput,
+  StopReceipt,
+  SubmissionReceipt,
+  SubmissionState,
+  SubmitInput,
 } from "@lab/wire";
 import { BunSqliteDatabase } from "./sqlite";
 
@@ -81,22 +80,13 @@ export function submissionState(
 ): SubmissionState {
   switch (record.status) {
     case "queued":
-      return { id: record.id, status: record.status };
     case "placed":
-      return { id: record.id, status: record.status, entryId: record.entry };
     case "done":
-      return {
-        id: record.id,
-        status: record.status,
-        entryId: record.entry,
-        answerId: record.answer,
-      };
+      return { status: record.status };
     case "unanswered":
       return {
-        id: record.id,
         status: record.status,
         reason: record.reason,
-        ...omitUndefined({ entryId: record.entry }),
       };
   }
 }

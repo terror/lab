@@ -51,7 +51,6 @@ export class LabClient {
 
           return conversation.submit(input, context);
         }),
-      conversation: (id) => this.conversation(id),
     });
   }
 

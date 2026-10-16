@@ -34,7 +34,6 @@ export function Composer({
   const connected = connection.status === "connected";
   const sending =
     operation?.phase === "creating" || operation?.phase === "submitting";
-  const awaitingState = operation?.phase === "awaiting-observation";
   const unresolved = operation !== undefined && operation.phase !== "complete";
 
   const canSend =
@@ -55,14 +54,12 @@ export function Composer({
       ? "Switching model…"
       : sending
         ? "Sending message…"
-        : awaitingState
-          ? "Updating conversation…"
-          : !connected || conversation.stale
-            ? "Reconnecting… You can keep editing your draft."
-            : conversation.value?.busy ||
-                (conversation.value?.inbox.length ?? 0) > 0
-              ? "You can draft your next message while lab works."
-              : undefined;
+        : !connected || conversation.stale
+          ? "Reconnecting… You can keep editing your draft."
+          : conversation.value?.busy ||
+              (conversation.value?.inbox.length ?? 0) > 0
+            ? "You can draft your next message while lab works."
+            : undefined;
 
   return (
     <div className="shrink-0 px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">

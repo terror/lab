@@ -11,33 +11,34 @@ import {
 } from "@earendil-works/chord/context";
 import type * as ai from "@earendil-works/pi-ai";
 import * as pi from "@earendil-works/pi-durable";
-import {
-  type ConversationState,
-  type ConversationSummary,
-  type LabError,
-  type Message,
-  omitUndefined,
-  type SubmissionState,
-  type ToolProgress,
-  type ToolResult,
+import type {
+  ConversationState,
+  ConversationSummary,
+  LabError,
+  Message,
+  SubmissionState,
+  ToolProgress,
+  ToolResult,
 } from "@lab/wire";
 import type { ToolRegistry } from "./extensions";
 import { ConversationDoc, parseConversationDoc } from "./metadata";
 import { observe, submissionState } from "./pi";
 
+type InputSubmission = Extract<pi.SubmissionRecord, { type: "input" }>;
+
 export class ConversationObservation
   implements AttachedReplicatedState<ConversationState>
 {
-  private readonly changed = new Set<pi.SubmissionId>();
   private readonly disposers: (() => void)[] = [];
   private readonly entries = new WeakMap<
     pi.EntryRecord,
     ConversationState["entries"][number]
   >();
-  private readonly submissions = new Map<pi.SubmissionId, SubmissionState>();
 
   private deleted = false;
   private disposed = false;
+  private latest: InputSubmission | undefined;
+  private latestNonQueued: InputSubmission | undefined;
   private scheduled = false;
   private source: AttachedReplicatedState<pi.ConversationView> | undefined;
   private state: MutableReplicatedState<ConversationState> | undefined;
@@ -67,15 +68,7 @@ export class ConversationObservation
               continue;
             }
 
-            observation.submissions.set(
-              change.value.id,
-              submissionState(change.value),
-            );
-
-            if (observation.state === undefined) {
-              observation.changed.add(change.value.id);
-            }
-
+            observation.updateSubmission(change.value);
             observation.schedule(context);
           }
         }),
@@ -111,12 +104,18 @@ export class ConversationObservation
         );
 
         for (const record of page.items) {
-          if (record.type === "input" && !observation.changed.has(record.id)) {
-            observation.submissions.set(record.id, submissionState(record));
+          if (record.type === "input") {
+            observation.updateSubmission(record, false);
           }
         }
 
-        cursor = page.next;
+        const latestNonQueued = observation.latestNonQueued?.id;
+
+        cursor =
+          latestNonQueued !== undefined &&
+          page.items.some(({ id }) => id <= latestNonQueued)
+            ? undefined
+            : page.next;
       } while (cursor !== undefined);
 
       const metadata = await harness.documentState(
@@ -171,8 +170,6 @@ export class ConversationObservation
 
       observation.state = replicatedState(observation.project());
 
-      observation.changed.clear();
-
       return observation;
     } catch (error) {
       observation.dispose();
@@ -207,8 +204,8 @@ export class ConversationObservation
 
     this.source = undefined;
 
-    this.submissions.clear();
-    this.changed.clear();
+    this.latest = undefined;
+    this.latestNonQueued = undefined;
   }
 
   private get current() {
@@ -217,6 +214,25 @@ export class ConversationObservation
     }
 
     return this.state;
+  }
+
+  private updateSubmission(record: InputSubmission, replace = true) {
+    if (
+      this.latest === undefined ||
+      record.id > this.latest.id ||
+      (replace && record.id === this.latest.id)
+    ) {
+      this.latest = record;
+    }
+
+    if (
+      record.status !== "queued" &&
+      (this.latestNonQueued === undefined ||
+        record.id > this.latestNonQueued.id ||
+        (replace && record.id === this.latestNonQueued.id))
+    ) {
+      this.latestNonQueued = record;
+    }
   }
 
   private schedule(context: Context) {
@@ -264,7 +280,6 @@ export class ConversationObservation
         entries: [],
         tools: [],
         inbox: [],
-        submissions: [],
         error: { code: "not_found", message: "Conversation not found." },
       };
     }
@@ -285,12 +300,8 @@ export class ConversationObservation
 
     const partial = live?.generation?.message;
 
-    const submissions = [...this.submissions.values()].sort(
-      (a, b) => a.id - b.id,
-    );
-
-    const latest = submissions.findLast(({ status }) => status !== "queued");
-    const error = this.tools.error(agent) ?? conversationError(live, latest);
+    const error =
+      this.tools.error(agent) ?? conversationError(live, this.latestNonQueued);
 
     return {
       conversation: this.summary,
@@ -344,8 +355,10 @@ export class ConversationObservation
               },
             ],
       ),
-      submissions,
-      ...omitUndefined({ error }),
+      ...(this.latest === undefined
+        ? {}
+        : { latestSubmission: submissionState(this.latest) }),
+      ...(error === undefined ? {} : { error }),
     };
   }
 }
@@ -377,13 +390,17 @@ function projectMessage(message: ai.Message): Message {
       return {
         role: "tool",
         text,
-        tool: omitUndefined({
+        tool: {
           callId: message.toolCallId,
           name: message.toolName,
           isError: message.isError,
-          durationMs: message.durationMs,
-          details: message.details,
-        }),
+          ...(message.durationMs === undefined
+            ? {}
+            : { durationMs: message.durationMs }),
+          ...(message.details === undefined
+            ? {}
+            : { details: message.details }),
+        },
       };
   }
 }
@@ -394,13 +411,15 @@ function projectTool(
   output: string,
   details: unknown,
 ): ToolProgress {
-  const progress = omitUndefined({
+  const progress = {
     callId: tool.callId,
     name: tool.name,
     output,
-    arguments: "arguments" in tool ? tool.arguments : undefined,
-    details,
-  });
+    ...("arguments" in tool && tool.arguments !== undefined
+      ? { arguments: tool.arguments }
+      : {}),
+    ...(details === undefined ? {} : { details }),
+  };
 
   switch (tool.status) {
     case "pending":
@@ -412,7 +431,9 @@ function projectTool(
         : {
             ...progress,
             status: result.isError ? "failed" : "succeeded",
-            ...omitUndefined({ durationMs: result.durationMs }),
+            ...(result.durationMs === undefined
+              ? {}
+              : { durationMs: result.durationMs }),
           };
   }
 }

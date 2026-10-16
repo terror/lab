@@ -1,12 +1,11 @@
 import type { Context } from "@earendil-works/chord";
 import type { Api, Model, Models, Provider } from "@earendil-works/pi-ai";
-import {
-  type ListModelsInput,
-  type ModelCatalog,
-  type ModelReference,
-  omitUndefined,
-  type ProviderInfo,
-  type Result,
+import type {
+  ListModelsInput,
+  ModelCatalog,
+  ModelReference,
+  ProviderInfo,
+  Result,
 } from "@lab/wire";
 
 export type ProviderFactory = (options: {
@@ -22,9 +21,12 @@ export class ModelRegistry {
     context: Context,
   ): Promise<ModelCatalog> {
     const refreshed = input.refresh
-      ? await this.models.refresh(
-          omitUndefined({ allowNetwork: true, signal: context.abortSignal }),
-        )
+      ? await this.models.refresh({
+          allowNetwork: true,
+          ...(context.abortSignal === undefined
+            ? {}
+            : { signal: context.abortSignal }),
+        })
       : undefined;
 
     context.abortSignal?.throwIfAborted();
@@ -59,7 +61,7 @@ export class ModelRegistry {
               input: [...model.input],
               available: available.has(model.id),
             })),
-            ...omitUndefined({ error }),
+            ...(error === undefined ? {} : { error }),
           };
         }),
     );
@@ -132,7 +134,10 @@ export class ModelRegistry {
     context: Context,
   ): Promise<Result<readonly Model<Api>[]>> {
     try {
-      const options = omitUndefined({ signal: context.abortSignal });
+      const options =
+        context.abortSignal === undefined
+          ? {}
+          : { signal: context.abortSignal };
 
       if ((await this.models.checkAuth(provider, options)) === undefined) {
         return {
