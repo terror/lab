@@ -3,6 +3,7 @@ import { withoutAbortSignal } from "@earendil-works/chord/context";
 import { createModels } from "@earendil-works/pi-ai/models";
 import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
 import * as pi from "@earendil-works/pi-durable";
+import { SqliteStorage } from "@earendil-works/pi-durable/storage/sqlite";
 import { loadExtensions, type ToolRegistry } from "./extensions";
 import { Harness } from "./harness";
 import {
@@ -13,8 +14,8 @@ import {
   parseConfigurationDoc,
 } from "./metadata";
 import { ModelRegistry } from "./models";
-import { openHarness, openStorage } from "./pi";
 import type { RuntimeOwner } from "./runtime";
+import { BunSqliteDatabase } from "./sqlite";
 import { TitleExtension } from "./tasks/titles";
 import { validate } from "./validation";
 
@@ -40,11 +41,13 @@ export async function openRuntime(
   const registry = pi.createRegistry();
   registry.install(TitleExtension);
 
-  const storage = await openStorage(options.path);
+  const storage = await SqliteStorage.open(
+    await BunSqliteDatabase.open(options.path, { exclusive: true }),
+  );
 
   const harness = await (async () => {
     try {
-      return await openHarness(
+      return await pi.Harness.open(
         storage,
         {
           models,

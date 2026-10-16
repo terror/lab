@@ -32,7 +32,6 @@ import {
   StartRequestDoc,
 } from "./metadata";
 import type { ModelRegistry } from "./models";
-import { conversation, runtimeError, start, stop, submit } from "./pi";
 import type { Runtime } from "./runtime";
 import { TitleTask, UNTITLED_CONVERSATION } from "./tasks/titles";
 import { ConversationObservation } from "./view";
@@ -213,7 +212,37 @@ export class Harness implements Runtime {
           parseConversationDoc(await tx.doc(ConversationDoc, id)).title =
             input.title;
 
-          const receipt = await start(tx, id, input);
+          const entry = await tx.appendEntry(pi.UserEntry, id, {
+            model: [
+              { role: "user", content: input.content, timestamp: Date.now() },
+            ],
+          });
+
+          const submission = await tx.createSubmission({
+            conversationId: id,
+            requestId: input.requestId,
+            type: "input",
+            status: "placed",
+            entry: entry.id,
+          });
+
+          const live = await tx.doc(pi.LiveDoc, id);
+
+          live.run = {
+            taskId: await tx.createTask(
+              pi.GenerationTask,
+              {},
+              { conversationId: id, ownership: { kind: "conversation" } },
+            ),
+            inputs: [submission.id],
+          };
+
+          const receipt: SubmissionReceipt = {
+            conversationId: id,
+            submissionId: submission.id,
+            requestId: input.requestId,
+            status: "admitted",
+          };
 
           if (
             input.title === UNTITLED_CONVERSATION &&
@@ -320,9 +349,24 @@ export class Harness implements Runtime {
           }
         }
 
+        const submission = await handle.submit(
+          {
+            type: "input",
+            content: input.content,
+            requestId: input.requestId,
+            whenBusy: input.whenBusy,
+          },
+          context,
+        );
+
         return {
           ok: true,
-          value: await submit(handle, input, context),
+          value: {
+            conversationId: handle.id,
+            submissionId: submission.id,
+            requestId: input.requestId,
+            status: "admitted",
+          },
         };
       }),
     );
@@ -400,10 +444,18 @@ export class Harness implements Runtime {
     context: Context,
   ): Promise<Result<StopReceipt>> {
     return this.perform(context, () =>
-      this.withConversation(id, context, async (handle) => ({
-        ok: true,
-        value: await stop(handle, input, context),
-      })),
+      this.withConversation(id, context, async (handle) => {
+        await handle.abort(context, { background: input.scope === "all" });
+
+        return {
+          ok: true,
+          value: {
+            conversationId: handle.id,
+            scope: input.scope,
+            status: "stopped",
+          },
+        };
+      }),
     );
   }
 
@@ -414,7 +466,10 @@ export class Harness implements Runtime {
     options: { includeDeleted?: boolean } = {},
   ): Promise<Result<T>> {
     return this.admit(`conversation:${id}`, context, async () => {
-      const handle = await conversation(this.harness, id, context);
+      const handle = await this.harness.conversation(
+        id as pi.ConversationId,
+        context,
+      );
 
       const metadata =
         handle === undefined || options.includeDeleted
@@ -479,11 +534,30 @@ export class Harness implements Runtime {
     } catch (error) {
       context.abortSignal?.throwIfAborted();
 
+      if (!this.available || error instanceof pi.SessionFailed) {
+        return {
+          ok: false,
+          error: { code: "unavailable", message: "Runtime is unavailable." },
+        };
+      }
+
+      if (error instanceof pi.ConversationBusy) {
+        return {
+          ok: false,
+          error: { code: "busy", message: "Conversation is busy." },
+        };
+      }
+
+      if (error instanceof pi.StorageRequestError) {
+        return {
+          ok: false,
+          error: { code: "invalid_input", message: "Invalid runtime request." },
+        };
+      }
+
       return {
         ok: false,
-        error: runtimeError(
-          this.available ? error : new pi.SessionFailed(error),
-        ),
+        error: { code: "internal", message: "Runtime operation failed." },
       };
     }
   }

@@ -22,7 +22,6 @@ import type {
 } from "@lab/wire";
 import type { ToolRegistry } from "./extensions";
 import { ConversationDoc, parseConversationDoc } from "./metadata";
-import { observe, submissionState } from "./pi";
 
 type InputSubmission = Extract<pi.SubmissionRecord, { type: "input" }>;
 
@@ -81,7 +80,7 @@ export class ConversationObservation
         }),
       );
 
-      const source = await observe(conversation, context);
+      const source = await conversation.viewState(context);
 
       observation.source = source;
 
@@ -357,7 +356,12 @@ export class ConversationObservation
       ),
       ...(this.latest === undefined
         ? {}
-        : { latestSubmission: submissionState(this.latest) }),
+        : {
+            latestSubmission:
+              this.latest.status === "unanswered"
+                ? { status: this.latest.status, reason: this.latest.reason }
+                : { status: this.latest.status },
+          }),
       ...(error === undefined ? {} : { error }),
     };
   }
