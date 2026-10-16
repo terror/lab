@@ -34,7 +34,7 @@ import {
 import type { ModelRegistry } from "./models";
 import { conversation, runtimeError, start, stop, submit } from "./pi";
 import type { Runtime } from "./runtime";
-import { TitleTask, UNTITLED_CONVERSATION } from "./titles";
+import { TitleTask, UNTITLED_CONVERSATION } from "./tasks/titles";
 import { ConversationObservation } from "./view";
 
 const CursorSchema = Type.Object(

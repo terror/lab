@@ -1,6 +1,6 @@
 import type { Models } from "@earendil-works/pi-ai";
 import * as pi from "@earendil-works/pi-durable";
-import { ConversationDoc, parseConversationDoc } from "./metadata";
+import { ConversationDoc, parseConversationDoc } from "../metadata";
 
 export const UNTITLED_CONVERSATION = "Untitled conversation";
 

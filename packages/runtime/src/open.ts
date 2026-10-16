@@ -15,7 +15,7 @@ import {
 import { ModelRegistry } from "./models";
 import { openHarness, openStorage } from "./pi";
 import type { RuntimeOwner } from "./runtime";
-import { TitleExtension } from "./titles";
+import { TitleExtension } from "./tasks/titles";
 import { validate } from "./validation";
 
 export type RuntimeOptions = {
