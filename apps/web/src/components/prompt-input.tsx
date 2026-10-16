@@ -12,39 +12,41 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+export type PromptAction =
+  | { type: "send"; disabled: boolean; onSubmit: () => void }
+  | { type: "sending" }
+  | { type: "stop"; disabled: boolean; onStop: () => void }
+  | { type: "stopping" };
+
 export function PromptInput({
+  action,
   value,
   onValueChange,
-  onSubmit,
-  canSubmit,
-  submitting = false,
-  working = false,
-  onStop,
-  canStop = false,
-  stopping = false,
   status,
   autoFocus = false,
   placeholder = "Message lab…",
 }: {
+  action: PromptAction;
   value: string;
   onValueChange: (value: string) => void;
-  onSubmit: () => void;
-  canSubmit: boolean;
-  submitting?: boolean;
-  working?: boolean;
-  onStop?: () => void;
-  canStop?: boolean;
-  stopping?: boolean;
   status: string | undefined;
   autoFocus?: boolean;
   placeholder?: string;
 }) {
   const id = useId();
   const input = useRef<HTMLTextAreaElement>(null);
-  const showStop = (working || stopping) && onStop !== undefined;
+  const composing = useRef(false);
+  const compositionTimer = useRef<number | undefined>(undefined);
+  const canSubmit = action.type === "send" && !action.disabled;
+  const button = buttonState(action);
+
+  useEffect(() => {
+    return () => window.clearTimeout(compositionTimer.current);
+  }, []);
 
   useLayoutEffect(() => {
     const element = input.current;
+
     if (element !== null && element.value === value) {
       element.style.height = "0px";
       element.style.height = `${Math.min(element.scrollHeight, 240)}px`;
@@ -53,10 +55,13 @@ export function PromptInput({
 
   useLayoutEffect(() => {
     const element = input.current;
+
     if (element === null) {
       return;
     }
+
     let width = element.clientWidth;
+
     const observer = new ResizeObserver(() => {
       if (width !== element.clientWidth) {
         width = element.clientWidth;
@@ -64,7 +69,9 @@ export function PromptInput({
         element.style.height = `${Math.min(element.scrollHeight, 240)}px`;
       }
     });
+
     observer.observe(element);
+
     return () => observer.disconnect();
   }, []);
 
@@ -80,7 +87,7 @@ export function PromptInput({
       onSubmit={(event) => {
         event.preventDefault();
         if (canSubmit) {
-          onSubmit();
+          action.onSubmit();
         }
       }}
     >
@@ -101,15 +108,27 @@ export function PromptInput({
           id={id}
           maxLength={100_000}
           onChange={(event) => onValueChange(event.target.value)}
+          onCompositionEnd={() => {
+            compositionTimer.current = window.setTimeout(() => {
+              composing.current = false;
+              compositionTimer.current = undefined;
+            }, 0);
+          }}
+          onCompositionStart={() => {
+            window.clearTimeout(compositionTimer.current);
+            compositionTimer.current = undefined;
+            composing.current = true;
+          }}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&
               !event.shiftKey &&
               !event.altKey &&
               !event.nativeEvent.isComposing &&
-              event.nativeEvent.keyCode !== 229
+              !composing.current
             ) {
               event.preventDefault();
+
               if (canSubmit) {
                 event.currentTarget.form?.requestSubmit();
               }
@@ -125,35 +144,19 @@ export function PromptInput({
             <TooltipTrigger asChild>
               <span className="inline-flex">
                 <InputGroupButton
-                  aria-label={
-                    showStop
-                      ? stopping
-                        ? "Stopping response"
-                        : "Stop response"
-                      : submitting
-                        ? "Sending message"
-                        : "Send message"
-                  }
+                  aria-label={button.label}
                   className="size-11 rounded-sm disabled:opacity-40"
-                  disabled={showStop ? !canStop || stopping : !canSubmit}
-                  onClick={showStop ? onStop : undefined}
+                  disabled={button.disabled}
+                  onClick={button.onClick}
                   size="icon-sm"
-                  type={showStop ? "button" : "submit"}
+                  type={button.type}
                   variant="default"
                 >
-                  {stopping || submitting ? (
-                    <LoaderCircle className="size-4 motion-safe:animate-spin" />
-                  ) : showStop ? (
-                    <Square className="size-3.5 fill-current" />
-                  ) : (
-                    <ArrowUp className="size-5" />
-                  )}
+                  {button.icon}
                 </InputGroupButton>
               </span>
             </TooltipTrigger>
-            <TooltipContent>
-              {showStop ? "Stop response" : "Send message"}
-            </TooltipContent>
+            <TooltipContent>{button.tooltip}</TooltipContent>
           </Tooltip>
         </InputGroupAddon>
       </InputGroup>
@@ -166,4 +169,42 @@ export function PromptInput({
       </p>
     </form>
   );
+}
+
+function buttonState(action: PromptAction) {
+  switch (action.type) {
+    case "send":
+      return {
+        label: "Send message",
+        tooltip: "Send message",
+        disabled: action.disabled,
+        type: "submit" as const,
+        icon: <ArrowUp className="size-5" />,
+      };
+    case "sending":
+      return {
+        label: "Sending message",
+        tooltip: "Send message",
+        disabled: true,
+        type: "button" as const,
+        icon: <LoaderCircle className="size-4 motion-safe:animate-spin" />,
+      };
+    case "stop":
+      return {
+        label: "Stop response",
+        tooltip: "Stop response",
+        disabled: action.disabled,
+        type: "button" as const,
+        onClick: action.onStop,
+        icon: <Square className="size-3.5 fill-current" />,
+      };
+    case "stopping":
+      return {
+        label: "Stopping response",
+        tooltip: "Stop response",
+        disabled: true,
+        type: "button" as const,
+        icon: <LoaderCircle className="size-4 motion-safe:animate-spin" />,
+      };
+  }
 }

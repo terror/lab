@@ -1,5 +1,5 @@
 import type { ConversationId } from "@lab/wire";
-import { PromptInput } from "@/components/prompt-input";
+import { type PromptAction, PromptInput } from "@/components/prompt-input";
 import { SendFeedback } from "@/components/send-feedback";
 import { useConnection } from "@/hooks/use-connection";
 import type { useConversation } from "@/hooks/use-conversation";
@@ -35,31 +35,75 @@ export function Composer({
   const connected = connection.status === "connected";
   const sending = operation?.phase === "submitting";
   const unresolved = operation !== undefined && operation.phase !== "rejected";
+  const working =
+    conversation.value?.busy || (conversation.value?.inbox.length ?? 0) > 0;
 
   const canSend =
     connected &&
     conversation.value !== undefined &&
     !conversation.stale &&
-    !conversation.value.busy &&
-    conversation.value.inbox.length === 0 &&
+    !working &&
     !stopping &&
     !changingModel &&
     !unresolved &&
     draft.text.trim() !== "" &&
     draft.text.length <= 100_000;
 
-  const status = stopping
-    ? "Stopping response…"
-    : changingModel
-      ? "Switching model…"
-      : sending
-        ? "Sending message…"
-        : !connected || conversation.stale
-          ? "Reconnecting… You can keep editing your draft."
-          : conversation.value?.busy ||
-              (conversation.value?.inbox.length ?? 0) > 0
-            ? "You can draft your next message while lab works."
-            : undefined;
+  const action = ((): PromptAction => {
+    if (stopping) {
+      return { type: "stopping" };
+    }
+
+    if (working) {
+      return { type: "stop", disabled: !canStop, onStop };
+    }
+
+    if (sending) {
+      return { type: "sending" };
+    }
+
+    return {
+      type: "send",
+      disabled: !canSend,
+      onSubmit: () => {
+        if (canSend) {
+          const operation = send.start({
+            conversationId: id,
+            content: draft.text,
+            whenBusy: "reject",
+          });
+
+          if (operation !== undefined) {
+            draft.set("");
+          }
+        }
+      },
+    };
+  })();
+
+  const status = (() => {
+    if (stopping) {
+      return "Stopping response…";
+    }
+
+    if (changingModel) {
+      return "Switching model…";
+    }
+
+    if (sending) {
+      return "Sending message…";
+    }
+
+    if (!connected || conversation.stale) {
+      return "Reconnecting… You can keep editing your draft.";
+    }
+
+    if (working) {
+      return "You can draft your next message while lab works.";
+    }
+
+    return undefined;
+  })();
 
   return (
     <div className="shrink-0 px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
@@ -71,32 +115,11 @@ export function Composer({
           send={send}
         />
         <PromptInput
+          action={action}
           autoFocus
-          canStop={canStop}
-          canSubmit={canSend}
-          onStop={onStop}
-          onSubmit={() => {
-            if (canSend) {
-              const operation = send.start({
-                conversationId: id,
-                content: draft.text,
-                whenBusy: "reject",
-              });
-
-              if (operation !== undefined) {
-                draft.set("");
-              }
-            }
-          }}
           onValueChange={draft.set}
           status={status}
-          stopping={stopping}
-          submitting={sending}
           value={draft.text}
-          working={
-            conversation.value?.busy ||
-            (conversation.value?.inbox.length ?? 0) > 0
-          }
         />
         {!draft.isPersistent && (
           <p className="text-sm text-destructive" role="alert">

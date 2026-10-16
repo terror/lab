@@ -5,7 +5,7 @@ import useSessionStorageState from "use-session-storage-state";
 import { ChatHeader } from "@/components/chat-header";
 import { LabMark } from "@/components/lab-mark";
 import { ModelPicker } from "@/components/model-picker";
-import { PromptInput } from "@/components/prompt-input";
+import { type PromptAction, PromptInput } from "@/components/prompt-input";
 import { SendFeedback } from "@/components/send-feedback";
 import { useConnection } from "@/hooks/use-connection";
 import { useModels } from "@/hooks/use-models";
@@ -53,6 +53,45 @@ export function CreateConversation() {
     draft.trim() !== "" &&
     draft.length <= 100_000;
 
+  const action = ((): PromptAction => {
+    if (starting) {
+      return { type: "sending" };
+    }
+
+    return {
+      type: "send",
+      disabled: !canSubmit,
+      onSubmit: () => {
+        if (canSubmit) {
+          const operation = send.start({
+            creation: {
+              title: "Untitled conversation",
+              ...(model === undefined ? {} : { model }),
+            },
+            content: draft,
+            whenBusy: "reject",
+          });
+
+          if (operation !== undefined) {
+            setDraft("");
+          }
+        }
+      },
+    };
+  })();
+
+  const status = (() => {
+    if (starting) {
+      return "Starting your chat…";
+    }
+
+    if (!connected) {
+      return "Reconnect to send. You can keep writing.";
+    }
+
+    return undefined;
+  })();
+
   return (
     <>
       <ChatHeader title="New conversation">
@@ -91,34 +130,11 @@ export function CreateConversation() {
               send={send}
             />
             <PromptInput
+              action={action}
               autoFocus
-              canSubmit={canSubmit}
-              onSubmit={() => {
-                if (canSubmit) {
-                  const operation = send.start({
-                    creation: {
-                      title: "Untitled conversation",
-                      ...(model === undefined ? {} : { model }),
-                    },
-                    content: draft,
-                    whenBusy: "reject",
-                  });
-
-                  if (operation !== undefined) {
-                    setDraft("");
-                  }
-                }
-              }}
               onValueChange={setDraft}
               placeholder="Ask anything, or start with an idea…"
-              status={
-                starting
-                  ? "Starting your chat…"
-                  : !connected
-                    ? "Reconnect to send. You can keep writing."
-                    : undefined
-              }
-              submitting={starting}
+              status={status}
               value={draft}
             />
             {!isPersistent && (
