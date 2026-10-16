@@ -1221,88 +1221,6 @@ export type ToolResult = Static<typeof ToolResultSchema>;
 export type ToolSelectionReceipt = Static<typeof ToolSelectionReceiptSchema>;
 
 /**
- * Defines conversation commands exposed by the service contract.
- *
- * @remarks
- * Every command addresses a conversation by its ID and returns an
- * application-level {@link Result}.
- *
- * @internal
- */
-const conversationMethods = {
-  /**
-   * Describes the RPC that saves a validated provider and model selection.
-   *
-   * @remarks
-   * The selection applies at the next model request preparation, which can
-   * occur
-   * within the current run. The receipt identifies that effective boundary.
-   *
-   * @see {@link SetModelInputSchema}
-   * @see {@link ModelSelectionReceiptSchema}
-   */
-  setModel: method(
-    Type.Object(
-      { id: ConversationIdSchema, input: SetModelInputSchema },
-      { additionalProperties: false },
-    ),
-    resultSchema(ModelSelectionReceiptSchema),
-  ),
-  /**
-   * Describes the RPC that replaces the tool selection of an idle conversation.
-   *
-   * @remarks
-   * Active or queued work produces a busy error; accepted selections take
-   * effect
-   * on the next submission and are echoed in the receipt.
-   *
-   * @see {@link SetToolsInputSchema}
-   * @see {@link ToolSelectionReceiptSchema}
-   */
-  setTools: method(
-    Type.Object(
-      { id: ConversationIdSchema, input: SetToolsInputSchema },
-      { additionalProperties: false },
-    ),
-    resultSchema(ToolSelectionReceiptSchema),
-  ),
-  /**
-   * Describes the RPC that cancels foreground work or includes background work.
-   *
-   * @remarks
-   * The receipt is returned after the runtime's abort operation completes and
-   * echoes the requested scope.
-   *
-   * @see {@link StopInputSchema}
-   * @see {@link StopReceiptSchema}
-   */
-  stop: method(
-    Type.Object(
-      { id: ConversationIdSchema, input: StopInputSchema },
-      { additionalProperties: false },
-    ),
-    resultSchema(StopReceiptSchema),
-  ),
-  /**
-   * Describes the RPC that admits text input according to its busy policy.
-   *
-   * @remarks
-   * Request IDs deduplicate retries within the conversation. Success confirms
-   * admission; subsequent conversation state reports progress and completion.
-   *
-   * @see {@link SubmitInputSchema}
-   * @see {@link SubmissionReceiptSchema}
-   */
-  submit: method(
-    Type.Object(
-      { id: ConversationIdSchema, input: SubmitInputSchema },
-      { additionalProperties: false },
-    ),
-    resultSchema(SubmissionReceiptSchema),
-  ),
-};
-
-/**
  * Builds the application-level result envelope used by the RPC methods.
  *
  * @remarks
@@ -1397,21 +1315,6 @@ export const LabService = remote("lab.service", {
     default: {
       /** Catalog queries and conversation lifecycle operations. */
       methods: {
-        ...conversationMethods,
-        /**
-         * Describes the RPC that creates a conversation using a retry key.
-         *
-         * @remarks
-         * The runtime validates initial model and tool choices and returns the
-         * conversation summary. A repeated key resolves to the prior creation.
-         *
-         * @see {@link CreateConversationInputSchema}
-         * @see {@link ConversationSummarySchema}
-         */
-        startConversation: method(
-          StartConversationInputSchema,
-          resultSchema(SubmissionReceiptSchema),
-        ),
         /**
          * Describes the RPC that stops a conversation and marks it deleted.
          *
@@ -1465,6 +1368,90 @@ export const LabService = remote("lab.service", {
         listTools: method(
           Type.Object({}, { additionalProperties: false }),
           resultSchema(ToolCatalogSchema),
+        ),
+        /**
+         * Describes the RPC that saves a validated provider and model selection.
+         *
+         * @remarks
+         * The selection applies at the next model request preparation, which can
+         * occur
+         * within the current run. The receipt identifies that effective boundary.
+         *
+         * @see {@link SetModelInputSchema}
+         * @see {@link ModelSelectionReceiptSchema}
+         */
+        setModel: method(
+          Type.Object(
+            { id: ConversationIdSchema, input: SetModelInputSchema },
+            { additionalProperties: false },
+          ),
+          resultSchema(ModelSelectionReceiptSchema),
+        ),
+        /**
+         * Describes the RPC that replaces the tool selection of an idle conversation.
+         *
+         * @remarks
+         * Active or queued work produces a busy error; accepted selections take
+         * effect
+         * on the next submission and are echoed in the receipt.
+         *
+         * @see {@link SetToolsInputSchema}
+         * @see {@link ToolSelectionReceiptSchema}
+         */
+        setTools: method(
+          Type.Object(
+            { id: ConversationIdSchema, input: SetToolsInputSchema },
+            { additionalProperties: false },
+          ),
+          resultSchema(ToolSelectionReceiptSchema),
+        ),
+        /**
+         * Describes the RPC that creates a conversation using a retry key.
+         *
+         * @remarks
+         * The runtime validates initial model and tool choices and returns the
+         * conversation summary. A repeated key resolves to the prior creation.
+         *
+         * @see {@link CreateConversationInputSchema}
+         * @see {@link ConversationSummarySchema}
+         */
+        startConversation: method(
+          StartConversationInputSchema,
+          resultSchema(SubmissionReceiptSchema),
+        ),
+        /**
+         * Describes the RPC that cancels foreground work or includes background work.
+         *
+         * @remarks
+         * The receipt is returned after the runtime's abort operation completes and
+         * echoes the requested scope.
+         *
+         * @see {@link StopInputSchema}
+         * @see {@link StopReceiptSchema}
+         */
+        stop: method(
+          Type.Object(
+            { id: ConversationIdSchema, input: StopInputSchema },
+            { additionalProperties: false },
+          ),
+          resultSchema(StopReceiptSchema),
+        ),
+        /**
+         * Describes the RPC that admits text input according to its busy policy.
+         *
+         * @remarks
+         * Request IDs deduplicate retries within the conversation. Success confirms
+         * admission; subsequent conversation state reports progress and completion.
+         *
+         * @see {@link SubmitInputSchema}
+         * @see {@link SubmissionReceiptSchema}
+         */
+        submit: method(
+          Type.Object(
+            { id: ConversationIdSchema, input: SubmitInputSchema },
+            { additionalProperties: false },
+          ),
+          resultSchema(SubmissionReceiptSchema),
         ),
       },
       /** Replicated values available to subscribers of the service. */
