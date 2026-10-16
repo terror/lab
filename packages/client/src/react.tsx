@@ -1,6 +1,8 @@
-import type { ConversationId } from "@lab/contracts";
+import type { ConversationId, ConversationPage } from "@lab/contracts";
 import {
+  type InfiniteData,
   useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -13,6 +15,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { LabClient } from "./client";
+
+const queryKeys = {
+  conversations: ["lab", "conversations"],
+  models: ["lab", "models"],
+  tools: ["lab", "tools"],
+} as const;
 
 const LabContext = createContext<LabClient | undefined>(undefined);
 
@@ -43,7 +51,7 @@ export function LabProvider({
       }
 
       if (conversations.length > 0) {
-        void queries.invalidateQueries({ queryKey: ["lab", "conversations"] });
+        void queries.invalidateQueries({ queryKey: queryKeys.conversations });
       }
     };
 
@@ -112,7 +120,7 @@ export function useConversations() {
   const queries = useQueryClient();
 
   const query = useInfiniteQuery({
-    queryKey: ["lab", "conversations"],
+    queryKey: queryKeys.conversations,
     queryFn: async ({ pageParam, signal }) => {
       const result = await client.listConversations(
         { limit: 50, ...(pageParam === "" ? {} : { cursor: pageParam }) },
@@ -134,7 +142,7 @@ export function useConversations() {
 
   useEffect(() => {
     if (!connected) {
-      void queries.cancelQueries({ queryKey: ["lab", "conversations"] });
+      void queries.cancelQueries({ queryKey: queryKeys.conversations });
     }
   }, [connected, queries]);
 
@@ -143,7 +151,7 @@ export function useConversations() {
     items: query.data?.pages.flatMap((page) => page.items),
     stale: !connected || query.isError || query.isRefetching,
     refresh: async () => {
-      await queries.cancelQueries({ queryKey: ["lab", "conversations"] });
+      await queries.cancelQueries({ queryKey: queryKeys.conversations });
 
       if (client.connection.getSnapshot().status === "connected") {
         await query.refetch();
@@ -154,6 +162,7 @@ export function useConversations() {
 
 export function useConversation(id: ConversationId) {
   const client = useLabClient();
+  const queries = useQueryClient();
 
   const conversation = useMemo(() => client.conversation(id), [client, id]);
 
@@ -161,6 +170,52 @@ export function useConversation(id: ConversationId) {
     conversation.subscribe,
     conversation.getSnapshot,
   );
+
+  const observedId = snapshot.value?.conversation.id;
+  const createdAt = snapshot.value?.conversation.createdAt;
+  const title = snapshot.value?.conversation.title;
+
+  useEffect(() => {
+    if (
+      observedId === undefined ||
+      createdAt === undefined ||
+      title === undefined
+    ) {
+      return;
+    }
+
+    queries.setQueryData<InfiniteData<ConversationPage>>(
+      queryKeys.conversations,
+      (current) => {
+        if (current === undefined) {
+          return current;
+        }
+
+        const pages = current.pages.map((page) => {
+          if (
+            !page.items.some(
+              (item) =>
+                item.id === observedId &&
+                (item.title !== title || item.createdAt !== createdAt),
+            )
+          ) {
+            return page;
+          }
+
+          return {
+            ...page,
+            items: page.items.map((item) =>
+              item.id === observedId ? { ...item, title, createdAt } : item,
+            ),
+          };
+        });
+
+        return pages.every((page, index) => page === current.pages[index])
+          ? current
+          : { ...current, pages };
+      },
+    );
+  }, [createdAt, observedId, queries, title]);
 
   return {
     ...snapshot,
@@ -170,13 +225,54 @@ export function useConversation(id: ConversationId) {
   };
 }
 
+export function useDeleteConversation(
+  onDeleted?: (id: ConversationId) => void,
+) {
+  const client = useLabClient();
+  const queries = useQueryClient();
+
+  return useMutation({
+    networkMode: "always",
+    retry: false,
+    mutationFn: async (id: ConversationId) => {
+      const result = await client.deleteConversation(id);
+
+      if (!result.ok && result.error.code !== "not_found") {
+        throw new Error(result.error.message);
+      }
+    },
+    onSuccess: async (_value, id) => {
+      await queries.cancelQueries({ queryKey: queryKeys.conversations });
+
+      queries.setQueryData<InfiniteData<ConversationPage>>(
+        queryKeys.conversations,
+        (current) =>
+          current === undefined
+            ? current
+            : {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  items: page.items.filter((item) => item.id !== id),
+                })),
+              },
+      );
+
+      void queries.invalidateQueries({ queryKey: queryKeys.conversations });
+
+      onDeleted?.(id);
+    },
+  });
+}
+
 export function useTools() {
   const client = useLabClient();
+
   const connection = useConnection();
   const connected = connection.status === "connected";
 
   const query = useQuery({
-    queryKey: ["lab", "tools"],
+    queryKey: queryKeys.tools,
     queryFn: async ({ signal }) => {
       const result = await client.listTools(signal);
 
@@ -220,7 +316,7 @@ export function useModels(enabled = true) {
   };
 
   const options = {
-    queryKey: ["lab", "models"],
+    queryKey: queryKeys.models,
     queryFn: ({ signal }: { signal: AbortSignal }) => load(false, signal),
     networkMode: "always" as const,
     retry: false,
@@ -234,7 +330,7 @@ export function useModels(enabled = true) {
 
   useEffect(() => {
     if (!connected) {
-      void queries.cancelQueries({ queryKey: ["lab", "models"] });
+      void queries.cancelQueries({ queryKey: queryKeys.models });
     }
   }, [connected, queries]);
 

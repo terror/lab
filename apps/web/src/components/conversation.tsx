@@ -1,15 +1,10 @@
 import { useConnection, useConversation, useModels } from "@lab/client/react";
 import type {
   ConversationId,
-  ConversationPage,
   ConversationState,
   ModelReference,
 } from "@lab/contracts";
-import {
-  type InfiniteData,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { CircleAlertIcon } from "lucide-react";
 import { useEffect } from "react";
 import { ChatHeader } from "@/components/chat-header";
@@ -30,10 +25,7 @@ export function Conversation({
   const conversation = useConversation(id);
   const connection = useConnection();
   const models = useModels();
-  const queries = useQueryClient();
   const { value, stale, error } = conversation;
-  const observedId = value?.conversation.id;
-  const createdAt = value?.conversation.createdAt;
   const title = value?.conversation.title ?? "Conversation";
   const connected = connection.status === "connected";
 
@@ -88,44 +80,6 @@ export function Conversation({
       ].filter((message) => message !== undefined),
     ),
   ];
-
-  useEffect(() => {
-    if (observedId === undefined || createdAt === undefined) {
-      return;
-    }
-
-    queries.setQueryData<InfiniteData<ConversationPage>>(
-      ["lab", "conversations"],
-      (current) => {
-        if (current === undefined) {
-          return current;
-        }
-
-        const pages = current.pages.map((page) => {
-          if (
-            !page.items.some(
-              (item) =>
-                item.id === observedId &&
-                (item.title !== title || item.createdAt !== createdAt),
-            )
-          ) {
-            return page;
-          }
-
-          return {
-            ...page,
-            items: page.items.map((item) =>
-              item.id === observedId ? { ...item, title, createdAt } : item,
-            ),
-          };
-        });
-
-        return pages.every((page, index) => page === current.pages[index])
-          ? current
-          : { ...current, pages };
-      },
-    );
-  }, [createdAt, observedId, queries, title]);
 
   useEffect(() => {
     document.title = `${title} · lab`;

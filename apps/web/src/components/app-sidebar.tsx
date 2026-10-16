@@ -1,15 +1,10 @@
 import {
   useConnection,
   useConversations,
-  useLabClient,
+  useDeleteConversation,
   useSends,
 } from "@lab/client/react";
-import type { ConversationId, ConversationPage } from "@lab/contracts";
-import {
-  type InfiniteData,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import type { ConversationId } from "@lab/contracts";
 import {
   ChevronsUpDown,
   CircleUserRound,
@@ -83,10 +78,9 @@ export function AppSidebar({
   session: ReturnType<typeof useSession>;
 }) {
   const location = useLocation();
-  const client = useLabClient();
-  const queries = useQueryClient();
   const connection = useConnection();
   const conversations = useConversations();
+  const deletion = useDeleteConversation(onDeleted);
   const sends = useSends();
   const { isMobile, setOpenMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
@@ -98,36 +92,6 @@ export function AppSidebar({
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase()),
   );
-
-  const deletion = useMutation({
-    networkMode: "always",
-    retry: false,
-    mutationFn: async (id: ConversationId) => {
-      const result = await client.deleteConversation(id);
-
-      if (!result.ok && result.error.code !== "not_found") {
-        throw new Error(result.error.message);
-      }
-    },
-    onSuccess: async (_value, id) => {
-      await queries.cancelQueries({ queryKey: ["lab", "conversations"] });
-      queries.setQueryData<InfiniteData<ConversationPage>>(
-        ["lab", "conversations"],
-        (current) =>
-          current === undefined
-            ? current
-            : {
-                ...current,
-                pages: current.pages.map((page) => ({
-                  ...page,
-                  items: page.items.filter((item) => item.id !== id),
-                })),
-              },
-      );
-      onDeleted(id);
-      void queries.invalidateQueries({ queryKey: ["lab", "conversations"] });
-    },
-  });
 
   useEffect(() => {
     if (previousLocation.current !== location.key) {
