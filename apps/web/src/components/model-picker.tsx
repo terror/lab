@@ -112,7 +112,7 @@ export function ModelPicker({
           type="button"
           variant="ghost"
         >
-          <span className="min-w-0 truncate">{label}</span>
+          <span className="min-w-0 truncate">{name}</span>
           {pending ? (
             <LoaderCircleIcon
               aria-hidden="true"
@@ -160,7 +160,10 @@ export function ModelPicker({
                   value={modelKey(value)}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate">{`${value.provider}:${value.modelId}`}</p>
+                    <p className="truncate">{value.modelId}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {`${value.provider}:${value.modelId}`}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {models.data === undefined ? "Not loaded" : "Unavailable"}
                     </p>
@@ -205,13 +208,10 @@ export function ModelPicker({
                       value={modelKey(reference)}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate">{`${provider.name || provider.id}:${model.name || model.id}`}</p>
-                        {((model.name && model.name !== model.id) ||
-                          (provider.name && provider.name !== provider.id)) && (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {`${provider.id}:${model.id}`}
-                          </p>
-                        )}
+                        <p className="truncate">{model.name || model.id}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {`${provider.id}:${model.id}`}
+                        </p>
                         {!available && (
                           <p className="text-xs text-muted-foreground">
                             Unavailable
