@@ -65,6 +65,22 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
         sessions.authorize(principal);
         return runtime.deleteConversation(id, callContext(context));
       },
+      setTools: ({ id, input }, context) => {
+        sessions.authorize(principal);
+        return runtime.setTools(id, input, callContext(context));
+      },
+      setModel: ({ id, input }, context) => {
+        sessions.authorize(principal);
+        return runtime.setModel(id, input, callContext(context));
+      },
+      submit: ({ id, input }, context) => {
+        sessions.authorize(principal);
+        return runtime.submit(id, input, callContext(context));
+      },
+      stop: ({ id, input }, context) => {
+        sessions.authorize(principal);
+        return runtime.stop(id, input, callContext(context));
+      },
     };
   });
 
@@ -98,22 +114,6 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
     return {
       variant: "default",
       view,
-      setTools: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.setTools(id, input, callContext(context));
-      },
-      setModel: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.setModel(id, input, callContext(context));
-      },
-      submit: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.submit(id, input, callContext(context));
-      },
-      stop: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.stop(id, input, callContext(context));
-      },
     };
   });
 

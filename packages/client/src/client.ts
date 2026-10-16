@@ -1,7 +1,6 @@
 import {
   type ConversationId,
   type ConversationPage,
-  LabConversation,
   LabService,
   type ListConversationsInput,
   type ListModelsInput,
@@ -43,13 +42,8 @@ export class LabClient {
         }),
       submit: (id, input) =>
         this.transport.call(async (context) => {
-          const conversation = await context.get(
-            LabConversation,
-            { id },
-            { state: false },
-          );
-
-          return conversation.submit(input, context);
+          const service = await context.get(LabService, {}, { state: false });
+          return service.submit({ id, input }, context);
         }),
     });
   }
@@ -116,13 +110,8 @@ export class LabClient {
     signal?: AbortSignal,
   ): Promise<Result<StopReceipt>> {
     return this.transport.call(async (context) => {
-      const conversation = await context.get(
-        LabConversation,
-        { id },
-        { state: false },
-      );
-
-      return conversation.stop(input, context);
+      const service = await context.get(LabService, {}, { state: false });
+      return service.stop({ id, input }, context);
     }, signal);
   }
 
@@ -132,13 +121,8 @@ export class LabClient {
     signal?: AbortSignal,
   ): Promise<Result<ModelSelectionReceipt>> {
     return this.transport.call(async (context) => {
-      const conversation = await context.get(
-        LabConversation,
-        { id },
-        { state: false },
-      );
-
-      return conversation.setModel(input, context);
+      const service = await context.get(LabService, {}, { state: false });
+      return service.setModel({ id, input }, context);
     }, signal);
   }
 
@@ -148,13 +132,8 @@ export class LabClient {
     signal?: AbortSignal,
   ): Promise<Result<ToolSelectionReceipt>> {
     return this.transport.call(async (context) => {
-      const conversation = await context.get(
-        LabConversation,
-        { id },
-        { state: false },
-      );
-
-      return conversation.setTools(input, context);
+      const service = await context.get(LabService, {}, { state: false });
+      return service.setTools({ id, input }, context);
     }, signal);
   }
 

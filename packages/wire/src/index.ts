@@ -1241,7 +1241,10 @@ const conversationMethods = {
    * @see {@link ModelSelectionReceiptSchema}
    */
   setModel: method(
-    SetModelInputSchema,
+    Type.Object(
+      { id: ConversationIdSchema, input: SetModelInputSchema },
+      { additionalProperties: false },
+    ),
     resultSchema(ModelSelectionReceiptSchema),
   ),
   /**
@@ -1256,7 +1259,10 @@ const conversationMethods = {
    * @see {@link ToolSelectionReceiptSchema}
    */
   setTools: method(
-    SetToolsInputSchema,
+    Type.Object(
+      { id: ConversationIdSchema, input: SetToolsInputSchema },
+      { additionalProperties: false },
+    ),
     resultSchema(ToolSelectionReceiptSchema),
   ),
   /**
@@ -1269,7 +1275,13 @@ const conversationMethods = {
    * @see {@link StopInputSchema}
    * @see {@link StopReceiptSchema}
    */
-  stop: method(StopInputSchema, resultSchema(StopReceiptSchema)),
+  stop: method(
+    Type.Object(
+      { id: ConversationIdSchema, input: StopInputSchema },
+      { additionalProperties: false },
+    ),
+    resultSchema(StopReceiptSchema),
+  ),
   /**
    * Describes the RPC that admits text input according to its busy policy.
    *
@@ -1280,7 +1292,13 @@ const conversationMethods = {
    * @see {@link SubmitInputSchema}
    * @see {@link SubmissionReceiptSchema}
    */
-  submit: method(SubmitInputSchema, resultSchema(SubmissionReceiptSchema)),
+  submit: method(
+    Type.Object(
+      { id: ConversationIdSchema, input: SubmitInputSchema },
+      { additionalProperties: false },
+    ),
+    resultSchema(SubmissionReceiptSchema),
+  ),
 };
 
 /**
@@ -1346,14 +1364,10 @@ export const LabConversation = remote("lab.conversation", {
   /** Supported conversation member sets. */
   variants: {
     /** Commands-only shape with no replicated conversation state. */
-    commands: {
-      /** Shared commands for configuration, input submission, and stopping. */
-      methods: conversationMethods,
-    },
+    /** Shared commands for configuration, input submission, and stopping. */
     /** Full shape combining conversation commands with the replicated view. */
     default: {
       /** The same commands exposed by the commands-only variant. */
-      methods: conversationMethods,
       /** Replicated values available to conversation subscribers. */
       state: {
         /** Current transcript, selected configuration, and live activity. */
@@ -1362,7 +1376,7 @@ export const LabConversation = remote("lab.conversation", {
     },
   },
   /** Contract version identifying this conversation's wire definition. */
-  version: 6,
+  version: 7,
 });
 
 /**
@@ -1387,6 +1401,7 @@ export const LabService = remote("lab.service", {
     default: {
       /** Catalog queries and conversation lifecycle operations. */
       methods: {
+        ...conversationMethods,
         /**
          * Describes the RPC that creates a conversation using a retry key.
          *
@@ -1466,5 +1481,5 @@ export const LabService = remote("lab.service", {
     },
   },
   /** Contract version identifying this service's wire definition. */
-  version: 5,
+  version: 6,
 });
