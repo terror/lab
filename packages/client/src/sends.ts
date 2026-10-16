@@ -6,6 +6,7 @@ import {
   CreateConversationInputSchema,
   type LabError,
   LabErrorSchema,
+  omitUndefined,
   type Result,
   type SubmissionReceipt,
   SubmissionReceiptSchema,
@@ -388,14 +389,19 @@ export class SendOperations {
     unsubscribe?.();
   }
 
-  private update(requestId: string, changes: Partial<SendOperation>) {
+  private update(
+    requestId: string,
+    changes: Partial<Omit<SendOperation, "error">> & {
+      error?: LabError | undefined;
+    },
+  ) {
     const operation = this.find(requestId);
 
     if (operation === undefined) {
       return undefined;
     }
 
-    const next = { ...operation, ...changes };
+    const next = omitUndefined({ ...operation, ...changes });
 
     this.save(
       this.getSnapshot().operations.map((operation) =>

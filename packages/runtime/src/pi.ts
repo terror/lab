@@ -1,14 +1,15 @@
 import type { Context } from "@earendil-works/chord";
 import * as pi from "@earendil-works/pi-durable";
 import { SqliteStorage } from "@earendil-works/pi-durable/storage/sqlite";
-import type {
-  ConversationId,
-  LabError,
-  StopInput,
-  StopReceipt,
-  SubmissionReceipt,
-  SubmissionState,
-  SubmitInput,
+import {
+  type ConversationId,
+  type LabError,
+  omitUndefined,
+  type StopInput,
+  type StopReceipt,
+  type SubmissionReceipt,
+  type SubmissionState,
+  type SubmitInput,
 } from "@lab/contracts";
 import { BunSqliteDatabase } from "./sqlite";
 
@@ -118,7 +119,7 @@ export function submissionState(
         id: record.id,
         status: record.status,
         reason: record.reason,
-        ...(record.entry === undefined ? {} : { entryId: record.entry }),
+        ...omitUndefined({ entryId: record.entry }),
       };
   }
 }

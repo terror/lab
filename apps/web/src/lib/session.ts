@@ -30,7 +30,7 @@ export function useSession() {
               ? { "Content-Type": "application/json" }
               : {}),
           },
-          body: method === "POST" ? JSON.stringify({ password }) : undefined,
+          body: method === "POST" ? JSON.stringify({ password }) : null,
           signal: AbortSignal.any([
             controller.signal,
             AbortSignal.timeout(15_000),

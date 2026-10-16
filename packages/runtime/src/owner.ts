@@ -3,6 +3,7 @@ import { withoutAbortSignal } from "@earendil-works/chord/context";
 import { createModels } from "@earendil-works/pi-ai/models";
 import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
 import * as pi from "@earendil-works/pi-durable";
+import { omitUndefined } from "@lab/contracts";
 import { Check } from "typebox/value";
 import { HarnessRuntime } from "./conversations";
 import { loadExtensions, type ToolRegistry } from "./extensions";
@@ -51,7 +52,7 @@ export async function openRuntime(
           conversationCreated: async (tx, conversation) => {
             await tx.doc(ConversationDoc, conversation.id);
           },
-          onReport: options.onReport,
+          ...omitUndefined({ onReport: options.onReport }),
         },
         context,
       );
@@ -137,7 +138,7 @@ function resolveConfiguration(
   const model = options.model ?? stored?.model ?? options.defaultModel;
   const configuration = {
     ...tools.configuration(stored),
-    ...(model === undefined ? {} : { model }),
+    ...omitUndefined({ model }),
   };
 
   if (!Check(ConfigurationSchema, configuration)) {

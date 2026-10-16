@@ -21,6 +21,7 @@ import {
   ToolSelectionReceiptSchema,
 } from "./schemas";
 
+export { omitUndefined } from "./omit-undefined";
 export * from "./schemas";
 
 export const LabService = remote("lab.service", {

@@ -11,14 +11,15 @@ import {
 } from "@earendil-works/chord/context";
 import type * as ai from "@earendil-works/pi-ai";
 import * as pi from "@earendil-works/pi-durable";
-import type {
-  ConversationState,
-  ConversationSummary,
-  LabError,
-  Message,
-  SubmissionState,
-  ToolProgress,
-  ToolResult,
+import {
+  type ConversationState,
+  type ConversationSummary,
+  type LabError,
+  type Message,
+  omitUndefined,
+  type SubmissionState,
+  type ToolProgress,
+  type ToolResult,
 } from "@lab/contracts";
 import type { ToolRegistry } from "./extensions";
 import { ConversationDoc } from "./metadata";
@@ -330,7 +331,7 @@ export class ConversationObservation
             ],
       ),
       submissions,
-      ...(error === undefined ? {} : { error }),
+      ...omitUndefined({ error }),
     };
   }
 }
@@ -362,17 +363,13 @@ function projectMessage(message: ai.Message): Message {
       return {
         role: "tool",
         text,
-        tool: {
+        tool: omitUndefined({
           callId: message.toolCallId,
           name: message.toolName,
           isError: message.isError,
-          ...(message.durationMs === undefined
-            ? {}
-            : { durationMs: message.durationMs }),
-          ...(message.details === undefined
-            ? {}
-            : { details: message.details }),
-        },
+          durationMs: message.durationMs,
+          details: message.details,
+        }),
       };
   }
 }
@@ -383,13 +380,13 @@ function projectTool(
   output: string,
   details: unknown,
 ): ToolProgress {
-  const progress = {
+  const progress = omitUndefined({
     callId: tool.callId,
     name: tool.name,
     output,
-    ...("arguments" in tool ? { arguments: tool.arguments } : {}),
-    ...(details === undefined ? {} : { details }),
-  };
+    arguments: "arguments" in tool ? tool.arguments : undefined,
+    details,
+  });
 
   switch (tool.status) {
     case "pending":
@@ -401,9 +398,7 @@ function projectTool(
         : {
             ...progress,
             status: result.isError ? "failed" : "succeeded",
-            ...(result.durationMs === undefined
-              ? {}
-              : { durationMs: result.durationMs }),
+            ...omitUndefined({ durationMs: result.durationMs }),
           };
   }
 }

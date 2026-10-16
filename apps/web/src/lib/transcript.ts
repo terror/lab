@@ -1,4 +1,9 @@
-import type { ConversationState, Message, ToolProgress } from "@lab/contracts";
+import {
+  type ConversationState,
+  type Message,
+  omitUndefined,
+  type ToolProgress,
+} from "@lab/contracts";
 
 type TranscriptMessage = Exclude<Message, { role: "tool" }> & { id: string };
 
@@ -38,6 +43,7 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
 
     const result = results.get(call.callId);
     const progress = live.get(call.callId);
+    const args = call.arguments ?? progress?.arguments;
 
     const tool: ToolProgress =
       result === undefined
@@ -48,16 +54,18 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
               status: "interrupted",
               output: "",
             }),
-            arguments: call.arguments ?? progress?.arguments,
+            ...omitUndefined({ arguments: args }),
           }
         : {
             callId: call.callId,
             name: call.name,
             status: result.tool.isError ? "failed" : "succeeded",
             output: result.text,
-            arguments: call.arguments ?? progress?.arguments,
-            details: result.tool.details,
-            durationMs: result.tool.durationMs,
+            ...omitUndefined({
+              arguments: args,
+              details: result.tool.details,
+              durationMs: result.tool.durationMs,
+            }),
           };
 
     const previous = items.at(-1);

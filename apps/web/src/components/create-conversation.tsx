@@ -1,5 +1,5 @@
 import { useConnection, useModels, useSend } from "@lab/client/react";
-import type { ModelReference } from "@lab/contracts";
+import { type ModelReference, omitUndefined } from "@lab/contracts";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import useSessionStorageState from "use-session-storage-state";
@@ -92,10 +92,10 @@ export function CreateConversation() {
               onSubmit={() => {
                 if (canSubmit) {
                   const operation = send.start({
-                    creation: {
+                    creation: omitUndefined({
                       title: "Untitled conversation",
-                      ...(model === undefined ? {} : { model }),
-                    },
+                      model,
+                    }),
                     content: draft,
                     whenBusy: "reject",
                   });

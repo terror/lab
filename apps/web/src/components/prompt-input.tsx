@@ -35,7 +35,7 @@ export function PromptInput({
   onStop?: () => void;
   canStop?: boolean;
   stopping?: boolean;
-  status?: string;
+  status: string | undefined;
   autoFocus?: boolean;
   placeholder?: string;
 }) {

@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
+import { omitUndefined } from "@lab/contracts";
 import type { ProviderFactory } from "@lab/runtime";
 
 export type ModelConfiguration = {
@@ -13,12 +14,14 @@ export async function loadModels(
   signal: AbortSignal,
   configuration: ModelConfiguration = {},
 ) {
-  const models = await ModelRuntime.create({
-    signal,
-    modelsPath: configuration.modelsPath,
-    authPath: configuration.authPath,
-    refreshOnCreate: false,
-  });
+  const models = await ModelRuntime.create(
+    omitUndefined({
+      signal,
+      modelsPath: configuration.modelsPath,
+      authPath: configuration.authPath,
+      refreshOnCreate: false,
+    }),
+  );
 
   if (configuration.providerModule !== undefined) {
     const module = await import(

@@ -296,7 +296,7 @@ export class LabClient {
   }
 
   private async open(current: Connection) {
-    current.retry = undefined;
+    delete current.retry;
 
     try {
       const response = await fetch("/auth/session", {
@@ -346,12 +346,12 @@ export class LabClient {
           return;
         }
 
-        current.link = undefined;
+        delete current.link;
         clearTimeout(current.timeout);
         current.unsubscribe?.();
-        current.unsubscribe = undefined;
+        delete current.unsubscribe;
         current.service?.release();
-        current.service = undefined;
+        delete current.service;
 
         if (!current.blocked) {
           this.schedule(current, new Error(reason));
@@ -415,7 +415,7 @@ export class LabClient {
       current.attempts = 0;
     }
 
-    current.connectedAt = undefined;
+    delete current.connectedAt;
     const delay =
       Math.min(30_000, 500 * 2 ** Math.min(current.attempts, 6)) *
       (0.5 + Math.random() * 0.5);
