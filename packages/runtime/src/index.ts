@@ -36,7 +36,7 @@ import {
   parseStartRequestDoc,
   StartRequestDoc,
 } from "./metadata";
-import { ModelRegistry } from "./models";
+import { ModelRegistry } from "./model-registry";
 import { BunSqliteDatabase } from "./storage/sqlite";
 import {
   TitleExtension,
