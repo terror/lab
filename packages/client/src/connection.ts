@@ -5,11 +5,11 @@ import {
   isChordError,
   type Link,
   type Ref,
+  webSocketLink,
 } from "@earendil-works/chord";
 import { LabService } from "@lab/wire";
 import type { ConversationClient } from "./conversation";
 import { clientError, Store } from "./store";
-import { browserLink } from "./websocket";
 
 export type ConnectionState = {
   readonly status:
@@ -252,7 +252,21 @@ export class Connection {
       const url = new URL("/chord", location.href);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 
-      const link = browserLink(url);
+      const socket = new WebSocket(url);
+
+      socket.binaryType = "arraybuffer";
+
+      const link = webSocketLink({
+        get readyState() {
+          return socket.readyState;
+        },
+        send(data) {
+          socket.send(typeof data === "string" ? data : new Uint8Array(data));
+        },
+        close: (code, reason) => socket.close(code, reason),
+        addEventListener: socket.addEventListener.bind(socket),
+      });
+
       attempt.addCleanup((reason) => link.close(reason));
 
       const timeout = setTimeout(
