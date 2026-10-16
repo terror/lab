@@ -269,31 +269,42 @@ export const ToolCallSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const MessageSchema = Type.Object(
+export const ToolResultSchema = Type.Object(
   {
-    role: Type.Union([
-      Type.Literal("user"),
-      Type.Literal("assistant"),
-      Type.Literal("tool"),
-      Type.Literal("system"),
-    ]),
-    text: Type.String(),
-    toolCalls: Type.Optional(Type.Array(ToolCallSchema)),
-    tool: Type.Optional(
-      Type.Object(
-        {
-          callId: Type.String({ minLength: 1 }),
-          name: Type.String({ minLength: 1 }),
-          isError: Type.Boolean(),
-          durationMs: Type.Optional(Type.Number({ minimum: 0 })),
-          details: Type.Optional(Type.Unknown()),
-        },
-        { additionalProperties: false },
-      ),
-    ),
+    callId: ToolCallSchema.properties.callId,
+    name: ToolCallSchema.properties.name,
+    isError: Type.Boolean(),
+    durationMs: Type.Optional(Type.Number({ minimum: 0 })),
+    details: Type.Optional(Type.Unknown()),
   },
   { additionalProperties: false },
 );
+
+export const MessageSchema = Type.Union([
+  Type.Object(
+    {
+      role: Type.Union([Type.Literal("user"), Type.Literal("system")]),
+      text: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      role: Type.Literal("assistant"),
+      text: Type.String(),
+      toolCalls: Type.Array(ToolCallSchema),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      role: Type.Literal("tool"),
+      text: Type.String(),
+      tool: ToolResultSchema,
+    },
+    { additionalProperties: false },
+  ),
+]);
 
 export const TranscriptEntrySchema = Type.Object(
   {
@@ -304,23 +315,44 @@ export const TranscriptEntrySchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const ToolProgressSchema = Type.Object(
-  {
-    callId: Type.String({ minLength: 1 }),
-    name: Type.String({ minLength: 1 }),
-    status: Type.Union([
-      Type.Literal("pending"),
-      Type.Literal("running"),
-      Type.Literal("done"),
-    ]),
-    output: Type.String(),
-    arguments: Type.Optional(ToolCallSchema.properties.arguments),
-    durationMs: Type.Optional(Type.Number({ minimum: 0 })),
-    details: Type.Optional(Type.Unknown()),
-    isError: Type.Optional(Type.Boolean()),
-  },
-  { additionalProperties: false },
-);
+const toolProgressProperties = {
+  callId: ToolCallSchema.properties.callId,
+  name: ToolCallSchema.properties.name,
+  output: Type.String(),
+  arguments: Type.Optional(ToolCallSchema.properties.arguments),
+  details: Type.Optional(Type.Unknown()),
+};
+
+export const ToolProgressSchema = Type.Union([
+  Type.Object(
+    { ...toolProgressProperties, status: Type.Literal("pending") },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { ...toolProgressProperties, status: Type.Literal("running") },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      ...toolProgressProperties,
+      status: Type.Literal("succeeded"),
+      durationMs: ToolResultSchema.properties.durationMs,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      ...toolProgressProperties,
+      status: Type.Literal("failed"),
+      durationMs: ToolResultSchema.properties.durationMs,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { ...toolProgressProperties, status: Type.Literal("interrupted") },
+    { additionalProperties: false },
+  ),
+]);
 
 export const QueuedInputSchema = Type.Object(
   {
@@ -375,4 +407,8 @@ export type SubmissionReceipt = Static<typeof SubmissionReceiptSchema>;
 export type StopInput = Static<typeof StopInputSchema>;
 export type StopReceipt = Static<typeof StopReceiptSchema>;
 export type SubmissionState = Static<typeof SubmissionStateSchema>;
+export type ToolCall = Static<typeof ToolCallSchema>;
+export type ToolResult = Static<typeof ToolResultSchema>;
+export type Message = Static<typeof MessageSchema>;
+export type ToolProgress = Static<typeof ToolProgressSchema>;
 export type ConversationState = Static<typeof ConversationStateSchema>;

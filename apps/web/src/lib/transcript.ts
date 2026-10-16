@@ -1,22 +1,10 @@
-import type { ConversationState } from "@lab/contracts";
+import type { ConversationState, Message, ToolProgress } from "@lab/contracts";
 
-type Message = ConversationState["entries"][number]["messages"][number];
-
-type TranscriptMessage = Message & { id: string };
-
-export type ActivityCall = {
-  callId: string;
-  name: string;
-  status: "pending" | "running" | "done" | "error" | "stopped";
-  output: string;
-  arguments?: Record<string, unknown>;
-  details?: unknown;
-  durationMs?: number;
-};
+type TranscriptMessage = Exclude<Message, { role: "tool" }> & { id: string };
 
 type TranscriptItem =
   | { type: "message"; id: string; message: TranscriptMessage }
-  | { type: "activity"; id: string; calls: ActivityCall[] };
+  | { type: "activity"; id: string; calls: ToolProgress[] };
 
 export function transcriptItems(state: ConversationState): TranscriptItem[] {
   const messages = state.entries.flatMap((entry) =>
@@ -25,56 +13,53 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
       id: `${entry.id}:${index}`,
     })),
   );
+
   const results = new Map(
     messages.flatMap((message) =>
-      message.role === "tool" && message.tool !== undefined
-        ? [[message.tool.callId, message] as const]
-        : [],
+      message.role === "tool" ? [[message.tool.callId, message] as const] : [],
     ),
   );
+
   const live = new Map(state.tools.map((tool) => [tool.callId, tool]));
   const seen = new Set<string>();
+
   const items: TranscriptItem[] = [];
 
-  function appendTool(
-    call: {
-      callId: string;
-      name: string;
-      arguments?: Record<string, unknown>;
-    },
-    fallback?: TranscriptMessage,
-  ) {
+  function appendTool(call: {
+    callId: string;
+    name: string;
+    arguments?: Record<string, unknown>;
+  }) {
     if (seen.has(call.callId)) {
       return;
     }
 
     seen.add(call.callId);
 
-    const result = results.get(call.callId) ?? fallback;
+    const result = results.get(call.callId);
     const progress = live.get(call.callId);
-    const status =
-      result !== undefined
-        ? result.tool?.isError
-          ? "error"
-          : "done"
-        : progress === undefined
-          ? "stopped"
-          : progress.status !== "done"
-            ? progress.status
-            : progress.isError === undefined
-              ? "stopped"
-              : progress.isError
-                ? "error"
-                : "done";
-    const tool: ActivityCall = {
-      callId: call.callId,
-      name: call.name,
-      status,
-      output: result?.text ?? progress?.output ?? "",
-      arguments: call.arguments ?? progress?.arguments,
-      details: result === undefined ? progress?.details : result.tool?.details,
-      durationMs: result?.tool?.durationMs ?? progress?.durationMs,
-    };
+
+    const tool: ToolProgress =
+      result === undefined
+        ? {
+            ...(progress ?? {
+              callId: call.callId,
+              name: call.name,
+              status: "interrupted",
+              output: "",
+            }),
+            arguments: call.arguments ?? progress?.arguments,
+          }
+        : {
+            callId: call.callId,
+            name: call.name,
+            status: result.tool.isError ? "failed" : "succeeded",
+            output: result.text,
+            arguments: call.arguments ?? progress?.arguments,
+            details: result.tool.details,
+            durationMs: result.tool.durationMs,
+          };
+
     const previous = items.at(-1);
 
     if (previous?.type === "activity") {
@@ -90,7 +75,7 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
 
   for (const message of messages) {
     if (message.role === "tool") {
-      appendTool(message.tool ?? { callId: message.id, name: "tool" }, message);
+      appendTool(message.tool);
       continue;
     }
 
@@ -98,8 +83,10 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
       items.push({ type: "message", id: message.id, message });
     }
 
-    for (const call of message.toolCalls ?? []) {
-      appendTool(call);
+    if (message.role === "assistant") {
+      for (const call of message.toolCalls) {
+        appendTool(call);
+      }
     }
   }
 

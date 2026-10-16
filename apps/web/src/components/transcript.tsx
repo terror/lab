@@ -1,4 +1,4 @@
-import type { ConversationState } from "@lab/contracts";
+import type { ConversationState, Message } from "@lab/contracts";
 import {
   ArrowDown,
   CircleDashed,
@@ -6,7 +6,7 @@ import {
   LoaderCircle,
   MessageSquare,
 } from "lucide-react";
-import { memo } from "react";
+import { memo, type ReactElement } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { CopyButton } from "@/components/copy-button";
 import { MessageContent } from "@/components/message-content";
@@ -20,8 +20,6 @@ import {
 import { transcriptItems } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 
-type Message = ConversationState["entries"][number]["messages"][number];
-
 export function Transcript({
   state,
   stale,
@@ -30,6 +28,7 @@ export function Transcript({
   stale: boolean;
 }) {
   const items = transcriptItems(state);
+
   const activeTools = items.some(
     (item) =>
       item.type === "activity" &&
@@ -37,12 +36,15 @@ export function Transcript({
         (call) => call.status === "pending" || call.status === "running",
       ),
   );
+
   const partial = state.partial?.trim() ? state.partial : undefined;
+
   const empty =
     items.length === 0 &&
     !state.busy &&
     partial === undefined &&
     state.inbox.length === 0;
+
   const status =
     activeTools || !state.busy
       ? undefined
@@ -87,11 +89,7 @@ export function Transcript({
                       <ToolActivity calls={item.calls} stale={stale} />
                     </li>
                   ) : (
-                    <TranscriptMessage
-                      key={item.id}
-                      role={item.message.role}
-                      text={item.message.text}
-                    />
+                    <TranscriptMessage key={item.id} {...item.message} />
                   ),
                 )}
                 {(partial !== undefined || status !== undefined) && (
@@ -165,39 +163,48 @@ export function Transcript({
 const TranscriptMessage = memo(function TranscriptMessage({
   role,
   text,
-}: Message) {
-  if (role === "system") {
-    return (
-      <li className="space-y-2 rounded-sm border bg-card px-4 py-3 text-sm text-muted-foreground">
-        <p className="font-mono text-[10px] tracking-wider uppercase">System</p>
-        <p className="leading-6 whitespace-pre-wrap break-words">{text}</p>
-      </li>
-    );
+}: Exclude<Message, { role: "tool" }>): ReactElement {
+  switch (role) {
+    case "system":
+      return (
+        <li className="space-y-2 rounded-sm border bg-card px-4 py-3 text-sm text-muted-foreground">
+          <p className="font-mono text-[10px] tracking-wider uppercase">
+            System
+          </p>
+          <p className="leading-6 whitespace-pre-wrap break-words">{text}</p>
+        </li>
+      );
+    case "user":
+    case "assistant":
+      return (
+        <li
+          className={cn(
+            "min-w-0",
+            role === "user" ? "ml-auto w-fit max-w-[90%]" : "space-y-2",
+          )}
+        >
+          <span className="sr-only">
+            {role === "user" ? "You" : "Assistant"}
+          </span>
+          {role === "user" ? (
+            <p className="rounded-sm border border-primary/20 bg-accent/60 px-5 py-3 text-base leading-7 whitespace-pre-wrap break-words">
+              {text || "No text content."}
+            </p>
+          ) : (
+            <MessageContent text={text} />
+          )}
+          <div
+            className={cn(
+              "flex",
+              role === "user" ? "justify-end pt-1" : "-ml-2",
+            )}
+          >
+            <CopyButton
+              label={role === "user" ? "Copy message" : "Copy response"}
+              text={text}
+            />
+          </div>
+        </li>
+      );
   }
-
-  return (
-    <li
-      className={cn(
-        "min-w-0",
-        role === "user" ? "ml-auto w-fit max-w-[90%]" : "space-y-2",
-      )}
-    >
-      <span className="sr-only">{role === "user" ? "You" : "Assistant"}</span>
-      {role === "user" ? (
-        <p className="rounded-sm border border-primary/20 bg-accent/60 px-5 py-3 text-base leading-7 whitespace-pre-wrap break-words">
-          {text || "No text content."}
-        </p>
-      ) : (
-        <MessageContent text={text} />
-      )}
-      <div
-        className={cn("flex", role === "user" ? "justify-end pt-1" : "-ml-2")}
-      >
-        <CopyButton
-          label={role === "user" ? "Copy message" : "Copy response"}
-          text={text}
-        />
-      </div>
-    </li>
-  );
 });

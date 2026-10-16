@@ -9,13 +9,16 @@ import {
   BACKGROUND_CONTEXT,
   withoutAbortSignal,
 } from "@earendil-works/chord/context";
-import type { Message } from "@earendil-works/pi-ai";
+import type * as ai from "@earendil-works/pi-ai";
 import * as pi from "@earendil-works/pi-durable";
 import type {
   ConversationState,
   ConversationSummary,
   LabError,
+  Message,
   SubmissionState,
+  ToolProgress,
+  ToolResult,
 } from "@lab/contracts";
 import type { ToolRegistry } from "./extensions";
 import { ConversationDoc } from "./metadata";
@@ -24,20 +27,21 @@ import { observe, submissionState } from "./pi";
 export class ConversationObservation
   implements AttachedReplicatedState<ConversationState>
 {
-  private readonly submissions = new Map<pi.SubmissionId, SubmissionState>();
   private readonly changed = new Set<pi.SubmissionId>();
   private readonly disposers: (() => void)[] = [];
   private readonly entries = new WeakMap<
     pi.EntryRecord,
     ConversationState["entries"][number]
   >();
-  private source: AttachedReplicatedState<pi.ConversationView> | undefined;
-  private summary: ConversationSummary | undefined;
-  private state: MutableReplicatedState<ConversationState> | undefined;
-  private scheduled = false;
-  private disposed = false;
-  private unavailable = false;
+  private readonly submissions = new Map<pi.SubmissionId, SubmissionState>();
+
   private deleted = false;
+  private disposed = false;
+  private scheduled = false;
+  private source: AttachedReplicatedState<pi.ConversationView> | undefined;
+  private state: MutableReplicatedState<ConversationState> | undefined;
+  private summary: ConversationSummary | undefined;
+  private unavailable = false;
 
   private constructor(private readonly tools: ToolRegistry) {}
 
@@ -251,19 +255,25 @@ export class ConversationObservation
     }
 
     const source = this.source.value;
+
     const agent = source.docs[pi.AgentDoc.definition.kind] as
       | pi.AgentState
       | undefined;
+
     const live = source.docs[pi.LiveDoc.definition.kind] as
       | pi.LiveState
       | undefined;
+
     const inbox = source.docs[pi.InboxDoc.definition.kind] as
       | pi.InboxState
       | undefined;
+
     const partial = live?.generation?.message;
+
     const submissions = [...this.submissions.values()].sort(
       (a, b) => a.id - b.id,
     );
+
     const latest = submissions.findLast(({ status }) => status !== "queued");
     const error = this.tools.error(agent) ?? conversationError(live, latest);
 
@@ -276,40 +286,7 @@ export class ConversationObservation
         const value = this.entries.get(entry) ?? {
           id: entry.id,
           kind: entry.kind,
-          messages: (entry.model ?? []).map((message) => ({
-            role: message.role === "toolResult" ? "tool" : message.role,
-            text: contentText(message.content),
-            ...(message.role === "assistant"
-              ? {
-                  toolCalls: message.content.flatMap((block) =>
-                    block.type === "toolCall"
-                      ? [
-                          {
-                            callId: block.id,
-                            name: block.name,
-                            arguments: block.arguments,
-                          },
-                        ]
-                      : [],
-                  ),
-                }
-              : {}),
-            ...(message.role === "toolResult"
-              ? {
-                  tool: {
-                    callId: message.toolCallId,
-                    name: message.toolName,
-                    isError: message.isError,
-                    ...(message.durationMs === undefined
-                      ? {}
-                      : { durationMs: message.durationMs }),
-                    ...(message.details === undefined
-                      ? {}
-                      : { details: message.details }),
-                  },
-                }
-              : {}),
-          })),
+          messages: (entry.model ?? []).map(projectMessage),
         };
 
         this.entries.set(entry, value);
@@ -323,36 +300,23 @@ export class ConversationObservation
           const result = source.entries
             .find(({ id }) => id === tool.entry)
             ?.model?.find((message) => message.role === "toolResult");
-          const details = result === undefined ? tool.details : result.details;
 
-          return {
-            callId: tool.callId,
-            name: tool.name,
-            status: tool.status,
-            output:
-              tool.output ??
+          return projectTool(
+            tool,
+            result,
+            tool.output ??
               (result === undefined ? "" : contentText(result.content)),
-            ...(details === undefined ? {} : { details }),
-            ...(result === undefined ? {} : { isError: result.isError }),
-            ...(result?.durationMs === undefined
-              ? {}
-              : { durationMs: result.durationMs }),
-          };
+            result === undefined ? tool.details : result.details,
+          );
         }),
-        ...(live?.nestedTools ?? []).map((tool) => ({
-          callId: tool.callId,
-          name: tool.name,
-          status: tool.status,
-          output: tool.output ?? tool.summary?.error ?? "",
-          arguments: tool.arguments,
-          ...(tool.summary?.durationMs === undefined
-            ? {}
-            : { durationMs: tool.summary.durationMs }),
-          ...(tool.details === undefined ? {} : { details: tool.details }),
-          ...(tool.summary === undefined
-            ? {}
-            : { isError: tool.summary.isError }),
-        })),
+        ...(live?.nestedTools ?? []).map((tool) =>
+          projectTool(
+            tool,
+            tool.summary,
+            tool.output ?? tool.summary?.error ?? "",
+            tool.details,
+          ),
+        ),
       ],
       inbox: (inbox?.items ?? []).flatMap((item) =>
         item.mode === "write"
@@ -371,7 +335,80 @@ export class ConversationObservation
   }
 }
 
-function contentText(content: Message["content"]): string {
+function projectMessage(message: ai.Message): Message {
+  const text = contentText(message.content);
+
+  switch (message.role) {
+    case "user":
+    case "system":
+      return { role: message.role, text };
+    case "assistant":
+      return {
+        role: message.role,
+        text,
+        toolCalls: message.content.flatMap((block) =>
+          block.type === "toolCall"
+            ? [
+                {
+                  callId: block.id,
+                  name: block.name,
+                  arguments: block.arguments,
+                },
+              ]
+            : [],
+        ),
+      };
+    case "toolResult":
+      return {
+        role: "tool",
+        text,
+        tool: {
+          callId: message.toolCallId,
+          name: message.toolName,
+          isError: message.isError,
+          ...(message.durationMs === undefined
+            ? {}
+            : { durationMs: message.durationMs }),
+          ...(message.details === undefined
+            ? {}
+            : { details: message.details }),
+        },
+      };
+  }
+}
+
+function projectTool(
+  tool: pi.ToolSlot | pi.NestedToolSlot,
+  result: Pick<ToolResult, "isError" | "durationMs"> | undefined,
+  output: string,
+  details: unknown,
+): ToolProgress {
+  const progress = {
+    callId: tool.callId,
+    name: tool.name,
+    output,
+    ...("arguments" in tool ? { arguments: tool.arguments } : {}),
+    ...(details === undefined ? {} : { details }),
+  };
+
+  switch (tool.status) {
+    case "pending":
+    case "running":
+      return { ...progress, status: tool.status };
+    case "done":
+      return result === undefined
+        ? { ...progress, status: "interrupted" }
+        : {
+            ...progress,
+            status: result.isError ? "failed" : "succeeded",
+            ...(result.durationMs === undefined
+              ? {}
+              : { durationMs: result.durationMs }),
+          };
+  }
+}
+
+function contentText(content: ai.Message["content"]): string {
   return typeof content === "string"
     ? content
     : content

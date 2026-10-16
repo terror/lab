@@ -69,7 +69,7 @@ const conversationMethods = {
 };
 
 export const LabConversation = remote("lab.conversation", {
-  version: 4,
+  version: 5,
   host: hostNamed("server"),
   input: Type.Object(
     { id: ConversationIdSchema },

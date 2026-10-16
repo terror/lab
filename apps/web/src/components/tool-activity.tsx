@@ -1,3 +1,4 @@
+import type { ToolProgress } from "@lab/contracts";
 import {
   Check,
   ChevronDown,
@@ -17,21 +18,20 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ActivityCall } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 
 export const ToolActivity = memo(function ToolActivity({
   calls,
   stale,
 }: {
-  calls: ActivityCall[];
+  calls: ToolProgress[];
   stale: boolean;
 }) {
   const active =
     calls.find((call) => call.status === "running") ??
     calls.find((call) => call.status === "pending");
-  const failed = calls.filter((call) => call.status === "error").length;
-  const interrupted = calls.some((call) => call.status === "stopped");
+  const failed = calls.filter((call) => call.status === "failed").length;
+  const interrupted = calls.some((call) => call.status === "interrupted");
 
   const current = active ?? calls.at(-1);
 
@@ -101,6 +101,7 @@ export const ToolActivity = memo(function ToolActivity({
           )}
           {!active &&
             calls.length === 1 &&
+            (current.status === "succeeded" || current.status === "failed") &&
             current.durationMs !== undefined && (
               <span className="shrink-0 text-xs text-muted-foreground/70 tabular-nums">
                 {duration(current.durationMs)}
@@ -127,36 +128,42 @@ const ActivityStep = memo(function ActivityStep({
   call,
   stale,
 }: {
-  call: ActivityCall;
+  call: ToolProgress;
   stale: boolean;
 }) {
   const presentation = describe(call);
 
   const pending = call.status === "pending" || call.status === "running";
 
-  const Icon =
-    call.status === "error"
-      ? CircleAlert
-      : call.status === "stopped"
-        ? Pause
-        : pending
-          ? stale || call.status === "pending"
-            ? CircleDashed
-            : LoaderCircle
-          : presentation.icon;
+  const state = {
+    pending: {
+      icon: CircleDashed,
+      label: stale ? "Last received" : "Queued",
+      empty: stale ? "Waiting to reconnect…" : "Waiting for output…",
+    },
+    running: {
+      icon: stale ? CircleDashed : LoaderCircle,
+      label: stale ? "Last received" : "Running",
+      empty: stale ? "Waiting to reconnect…" : "Waiting for output…",
+    },
+    succeeded: {
+      icon: presentation.icon,
+      label: "Done",
+      empty: "Completed without text output.",
+    },
+    failed: {
+      icon: CircleAlert,
+      label: "Failed",
+      empty: "No error details were returned.",
+    },
+    interrupted: {
+      icon: Pause,
+      label: "Interrupted",
+      empty: "No result was recorded.",
+    },
+  }[call.status];
 
-  const status =
-    call.status === "error"
-      ? "Failed"
-      : call.status === "stopped"
-        ? "Interrupted"
-        : pending && stale
-          ? "Last received"
-          : call.status === "pending"
-            ? "Queued"
-            : call.status === "running"
-              ? "Running"
-              : "Done";
+  const Icon = state.icon;
 
   const output =
     call.output ||
@@ -169,7 +176,7 @@ const ActivityStep = memo(function ActivityStep({
         className={cn(
           "absolute top-3 -left-7 size-4 bg-background text-muted-foreground",
           call.status === "running" && !stale && "motion-safe:animate-spin",
-          call.status === "error" && "text-destructive",
+          call.status === "failed" && "text-destructive",
         )}
       />
       <Collapsible>
@@ -184,16 +191,17 @@ const ActivityStep = memo(function ActivityStep({
             <span
               className={cn(
                 "shrink-0 text-xs text-muted-foreground",
-                call.status === "error" && "text-destructive",
+                call.status === "failed" && "text-destructive",
               )}
             >
-              {status}
+              {state.label}
             </span>
-            {call.durationMs !== undefined && (
-              <span className="shrink-0 text-xs text-muted-foreground/70 tabular-nums">
-                {duration(call.durationMs)}
-              </span>
-            )}
+            {(call.status === "succeeded" || call.status === "failed") &&
+              call.durationMs !== undefined && (
+                <span className="shrink-0 text-xs text-muted-foreground/70 tabular-nums">
+                  {duration(call.durationMs)}
+                </span>
+              )}
             <ChevronDown
               aria-hidden="true"
               className="size-3.5 shrink-0 text-muted-foreground/60 transition-transform group-data-[state=open]/step:rotate-180 motion-reduce:transition-none"
@@ -223,7 +231,7 @@ const ActivityStep = memo(function ActivityStep({
             <p
               className={cn(
                 "line-clamp-2 text-xs leading-5 break-words text-muted-foreground/80",
-                call.status === "error" && "text-destructive",
+                call.status === "failed" && "text-destructive",
               )}
             >
               {presentation.preview}
@@ -242,17 +250,7 @@ const ActivityStep = memo(function ActivityStep({
               />
             )}
             <DetailSection
-              empty={
-                pending
-                  ? stale
-                    ? "Waiting to reconnect…"
-                    : "Waiting for output…"
-                  : call.status === "stopped"
-                    ? "No result was recorded."
-                    : call.status === "error"
-                      ? "No error details were returned."
-                      : "Completed without text output."
-              }
+              empty={state.empty}
               label={pending ? "Progress" : "Output"}
               name={call.name}
               text={output}
@@ -297,7 +295,7 @@ function DetailSection({
   );
 }
 
-function describe(call: ActivityCall) {
+function describe(call: ToolProgress) {
   const name = call.name.replace(/[_.-]+/g, " ");
 
   const webPage = call.name === "web_search";
@@ -307,13 +305,13 @@ function describe(call: ActivityCall) {
         icon: Globe,
         action: "Read webpage",
         running: "Reading webpage",
-        done: "Read webpage",
+        succeeded: "Read webpage",
       }
     : {
         icon: Wrench,
         action: name.charAt(0).toUpperCase() + name.slice(1),
         running: `Running ${name}`,
-        done: `Used ${name}`,
+        succeeded: `Used ${name}`,
       };
 
   const url = webPage
@@ -324,34 +322,33 @@ function describe(call: ActivityCall) {
 
   return {
     icon: label.icon,
-    label:
-      call.status === "running"
-        ? label.running
-        : call.status === "done"
-          ? label.done
-          : label.action,
+    label: {
+      pending: label.action,
+      running: label.running,
+      succeeded: label.succeeded,
+      failed: label.action,
+      interrupted: label.action,
+    }[call.status],
     subject: url?.hostname.replace(/^www\./, ""),
     url,
     preview: preview(call),
   };
 }
 
-function preview(call: ActivityCall): string | undefined {
-  if (call.status === "error") {
-    return call.output.trim().split("\n")[0]?.slice(0, 240);
+function preview(call: ToolProgress): string | undefined {
+  switch (call.status) {
+    case "failed":
+      return call.output.trim().split("\n")[0]?.slice(0, 240);
+    case "pending":
+    case "running":
+      return call.output.trim().split("\n").at(-1)?.slice(0, 240);
+    case "succeeded":
+      return call.name === "web_search"
+        ? stringField(call.details, "title")
+        : undefined;
+    case "interrupted":
+      return undefined;
   }
-
-  if (call.status === "pending" || call.status === "running") {
-    return call.output.trim().split("\n").at(-1)?.slice(0, 240);
-  }
-
-  if (call.status !== "done") {
-    return undefined;
-  }
-
-  return call.name === "web_search"
-    ? stringField(call.details, "title")
-    : undefined;
 }
 
 function stringField(value: unknown, key: string): string | undefined {
