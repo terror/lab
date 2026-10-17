@@ -16,7 +16,7 @@ import { useConnection } from "@/hooks/use-connection";
 import { useConversation } from "@/hooks/use-conversation";
 import { useModels } from "@/hooks/use-models";
 import { modelAvailable, modelKey } from "@/lib/models";
-import { unwrap } from "@/lib/unwrap";
+import { unwrap } from "@/lib/utils";
 
 export function Conversation({
   id,

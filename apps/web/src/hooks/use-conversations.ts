@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useConnection } from "@/hooks/use-connection";
 import { useLabClient } from "@/hooks/use-lab-client";
 import { queryKeys } from "@/lib/query-keys";
-import { unwrap } from "@/lib/unwrap";
+import { unwrap } from "@/lib/utils";
 
 export function useConversations() {
   const client = useLabClient();
