@@ -73,7 +73,6 @@ export function webSockets(
   sessions: Sessions,
 ): WebSocketHandler<SocketData> {
   return {
-    data: {} as SocketData,
     maxPayloadLength: 1024 * 1024,
     backpressureLimit: 4 * 1024 * 1024,
     closeOnBackpressureLimit: true,
