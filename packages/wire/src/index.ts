@@ -67,15 +67,15 @@ export const LabErrorSchema = Type.Object(
      * - `tool_unavailable`: a selected tool or extension is unavailable.
      * - `internal`: an otherwise unclassified runtime operation failed.
      */
-    code: Type.Union([
-      Type.Literal("invalid_input"),
-      Type.Literal("not_found"),
-      Type.Literal("busy"),
-      Type.Literal("unavailable"),
-      Type.Literal("provider_unavailable"),
-      Type.Literal("model_unavailable"),
-      Type.Literal("tool_unavailable"),
-      Type.Literal("internal"),
+    code: Type.Enum([
+      "invalid_input",
+      "not_found",
+      "busy",
+      "unavailable",
+      "provider_unavailable",
+      "model_unavailable",
+      "tool_unavailable",
+      "internal",
     ]),
     /** Human-readable explanation suitable for displaying to the caller. */
     message: Type.String(),
@@ -155,9 +155,7 @@ export const ModelInfoSchema = Type.Object(
      * Input modalities advertised by the model, independently of the submit
      * API.
      */
-    input: Type.Array(
-      Type.Union([Type.Literal("text"), Type.Literal("image")]),
-    ),
+    input: Type.Array(Type.Enum(["text", "image"])),
     /**
      * Whether this model is available with the server's configured credentials.
      */
@@ -220,7 +218,7 @@ export const RequestIdSchema = Type.String({
 export const StopInputSchema = Type.Object(
   {
     /** Whether to stop foreground work alone or include background work. */
-    scope: Type.Union([Type.Literal("foreground"), Type.Literal("all")]),
+    scope: Type.Enum(["foreground", "all"]),
   },
   { additionalProperties: false },
 );
@@ -253,11 +251,7 @@ export const SubmissionStateSchema = Type.Union([
   Type.Object(
     {
       /** Queueing, transcript placement, or successful completion state. */
-      status: Type.Union([
-        Type.Literal("queued"),
-        Type.Literal("placed"),
-        Type.Literal("done"),
-      ]),
+      status: Type.Enum(["queued", "placed", "done"]),
     },
     { additionalProperties: false },
   ),
@@ -410,7 +404,7 @@ export const QueuedInputSchema = Type.Object(
     /** Text waiting to be placed into the conversation. */
     content: Type.String(),
     /** Whether the input joins current work or starts a follow-up run. */
-    mode: Type.Union([Type.Literal("steer"), Type.Literal("followUp")]),
+    mode: Type.Enum(["steer", "followUp"]),
   },
   { additionalProperties: false },
 );
@@ -503,10 +497,7 @@ export const SubmitInputSchema = Type.Object(
      * busy, queue a `followUp` for the next run, or queue a `steer` to join the
      * current work at a turn boundary. The field is required in the wire type.
      */
-    whenBusy: Type.Union(
-      [Type.Literal("reject"), Type.Literal("followUp"), Type.Literal("steer")],
-      { default: "reject" },
-    ),
+    whenBusy: Type.Enum(["reject", "followUp", "steer"], { default: "reject" }),
   },
   { additionalProperties: false },
 );
@@ -635,7 +626,7 @@ export const MessageSchema = Type.Union([
   Type.Object(
     {
       /** Speaker for a message that carries only projected text. */
-      role: Type.Union([Type.Literal("user"), Type.Literal("system")]),
+      role: Type.Enum(["user", "system"]),
       /** Text content of the user or system message. */
       text: Type.String(),
     },
@@ -735,7 +726,7 @@ export const ToolCatalogSchema = Type.Object(
            * Whether an interrupted invocation may rerun after a restart.
            * Registrations without an explicit policy are exposed as `unsafe`.
            */
-          replay: Type.Union([Type.Literal("safe"), Type.Literal("unsafe")]),
+          replay: Type.Enum(["safe", "unsafe"]),
         },
         { additionalProperties: false },
       ),
