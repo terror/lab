@@ -17,11 +17,12 @@ export function CopyButton({
   label?: string;
   className?: string;
 }) {
-  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
-  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "copying" | "copied" | "failed"
+  >("idle");
 
   useEffect(() => {
-    if (status === "idle") {
+    if (status === "idle" || status === "copying") {
       return;
     }
 
@@ -37,15 +38,13 @@ export function CopyButton({
         : label;
 
   async function copy() {
-    setPending(true);
+    setStatus("copying");
 
     try {
       await navigator.clipboard.writeText(text);
       setStatus("copied");
     } catch {
       setStatus("failed");
-    } finally {
-      setPending(false);
     }
   }
 
@@ -56,7 +55,7 @@ export function CopyButton({
           <Button
             aria-label={feedback}
             className={cn("text-muted-foreground", className)}
-            disabled={pending || text.length === 0}
+            disabled={status === "copying" || text.length === 0}
             onClick={() => void copy()}
             size="icon-sm"
             type="button"
@@ -74,7 +73,7 @@ export function CopyButton({
         <TooltipContent>{feedback}</TooltipContent>
       </Tooltip>
       <span className="sr-only" role="status">
-        {status === "idle" ? "" : feedback}
+        {status === "copied" || status === "failed" ? feedback : ""}
       </span>
     </>
   );
