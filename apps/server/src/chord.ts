@@ -55,23 +55,23 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
     return {
       variant: "default",
       conversations,
-      listTools: (_input, context) => runtime.listTools(authorize(context)),
-      listModels: (input, context) =>
-        runtime.listModels(input, authorize(context)),
-      listConversations: (input, context) =>
-        runtime.listConversations(input, authorize(context)),
-      startConversation: (input, context) =>
-        runtime.startConversation(input, authorize(context)),
       deleteConversation: (id, context) =>
         runtime.deleteConversation(id, authorize(context)),
-      setTools: ({ id, input }, context) =>
-        runtime.setTools(id, input, authorize(context)),
+      listConversations: (input, context) =>
+        runtime.listConversations(input, authorize(context)),
+      listModels: (input, context) =>
+        runtime.listModels(input, authorize(context)),
+      listTools: (_input, context) => runtime.listTools(authorize(context)),
       setModel: ({ id, input }, context) =>
         runtime.setModel(id, input, authorize(context)),
-      submit: ({ id, input }, context) =>
-        runtime.submit(id, input, authorize(context)),
+      setTools: ({ id, input }, context) =>
+        runtime.setTools(id, input, authorize(context)),
+      startConversation: (input, context) =>
+        runtime.startConversation(input, authorize(context)),
       stop: ({ id, input }, context) =>
         runtime.stop(id, input, authorize(context)),
+      submit: ({ id, input }, context) =>
+        runtime.submit(id, input, authorize(context)),
     };
   });
 
