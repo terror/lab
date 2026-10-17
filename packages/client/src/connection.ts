@@ -3,8 +3,6 @@ import {
   type Ctx,
   createHost,
   isChordError,
-  type Link,
-  type Ref,
   webSocketLink,
 } from "@earendil-works/chord";
 import { LabService } from "@lab/wire";
@@ -33,8 +31,6 @@ type Connected = {
   readonly status: "connected";
   readonly attempt: ConnectionAttempt;
   readonly attempts: number;
-  readonly link: Link;
-  readonly service: Ref<typeof LabService>;
   readonly connectedAt: number;
 };
 
@@ -311,8 +307,6 @@ export class Connection {
             this.transition({
               ...active,
               status: "connected",
-              link,
-              service,
               connectedAt: Date.now(),
             });
 
