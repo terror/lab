@@ -10,11 +10,17 @@ import {
 import type { LabClient } from "./client";
 import { clientError, Store } from "./store";
 
-export type ConversationSnapshot = {
-  readonly value: ConversationState | undefined;
-  readonly stale: boolean;
-  readonly error: Error | undefined;
-};
+export type ConversationSnapshot =
+  | {
+      readonly value: ConversationState;
+      readonly stale: false;
+      readonly error: undefined;
+    }
+  | {
+      readonly value: ConversationState | undefined;
+      readonly stale: true;
+      readonly error: Error | undefined;
+    };
 
 export class ConversationClient {
   private readonly state = new Store<ConversationSnapshot>({
@@ -85,25 +91,37 @@ export class ConversationClient {
         }
 
         if (reference.status === "live" && reference.variant === "default") {
-          this.publish(reference.view.value, false, undefined);
+          this.publish({
+            value: reference.view.value,
+            stale: false,
+            error: undefined,
+          });
 
           if (!subscribed) {
             subscribed = true;
             this.disposers.push(
               reference.view.subscribe((value) =>
-                this.publish(value, reference.status !== "live", undefined),
+                this.publish({
+                  value,
+                  stale: reference.status !== "live",
+                  error: undefined,
+                }),
               ),
             );
           }
         } else if (reference.status === "gone") {
-          this.publish(
-            this.getSnapshot().value,
-            true,
-            clientError(reference.error),
-          );
+          this.publish({
+            value: this.getSnapshot().value,
+            stale: true,
+            error: clientError(reference.error),
+          });
           onFailure(reference.error);
         } else {
-          this.publish(this.getSnapshot().value, true, undefined);
+          this.publish({
+            value: this.getSnapshot().value,
+            stale: true,
+            error: undefined,
+          });
         }
       };
 
@@ -112,7 +130,11 @@ export class ConversationClient {
       update();
     } catch (error) {
       this.detach();
-      this.publish(this.getSnapshot().value, true, clientError(error));
+      this.publish({
+        value: this.getSnapshot().value,
+        stale: true,
+        error: clientError(error),
+      });
       onFailure(error);
     }
   }
@@ -126,20 +148,15 @@ export class ConversationClient {
     }
 
     reference?.release();
-    this.publish(this.getSnapshot().value, true, this.getSnapshot().error);
+    this.publish({ ...this.getSnapshot(), stale: true });
   }
 
-  private publish(
-    value: ConversationState | undefined,
-    stale: boolean,
-    error: Error | undefined,
-  ) {
+  private publish(snapshot: ConversationSnapshot) {
     const previous = this.getSnapshot();
-    const next = {
-      value,
-      stale: stale || value?.error?.code === "not_found",
-      error,
-    };
+    const next: ConversationSnapshot =
+      snapshot.value?.error?.code === "not_found"
+        ? { ...snapshot, stale: true }
+        : snapshot;
 
     if (
       previous.value !== next.value ||

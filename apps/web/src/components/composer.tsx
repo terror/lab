@@ -40,7 +40,6 @@ export function Composer({
 
   const canSend =
     connected &&
-    conversation.value !== undefined &&
     !conversation.stale &&
     !working &&
     !stopping &&

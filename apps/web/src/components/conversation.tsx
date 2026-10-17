@@ -28,6 +28,7 @@ export function Conversation({
   const conversation = useConversation(id);
   const connection = useConnection();
   const models = useModels();
+
   const { value, stale, error } = conversation;
   const title = value?.conversation.title ?? "Conversation";
   const connected = connection.status === "connected";
@@ -47,17 +48,14 @@ export function Conversation({
   });
 
   const changingModel = model.isPending;
+
   const canChangeModel =
-    connected &&
-    !stale &&
-    value !== undefined &&
-    !changingModel &&
-    !stop.isPending;
+    connected && !stale && !changingModel && !stop.isPending;
+
   const canStop =
     connected &&
     !stale &&
     !stop.isPending &&
-    value !== undefined &&
     (value.busy || value.inbox.length > 0);
   const errors = [
     ...new Set(
@@ -87,7 +85,7 @@ export function Conversation({
             if (
               canChangeModel &&
               modelAvailable(models.data, selection) &&
-              modelKey(selection) !== modelKey(value?.model)
+              modelKey(selection) !== modelKey(value.model)
             ) {
               model.mutate(selection);
             }
