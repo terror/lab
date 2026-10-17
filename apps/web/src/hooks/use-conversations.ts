@@ -24,6 +24,7 @@ export function useConversations() {
       ),
     initialPageParam: "",
     getNextPageParam: (page) => page.next,
+    select: ({ pages }) => pages.flatMap(({ items }) => items),
     enabled: connected,
     networkMode: "always",
     retry: false,
@@ -37,7 +38,6 @@ export function useConversations() {
 
   return {
     ...query,
-    items: query.data?.pages.flatMap((page) => page.items),
     stale: !connected || query.isError || query.isRefetching,
     refresh: async () => {
       await queries.cancelQueries({ queryKey: queryKeys.conversations });

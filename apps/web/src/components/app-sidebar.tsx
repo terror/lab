@@ -84,7 +84,7 @@ export function AppSidebar({
   const [search, setSearch] = useState("");
   const previousLocation = useRef(location.key);
   const connected = connection.status === "connected";
-  const items = conversations.items?.filter((conversation) =>
+  const items = conversations.data?.filter((conversation) =>
     conversation.title
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase()),
@@ -134,35 +134,34 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {conversations.items !== undefined &&
-          conversations.items.length > 0 && (
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground"
-              />
-              <Input
-                aria-label="Filter loaded chats"
-                className="h-9 rounded-sm bg-background/60 pr-9 pl-9 text-xs shadow-none md:text-xs [&::-webkit-search-cancel-button]:hidden"
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Filter loaded chats"
-                type="search"
-                value={search}
-              />
-              {search !== "" && (
-                <Button
-                  aria-label="Clear chat filter"
-                  className="absolute top-0.5 right-0.5"
-                  onClick={() => setSearch("")}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <X />
-                </Button>
-              )}
-            </div>
-          )}
+        {conversations.data !== undefined && conversations.data.length > 0 && (
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground"
+            />
+            <Input
+              aria-label="Filter loaded chats"
+              className="h-9 rounded-sm bg-background/60 pr-9 pl-9 text-xs shadow-none md:text-xs [&::-webkit-search-cancel-button]:hidden"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Filter loaded chats"
+              type="search"
+              value={search}
+            />
+            {search !== "" && (
+              <Button
+                aria-label="Clear chat filter"
+                className="absolute top-0.5 right-0.5"
+                onClick={() => setSearch("")}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <X />
+              </Button>
+            )}
+          </div>
+        )}
       </SidebarHeader>
       <SidebarContent className="gap-0 px-1 pt-3 pb-2">
         <SidebarGroup className="gap-2">
@@ -314,7 +313,7 @@ export function AppSidebar({
                 {deletion.error.message}
               </p>
             )}
-            {!connected && conversations.items !== undefined && (
+            {!connected && conversations.data !== undefined && (
               <p className="px-2 py-2 text-xs text-muted-foreground">
                 Showing your last saved chat list.
               </p>
