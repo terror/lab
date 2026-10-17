@@ -28,7 +28,7 @@ export function CreateConversation() {
   const model =
     selection ??
     (operation?.target === "new" && operation.phase !== "complete"
-      ? operation.creation.model
+      ? operation.input.model
       : undefined) ??
     models.data?.defaultModel;
   const connected = connection.status === "connected";
@@ -64,12 +64,12 @@ export function CreateConversation() {
       onSubmit: () => {
         if (canSubmit) {
           const operation = send.start({
-            creation: {
+            target: "new",
+            input: {
+              content: draft,
               title: "Untitled conversation",
               ...(model === undefined ? {} : { model }),
             },
-            content: draft,
-            whenBusy: "reject",
           });
 
           if (operation !== undefined) {

@@ -68,9 +68,11 @@ export function Composer({
       onSubmit: () => {
         if (canSend) {
           const operation = send.start({
-            conversationId: id,
-            content: draft.text,
-            whenBusy: "reject",
+            target: id,
+            input: {
+              content: draft.text,
+              whenBusy: "reject",
+            },
           });
 
           if (operation !== undefined) {

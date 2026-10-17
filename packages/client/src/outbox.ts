@@ -39,14 +39,15 @@ const OutboxSchema = Type.Array(SendOperationSchema, { maxItems: 64 });
 
 export type SendOperation = Static<typeof SendOperationSchema>;
 
-export type SendInput = Omit<SubmitInput, "requestId"> &
-  (
-    | { conversationId: ConversationId; creation?: never }
-    | {
-        conversationId?: never;
-        creation: Omit<StartConversationInput, "requestId" | "content">;
-      }
-  );
+export type SendInput =
+  | {
+      target: ConversationId;
+      input: Omit<SubmitInput, "requestId">;
+    }
+  | {
+      target: "new";
+      input: Omit<StartConversationInput, "requestId">;
+    };
 
 export type OutboxSnapshot = {
   readonly operations: readonly SendOperation[];
@@ -64,7 +65,7 @@ type Transport = {
 export class Outbox {
   private loaded = false;
 
-  private readonly key = "lab.sends.v3";
+  private readonly key = "lab.sends.v4";
   private readonly running = new Set<string>();
   private readonly state = new Store<OutboxSnapshot>({
     operations: [],
@@ -111,34 +112,24 @@ export class Outbox {
   readonly start = (input: SendInput) => {
     try {
       const operations = this.operations();
-      const target = input.conversationId ?? "new";
 
       if (
         operations.some(
           (operation) =>
-            operation.phase !== "rejected" && operation.target === target,
+            operation.phase !== "rejected" && operation.target === input.target,
         )
       ) {
         throw new Error("Resolve the previous send operation first.");
       }
 
       const operation: SendOperation = {
+        ...structuredClone(input),
         requestId: crypto.randomUUID(),
-        ...(input.creation === undefined
-          ? { target: input.conversationId }
-          : {
-              target: "new" as const,
-              creation: structuredClone(input.creation),
-            }),
-        input: {
-          content: input.content,
-          whenBusy: input.whenBusy,
-        },
         phase: "submitting",
       };
 
       const retained = operations.filter(
-        (operation) => operation.target !== target,
+        (operation) => operation.target !== input.target,
       );
 
       const next = [...retained, operation];
@@ -242,9 +233,8 @@ export class Outbox {
     const result =
       operation.target === "new"
         ? await this.transport.start({
-            ...operation.creation,
+            ...operation.input,
             requestId: operation.requestId,
-            content: operation.input.content,
           })
         : await this.transport.submit(operation.target, {
             ...operation.input,
@@ -345,7 +335,6 @@ export class Outbox {
 function sendOperationSchema<T extends TProperties>(phase: T) {
   const properties = {
     requestId: SubmitInputSchema.properties.requestId,
-    input: Type.Omit(SubmitInputSchema, ["requestId"]),
     ...phase,
   };
 
@@ -354,6 +343,7 @@ function sendOperationSchema<T extends TProperties>(phase: T) {
       {
         ...properties,
         target: ConversationIdSchema,
+        input: Type.Omit(SubmitInputSchema, ["requestId"]),
       },
       { additionalProperties: false },
     ),
@@ -361,10 +351,7 @@ function sendOperationSchema<T extends TProperties>(phase: T) {
       {
         ...properties,
         target: Type.Literal("new"),
-        creation: Type.Omit(StartConversationInputSchema, [
-          "requestId",
-          "content",
-        ]),
+        input: Type.Omit(StartConversationInputSchema, ["requestId"]),
       },
       { additionalProperties: false },
     ),
@@ -386,15 +373,13 @@ function freeze(operations: readonly SendOperation[]) {
   for (const operation of operations) {
     if (operation.phase !== "complete") {
       if (operation.target === "new") {
-        if (operation.creation.model !== undefined) {
-          Object.freeze(operation.creation.model);
+        if (operation.input.model !== undefined) {
+          Object.freeze(operation.input.model);
         }
 
-        if (operation.creation.tools !== undefined) {
-          Object.freeze(operation.creation.tools);
+        if (operation.input.tools !== undefined) {
+          Object.freeze(operation.input.tools);
         }
-
-        Object.freeze(operation.creation);
       }
 
       if (operation.phase !== "submitting" && operation.error !== undefined) {
