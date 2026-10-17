@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useConnection } from "@/hooks/use-connection";
 import { useLabClient } from "@/hooks/use-lab-client";
 import { queryKeys } from "@/lib/query-keys";
+import { unwrap } from "@/lib/unwrap";
 
 export function useModels(enabled = true) {
   const client = useLabClient();
@@ -12,15 +13,8 @@ export function useModels(enabled = true) {
 
   const queries = useQueryClient();
 
-  const load = async (refresh: boolean, signal: AbortSignal) => {
-    const result = await client.listModels({ refresh }, signal);
-
-    if (!result.ok) {
-      throw new Error(result.error.message);
-    }
-
-    return result.value;
-  };
+  const load = async (refresh: boolean, signal: AbortSignal) =>
+    unwrap(await client.listModels({ refresh }, signal));
 
   const options = {
     queryKey: queryKeys.models,

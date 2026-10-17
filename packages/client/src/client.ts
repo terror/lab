@@ -1,3 +1,4 @@
+import type { Ctx, Ref } from "@earendil-works/chord";
 import {
   type ConversationId,
   type ConversationPage,
@@ -36,15 +37,13 @@ export class LabClient {
 
     this.outbox = new Outbox(() => options.storage ?? sessionStorage, {
       start: (input) =>
-        this.transport.call(async (context) => {
-          const service = await context.get(LabService, {}, { state: false });
-          return service.startConversation(input, context);
-        }),
+        this.withService((service, context) =>
+          service.startConversation(input, context),
+        ),
       submit: (id, input) =>
-        this.transport.call(async (context) => {
-          const service = await context.get(LabService, {}, { state: false });
-          return service.submit({ id, input }, context);
-        }),
+        this.withService((service, context) =>
+          service.submit({ id, input }, context),
+        ),
     });
   }
 
@@ -61,27 +60,27 @@ export class LabClient {
     input: ListModelsInput = { refresh: false },
     signal?: AbortSignal,
   ): Promise<Result<ModelCatalog>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.listModels(input, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.listModels(input, context),
+      signal,
+    );
   }
 
   listTools(signal?: AbortSignal): Promise<Result<ToolCatalog>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.listTools({}, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.listTools({}, context),
+      signal,
+    );
   }
 
   listConversations(
     input: ListConversationsInput,
     signal?: AbortSignal,
   ): Promise<Result<ConversationPage>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.listConversations(input, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.listConversations(input, context),
+      signal,
+    );
   }
 
   subscribeConversations(listener: () => void) {
@@ -92,10 +91,10 @@ export class LabClient {
     id: ConversationId,
     signal?: AbortSignal,
   ): Promise<Result<null>> {
-    const result = await this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.deleteConversation(id, context);
-    }, signal);
+    const result = await this.withService(
+      (service, context) => service.deleteConversation(id, context),
+      signal,
+    );
 
     if (result.ok || result.error.code === "not_found") {
       this.outbox.forget(id);
@@ -109,10 +108,10 @@ export class LabClient {
     input: StopInput,
     signal?: AbortSignal,
   ): Promise<Result<StopReceipt>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.stop({ id, input }, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.stop({ id, input }, context),
+      signal,
+    );
   }
 
   setModel(
@@ -120,10 +119,10 @@ export class LabClient {
     input: SetModelInput,
     signal?: AbortSignal,
   ): Promise<Result<ModelSelectionReceipt>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.setModel({ id, input }, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.setModel({ id, input }, context),
+      signal,
+    );
   }
 
   setTools(
@@ -131,13 +130,23 @@ export class LabClient {
     input: SetToolsInput,
     signal?: AbortSignal,
   ): Promise<Result<ToolSelectionReceipt>> {
-    return this.transport.call(async (context) => {
-      const service = await context.get(LabService, {}, { state: false });
-      return service.setTools({ id, input }, context);
-    }, signal);
+    return this.withService(
+      (service, context) => service.setTools({ id, input }, context),
+      signal,
+    );
   }
 
   watch(conversation: ConversationClient) {
     return this.transport.watch(conversation);
+  }
+
+  private withService<T>(
+    operation: (service: Ref<typeof LabService>, context: Ctx) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return this.transport.call(async (context) => {
+      const service = await context.get(LabService, {}, { state: false });
+      return operation(service, context);
+    }, signal);
   }
 }

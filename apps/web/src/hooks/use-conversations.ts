@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useConnection } from "@/hooks/use-connection";
 import { useLabClient } from "@/hooks/use-lab-client";
 import { queryKeys } from "@/lib/query-keys";
+import { unwrap } from "@/lib/unwrap";
 
 export function useConversations() {
   const client = useLabClient();
@@ -14,18 +15,13 @@ export function useConversations() {
 
   const query = useInfiniteQuery({
     queryKey: queryKeys.conversations,
-    queryFn: async ({ pageParam, signal }) => {
-      const result = await client.listConversations(
-        { limit: 50, ...(pageParam === "" ? {} : { cursor: pageParam }) },
-        signal,
-      );
-
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      return result.value;
-    },
+    queryFn: async ({ pageParam, signal }) =>
+      unwrap(
+        await client.listConversations(
+          { limit: 50, ...(pageParam === "" ? {} : { cursor: pageParam }) },
+          signal,
+        ),
+      ),
     initialPageParam: "",
     getNextPageParam: (page) => page.next,
     enabled: connected,

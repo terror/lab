@@ -16,6 +16,7 @@ import { useConnection } from "@/hooks/use-connection";
 import { useConversation } from "@/hooks/use-conversation";
 import { useModels } from "@/hooks/use-models";
 import { modelAvailable, modelKey } from "@/lib/models";
+import { unwrap } from "@/lib/unwrap";
 
 export function Conversation({
   id,
@@ -34,29 +35,15 @@ export function Conversation({
   const model = useMutation({
     networkMode: "always",
     retry: false,
-    mutationFn: async (model: ModelReference) => {
-      const result = await conversation.setModel({ model });
-
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      return result.value;
-    },
+    mutationFn: async (model: ModelReference) =>
+      unwrap(await conversation.setModel({ model })),
   });
 
   const stop = useMutation({
     networkMode: "always",
     retry: false,
-    mutationFn: async () => {
-      const result = await conversation.stop({ scope: "foreground" });
-
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      return result.value;
-    },
+    mutationFn: async () =>
+      unwrap(await conversation.stop({ scope: "foreground" })),
   });
 
   const changingModel = model.isPending;

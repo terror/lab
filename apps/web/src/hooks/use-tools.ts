@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useConnection } from "@/hooks/use-connection";
 import { useLabClient } from "@/hooks/use-lab-client";
 import { queryKeys } from "@/lib/query-keys";
+import { unwrap } from "@/lib/unwrap";
 
 export function useTools() {
   const client = useLabClient();
@@ -11,15 +12,7 @@ export function useTools() {
 
   const query = useQuery({
     queryKey: queryKeys.tools,
-    queryFn: async ({ signal }) => {
-      const result = await client.listTools(signal);
-
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      return result.value;
-    },
+    queryFn: async ({ signal }) => unwrap(await client.listTools(signal)),
     enabled: connected,
     networkMode: "always",
     retry: false,
