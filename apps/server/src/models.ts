@@ -27,20 +27,17 @@ export async function loadModels(
   signal: AbortSignal,
   configuration: ModelConfiguration = {},
 ) {
+  const { providerModule, ...paths } = configuration;
+
   const models = await ModelRuntime.create({
+    ...paths,
     signal,
-    ...(configuration.modelsPath === undefined
-      ? {}
-      : { modelsPath: configuration.modelsPath }),
-    ...(configuration.authPath === undefined
-      ? {}
-      : { authPath: configuration.authPath }),
     refreshOnCreate: false,
   });
 
-  if (configuration.providerModule !== undefined) {
+  if (providerModule !== undefined) {
     const module: unknown = await import(
-      pathToFileURL(resolve(configuration.providerModule)).href
+      pathToFileURL(resolve(providerModule)).href
     );
 
     signal.throwIfAborted();
