@@ -5,10 +5,8 @@ import {
   CircleAlert,
   CircleDashed,
   ExternalLink,
-  Globe,
   LoaderCircle,
   Pause,
-  Wrench,
 } from "lucide-react";
 import { memo } from "react";
 import { CopyButton } from "@/components/copy-button";
@@ -18,6 +16,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { describeTool } from "@/lib/tool-display";
 import { cn } from "@/lib/utils";
 
 export const ToolActivity = memo(function ToolActivity({
@@ -93,7 +92,7 @@ const ActivityStep = memo(function ActivityStep({
   call: ToolProgress;
   stale: boolean;
 }) {
-  const presentation = describe(call);
+  const presentation = describeTool(call);
 
   const pending = call.status === "pending" || call.status === "running";
 
@@ -268,7 +267,7 @@ function describeGroup(calls: ToolProgress[], stale: boolean) {
     return undefined;
   }
 
-  const presentation = describe(current);
+  const presentation = describeTool(current);
 
   if (active) {
     const running = active.status === "running" && !stale;
@@ -326,82 +325,6 @@ function describeGroup(calls: ToolProgress[], stale: boolean) {
     label: `Completed ${calls.length} steps`,
     icon: Check,
   };
-}
-
-function describe(call: ToolProgress) {
-  const name = call.name.replace(/[_.-]+/g, " ");
-
-  const webPage = call.name === "web_search";
-
-  const label = webPage
-    ? {
-        icon: Globe,
-        action: "Read webpage",
-        running: "Reading webpage",
-        succeeded: "Read webpage",
-      }
-    : {
-        icon: Wrench,
-        action: name.charAt(0).toUpperCase() + name.slice(1),
-        running: `Running ${name}`,
-        succeeded: `Used ${name}`,
-      };
-
-  const url = webPage
-    ? pageUrl(
-        stringField(call.details, "url") ?? stringField(call.arguments, "url"),
-      )
-    : undefined;
-
-  return {
-    icon: label.icon,
-    label: {
-      pending: label.action,
-      running: label.running,
-      succeeded: label.succeeded,
-      failed: label.action,
-      interrupted: label.action,
-    }[call.status],
-    subject: url?.hostname.replace(/^www\./, ""),
-    url,
-    preview: preview(call),
-  };
-}
-
-function preview(call: ToolProgress): string | undefined {
-  switch (call.status) {
-    case "failed":
-      return call.output.trim().split("\n")[0]?.slice(0, 240);
-    case "pending":
-    case "running":
-      return call.output.trim().split("\n").at(-1)?.slice(0, 240);
-    case "succeeded":
-      return call.name === "web_search"
-        ? stringField(call.details, "title")
-        : undefined;
-    case "interrupted":
-      return undefined;
-  }
-}
-
-function stringField(value: unknown, key: string): string | undefined {
-  const text =
-    value !== null && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>)[key]
-      : undefined;
-  return typeof text === "string" && text.trim() ? text.trim() : undefined;
-}
-
-function pageUrl(value: string | undefined) {
-  try {
-    const url = new URL(value ?? "");
-
-    return url.protocol === "https:" || url.protocol === "http:"
-      ? url
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function duration(milliseconds: number) {
