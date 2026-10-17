@@ -15,9 +15,9 @@ export function transcriptItems(state: ConversationState): TranscriptItem[] {
   );
 
   const results = new Map(
-    messages.flatMap((message) =>
-      message.role === "tool" ? [[message.tool.callId, message] as const] : [],
-    ),
+    messages
+      .filter((message) => message.role === "tool")
+      .map((message) => [message.tool.callId, message]),
   );
 
   const live = new Map(state.tools.map((tool) => [tool.callId, tool]));

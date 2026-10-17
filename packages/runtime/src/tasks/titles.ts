@@ -90,7 +90,8 @@ async function generateTitle(
     }
 
     const title = message.content
-      .flatMap((block) => (block.type === "text" ? [block.text] : []))
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
       .join("")
       .replace(/\s+/g, " ")
       .trim()

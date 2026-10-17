@@ -378,17 +378,13 @@ export class ConversationObservation
           ),
         ),
       ],
-      inbox: (inbox?.items ?? []).flatMap((item) =>
-        item.mode === "write"
-          ? []
-          : [
-              {
-                submissionId: item.id,
-                content: contentText(item.content),
-                mode: item.mode,
-              },
-            ],
-      ),
+      inbox: (inbox?.items ?? [])
+        .filter((item) => item.mode !== "write")
+        .map((item) => ({
+          submissionId: item.id,
+          content: contentText(item.content),
+          mode: item.mode,
+        })),
       ...(this.latest === undefined
         ? {}
         : {
@@ -413,17 +409,13 @@ function projectMessage(message: ai.Message): Message {
       return {
         role: message.role,
         text,
-        toolCalls: message.content.flatMap((block) =>
-          block.type === "toolCall"
-            ? [
-                {
-                  callId: block.id,
-                  name: block.name,
-                  arguments: block.arguments,
-                },
-              ]
-            : [],
-        ),
+        toolCalls: message.content
+          .filter((block) => block.type === "toolCall")
+          .map((block) => ({
+            callId: block.id,
+            name: block.name,
+            arguments: block.arguments,
+          })),
       };
     case "toolResult":
       return {
@@ -481,7 +473,8 @@ function contentText(content: ai.Message["content"]): string {
   return typeof content === "string"
     ? content
     : content
-        .flatMap((block) => (block.type === "text" ? [block.text] : []))
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
         .join("");
 }
 
