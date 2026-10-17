@@ -38,7 +38,6 @@ export function useConversations() {
 
   return {
     ...query,
-    stale: !connected || query.isError || query.isRefetching,
     refresh: async () => {
       await queries.cancelQueries({ queryKey: queryKeys.conversations });
 
