@@ -29,6 +29,11 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
   host.serve(LabService, (_input, principal, self) => {
     sessions.authorize(principal);
 
+    function authorize(context: Ctx): Context {
+      sessions.authorize(principal);
+      return withAbortSignal(context.signal, BACKGROUND_CONTEXT);
+    }
+
     const conversations = self.state(
       "conversations",
       ConversationListRevisionSchema,
@@ -50,42 +55,23 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
     return {
       variant: "default",
       conversations,
-      listTools: (_input, context) => {
-        sessions.authorize(principal);
-        return runtime.listTools(callContext(context));
-      },
-      listModels: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.listModels(input, callContext(context));
-      },
-      listConversations: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.listConversations(input, callContext(context));
-      },
-      startConversation: (input, context) => {
-        sessions.authorize(principal);
-        return runtime.startConversation(input, callContext(context));
-      },
-      deleteConversation: (id, context) => {
-        sessions.authorize(principal);
-        return runtime.deleteConversation(id, callContext(context));
-      },
-      setTools: ({ id, input }, context) => {
-        sessions.authorize(principal);
-        return runtime.setTools(id, input, callContext(context));
-      },
-      setModel: ({ id, input }, context) => {
-        sessions.authorize(principal);
-        return runtime.setModel(id, input, callContext(context));
-      },
-      submit: ({ id, input }, context) => {
-        sessions.authorize(principal);
-        return runtime.submit(id, input, callContext(context));
-      },
-      stop: ({ id, input }, context) => {
-        sessions.authorize(principal);
-        return runtime.stop(id, input, callContext(context));
-      },
+      listTools: (_input, context) => runtime.listTools(authorize(context)),
+      listModels: (input, context) =>
+        runtime.listModels(input, authorize(context)),
+      listConversations: (input, context) =>
+        runtime.listConversations(input, authorize(context)),
+      startConversation: (input, context) =>
+        runtime.startConversation(input, authorize(context)),
+      deleteConversation: (id, context) =>
+        runtime.deleteConversation(id, authorize(context)),
+      setTools: ({ id, input }, context) =>
+        runtime.setTools(id, input, authorize(context)),
+      setModel: ({ id, input }, context) =>
+        runtime.setModel(id, input, authorize(context)),
+      submit: ({ id, input }, context) =>
+        runtime.submit(id, input, authorize(context)),
+      stop: ({ id, input }, context) =>
+        runtime.stop(id, input, authorize(context)),
     };
   });
 
@@ -123,10 +109,6 @@ export function createLabHost(runtime: Runtime, sessions: Sessions) {
   });
 
   return host;
-}
-
-function callContext(context: Ctx): Context {
-  return withAbortSignal(context.signal, BACKGROUND_CONTEXT);
 }
 
 function unwrap<T>(result: Result<T>): T {
