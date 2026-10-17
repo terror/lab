@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useConnection } from "@/hooks/use-connection";
 import { useLabClient } from "@/hooks/use-lab-client";
@@ -16,13 +16,13 @@ export function useModels(enabled = true) {
   const load = async (refresh: boolean, signal: AbortSignal) =>
     unwrap(await client.listModels({ refresh }, signal));
 
-  const options = {
+  const options = queryOptions({
     queryKey: queryKeys.models,
-    queryFn: ({ signal }: { signal: AbortSignal }) => load(false, signal),
-    networkMode: "always" as const,
+    queryFn: ({ signal }) => load(false, signal),
+    networkMode: "always",
     retry: false,
     staleTime: 60_000,
-  };
+  });
 
   const query = useQuery({
     ...options,
