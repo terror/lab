@@ -648,7 +648,7 @@ export async function openRuntime(
     const snapshot: unknown = await harness.snapshot(ConfigurationDoc, context);
     const stored =
       snapshot === undefined
-        ? undefined
+        ? null
         : parseConfigurationDoc(snapshot).configuration;
 
     const tools = await loadExtensions(
@@ -697,7 +697,7 @@ export async function openRuntime(
 }
 
 function resolveConfiguration(
-  stored: Configuration | null | undefined,
+  stored: Configuration | null,
   options: RuntimeOptions,
   tools: ToolRegistry,
 ): Configuration {

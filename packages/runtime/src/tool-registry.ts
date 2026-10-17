@@ -25,7 +25,7 @@ export class ToolRegistry {
     }
   }
 
-  configuration(stored: Configuration | null | undefined) {
+  configuration(stored: Configuration | null) {
     const extensions = this.extensions.map(({ name }) => name);
 
     const toolDefinitions = [...this.tools.values()].map(
@@ -39,26 +39,28 @@ export class ToolRegistry {
       })),
     );
 
-    for (const name of stored?.extensions ?? []) {
-      if (!extensions.includes(name)) {
-        throw new Error(`Stored extension "${name}" is not configured`);
+    if (stored !== null) {
+      for (const name of stored.extensions) {
+        if (!extensions.includes(name)) {
+          throw new Error(`Stored extension "${name}" is not configured`);
+        }
       }
-    }
 
-    for (const [kind, previous, current] of [
-      ["tool", stored?.toolDefinitions ?? [], toolDefinitions],
-      ["task", stored?.taskDefinitions ?? [], taskDefinitions],
-    ] as const) {
-      for (const definition of previous) {
-        if (
-          !current.some(
-            ({ name, extension }) =>
-              name === definition.name && extension === definition.extension,
-          )
-        ) {
-          throw new Error(
-            `Stored ${kind} "${definition.name}" from extension "${definition.extension}" is not configured`,
-          );
+      for (const [kind, previous, current] of [
+        ["tool", stored.toolDefinitions, toolDefinitions],
+        ["task", stored.taskDefinitions, taskDefinitions],
+      ] as const) {
+        for (const definition of previous) {
+          if (
+            !current.some(
+              ({ name, extension }) =>
+                name === definition.name && extension === definition.extension,
+            )
+          ) {
+            throw new Error(
+              `Stored ${kind} "${definition.name}" from extension "${definition.extension}" is not configured`,
+            );
+          }
         }
       }
     }

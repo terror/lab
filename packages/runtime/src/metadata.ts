@@ -13,29 +13,25 @@ export const ConfigurationSchema = Type.Object(
     extensions: Type.Array(Type.String({ minLength: 1 }), {
       uniqueItems: true,
     }),
-    extensionModules: Type.Optional(
-      Type.Array(Type.String({ minLength: 1 }), { uniqueItems: true }),
-    ),
-    toolDefinitions: Type.Optional(
-      Type.Array(
-        Type.Object(
-          {
-            name: ToolNameSchema,
-            extension: Type.String({ minLength: 1 }),
-          },
-          { additionalProperties: false },
-        ),
+    extensionModules: Type.Array(Type.String({ minLength: 1 }), {
+      uniqueItems: true,
+    }),
+    toolDefinitions: Type.Array(
+      Type.Object(
+        {
+          name: ToolNameSchema,
+          extension: Type.String({ minLength: 1 }),
+        },
+        { additionalProperties: false },
       ),
     ),
-    taskDefinitions: Type.Optional(
-      Type.Array(
-        Type.Object(
-          {
-            name: Type.String({ minLength: 1 }),
-            extension: Type.String({ minLength: 1 }),
-          },
-          { additionalProperties: false },
-        ),
+    taskDefinitions: Type.Array(
+      Type.Object(
+        {
+          name: Type.String({ minLength: 1 }),
+          extension: Type.String({ minLength: 1 }),
+        },
+        { additionalProperties: false },
       ),
     ),
   },
