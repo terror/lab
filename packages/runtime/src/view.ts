@@ -325,17 +325,9 @@ export class ConversationObservation
 
     const source = this.source.value;
 
-    const agent = source.docs[pi.AgentDoc.definition.kind] as
-      | pi.AgentState
-      | undefined;
-
-    const live = source.docs[pi.LiveDoc.definition.kind] as
-      | pi.LiveState
-      | undefined;
-
-    const inbox = source.docs[pi.InboxDoc.definition.kind] as
-      | pi.InboxState
-      | undefined;
+    const agent = viewDoc(source, pi.AgentDoc);
+    const live = viewDoc(source, pi.LiveDoc);
+    const inbox = viewDoc(source, pi.InboxDoc);
 
     const partial = live?.generation?.message;
 
@@ -396,6 +388,13 @@ export class ConversationObservation
       ...(error === undefined ? {} : { error }),
     };
   }
+}
+
+function viewDoc<T extends pi.JsonObject>(
+  view: pi.ConversationView,
+  token: pi.ConversationDocToken<T>,
+): T | undefined {
+  return view.docs[token.definition.kind] as T | undefined;
 }
 
 function projectMessage(message: ai.Message): Message {
