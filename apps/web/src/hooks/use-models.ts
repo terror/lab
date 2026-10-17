@@ -5,7 +5,7 @@ import { useLabClient } from "@/hooks/use-lab-client";
 import { queryKeys } from "@/lib/query-keys";
 import { unwrap } from "@/lib/utils";
 
-export function useModels(enabled = true) {
+export function useModels() {
   const client = useLabClient();
 
   const connection = useConnection();
@@ -26,7 +26,7 @@ export function useModels(enabled = true) {
 
   const query = useQuery({
     ...options,
-    enabled: connected && enabled,
+    enabled: connected,
   });
 
   useEffect(() => {
