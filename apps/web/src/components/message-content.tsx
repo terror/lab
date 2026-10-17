@@ -55,21 +55,15 @@ const components = {
     );
   },
   pre: ({ children, node }) => {
-    const code = node?.children.find(
-      (child) => child.type === "element" && child.tagName === "code",
-    );
-    const text =
-      code?.type === "element" ? toText(code, { whitespace: "pre" }) : "";
-    const language =
-      code?.type === "element" && Array.isArray(code.properties.className)
-        ? code.properties.className
-            .find(
-              (value) =>
-                typeof value === "string" && value.startsWith("language-"),
-            )
-            ?.toString()
-            .slice(9)
-        : undefined;
+    const code = node?.children
+      .filter((child) => child.type === "element")
+      .find((child) => child.tagName === "code");
+
+    const text = code ? toText(code, { whitespace: "pre" }) : "";
+
+    const language = code?.properties.className
+      ?.find((value) => value.startsWith("language-"))
+      ?.slice(9);
 
     return (
       <div className="my-5 min-w-0 overflow-hidden rounded-sm border bg-card">
