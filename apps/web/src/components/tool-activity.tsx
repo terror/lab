@@ -27,50 +27,19 @@ export const ToolActivity = memo(function ToolActivity({
   calls: ToolProgress[];
   stale: boolean;
 }) {
-  const active =
-    calls.find((call) => call.status === "running") ??
-    calls.find((call) => call.status === "pending");
-  const failed = calls.filter((call) => call.status === "failed").length;
-  const interrupted = calls.some((call) => call.status === "interrupted");
+  const presentation = describeGroup(calls, stale);
 
-  const current = active ?? calls.at(-1);
-
-  if (current === undefined) {
+  if (presentation === undefined) {
     return null;
   }
 
-  const presentation = describe(current);
-
-  const label = active
-    ? `${stale ? "Last activity: " : ""}${presentation.label}${active.status === "pending" ? " · Queued" : ""}`
-    : failed > 0
-      ? `${failed} ${failed === 1 ? "step" : "steps"} failed`
-      : interrupted
-        ? "Activity interrupted"
-        : calls.length === 1
-          ? presentation.label
-          : `Completed ${calls.length} steps`;
-
-  const subject =
-    active || calls.length === 1 ? presentation.subject : undefined;
-
-  const Icon = active
-    ? stale || active.status === "pending"
-      ? CircleDashed
-      : LoaderCircle
-    : failed > 0
-      ? CircleAlert
-      : interrupted
-        ? Pause
-        : calls.length === 1
-          ? presentation.icon
-          : Check;
+  const Icon = presentation.icon;
 
   return (
     <Collapsible className="min-w-0 font-sans">
       <span className="sr-only" role="status">
-        {label}
-        {subject ? `: ${subject}` : ""}
+        {presentation.label}
+        {presentation.subject ? `: ${presentation.subject}` : ""}
       </span>
       <CollapsibleTrigger asChild>
         <button
@@ -79,34 +48,27 @@ export const ToolActivity = memo(function ToolActivity({
         >
           <Icon
             aria-hidden="true"
-            className={cn(
-              "size-4 shrink-0",
-              active?.status === "running" &&
-                !stale &&
-                "motion-safe:animate-spin",
-              !active && failed > 0 && "text-destructive",
-            )}
+            className={cn("size-4 shrink-0", presentation.iconClassName)}
           />
           <span className="min-w-0 truncate">
-            <span>{label}</span>
-            {subject && (
-              <span className="ml-2 text-muted-foreground/75">{subject}</span>
+            <span>{presentation.label}</span>
+            {presentation.subject && (
+              <span className="ml-2 text-muted-foreground/75">
+                {presentation.subject}
+              </span>
             )}
           </span>
-          {active && calls.length > 1 && (
+          {presentation.count !== undefined && (
             <span className="shrink-0 rounded-full bg-muted/60 px-1.5 text-[11px] tabular-nums">
-              {calls.length}
+              {presentation.count}
               <span className="sr-only"> steps</span>
             </span>
           )}
-          {!active &&
-            calls.length === 1 &&
-            (current.status === "succeeded" || current.status === "failed") &&
-            current.durationMs !== undefined && (
-              <span className="shrink-0 text-xs text-muted-foreground/70 tabular-nums">
-                {duration(current.durationMs)}
-              </span>
-            )}
+          {presentation.duration !== undefined && (
+            <span className="shrink-0 text-xs text-muted-foreground/70 tabular-nums">
+              {presentation.duration}
+            </span>
+          )}
           <ChevronDown
             aria-hidden="true"
             className="size-3.5 shrink-0 text-muted-foreground/60 transition-transform group-data-[state=open]/activity:rotate-180 motion-reduce:transition-none"
@@ -295,6 +257,77 @@ function DetailSection({
   );
 }
 
+function describeGroup(calls: ToolProgress[], stale: boolean) {
+  const active =
+    calls.find((call) => call.status === "running") ??
+    calls.find((call) => call.status === "pending");
+
+  const current = active ?? calls.at(-1);
+
+  if (current === undefined) {
+    return undefined;
+  }
+
+  const presentation = describe(current);
+
+  if (active) {
+    const running = active.status === "running" && !stale;
+
+    return {
+      label: `${stale ? "Last activity: " : ""}${presentation.label}${active.status === "pending" ? " · Queued" : ""}`,
+      subject: presentation.subject,
+      icon: running ? LoaderCircle : CircleDashed,
+      iconClassName: running ? "motion-safe:animate-spin" : undefined,
+      count: calls.length > 1 ? calls.length : undefined,
+    };
+  }
+
+  const single = calls.length === 1;
+
+  const subject = single ? presentation.subject : undefined;
+
+  const elapsed =
+    single &&
+    (current.status === "succeeded" || current.status === "failed") &&
+    current.durationMs !== undefined
+      ? duration(current.durationMs)
+      : undefined;
+
+  const failed = calls.filter((call) => call.status === "failed").length;
+
+  if (failed > 0) {
+    return {
+      label: `${failed} ${failed === 1 ? "step" : "steps"} failed`,
+      subject,
+      icon: CircleAlert,
+      iconClassName: "text-destructive",
+      duration: elapsed,
+    };
+  }
+
+  if (calls.some((call) => call.status === "interrupted")) {
+    return {
+      label: "Activity interrupted",
+      subject,
+      icon: Pause,
+    };
+  }
+
+  if (single) {
+    return {
+      label: presentation.label,
+      subject,
+      icon: presentation.icon,
+      duration: elapsed,
+    };
+  }
+
+  return {
+    label: `Completed ${calls.length} steps`,
+    icon: Check,
+  };
+}
+
 function describe(call: ToolProgress) {
   const name = call.name.replace(/[_.-]+/g, " ");
 
@@ -362,6 +395,7 @@ function stringField(value: unknown, key: string): string | undefined {
 function pageUrl(value: string | undefined) {
   try {
     const url = new URL(value ?? "");
+
     return url.protocol === "https:" || url.protocol === "http:"
       ? url
       : undefined;
