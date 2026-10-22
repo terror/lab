@@ -1,50 +1,40 @@
-import { getMigrations } from 'better-auth/db/migration';
 import { fileURLToPath } from 'node:url';
 
-import { authOptions } from './auth-options';
 import { config } from './config';
-import { database } from './database';
+import { pool } from './db';
 import initial from './migrations/001_initial.sql' with { type: 'text' };
-import activity from './migrations/002_session_activity.sql' with { type: 'text' };
 
-const client = await database.connect();
+const client = await pool.connect();
 
 try {
   await client.query('SELECT pg_advisory_lock($1)', [1818321456]);
 
-  const migrations = await getMigrations(authOptions);
-
-  if (migrations.schemaProblems.length > 0) {
-    throw new Error(migrations.schemaProblems.join('\n'));
-  }
-
-  await migrations.runMigrations();
   await client.query('BEGIN');
 
   try {
-    await client.query('CREATE SCHEMA IF NOT EXISTS lab');
-    await client.query(
-      `CREATE TABLE IF NOT EXISTS lab.migrations (
-        name text PRIMARY KEY,
-        "appliedAt" timestamptz NOT NULL DEFAULT now()
-      )`
+    const { rows } = await client.query<{ name: string | null }>(
+      "SELECT to_regclass('lab.migrations') AS name"
     );
 
-    for (const [name, sql] of [
-      ['001_initial', initial],
-      ['002_session_activity', activity],
-    ] as const) {
-      const applied = await client.query(
-        'SELECT name FROM lab.migrations WHERE name = $1',
-        [name]
+    const applied = rows[0]?.name
+      ? await client.query('SELECT name FROM lab.migrations WHERE name = $1', [
+          '001_initial',
+        ])
+      : null;
+
+    if (!applied?.rowCount) {
+      await client.query(initial);
+
+      await client.query(
+        `CREATE TABLE lab.migrations (
+          name text PRIMARY KEY,
+          "appliedAt" timestamptz NOT NULL DEFAULT now()
+        )`
       );
 
-      if (applied.rowCount === 0) {
-        await client.query(sql);
-        await client.query('INSERT INTO lab.migrations (name) VALUES ($1)', [
-          name,
-        ]);
-      }
+      await client.query('INSERT INTO lab.migrations (name) VALUES ($1)', [
+        '001_initial',
+      ]);
     }
 
     await client.query('COMMIT');
@@ -73,6 +63,6 @@ try {
     await client.query('SELECT pg_advisory_unlock($1)', [1818321456]);
   } finally {
     client.release();
-    await database.end();
+    await pool.end();
   }
 }

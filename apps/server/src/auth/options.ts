@@ -1,16 +1,28 @@
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import type { BetterAuthOptions } from 'better-auth';
 import { APIError } from 'better-auth/api';
 import { bearer, organization } from 'better-auth/plugins';
+import { and, eq, gt, sql } from 'drizzle-orm';
 
-import { config } from './config';
-import { database } from './database';
+import { config } from '../config';
+import { database } from '../db';
+import { authSchema, invitation } from '../db/schema';
+import {
+  ensureFamilyWorkspace,
+  ensurePersonalWorkspace,
+} from '../services/workspaces';
 
 export const authOptions = {
   appName: 'Lab',
   baseURL: config.origin,
   basePath: '/api/auth',
   secret: config.authSecret,
-  database,
+  database: drizzleAdapter(database, {
+    provider: 'pg',
+    schema: authSchema,
+    camelCase: true,
+    transaction: true,
+  }),
   trustedOrigins: [config.origin],
   socialProviders: {
     google: {
@@ -57,18 +69,26 @@ export const authOptions = {
             return;
           }
 
-          const invitation = await database.query(
-            `SELECT id FROM invitation
-             WHERE lower(email) = $1 AND status = 'pending' AND "expiresAt" > now()
-             LIMIT 1`,
-            [user.email.toLowerCase()]
-          );
+          const [pending] = await database
+            .select({ id: invitation.id })
+            .from(invitation)
+            .where(
+              and(
+                eq(sql`lower(${invitation.email})`, user.email.toLowerCase()),
+                eq(invitation.status, 'pending'),
+                gt(invitation.expiresAt, sql`now()`)
+              )
+            )
+            .limit(1);
 
-          if (invitation.rowCount === 0) {
+          if (!pending) {
             throw new APIError('FORBIDDEN', {
               message: 'An invitation is required to access Lab',
             });
           }
+        },
+        after: async (user) => {
+          await ensurePersonalWorkspace(user.id);
         },
       },
     },
@@ -78,6 +98,11 @@ export const authOptions = {
     organization({
       requireEmailVerificationOnInvitation: true,
       disableOrganizationDeletion: true,
+      organizationHooks: {
+        afterCreateOrganization: async ({ organization }) => {
+          await ensureFamilyWorkspace(organization.id);
+        },
+      },
     }),
   ],
 } satisfies BetterAuthOptions;

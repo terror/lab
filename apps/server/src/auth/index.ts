@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
 
-import { authOptions } from './auth-options';
+import { authOptions } from './options';
 
 export const auth = betterAuth(authOptions);

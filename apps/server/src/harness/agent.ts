@@ -1,7 +1,7 @@
 import { createRegistry } from '@earendil-works/pi-durable';
 import { GATEWAY_PROVIDER, gatewayModels } from 'durable-harness/pi-durable';
 
-import { config } from './config';
+import { config } from '../config';
 import { lab } from './extensions/lab';
 
 export type AgentConfiguration = {

@@ -2,14 +2,14 @@ import { recoverSessions, registerQueue } from 'durable-harness';
 
 import app from './app';
 import { config } from './config';
-import { database } from './database';
-import { world } from './runtime';
+import { pool } from './db';
+import { world } from './harness/runtime';
 
 registerQueue(world);
 
 async function start() {
   try {
-    await database.query('SELECT 1');
+    await pool.query('SELECT 1');
     await world.start();
     await recoverSessions(world);
 
@@ -19,7 +19,7 @@ async function start() {
       fetch: app.fetch,
     });
   } catch (error) {
-    await Promise.allSettled([world.close?.(), database.end()]);
+    await Promise.allSettled([world.close?.(), pool.end()]);
     throw error;
   }
 }
@@ -37,7 +37,7 @@ async function shutdown() {
       try {
         await server.stop(true);
       } finally {
-        await database.end();
+        await pool.end();
       }
     }
 

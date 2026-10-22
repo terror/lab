@@ -7,9 +7,11 @@
     "check": "tsc --noEmit",
     "dev": "bun run --watch src/server.ts",
     "migrate": "bun run src/migrate.ts",
+    "schema:export": "drizzle-kit export",
     "start": "NODE_ENV=production bun run dist/server.js"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.7.12",
     "@earendil-works/chord": "1.0.4",
     "@earendil-works/pi-ai": "1.0.4",
     "@earendil-works/pi-durable": "1.0.4",
@@ -17,6 +19,7 @@
     "@workflow/world-postgres": "^5.0.5",
     "ai": "^7.0.148",
     "better-auth": "^1.7.12",
+    "drizzle-orm": "^0.45.4",
     "durable-harness": "0.0.1-beta.6",
     "hono": "^4.13.13",
     "pg": "^8.23.1",
@@ -24,6 +27,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11"
   }
 }
