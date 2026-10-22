@@ -11,5 +11,6 @@
   "semi": true,
   "singleQuote": true,
   "tabWidth": 2,
+  "tailwindStylesheet": "./apps/client/src/index.css",
   "trailingComma": "es5"
 }
