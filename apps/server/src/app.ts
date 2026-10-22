@@ -1,4 +1,5 @@
 import { serveStatic } from '@hono/bun';
+import { type ApiFailure, httpError, readableErrorMessage } from '@lab/shared';
 import { APIError } from 'better-auth/api';
 import { Hono } from 'hono';
 import { csrf } from 'hono/csrf';
@@ -19,9 +20,13 @@ app.use(logger());
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+
 app.use('/api/*', csrf({ origin: config.origin }), authenticate);
-app.route('/api', sessions);
-app.route('/api', workspaces);
+
+const api = app.route('/api', sessions).route('/api', workspaces);
+
+export type AppType = typeof api;
+
 app.all('/api/*', (c) => c.notFound());
 
 app.get(
@@ -31,15 +36,23 @@ app.get(
   })
 );
 
-app.notFound((c) => c.json({ error: 'Not found' }, 404));
+app.notFound((c) => c.json(failure(404), 404));
+
+function failure(status: number, message = ''): ApiFailure {
+  return { error: readableErrorMessage(message, httpError(status).message) };
+}
 
 app.onError((error, c) => {
   if (error instanceof HTTPException) {
-    return c.json({ error: error.message }, error.status);
+    if (error.status >= 500) {
+      console.error(error);
+    }
+
+    return c.json(failure(error.status, error.message), error.status);
   }
 
   if (error instanceof z.ZodError || error instanceof SyntaxError) {
-    return c.json({ error: 'Invalid request' }, 400);
+    return c.json(failure(400), 400);
   }
 
   if (
@@ -47,15 +60,14 @@ app.onError((error, c) => {
     error.statusCode >= 400 &&
     error.statusCode < 500
   ) {
-    return Response.json(
-      { error: error.message },
-      { status: error.statusCode }
-    );
+    return Response.json(failure(error.statusCode, error.message), {
+      status: error.statusCode,
+    });
   }
 
   console.error(error);
 
-  return c.json({ error: 'Internal server error' }, 500);
+  return c.json(failure(500), 500);
 });
 
 export default app;

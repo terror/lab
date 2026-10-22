@@ -1,3 +1,4 @@
+import type { ChatSubmission, SubmissionMetadata } from '@lab/shared';
 import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 import { createHash } from 'node:crypto';
@@ -6,21 +7,10 @@ import { type Principal } from '../auth/access';
 import { database } from '../db';
 import { sessionSubmissions, sessions } from '../db/schema';
 
-export type SubmissionMetadata = {
-  requestId: string;
-  submissionId: string | null;
-  submittedById: string | null;
-  createdAt: string;
-};
-
 export async function reserveSubmission(
   principal: Principal,
   sessionId: string,
-  input: {
-    requestId: string;
-    text: string;
-    kind?: 'prompt' | 'steer' | 'followUp';
-  }
+  input: Omit<ChatSubmission, 'sessionId'>
 ): Promise<void> {
   const inputHash = createHash('sha256')
     .update(JSON.stringify({ text: input.text, kind: input.kind ?? 'prompt' }))
@@ -46,7 +36,8 @@ export async function reserveSubmission(
 
   if (rows.length === 0) {
     throw new HTTPException(409, {
-      message: 'Request ID has already been used for another submission',
+      message:
+        'This message conflicts with an earlier submission. Edit it and send it again.',
     });
   }
 }

@@ -1,3 +1,10 @@
+import {
+  type SessionRole,
+  sessionIdSchema,
+  sessionRoleSchema,
+  sessionVisibilitySchema,
+  workspaceIdSchema,
+} from '@lab/shared';
 import { and, eq, exists, or, sql } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
@@ -14,15 +21,13 @@ import {
 import type { Workspace } from '../services/workspaces';
 import { auth } from './index';
 
-export const workspaceIdSchema = z.uuid().nullable().default(null);
-
-export const sessionIdSchema = z
-  .string()
-  .regex(/^wrun_[0-9A-HJKMNP-TV-Z]{26}$/);
-
-export const sessionRoleSchema = z.enum(['viewer', 'editor', 'manager']);
-
-export const sessionVisibilitySchema = z.enum(['restricted', 'workspace']);
+export {
+  sessionIdSchema,
+  sessionRoleSchema,
+  sessionVisibilitySchema,
+  workspaceIdSchema,
+};
+export type { SessionRole, SessionVisibility } from '@lab/shared';
 
 export type Principal = {
   userId: string;
@@ -30,12 +35,16 @@ export type Principal = {
 };
 
 export type SessionAction = 'read' | 'contribute' | 'manage';
-export type SessionRole = z.infer<typeof sessionRoleSchema>;
-export type SessionVisibility = z.infer<typeof sessionVisibilitySchema>;
 
 export type Api = {
   Variables: { principal: Principal };
 };
+
+export function rejectInvalidInput(result: { success: boolean }) {
+  if (!result.success) {
+    throw new HTTPException(400);
+  }
+}
 
 function membershipPermissions(principal: Principal, client: Database) {
   const membership = and(
@@ -91,7 +100,7 @@ export async function principal(request: Request): Promise<Principal> {
   const session = await auth.api.getSession({ headers: request.headers });
 
   if (!session) {
-    throw new HTTPException(401, { message: 'Unauthorized' });
+    throw new HTTPException(401);
   }
 
   return { userId: session.user.id, headers: request.headers };
@@ -107,14 +116,14 @@ export function requireSessionRole(
   action: SessionAction
 ): SessionRole {
   if (!role) {
-    throw new HTTPException(404, { message: 'Not found' });
+    throw new HTTPException(404);
   }
 
   if (
     (action === 'contribute' && role === 'viewer') ||
     (action === 'manage' && role !== 'manager')
   ) {
-    throw new HTTPException(403, { message: 'Forbidden' });
+    throw new HTTPException(403);
   }
 
   return role;
@@ -194,11 +203,11 @@ export async function authorizeWorkspace(
     (workspace.kind === 'personal' && workspace.ownerId !== principal.userId) ||
     (workspace.kind === 'family' && !workspace.present)
   ) {
-    throw new HTTPException(404, { message: 'Not found' });
+    throw new HTTPException(404);
   }
 
   if (manage && workspace.kind === 'family' && !workspace.manages) {
-    throw new HTTPException(403, { message: 'Forbidden' });
+    throw new HTTPException(403);
   }
 
   return {

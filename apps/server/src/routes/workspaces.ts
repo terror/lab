@@ -1,23 +1,14 @@
+import { zValidator } from '@hono/zod-validator';
+import { workspaceCreationSchema } from '@lab/shared';
 import { Hono } from 'hono';
-import { z } from 'zod';
 
 import { auth } from '../auth';
-import type { Api } from '../auth/access';
+import { type Api, rejectInvalidInput } from '../auth/access';
 import {
   type Workspace,
   ensureFamilyWorkspace,
   listUserWorkspaces,
 } from '../services/workspaces';
-
-const creationSchema = z.strictObject({
-  name: z.string().trim().min(1).max(200),
-  slug: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-});
 
 function workspaceMetadata(workspace: Workspace) {
   return {
@@ -30,25 +21,27 @@ function workspaceMetadata(workspace: Workspace) {
   };
 }
 
-const workspaces = new Hono<Api>();
+const workspaces = new Hono<Api>()
+  .get('/workspaces', async (c) => {
+    const workspaces = await listUserWorkspaces(c.get('principal').userId);
 
-workspaces.get('/workspaces', async (c) => {
-  const workspaces = await listUserWorkspaces(c.get('principal').userId);
+    return c.json(workspaces.map(workspaceMetadata));
+  })
+  .post(
+    '/workspaces',
+    zValidator('json', workspaceCreationSchema, rejectInvalidInput),
+    async (c) => {
+      const body = c.req.valid('json');
 
-  return c.json(workspaces.map(workspaceMetadata));
-});
+      const organization = await auth.api.createOrganization({
+        headers: c.get('principal').headers,
+        body: { ...body, keepCurrentActiveOrganization: true },
+      });
 
-workspaces.post('/workspaces', async (c) => {
-  const body = creationSchema.parse(await c.req.json());
+      const workspace = await ensureFamilyWorkspace(organization.id);
 
-  const organization = await auth.api.createOrganization({
-    headers: c.get('principal').headers,
-    body: { ...body, keepCurrentActiveOrganization: true },
-  });
-
-  const workspace = await ensureFamilyWorkspace(organization.id);
-
-  return c.json(workspaceMetadata(workspace), 201);
-});
+      return c.json(workspaceMetadata(workspace), 201);
+    }
+  );
 
 export default workspaces;

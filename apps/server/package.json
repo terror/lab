@@ -2,6 +2,11 @@
   "name": "@lab/server",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/app.ts"
+    }
+  },
   "scripts": {
     "build": "bun build src/server.ts src/migrate.ts --target=bun --packages=external --outdir=dist",
     "check": "tsc --noEmit",
@@ -16,6 +21,9 @@
     "@earendil-works/pi-ai": "1.0.4",
     "@earendil-works/pi-durable": "1.0.4",
     "@hono/bun": "^1.0.1",
+    "@hono/zod-validator": "^0.9.1",
+    "@lab/shared": "workspace:*",
+    "@workflow/errors": "^5.0.5",
     "@workflow/world-postgres": "^5.0.5",
     "ai": "^7.0.148",
     "better-auth": "^1.7.12",

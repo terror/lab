@@ -1,14 +1,10 @@
+import type * as Shared from '@lab/shared';
 import { and, asc, desc, eq, exists, or, sql } from 'drizzle-orm';
 
 import { database } from '../db';
 import { member, organization, workspaces } from '../db/schema';
 
-export type Workspace = {
-  id: string;
-  kind: 'personal' | 'family';
-  ownerId: string | null;
-  organizationId: string | null;
-  name: string;
+export type Workspace = Omit<Shared.Workspace, 'createdAt'> & {
   createdAt: Date;
 };
 

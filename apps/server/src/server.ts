@@ -10,6 +10,7 @@ registerQueue(world);
 async function start() {
   try {
     await pool.query('SELECT 1');
+
     await world.start();
     await recoverSessions(world);
 
@@ -20,6 +21,7 @@ async function start() {
     });
   } catch (error) {
     await Promise.allSettled([world.close?.(), pool.end()]);
+
     throw error;
   }
 }
@@ -44,6 +46,7 @@ async function shutdown() {
     process.exit(0);
   } catch (error) {
     console.error(error);
+
     process.exit(1);
   }
 }

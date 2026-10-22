@@ -16,6 +16,11 @@ export const world = createWorld({
 export const storage = { world, traceAudience: 'private' as const };
 
 export const open = resumeWith(
-  (storage) => Harness.open(storage, { models, registry }, BACKGROUND_CONTEXT),
+  (storage) =>
+    Harness.open(
+      storage,
+      { models, registry, onReport: console.error },
+      BACKGROUND_CONTEXT
+    ),
   { world }
 );
