@@ -1,17 +1,19 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { Harness } from '@earendil-works/pi-durable';
-import { createWorld } from '@workflow/world-local';
+import { createWorld } from '@workflow/world-postgres';
 import { resumeWith } from 'durable-harness/pi-durable';
-import { fileURLToPath } from 'node:url';
 
+import { config } from '../config';
 import { models, registry } from './agent';
 
 export const world = createWorld({
-  dataDir:
-    Bun.env.WORKFLOW_LOCAL_DATA_DIR ??
-    fileURLToPath(new URL('../../../.workflow-data', import.meta.url)),
-  recoverActiveRuns: false,
+  connectionString: config.workflowURL,
+  applicationManagedShutdown: true,
+  queueConcurrency: config.queueConcurrency,
+  maxPoolSize: config.workflowPoolSize,
 });
+
+export const storage = { world, traceAudience: 'private' as const };
 
 export const open = resumeWith(
   (storage) => Harness.open(storage, { models, registry }, BACKGROUND_CONTEXT),

@@ -20,5 +20,8 @@ dev:
 fmt:
   prettier --write .
 
+migrate:
+  bun run migrate
+
 start:
   bun run start
