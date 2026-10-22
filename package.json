@@ -1,0 +1,22 @@
+{
+  "name": "lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/server.ts --target=bun --outdir=dist",
+    "check": "tsc --noEmit",
+    "dev": "bun run --hot src/server.ts",
+    "start": "bun run src/server.ts"
+  },
+  "dependencies": {
+    "ai": "^7.0.148",
+    "hono": "^4.13.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/bun": "^1.4.3",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript": "^7.0.2"
+  }
+}
