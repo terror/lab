@@ -13,4 +13,4 @@ export const agent = {
     provider: GATEWAY_PROVIDER,
     modelId: Bun.env.LAB_MODEL ?? 'anthropic/claude-sonnet-5.5',
   },
-};
+} as const;
