@@ -3,14 +3,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun build src/server.ts --target=bun --outdir=dist",
+    "build": "bun build src/server.ts --target=bun --packages=external --outdir=dist",
     "check": "tsc --noEmit",
-    "dev": "bun run --hot src/server.ts",
+    "dev": "bun run --watch src/server.ts",
     "start": "NODE_ENV=production bun run dist/server.js"
   },
   "dependencies": {
+    "@earendil-works/chord": "1.0.4",
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-durable": "1.0.4",
     "@hono/bun": "^1.0.1",
+    "@workflow/world-local": "^5.1.2",
     "ai": "^7.0.148",
+    "durable-harness": "0.0.1-beta.6",
     "hono": "^4.13.13",
     "zod": "^4.6.7"
   },
