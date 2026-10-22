@@ -6,14 +6,14 @@ import { resumeWith } from 'durable-harness/pi-durable';
 import { models, registry } from './agent';
 import { config } from './config';
 
-const queueConcurrency = 50;
-
 export const world = createWorld({
   connectionString: config.workflowURL,
   applicationManagedShutdown: true,
-  queueConcurrency,
-  maxPoolSize: queueConcurrency + 2,
+  queueConcurrency: config.queueConcurrency,
+  maxPoolSize: config.workflowPoolSize,
 });
+
+export const storage = { world, traceAudience: 'private' as const };
 
 export const open = resumeWith(
   (storage) => Harness.open(storage, { models, registry }, BACKGROUND_CONTEXT),

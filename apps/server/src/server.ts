@@ -1,25 +1,30 @@
 import { recoverSessions, registerQueue } from 'durable-harness';
 
 import app from './app';
+import { config } from './config';
 import { database } from './database';
 import { world } from './runtime';
 
 registerQueue(world);
 
-try {
-  await database.query('SELECT 1');
-  await world.start();
-  await recoverSessions(world);
-} catch (error) {
-  await Promise.allSettled([world.close?.(), database.end()]);
-  throw error;
+async function start() {
+  try {
+    await database.query('SELECT 1');
+    await world.start();
+    await recoverSessions(world);
+
+    return Bun.serve({
+      hostname: config.hostname,
+      idleTimeout: 60,
+      fetch: app.fetch,
+    });
+  } catch (error) {
+    await Promise.allSettled([world.close?.(), database.end()]);
+    throw error;
+  }
 }
 
-const server = Bun.serve({
-  hostname: Bun.env.LAB_HOST ?? '127.0.0.1',
-  idleTimeout: 60,
-  fetch: app.fetch,
-});
+const server = await start();
 
 async function shutdown() {
   process.removeListener('SIGINT', shutdown);

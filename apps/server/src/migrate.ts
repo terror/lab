@@ -1,17 +1,18 @@
 import { getMigrations } from 'better-auth/db/migration';
 import { fileURLToPath } from 'node:url';
 
-import { auth } from './auth';
+import { authOptions } from './auth-options';
 import { config } from './config';
 import { database } from './database';
 import initial from './migrations/001_initial.sql' with { type: 'text' };
+import activity from './migrations/002_session_activity.sql' with { type: 'text' };
 
 const client = await database.connect();
 
 try {
   await client.query('SELECT pg_advisory_lock($1)', [1818321456]);
 
-  const migrations = await getMigrations(auth.options);
+  const migrations = await getMigrations(authOptions);
 
   if (migrations.schemaProblems.length > 0) {
     throw new Error(migrations.schemaProblems.join('\n'));
@@ -29,7 +30,10 @@ try {
       )`
     );
 
-    for (const [name, sql] of [['001_initial', initial]] as const) {
+    for (const [name, sql] of [
+      ['001_initial', initial],
+      ['002_session_activity', activity],
+    ] as const) {
       const applied = await client.query(
         'SELECT name FROM lab.migrations WHERE name = $1',
         [name]

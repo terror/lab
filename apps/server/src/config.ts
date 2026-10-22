@@ -15,6 +15,8 @@ const env = z
   .object({
     DATABASE_URL: postgresURL,
     WORKFLOW_POSTGRES_URL: postgresURL.optional(),
+    LAB_HOST: z.string().min(1).default('127.0.0.1'),
+    LAB_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
     LAB_ORIGIN: z.url({ protocol: /^https?$/ }),
     LAB_ADMIN_EMAIL: z.email().transform((email) => email.toLowerCase()),
     BETTER_AUTH_SECRET: z.string().min(32),
@@ -23,9 +25,15 @@ const env = z
   })
   .parse(Bun.env);
 
+const queueConcurrency = 50;
+
 export const config = {
   databaseURL: env.DATABASE_URL,
   workflowURL: env.WORKFLOW_POSTGRES_URL ?? env.DATABASE_URL,
+  hostname: env.LAB_HOST,
+  modelId: env.LAB_MODEL,
+  queueConcurrency,
+  workflowPoolSize: queueConcurrency + 2,
   origin: new URL(env.LAB_ORIGIN).origin,
   adminEmail: env.LAB_ADMIN_EMAIL,
   authSecret: env.BETTER_AUTH_SECRET,
