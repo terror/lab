@@ -33,7 +33,7 @@ jobs:
       - name: Check formatting
         run: bun run --bun prettier --check .
 
-      - name: Check types
+      - name: Lint and check types
         run: bun run check
 
       - name: Build

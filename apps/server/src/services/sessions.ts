@@ -1,4 +1,5 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import type { SessionCreation, SessionMetadata, Workspace } from '@lab/shared';
 import {
   and,
   desc,
@@ -35,32 +36,15 @@ import {
 } from '../db/schema';
 import { type AgentConfiguration, agent } from '../harness/agent';
 import { storage } from '../harness/runtime';
-import { type Workspace, ensurePersonalWorkspace } from './workspaces';
+import { closeSession } from '../harness/session-lifecycle';
+import { ensurePersonalWorkspace } from './workspaces';
 
 export { sessionIdSchema };
 
-export type Session = {
-  sessionId: string;
-  workspaceId: string;
-  workspaceKind: Workspace['kind'];
-  ownerId: string | null;
-  organizationId: string | null;
-  createdById: string | null;
-  visibility: SessionVisibility;
-  role: SessionRole;
-  canTransfer: boolean;
-  title: string;
+export type Session = Omit<SessionMetadata, 'createdAt' | 'updatedAt'> & {
   configuration: AgentConfiguration;
   createdAt: Date;
   updatedAt: Date;
-};
-
-export type SessionMetadata = Omit<
-  Session,
-  'configuration' | 'createdAt' | 'updatedAt'
-> & {
-  createdAt: string;
-  updatedAt: string;
 };
 
 function selectSessions(principal: Principal, client: Database = database) {
@@ -126,7 +110,7 @@ export async function getSession(
   const session = rows[0];
 
   if (!session) {
-    throw new HTTPException(404, { message: 'Not found' });
+    throw new HTTPException(404);
   }
 
   return { ...session, role: requireSessionRole(session.role, action) };
@@ -175,11 +159,7 @@ export async function listSharedSessions(principal: Principal) {
 
 export async function createSession(
   principal: Principal,
-  input: {
-    workspaceId: string | null;
-    title: string;
-    visibility?: SessionVisibility;
-  }
+  input: SessionCreation
 ) {
   const workspace = await authorizeWorkspace(
     principal,
@@ -230,10 +210,25 @@ export async function renameSession(
   return changeSession(principal, sessionId, async (client, session) => {
     await client
       .update(sessions)
-      .set({ title, updatedAt: sql`GREATEST(${sessions.updatedAt}, now())` })
+      .set({
+        title,
+        updatedAt: sql`GREATEST(${sessions.updatedAt} + interval '1 millisecond', now())`,
+      })
       .where(eq(sessions.sessionId, session.sessionId));
 
     return getSession(principal, session.sessionId, 'manage', client);
+  });
+}
+
+export async function deleteSession(principal: Principal, sessionId: string) {
+  const session = await getSession(principal, sessionId, 'manage');
+
+  await closeSession(session);
+
+  await changeSession(principal, sessionId, async (client, session) => {
+    await client
+      .delete(sessions)
+      .where(eq(sessions.sessionId, session.sessionId));
   });
 }
 
@@ -274,7 +269,7 @@ export async function grantSessionAccess(
       .for('key share');
 
     if (!users.length) {
-      throw new HTTPException(404, { message: 'Not found' });
+      throw new HTTPException(404);
     }
 
     if (session.workspaceKind === 'family') {
@@ -305,6 +300,13 @@ export async function grantSessionAccess(
         set: { role },
       });
 
+    await client
+      .update(sessions)
+      .set({
+        updatedAt: sql`GREATEST(${sessions.updatedAt} + interval '1 millisecond', now())`,
+      })
+      .where(eq(sessions.sessionId, session.sessionId));
+
     return { userId, role };
   });
 }
@@ -325,6 +327,13 @@ export async function revokeSessionAccess(
           eq(sessionAccess.userId, userId)
         )
       );
+
+    await client
+      .update(sessions)
+      .set({
+        updatedAt: sql`GREATEST(${sessions.updatedAt} + interval '1 millisecond', now())`,
+      })
+      .where(eq(sessions.sessionId, session.sessionId));
   });
 }
 
@@ -342,7 +351,7 @@ export async function setSessionVisibility(
       .update(sessions)
       .set({
         visibility,
-        updatedAt: sql`GREATEST(${sessions.updatedAt}, now())`,
+        updatedAt: sql`GREATEST(${sessions.updatedAt} + interval '1 millisecond', now())`,
       })
       .where(eq(sessions.sessionId, session.sessionId));
 
@@ -359,7 +368,7 @@ export async function moveSession(
 
   return changeSession(principal, sessionId, async (client, session) => {
     if (!session.canTransfer) {
-      throw new HTTPException(403, { message: 'Forbidden' });
+      throw new HTTPException(403);
     }
 
     const workspace = await authorizeWorkspace(
@@ -382,7 +391,7 @@ export async function moveSession(
       .set({
         workspaceId: workspace.id,
         visibility: 'restricted',
-        updatedAt: sql`GREATEST(${sessions.updatedAt}, now())`,
+        updatedAt: sql`GREATEST(${sessions.updatedAt} + interval '1 millisecond', now())`,
       })
       .where(eq(sessions.sessionId, session.sessionId));
 
@@ -408,6 +417,7 @@ async function changeSession<T>(
 ) {
   return database.transaction(async (client) => {
     const session = await getSession(principal, sessionId, 'manage', client);
+
     return operation(client, session);
   });
 }

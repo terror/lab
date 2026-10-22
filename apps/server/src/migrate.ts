@@ -40,6 +40,7 @@ try {
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
+
     throw error;
   }
 

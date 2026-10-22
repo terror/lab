@@ -16,14 +16,14 @@ const env = z
     DATABASE_URL: postgresURL,
     WORKFLOW_POSTGRES_URL: postgresURL.optional(),
     LAB_HOST: z.string().min(1).default('127.0.0.1'),
-    LAB_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
+    LAB_MODEL: z.string().min(1).default('openai/gpt-4.1-nano'),
     LAB_ORIGIN: z.url({ protocol: /^https?$/ }),
     LAB_ADMIN_EMAIL: z.email().transform((email) => email.toLowerCase()),
     BETTER_AUTH_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
   })
-  .parse(Bun.env);
+  .parse(process.env);
 
 const queueConcurrency = 50;
 
