@@ -5,9 +5,11 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url));
+
   const env = loadEnv(mode, envDir, '');
 
   const hostname = env.LAB_HOST ?? '127.0.0.1';
+
   const port = env.BUN_PORT ?? env.PORT ?? env.NODE_PORT ?? '3000';
 
   return {

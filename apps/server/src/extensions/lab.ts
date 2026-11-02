@@ -1,4 +1,4 @@
-import { defineExtension } from '@earendil-works/pi-durable';
+import { defineExtension } from '@lab/harness-pi';
 
 import { echo } from '../tools/echo';
 

@@ -9,15 +9,15 @@
     "start": "NODE_ENV=production bun run dist/server.js"
   },
   "dependencies": {
-    "@earendil-works/chord": "1.0.4",
-    "@earendil-works/pi-ai": "1.0.4",
-    "@earendil-works/pi-durable": "1.0.4",
     "@hono/bun": "^1.0.1",
-    "@workflow/world-local": "^5.1.2",
-    "ai": "^7.0.148",
-    "durable-harness": "0.0.1-beta.6",
-    "hono": "^4.13.13",
-    "zod": "^4.6.7"
+    "@lab/gateway-vercel": "workspace:*",
+    "@lab/harness-pi": "workspace:*",
+    "@lab/transport-pi-http": "workspace:*",
+    "@lab/storage-workflow": "workspace:*",
+    "@lab/app-protocol": "workspace:*",
+    "@lab/framework": "workspace:*",
+    "@lab/protocol": "workspace:*",
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"

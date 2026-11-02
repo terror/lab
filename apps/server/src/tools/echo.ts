@@ -1,5 +1,5 @@
-import { Type } from '@earendil-works/pi-ai';
-import { defineTool } from '@earendil-works/pi-durable';
+import { defineTool } from '@lab/harness-pi';
+import { Type } from '@lab/protocol';
 
 export const echo = defineTool({
   name: 'echo',
@@ -8,6 +8,7 @@ export const echo = defineTool({
   replay: 'safe',
   execute: async ({ text }, api) => {
     api.output(text);
+
     return {};
   },
 });

@@ -1,0 +1,16 @@
+{
+  "name": "@lab/storage-workflow",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lab/harness": "workspace:*",
+    "@workflow/world-local": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  }
+}

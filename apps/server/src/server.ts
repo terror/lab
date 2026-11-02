@@ -1,12 +1,7 @@
-import { recoverSessions, registerQueue } from 'durable-harness';
-
+import { agent } from './agent';
 import app from './app';
-import { world } from './runtime';
 
-registerQueue(world);
-
-await world.start?.();
-await recoverSessions(world);
+await agent.start();
 
 export default {
   hostname: Bun.env.LAB_HOST ?? '127.0.0.1',

@@ -1,0 +1,110 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y"],
+  "jsPlugins": ["@stylistic/eslint-plugin"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "options": {
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    ".workflow-data/**"
+  ],
+  "rules": {
+    "curly": ["error", "all"],
+    "eqeqeq": ["error", "always"],
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "no-var": "error",
+    "prefer-const": "error",
+    "react/react-in-jsx-scope": "off",
+    "typescript/no-explicit-any": "error",
+    "@stylistic/eol-last": ["error", "always"],
+    "@stylistic/jsx-newline": [
+      "error",
+      { "prevent": true, "allowMultilines": true }
+    ],
+    "@stylistic/jsx-quotes": ["error", "prefer-single"],
+    "@stylistic/lines-between-class-members": [
+      "error",
+      "always",
+      { "exceptAfterOverload": true }
+    ],
+    "@stylistic/max-statements-per-line": ["error", { "max": 1 }],
+    "@stylistic/no-multiple-empty-lines": [
+      "error",
+      { "max": 1, "maxBOF": 0, "maxEOF": 0 }
+    ],
+    "@stylistic/no-trailing-spaces": "error",
+    "@stylistic/padded-blocks": ["error", "never"],
+    "@stylistic/padding-line-between-statements": [
+      "error",
+      { "blankLine": "always", "prev": "*", "next": "*" },
+      { "blankLine": "any", "prev": "import", "next": "import" },
+      { "blankLine": "any", "prev": "directive", "next": "directive" },
+      {
+        "blankLine": "any",
+        "prev": "function-overload",
+        "next": ["function-overload", "function"]
+      }
+    ],
+    "@stylistic/quotes": ["error", "single", { "avoidEscape": true }],
+    "@stylistic/semi": ["error", "always"]
+  },
+  "overrides": [
+    {
+      "files": ["apps/client/src/**/*.{ts,tsx}"],
+      "env": { "browser": true }
+    },
+    {
+      "files": ["adapters/**/*.ts", "apps/server/**/*.ts"],
+      "env": { "node": true },
+      "globals": { "Bun": "readonly" }
+    },
+    {
+      "files": ["packages/**/*.ts", "apps/protocol/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@earendil-works/*",
+                  "@workflow/*",
+                  "durable-harness",
+                  "durable-harness/*",
+                  "hono",
+                  "hono/*",
+                  "@hono/*",
+                  "@lab/gateway-*",
+                  "@lab/gateway-*/*",
+                  "@lab/harness-*",
+                  "@lab/harness-*/*",
+                  "@lab/storage-*",
+                  "@lab/storage-*/*",
+                  "@lab/transport-*",
+                  "@lab/transport-*/*",
+                  "**/adapters/**",
+                  "@lab/server",
+                  "@lab/client"
+                ],
+                "message": "Concrete integrations belong in adapters or applications."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/client/vite.config.ts"],
+      "env": { "node": true }
+    }
+  ]
+}

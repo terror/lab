@@ -1,7 +1,6 @@
+import { HealthResponse } from '@lab/app-protocol';
+import { Value } from '@lab/protocol';
 import { queryOptions } from '@tanstack/react-query';
-import { z } from 'zod';
-
-const healthSchema = z.object({ status: z.literal('ok') });
 
 export const healthQueryOptions = queryOptions({
   queryKey: ['health'],
@@ -12,7 +11,7 @@ export const healthQueryOptions = queryOptions({
       throw new Error('Unable to connect to lab');
     }
 
-    return healthSchema.parse(await response.json());
+    return Value.Parse(HealthResponse, await response.json());
   },
   staleTime: 10_000,
   refetchInterval: 30_000,

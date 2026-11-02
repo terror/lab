@@ -1,0 +1,13 @@
+{
+  "name": "@lab/framework",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lab/harness": "workspace:*",
+    "@lab/protocol": "workspace:*"
+  }
+}

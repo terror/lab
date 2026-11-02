@@ -30,28 +30,33 @@ export function App() {
           <span className='text-lg font-semibold tracking-tight'>lab</span>
         </div>
       </header>
+
       <main className='mx-auto max-w-5xl px-6 py-12 sm:py-20'>
         <div className='max-w-lg space-y-8'>
           <div className='space-y-3'>
             <h1 className='text-3xl font-semibold tracking-tight sm:text-4xl'>
               A place for your agents.
             </h1>
+
             <p className='text-base leading-relaxed text-muted-foreground'>
               Your personal workspace for the things you want to explore,
               organize, and get done.
             </p>
           </div>
+
           <Card>
             <CardHeader>
               <CardTitle>
                 <h2>Connection</h2>
               </CardTitle>
+
               <CardDescription>
                 {health.isError
                   ? 'Lab is unavailable. Try connecting again.'
                   : 'Stay connected to your workspace.'}
               </CardDescription>
             </CardHeader>
+
             <CardContent>
               <p role='status' className='flex items-center gap-2 text-sm'>
                 <span
@@ -65,9 +70,11 @@ export function App() {
                         : 'bg-emerald-600'
                   )}
                 />
+
                 {status}
               </p>
             </CardContent>
+
             <CardFooter>
               <Button
                 variant='outline'
@@ -80,6 +87,7 @@ export function App() {
                     health.isFetching && 'motion-safe:animate-spin'
                   )}
                 />
+
                 {health.isFetching ? 'Checking' : 'Check connection'}
               </Button>
             </CardFooter>
