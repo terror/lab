@@ -63,9 +63,44 @@
       "env": { "browser": true }
     },
     {
-      "files": ["apps/server/**/*.ts", "packages/**/*.ts"],
+      "files": ["adapters/**/*.ts", "apps/server/**/*.ts"],
       "env": { "node": true },
       "globals": { "Bun": "readonly" }
+    },
+    {
+      "files": ["packages/**/*.ts", "apps/protocol/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@earendil-works/*",
+                  "@workflow/*",
+                  "durable-harness",
+                  "durable-harness/*",
+                  "hono",
+                  "hono/*",
+                  "@hono/*",
+                  "@lab/gateway-*",
+                  "@lab/gateway-*/*",
+                  "@lab/harness-*",
+                  "@lab/harness-*/*",
+                  "@lab/storage-*",
+                  "@lab/storage-*/*",
+                  "@lab/transport-*",
+                  "@lab/transport-*/*",
+                  "**/adapters/**",
+                  "@lab/server",
+                  "@lab/client"
+                ],
+                "message": "Concrete integrations belong in adapters or applications."
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "files": ["apps/client/vite.config.ts"],

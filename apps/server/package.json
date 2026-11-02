@@ -10,9 +10,14 @@
   },
   "dependencies": {
     "@hono/bun": "^1.0.1",
+    "@lab/gateway-vercel": "workspace:*",
+    "@lab/harness-pi": "workspace:*",
+    "@lab/transport-pi-http": "workspace:*",
+    "@lab/storage-workflow": "workspace:*",
+    "@lab/app-protocol": "workspace:*",
     "@lab/framework": "workspace:*",
-    "hono": "^4.13.13",
-    "zod": "^4.6.7"
+    "@lab/protocol": "workspace:*",
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"

@@ -1,4 +1,5 @@
-import { Type, defineTool } from '@lab/framework';
+import { defineTool } from '@lab/harness-pi';
+import { Type } from '@lab/protocol';
 
 export const echo = defineTool({
   name: 'echo',

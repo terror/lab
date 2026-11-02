@@ -1,7 +1,7 @@
+import { agent } from './agent';
 import app from './app';
-import { runtime } from './runtime';
 
-await runtime.start();
+await agent.start();
 
 export default {
   hostname: Bun.env.LAB_HOST ?? '127.0.0.1',

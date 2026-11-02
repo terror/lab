@@ -1,4 +1,4 @@
-import { defineExtension } from '@lab/framework';
+import { defineExtension } from '@lab/harness-pi';
 
 import { echo } from '../tools/echo';
 

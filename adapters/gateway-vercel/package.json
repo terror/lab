@@ -1,0 +1,17 @@
+{
+  "name": "@lab/gateway-vercel",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lab/harness": "workspace:*",
+    "@lab/protocol": "workspace:*",
+    "durable-harness": "0.0.1-beta.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  }
+}

@@ -13,10 +13,57 @@
         "typescript": "^7.0.2",
       },
     },
+    "adapters/gateway-vercel": {
+      "name": "@lab/gateway-vercel",
+      "dependencies": {
+        "@lab/harness": "workspace:*",
+        "@lab/protocol": "workspace:*",
+        "durable-harness": "0.0.1-beta.6",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
+    "adapters/harness-pi": {
+      "name": "@lab/harness-pi",
+      "dependencies": {
+        "@earendil-works/chord": "1.0.4",
+        "@earendil-works/pi-durable": "1.0.4",
+        "@lab/harness": "workspace:*",
+        "@workflow/world": "5.0.5",
+        "durable-harness": "0.0.1-beta.6",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
+    "adapters/storage-workflow": {
+      "name": "@lab/storage-workflow",
+      "dependencies": {
+        "@lab/harness": "workspace:*",
+        "@workflow/world-local": "^5.1.2",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
+    "adapters/transport-pi-http": {
+      "name": "@lab/transport-pi-http",
+      "dependencies": {
+        "@lab/framework": "workspace:*",
+        "@lab/harness-pi": "workspace:*",
+        "durable-harness": "0.0.1-beta.6",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
     "apps/client": {
       "name": "@lab/client",
       "dependencies": {
         "@fontsource-variable/geist": "^5.3.0",
+        "@lab/app-protocol": "workspace:*",
+        "@lab/protocol": "workspace:*",
         "@tanstack/react-query": "^5.104.5",
         "class-variance-authority": "^0.7.1",
         "cn": "^0.5.0",
@@ -24,7 +71,6 @@
         "radix-ui": "^1.8.1",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
-        "zod": "^4.6.7",
       },
       "devDependencies": {
         "@tailwindcss/vite": "^4.3.3",
@@ -38,13 +84,24 @@
         "vite": "^8.3.5",
       },
     },
+    "apps/protocol": {
+      "name": "@lab/app-protocol",
+      "dependencies": {
+        "@lab/protocol": "workspace:*",
+      },
+    },
     "apps/server": {
       "name": "@lab/server",
       "dependencies": {
         "@hono/bun": "^1.0.1",
+        "@lab/app-protocol": "workspace:*",
         "@lab/framework": "workspace:*",
+        "@lab/gateway-vercel": "workspace:*",
+        "@lab/harness-pi": "workspace:*",
+        "@lab/protocol": "workspace:*",
+        "@lab/storage-workflow": "workspace:*",
+        "@lab/transport-pi-http": "workspace:*",
         "hono": "^4.13.13",
-        "zod": "^4.6.7",
       },
       "devDependencies": {
         "@types/bun": "^1.4.3",
@@ -53,25 +110,20 @@
     "packages/framework": {
       "name": "@lab/framework",
       "dependencies": {
-        "@earendil-works/pi-ai": "1.0.4",
-        "@earendil-works/pi-durable": "1.0.4",
         "@lab/harness": "workspace:*",
-      },
-      "devDependencies": {
-        "@types/bun": "^1.4.3",
+        "@lab/protocol": "workspace:*",
       },
     },
     "packages/harness": {
       "name": "@lab/harness",
       "dependencies": {
-        "@earendil-works/chord": "1.0.4",
-        "@earendil-works/pi-ai": "1.0.4",
-        "@earendil-works/pi-durable": "1.0.4",
-        "@workflow/world-local": "^5.1.2",
-        "durable-harness": "0.0.1-beta.6",
+        "@lab/protocol": "workspace:*",
       },
-      "devDependencies": {
-        "@types/bun": "^1.4.3",
+    },
+    "packages/protocol": {
+      "name": "@lab/protocol",
+      "dependencies": {
+        "typebox": "1.3.27",
       },
     },
   },
@@ -308,13 +360,25 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
+    "@lab/app-protocol": ["@lab/app-protocol@workspace:apps/protocol"],
+
     "@lab/client": ["@lab/client@workspace:apps/client"],
 
     "@lab/framework": ["@lab/framework@workspace:packages/framework"],
 
+    "@lab/gateway-vercel": ["@lab/gateway-vercel@workspace:adapters/gateway-vercel"],
+
     "@lab/harness": ["@lab/harness@workspace:packages/harness"],
 
+    "@lab/harness-pi": ["@lab/harness-pi@workspace:adapters/harness-pi"],
+
+    "@lab/protocol": ["@lab/protocol@workspace:packages/protocol"],
+
     "@lab/server": ["@lab/server@workspace:apps/server"],
+
+    "@lab/storage-workflow": ["@lab/storage-workflow@workspace:adapters/storage-workflow"],
+
+    "@lab/transport-pi-http": ["@lab/transport-pi-http@workspace:adapters/transport-pi-http"],
 
     "@modelcontextprotocol/sdk": ["@modelcontextprotocol/sdk@1.32.1", "", { "dependencies": { "@hono/node-server": "^1.19.9 || ^2.0.5", "ajv": "^8.17.1", "ajv-formats": "^3.0.1", "content-type": "^1.0.5", "cors": "^2.8.5", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.0", "express": "^5.2.1", "express-rate-limit": "^8.2.1", "hono": "^4.11.4", "jose": "^6.1.3", "json-schema-typed": "^8.0.2", "pkce-challenge": "^5.0.0", "raw-body": "^3.0.0", "zod": "^3.25 || ^4.0", "zod-to-json-schema": "^3.25.1" }, "peerDependencies": { "@cfworker/json-schema": "^4.1.1" }, "optionalPeers": ["@cfworker/json-schema"] }, "sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw=="],
 
