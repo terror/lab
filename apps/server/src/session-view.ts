@@ -1,10 +1,13 @@
 import type {
+  AssistantResult,
   SessionMessage,
+  SessionStatus,
   SessionTool,
+  SessionToolStatus,
   SessionView,
 } from '@lab/app-protocol';
 import type { SessionSnapshot } from '@lab/harness-pi';
-import { Type, Value } from '@lab/protocol';
+import { type Static, Type, Value } from '@lab/protocol';
 
 const TextPart = Type.Object({
   type: Type.Literal('text'),
@@ -26,6 +29,57 @@ const ToolCall = Type.Object({
 
 const ToolInput = Type.Object({ callId: Type.String() });
 
+function assistantResult(message: Static<typeof Message>): AssistantResult {
+  switch (message.stopReason) {
+    case 'aborted':
+      return { status: 'interrupted' };
+
+    case 'error':
+      return {
+        status: 'failed',
+        error:
+          message.errorMessage || 'The model could not complete this response.',
+      };
+
+    default:
+      return { status: 'complete' };
+  }
+}
+
+function messageView(
+  id: string,
+  message: Static<typeof Message>
+): SessionMessage | undefined {
+  const content = text(message.content);
+
+  if (message.role === 'user') {
+    return { id, role: 'user', text: content };
+  }
+
+  const result = assistantResult(message);
+
+  if (!content && result.status === 'complete') {
+    return undefined;
+  }
+
+  return { id, role: 'assistant', text: content, result };
+}
+
+function sessionStatus(
+  snapshot: SessionSnapshot,
+  messages: SessionMessage[]
+): SessionStatus {
+  if (snapshot.unfinished) {
+    return 'running';
+  }
+
+  if (messages.at(-1)?.role === 'user') {
+    return 'unanswered';
+  }
+
+  return 'idle';
+}
+
 function text(content: unknown) {
   if (typeof content === 'string') {
     return content;
@@ -39,6 +93,33 @@ function text(content: unknown) {
     .filter((part) => Value.Check(TextPart, part))
     .map((part) => part.text)
     .join('');
+}
+
+function toolName(input: unknown, names: Map<string, string>) {
+  if (!Value.Check(ToolInput, input)) {
+    return 'Tool';
+  }
+
+  return names.get(input.callId) ?? 'Tool';
+}
+
+function toolStatus(status: string): SessionToolStatus {
+  switch (status) {
+    case 'pending':
+
+    case 'running':
+
+    case 'waiting':
+
+    case 'completing':
+      return status;
+
+    case 'terminal':
+      return 'finished';
+
+    default:
+      return 'unknown';
+  }
 }
 
 export function sessionView(snapshot: SessionSnapshot): SessionView {
@@ -64,22 +145,10 @@ export function sessionView(snapshot: SessionSnapshot): SessionView {
         }
       }
 
-      const content = text(message.content);
+      const view = messageView(`${entry.id}:${index}`, message);
 
-      const error =
-        message.stopReason === 'error'
-          ? message.errorMessage ||
-            'The model could not complete this response.'
-          : undefined;
-
-      if (content || error || message.stopReason === 'aborted') {
-        messages.push({
-          id: `${entry.id}:${index}`,
-          role: message.role,
-          text: content,
-          interrupted: message.stopReason === 'aborted',
-          ...(error ? { error } : {}),
-        });
+      if (view) {
+        messages.push(view);
       }
     }
   }
@@ -88,21 +157,14 @@ export function sessionView(snapshot: SessionSnapshot): SessionView {
     .filter((task) => task.kind === 'pi.tool')
     .map((task): SessionTool => ({
       id: task.id,
-      name: Value.Check(ToolInput, task.input)
-        ? (names.get(task.input.callId) ?? 'Tool')
-        : 'Tool',
-      status:
-        task.status === 'terminal'
-          ? 'finished'
-          : task.starts.length > 0
-            ? 'running'
-            : 'pending',
+      name: toolName(task.input, names),
+      status: toolStatus(task.status),
     }));
 
   return {
     sessionId: snapshot.sessionId,
     revision: snapshot.eventCount,
-    running: snapshot.unfinished,
+    status: sessionStatus(snapshot, messages),
     messages,
     tools,
     partial: text(snapshot.live?.generation?.message?.content),
