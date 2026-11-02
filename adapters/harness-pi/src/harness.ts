@@ -5,6 +5,7 @@ import type { World } from '@workflow/world';
 import { recoverSessions, registerQueue } from 'durable-harness';
 import {
   type Opener,
+  type SessionReader,
   type SessionSnapshot,
   type WorldStorageOptions,
   acquireHarness,
@@ -55,6 +56,10 @@ export class PiHarness<
   readonly context: PiContext;
 
   private readonly storage: Storage<World>;
+
+  private readonly readers = new Map<string, SessionReader>();
+
+  private readonly reads = new Map<string, Promise<void>>();
 
   constructor({
     agent,
@@ -124,13 +129,74 @@ export class PiHarness<
       return undefined;
     }
 
-    const reader = openWorldReader(sessionId, this.context);
+    const previous = this.reads.get(sessionId) ?? Promise.resolve();
 
-    await reader.refresh();
+    const result = previous.then(async () => {
+      const reader = await this.sessionReader(sessionId);
 
-    const snapshot = await reader.snapshot();
+      try {
+        await reader.refresh();
 
-    return snapshot.eventCount === 0 ? undefined : snapshot;
+        const snapshot = await reader.snapshot();
+
+        return snapshot.eventCount === 0 ? undefined : snapshot;
+      } catch (error) {
+        if (this.readers.get(sessionId) === reader) {
+          this.readers.delete(sessionId);
+        }
+
+        throw error;
+      }
+    });
+
+    const settled = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    this.reads.set(sessionId, settled);
+
+    void settled.then(() => {
+      if (this.reads.get(sessionId) === settled) {
+        this.reads.delete(sessionId);
+      }
+    });
+
+    return result;
+  }
+
+  private async sessionReader(sessionId: string): Promise<SessionReader> {
+    for (;;) {
+      const cached = this.readers.get(sessionId);
+
+      if (cached) {
+        this.readers.delete(sessionId);
+
+        this.readers.set(sessionId, cached);
+
+        return cached;
+      }
+
+      if (this.readers.size < 64) {
+        const reader = openWorldReader(sessionId, this.context);
+
+        this.readers.set(sessionId, reader);
+
+        return reader;
+      }
+
+      const idle = [...this.readers.keys()].find(
+        (candidate) => !this.reads.has(candidate)
+      );
+
+      if (idle !== undefined) {
+        this.readers.delete(idle);
+
+        continue;
+      }
+
+      await Promise.race(this.reads.values());
+    }
   }
 
   async cancelSession(sessionId: string) {
