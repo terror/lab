@@ -1,118 +1,46 @@
-import type { ChatSubmission } from '@lab/app-protocol';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'react';
+import { useMachine } from '@xstate/react';
 
-import {
-  cancelSession,
-  readChat,
-  sessionQueryOptions,
-  submitChat,
-} from './sessions';
-import { useSessionStream } from './use-session-stream';
+import { type SessionEvent, sessionMachine } from './session-machine';
 
 export function useSession(sessionId: string) {
-  const client = useQueryClient();
+  const [snapshot, dispatch, actor] = useMachine(sessionMachine, {
+    input: { sessionId },
+  });
 
-  const session = useQuery(sessionQueryOptions(sessionId));
+  const send = (text: string) => {
+    const event = {
+      type: 'SEND',
+      submission: {
+        sessionId,
+        text: text.trim(),
+        requestId: crypto.randomUUID(),
+      },
+    } satisfies SessionEvent;
 
-  const controller = useRef<AbortController | undefined>(undefined);
+    const current = actor.getSnapshot();
 
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  const refresh = useCallback(
-    () => client.fetchQuery(sessionQueryOptions(sessionId)),
-    [client, sessionId]
-  );
-
-  const synchronize = useCallback(async () => {
-    clearTimeout(timer.current);
-
-    timer.current = undefined;
-
-    await client.cancelQueries({
-      queryKey: ['session', sessionId],
-      exact: true,
-    });
-
-    return refresh();
-  }, [client, refresh, sessionId]);
-
-  const scheduleRefresh = useCallback(() => {
-    if (timer.current !== undefined) {
-      return;
+    if (current.status !== 'active' || !current.can(event)) {
+      return false;
     }
 
-    timer.current = setTimeout(() => {
-      timer.current = undefined;
+    dispatch(event);
 
-      void refresh().catch(() => undefined);
-    }, 250);
-  }, [refresh]);
+    return true;
+  };
 
-  useEffect(
-    () => () => {
-      controller.current?.abort();
-
-      clearTimeout(timer.current);
-    },
-    []
-  );
-
-  const sending = useMutation({
-    mutationFn: async (submission: ChatSubmission) => {
-      const connection = new AbortController();
-
-      controller.current = connection;
-
-      try {
-        const response = await submitChat(submission, connection.signal);
-
-        scheduleRefresh();
-
-        try {
-          await readChat(response, scheduleRefresh);
-        } catch (error) {
-          if (connection.signal.aborted) {
-            throw error;
-          }
-        }
-      } finally {
-        clearTimeout(timer.current);
-
-        timer.current = undefined;
-
-        controller.current = undefined;
-
-        if (!connection.signal.aborted) {
-          await synchronize();
-        }
-      }
-    },
-  });
-
-  const stopping = useMutation({
-    mutationFn: async () => {
-      await cancelSession(sessionId);
-
-      await synchronize();
-    },
-  });
-
-  const reconnecting = useSessionStream(
-    sessionId,
-    !!session.data &&
-      (session.data.running || sending.isError) &&
-      !sending.isPending,
-    synchronize,
-    scheduleRefresh
-  );
+  const canSend =
+    snapshot.matches('idle') &&
+    snapshot.context.state.status === 'ready' &&
+    snapshot.context.state.view.status !== 'running';
 
   return {
-    session,
-    sending,
-    stopping,
-    reconnecting,
-    send: (text: string) =>
-      sending.mutate({ sessionId, text, requestId: crypto.randomUUID() }),
+    state: snapshot.context.state,
+    send: canSend ? send : undefined,
+    stop: snapshot.can({ type: 'STOP' })
+      ? () => dispatch({ type: 'STOP' })
+      : undefined,
+    retry: snapshot.can({ type: 'RETRY' })
+      ? () => dispatch({ type: 'RETRY' })
+      : undefined,
   };
 }

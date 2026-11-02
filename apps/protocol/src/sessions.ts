@@ -14,32 +14,76 @@ export const ChatSubmission = Type.Object(
 
 export type ChatSubmission = Static<typeof ChatSubmission>;
 
-export const SessionMessage = Type.Object({
-  id: Type.String(),
-  role: Type.Union([Type.Literal('user'), Type.Literal('assistant')]),
-  text: Type.String(),
-  interrupted: Type.Boolean(),
-  error: Type.Optional(Type.String()),
-});
+export const AssistantResult = Type.Union([
+  Type.Object(
+    { status: Type.Literal('complete') },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    { status: Type.Literal('interrupted') },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    { status: Type.Literal('failed'), error: Type.String() },
+    { additionalProperties: false }
+  ),
+]);
+
+export type AssistantResult = Static<typeof AssistantResult>;
+
+export const SessionMessage = Type.Union([
+  Type.Object(
+    {
+      id: Type.String(),
+      role: Type.Literal('user'),
+      text: Type.String(),
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      id: Type.String(),
+      role: Type.Literal('assistant'),
+      text: Type.String(),
+      result: AssistantResult,
+    },
+    { additionalProperties: false }
+  ),
+]);
 
 export type SessionMessage = Static<typeof SessionMessage>;
+
+export const SessionToolStatus = Type.Union([
+  Type.Literal('pending'),
+  Type.Literal('running'),
+  Type.Literal('waiting'),
+  Type.Literal('completing'),
+  Type.Literal('finished'),
+  Type.Literal('unknown'),
+]);
+
+export type SessionToolStatus = Static<typeof SessionToolStatus>;
 
 export const SessionTool = Type.Object({
   id: Type.String(),
   name: Type.String(),
-  status: Type.Union([
-    Type.Literal('pending'),
-    Type.Literal('running'),
-    Type.Literal('finished'),
-  ]),
+  status: SessionToolStatus,
 });
 
 export type SessionTool = Static<typeof SessionTool>;
 
+export const SessionStatus = Type.Union([
+  Type.Literal('idle'),
+  Type.Literal('running'),
+  Type.Literal('unanswered'),
+]);
+
+export type SessionStatus = Static<typeof SessionStatus>;
+
 export const SessionView = Type.Object({
   sessionId: SessionId,
   revision: Type.Integer({ minimum: 0 }),
-  running: Type.Boolean(),
+  status: SessionStatus,
   messages: Type.Array(SessionMessage),
   tools: Type.Array(SessionTool),
   partial: Type.String(),

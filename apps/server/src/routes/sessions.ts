@@ -2,18 +2,17 @@ import {
   ChatSubmission,
   type ErrorResponse,
   type SessionCreated,
+  type SessionView,
 } from '@lab/app-protocol';
 import type { Agent, Transport } from '@lab/framework';
-import type { SessionSnapshot } from '@lab/harness-pi';
 import { SessionId, Value } from '@lab/protocol';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
-import { sessionView } from '../session-view';
-
-export function sessionRoutes(
-  agent: Agent<SessionSnapshot>,
-  transport: Transport<Request, Response>
+export function sessionRoutes<Snapshot>(
+  agent: Agent<Snapshot>,
+  transport: Transport<Request, Response>,
+  project: (snapshot: Snapshot) => SessionView
 ) {
   async function readSession(sessionId: string | undefined) {
     if (!Value.Check(SessionId, sessionId)) {
@@ -53,7 +52,7 @@ export function sessionRoutes(
       return c.json({ sessionId } satisfies SessionCreated, 201);
     })
     .get('/sessions/:sessionId', async (c) =>
-      c.json(sessionView(await readSession(c.req.param('sessionId'))))
+      c.json(project(await readSession(c.req.param('sessionId'))))
     )
     .post('/sessions/:sessionId/cancel', async (c) => {
       const sessionId = c.req.param('sessionId');

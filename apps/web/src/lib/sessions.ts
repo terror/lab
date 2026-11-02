@@ -1,163 +1,159 @@
-import {
-  ChatEvent,
-  type ChatSubmission,
-  ErrorResponse,
-  SessionCreated,
-  SessionView,
-} from '@lab/app-protocol';
-import { Value } from '@lab/protocol';
-import { queryOptions } from '@tanstack/react-query';
+import { ErrorResponse, SessionCreated, SessionView } from '@lab/app-protocol';
+import { type Static, type TSchema, Value } from '@lab/protocol';
+
+export type SessionFailure =
+  | { kind: 'http'; status: number }
+  | { kind: 'network' }
+  | { kind: 'timeout' }
+  | { kind: 'protocol' };
 
 export class SessionError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly failure: SessionFailure
   ) {
     super(message);
   }
+
+  get retryable() {
+    switch (this.failure.kind) {
+      case 'network':
+
+      case 'timeout':
+        return true;
+
+      case 'protocol':
+        return false;
+
+      case 'http':
+        return (
+          this.failure.status === 408 ||
+          this.failure.status === 429 ||
+          this.failure.status >= 500
+        );
+    }
+  }
 }
 
-async function request(path: string, options?: RequestInit) {
-  const response = await fetch(path, options);
-
-  if (!response.ok) {
-    const body: unknown = await response.json().catch(() => undefined);
-
-    throw new SessionError(
-      Value.Check(ErrorResponse, body)
-        ? body.error
-        : 'Unable to complete the session request',
-      response.status
-    );
+export function sessionError(error: unknown) {
+  if (error instanceof SessionError) {
+    return error;
   }
 
-  return response;
-}
-
-export async function createSession() {
-  const response = await request('/api/sessions', { method: 'POST' });
-
-  return Value.Parse(SessionCreated, await response.json());
-}
-
-export const sessionQueryOptions = (sessionId: string) =>
-  queryOptions({
-    queryKey: ['session', sessionId],
-    queryFn: async ({ signal }) => {
-      const response = await request(
-        `/api/sessions/${encodeURIComponent(sessionId)}`,
-        { signal, cache: 'no-store' }
-      );
-
-      return Value.Parse(SessionView, await response.json());
-    },
-    retry: (count, error) =>
-      count < 2 && (!(error instanceof SessionError) || error.status >= 500),
-  });
-
-export async function cancelSession(sessionId: string) {
-  await request(`/api/sessions/${encodeURIComponent(sessionId)}/cancel`, {
-    method: 'POST',
-  });
-}
-
-export function submitChat(submission: ChatSubmission, signal: AbortSignal) {
-  return request('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(submission),
-    signal,
-  });
-}
-
-export async function readChat(
-  response: Response,
-  onEvent: (event: ChatEvent) => void
-) {
-  if (response.status === 204) {
-    return;
+  if (error instanceof TypeError) {
+    return new SessionError('Unable to connect to lab', { kind: 'network' });
   }
 
-  if (
-    !response.body ||
-    !response.headers.get('Content-Type')?.startsWith('text/event-stream')
-  ) {
-    throw new Error('Lab did not return a chat stream');
-  }
+  return new SessionError(
+    error instanceof Error
+      ? error.message
+      : 'Unable to complete the session request',
+    { kind: 'protocol' }
+  );
+}
 
-  const reader = response.body.getReader();
+export async function request<T>(
+  signal: AbortSignal,
+  operation: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const deadline = new AbortController();
 
-  const decoder = new TextDecoder('utf-8', { fatal: true });
-
-  let buffer = '';
-
-  let data: string[] = [];
-
-  let event = '';
+  const timeout = setTimeout(() => deadline.abort(), 15_000);
 
   try {
-    for (;;) {
-      const chunk = await reader.read();
+    signal.throwIfAborted();
 
-      const { done } = chunk;
+    return await operation(AbortSignal.any([signal, deadline.signal]));
+  } catch (error) {
+    signal.throwIfAborted();
 
-      buffer += decoder.decode(chunk.value, { stream: !done });
-
-      for (;;) {
-        const newline = /\r\n|\r|\n/.exec(buffer);
-
-        if (
-          !newline ||
-          (!done && newline[0] === '\r' && newline.index === buffer.length - 1)
-        ) {
-          break;
-        }
-
-        const line = buffer.slice(0, newline.index);
-
-        buffer = buffer.slice(newline.index + newline[0].length);
-
-        if (line === '') {
-          if (event === 'end') {
-            return;
-          }
-
-          if (data.length > 0 && (event === '' || event === 'message')) {
-            const value: unknown = JSON.parse(data.join('\n'));
-
-            if (!Value.Check(ChatEvent, value)) {
-              throw new Error('Lab returned an invalid chat event');
-            }
-
-            onEvent(value);
-          }
-
-          data = [];
-
-          event = '';
-        } else if (!line.startsWith(':')) {
-          const colon = line.indexOf(':');
-
-          const field = colon < 0 ? line : line.slice(0, colon);
-
-          const value =
-            colon < 0 ? '' : line.slice(colon + 1).replace(/^ /, '');
-
-          if (field === 'data') {
-            data.push(value);
-          } else if (field === 'event') {
-            event = value;
-          }
-        }
-      }
-
-      if (done) {
-        throw new Error('The connection closed before the response finished');
-      }
+    if (deadline.signal.aborted) {
+      throw new SessionError('Lab did not respond in time', {
+        kind: 'timeout',
+      });
     }
-  } finally {
-    await reader.cancel().catch(() => undefined);
 
-    reader.releaseLock();
+    throw sessionError(error);
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+export async function checkResponse(response: Response) {
+  if (response.ok) {
+    return response;
+  }
+
+  const body: unknown = await response.json().catch(() => undefined);
+
+  throw new SessionError(
+    Value.Check(ErrorResponse, body)
+      ? body.error
+      : `Lab returned HTTP ${response.status}`,
+    { kind: 'http', status: response.status }
+  );
+}
+
+async function json<T extends TSchema>(
+  schema: T,
+  path: string,
+  signal: AbortSignal,
+  options?: RequestInit
+): Promise<Static<T>> {
+  return request(signal, async (active) => {
+    const response = await checkResponse(
+      await fetch(path, { ...options, signal: active, cache: 'no-store' })
+    );
+
+    const body: unknown = await response.json();
+
+    if (!Value.Check(schema, body)) {
+      throw new SessionError('Lab returned an invalid session response', {
+        kind: 'protocol',
+      });
+    }
+
+    return body;
+  });
+}
+
+export function createSession(signal: AbortSignal) {
+  return json(SessionCreated, '/api/sessions', signal, {
+    method: 'POST',
+  });
+}
+
+export async function readSession(sessionId: string, signal: AbortSignal) {
+  const view = await json(
+    SessionView,
+    `/api/sessions/${encodeURIComponent(sessionId)}`,
+    signal
+  );
+
+  if (view.sessionId !== sessionId) {
+    throw new SessionError('Lab returned a different session', {
+      kind: 'protocol',
+    });
+  }
+
+  return view;
+}
+
+export async function cancelSession(sessionId: string, signal: AbortSignal) {
+  await request(signal, async (active) => {
+    const response = await checkResponse(
+      await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/cancel`, {
+        method: 'POST',
+        signal: active,
+      })
+    );
+
+    if (response.status !== 204) {
+      await response.body?.cancel().catch(() => undefined);
+
+      throw new SessionError('Lab did not confirm cancellation', {
+        kind: 'protocol',
+      });
+    }
+  });
 }
