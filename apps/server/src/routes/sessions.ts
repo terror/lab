@@ -1,11 +1,18 @@
-import { ChatSubmission, type SessionCreated } from '@lab/app-protocol';
+import {
+  ChatSubmission,
+  type ErrorResponse,
+  type SessionCreated,
+} from '@lab/app-protocol';
 import type { Agent, Transport } from '@lab/framework';
+import type { SessionSnapshot } from '@lab/harness-pi';
 import { SessionId, Value } from '@lab/protocol';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
-export function sessionRoutes<Snapshot>(
-  agent: Agent<Snapshot>,
+import { sessionView } from '../session-view';
+
+export function sessionRoutes(
+  agent: Agent<SessionSnapshot>,
   transport: Transport<Request, Response>
 ) {
   async function readSession(sessionId: string | undefined) {
@@ -23,13 +30,30 @@ export function sessionRoutes<Snapshot>(
   }
 
   return new Hono()
+    .onError((error, c) => {
+      if (error instanceof HTTPException) {
+        return c.json(
+          { error: error.message } satisfies ErrorResponse,
+          error.status
+        );
+      }
+
+      console.error(error);
+
+      return c.json(
+        {
+          error: 'Unable to complete the session request',
+        } satisfies ErrorResponse,
+        500
+      );
+    })
     .post('/sessions', async (c) => {
       const sessionId = await agent.createSession();
 
       return c.json({ sessionId } satisfies SessionCreated, 201);
     })
     .get('/sessions/:sessionId', async (c) =>
-      c.json(await readSession(c.req.param('sessionId')))
+      c.json(sessionView(await readSession(c.req.param('sessionId'))))
     )
     .post('/sessions/:sessionId/cancel', async (c) => {
       const sessionId = c.req.param('sessionId');
