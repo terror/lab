@@ -59,7 +59,7 @@
   },
   "overrides": [
     {
-      "files": ["apps/client/src/**/*.{ts,tsx}"],
+      "files": ["apps/web/src/**/*.{ts,tsx}"],
       "env": { "browser": true }
     },
     {
@@ -93,7 +93,7 @@
                   "@lab/transport-*/*",
                   "**/adapters/**",
                   "@lab/server",
-                  "@lab/client"
+                  "@lab/web"
                 ],
                 "message": "Concrete integrations belong in adapters or applications."
               }
@@ -103,7 +103,7 @@
       }
     },
     {
-      "files": ["apps/client/vite.config.ts"],
+      "files": ["apps/web/vite.config.ts"],
       "env": { "node": true }
     }
   ]
