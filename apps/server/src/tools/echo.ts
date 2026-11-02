@@ -7,6 +7,7 @@ export const echo = defineTool({
   replay: 'safe',
   execute: async ({ text }, api) => {
     api.output(text);
+
     return {};
   },
 });

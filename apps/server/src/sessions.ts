@@ -35,6 +35,7 @@ const sessions = new Hono();
 
 sessions.post('/sessions', async (c) => {
   const sessionId = await runtime.createSession();
+
   return c.json({ sessionId }, 201);
 });
 
@@ -46,6 +47,7 @@ sessions.post('/sessions/:sessionId/cancel', async (c) => {
   const { sessionId } = await readSession(c.req.param('sessionId'));
 
   await runtime.cancelSession(sessionId);
+
   return c.body(null, 204);
 });
 
@@ -68,6 +70,7 @@ sessions.post('/chat', async (c) => {
 
 sessions.get('/chat', async (c) => {
   await readSession(c.req.query('sessionId'));
+
   return chat.GET(c.req.raw);
 });
 

@@ -6,6 +6,7 @@ import { App } from './app';
 import './index.css';
 
 const queryClient = new QueryClient();
+
 const root = document.getElementById('root');
 
 if (!root) {

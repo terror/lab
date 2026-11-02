@@ -10,7 +10,9 @@ const app = new Hono();
 app.use(logger());
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
+
 app.route('/api', sessions);
+
 app.all('/api/*', (c) => c.notFound());
 
 app.get(

@@ -18,7 +18,10 @@ dev:
   bun run dev
 
 fmt:
-  prettier --write .
+  bun run fmt
+
+lint:
+  bun run lint
 
 start:
   bun run start
