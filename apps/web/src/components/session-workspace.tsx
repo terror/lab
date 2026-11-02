@@ -4,7 +4,8 @@ import { ArrowUp, LoaderCircle, Square, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export function SessionWorkspace({ sessionId }: { sessionId: string }) {
-  const { session, sending, stopping, send } = useSession(sessionId);
+  const { session, sending, stopping, reconnecting, send } =
+    useSession(sessionId);
 
   const [text, setText] = useState('');
 
@@ -55,14 +56,20 @@ export function SessionWorkspace({ sessionId }: { sessionId: string }) {
           role='status'
           className='flex items-center gap-2 text-sm text-muted-foreground'
         >
-          {running && (
+          {(running || reconnecting) && (
             <LoaderCircle
               aria-hidden='true'
               className='size-3.5 motion-safe:animate-spin'
             />
           )}
 
-          {stopping.isPending ? 'Stopping' : running ? 'Working' : 'Ready'}
+          {stopping.isPending
+            ? 'Stopping'
+            : reconnecting
+              ? 'Reconnecting'
+              : running
+                ? 'Working'
+                : 'Ready'}
         </p>
       </div>
 

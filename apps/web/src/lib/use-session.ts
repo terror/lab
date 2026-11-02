@@ -8,6 +8,7 @@ import {
   sessionQueryOptions,
   submitChat,
 } from './sessions';
+import { useSessionStream } from './use-session-stream';
 
 export function useSession(sessionId: string) {
   const client = useQueryClient();
@@ -22,6 +23,19 @@ export function useSession(sessionId: string) {
     () => client.fetchQuery(sessionQueryOptions(sessionId)),
     [client, sessionId]
   );
+
+  const synchronize = useCallback(async () => {
+    clearTimeout(timer.current);
+
+    timer.current = undefined;
+
+    await client.cancelQueries({
+      queryKey: ['session', sessionId],
+      exact: true,
+    });
+
+    return refresh();
+  }, [client, refresh, sessionId]);
 
   const scheduleRefresh = useCallback(() => {
     if (timer.current !== undefined) {
@@ -55,7 +69,13 @@ export function useSession(sessionId: string) {
 
         scheduleRefresh();
 
-        await readChat(response, scheduleRefresh);
+        try {
+          await readChat(response, scheduleRefresh);
+        } catch (error) {
+          if (connection.signal.aborted) {
+            throw error;
+          }
+        }
       } finally {
         clearTimeout(timer.current);
 
@@ -64,7 +84,7 @@ export function useSession(sessionId: string) {
         controller.current = undefined;
 
         if (!connection.signal.aborted) {
-          await refresh();
+          await synchronize();
         }
       }
     },
@@ -74,14 +94,24 @@ export function useSession(sessionId: string) {
     mutationFn: async () => {
       await cancelSession(sessionId);
 
-      await refresh();
+      await synchronize();
     },
   });
+
+  const reconnecting = useSessionStream(
+    sessionId,
+    !!session.data &&
+      (session.data.running || sending.isError) &&
+      !sending.isPending,
+    synchronize,
+    scheduleRefresh
+  );
 
   return {
     session,
     sending,
     stopping,
+    reconnecting,
     send: (text: string) =>
       sending.mutate({ sessionId, text, requestId: crypto.randomUUID() }),
   };

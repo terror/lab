@@ -46,7 +46,7 @@ export const sessionQueryOptions = (sessionId: string) =>
     queryFn: async ({ signal }) => {
       const response = await request(
         `/api/sessions/${encodeURIComponent(sessionId)}`,
-        { signal }
+        { signal, cache: 'no-store' }
       );
 
       return Value.Parse(SessionView, await response.json());
