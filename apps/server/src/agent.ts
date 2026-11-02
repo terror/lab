@@ -1,12 +1,4 @@
-import { createRegistry } from '@earendil-works/pi-durable';
-import { GATEWAY_PROVIDER, gatewayModels } from 'durable-harness/pi-durable';
-
-import { lab } from './extensions/lab';
-
-export const models = gatewayModels();
-export const registry = createRegistry();
-
-registry.install(lab);
+import { GATEWAY_PROVIDER } from '@lab/framework';
 
 export const agent = {
   model: {

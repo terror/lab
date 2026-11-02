@@ -1,5 +1,4 @@
-import { Type } from '@earendil-works/pi-ai';
-import { defineTool } from '@earendil-works/pi-durable';
+import { Type, defineTool } from '@lab/framework';
 
 export const echo = defineTool({
   name: 'echo',

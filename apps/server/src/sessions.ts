@@ -1,15 +1,8 @@
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import {
-  acquireHarness,
-  chatRoute,
-  openWorldReader,
-} from 'durable-harness/pi-durable';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { agent } from './agent';
-import { open, world } from './runtime';
+import { runtime } from './runtime';
 
 const sessionIdSchema = z.string().regex(/^wrun_[0-9A-HJKMNP-TV-Z]{26}$/);
 
@@ -20,8 +13,7 @@ const submissionSchema = z.strictObject({
   kind: z.enum(['prompt', 'steer', 'followUp']).optional(),
 });
 
-const storage = { world, traceAudience: 'private' as const };
-const chat = chatRoute({ open, agent, ...storage, authorize: 'public' });
+const chat = runtime.chatRoute({ authorize: 'public' });
 
 async function readSession(value: string | undefined) {
   const sessionId = sessionIdSchema.safeParse(value);
@@ -30,10 +22,7 @@ async function readSession(value: string | undefined) {
     throw new HTTPException(400, { message: 'Invalid session ID' });
   }
 
-  const reader = openWorldReader(sessionId.data, { world });
-  await reader.refresh();
-
-  const snapshot = await reader.snapshot();
+  const snapshot = await runtime.readSession(sessionId.data);
 
   if (snapshot.eventCount === 0) {
     throw new HTTPException(404, { message: 'Session not found' });
@@ -45,14 +34,8 @@ async function readSession(value: string | undefined) {
 const sessions = new Hono();
 
 sessions.post('/sessions', async (c) => {
-  const lease = await acquireHarness(undefined, open, storage);
-
-  try {
-    await lease.harness.root(BACKGROUND_CONTEXT, { agent });
-    return c.json({ sessionId: lease.storage.sessionId }, 201);
-  } finally {
-    await lease.release();
-  }
+  const sessionId = await runtime.createSession();
+  return c.json({ sessionId }, 201);
 });
 
 sessions.get('/sessions/:sessionId', async (c) =>
@@ -62,23 +45,8 @@ sessions.get('/sessions/:sessionId', async (c) =>
 sessions.post('/sessions/:sessionId/cancel', async (c) => {
   const { sessionId } = await readSession(c.req.param('sessionId'));
 
-  for (let attempt = 0; ; attempt++) {
-    const lease = await acquireHarness(sessionId, open, storage);
-
-    try {
-      const root = await lease.harness.root(BACKGROUND_CONTEXT);
-      await root.abort(BACKGROUND_CONTEXT, { background: true });
-      return c.body(null, 204);
-    } catch (error) {
-      if (attempt === 0 && lease.storage.isFenced) {
-        continue;
-      }
-
-      throw error;
-    } finally {
-      await lease.release();
-    }
-  }
+  await runtime.cancelSession(sessionId);
+  return c.body(null, 204);
 });
 
 sessions.post('/chat', async (c) => {
