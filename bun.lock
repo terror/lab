@@ -58,8 +58,8 @@
         "@types/bun": "^1.4.3",
       },
     },
-    "apps/client": {
-      "name": "@lab/client",
+    "apps/web": {
+      "name": "@lab/web",
       "dependencies": {
         "@fontsource-variable/geist": "^5.3.0",
         "@lab/app-protocol": "workspace:*",
@@ -362,7 +362,7 @@
 
     "@lab/app-protocol": ["@lab/app-protocol@workspace:apps/protocol"],
 
-    "@lab/client": ["@lab/client@workspace:apps/client"],
+    "@lab/web": ["@lab/web@workspace:apps/web"],
 
     "@lab/framework": ["@lab/framework@workspace:packages/framework"],
 

@@ -15,7 +15,7 @@ const app = new Hono()
   .get(
     '*',
     serveStatic({
-      root: fileURLToPath(new URL('../../client/dist', import.meta.url)),
+      root: fileURLToPath(new URL('../../web/dist', import.meta.url)),
     })
   )
   .notFound((c) => c.json({ error: 'Not found' } satisfies ErrorResponse, 404));
