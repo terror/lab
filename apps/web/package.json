@@ -1,5 +1,5 @@
 {
-  "name": "@lab/client",
+  "name": "@lab/web",
   "private": true,
   "type": "module",
   "scripts": {

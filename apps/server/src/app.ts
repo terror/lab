@@ -13,7 +13,7 @@ app.all('/api/*', (c) => c.notFound());
 app.get(
   '*',
   serveStatic({
-    root: fileURLToPath(new URL('../../client/dist', import.meta.url)),
+    root: fileURLToPath(new URL('../../web/dist', import.meta.url)),
   })
 );
 
