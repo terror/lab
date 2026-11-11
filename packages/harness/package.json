@@ -1,0 +1,18 @@
+{
+  "name": "@lab/harness",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "bun build src/index.ts --target=bun --packages=external --outdir=dist",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-durable": "1.5.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  }
+}
