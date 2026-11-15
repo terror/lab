@@ -9,15 +9,10 @@ import {
   type Report,
   configure,
   createRegistry,
-  defineExtension,
-  section,
 } from '@earendil-works/pi-durable';
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 
-const assistant = defineExtension({
-  name: 'lab.assistant',
-  sections: [section('identity', () => 'You are Lab, a helpful assistant.')],
-});
+import { extensions } from './extensions';
 
 export type HarnessOptions = {
   model: ModelRef;
@@ -31,7 +26,10 @@ export async function openHarness(
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
   const registry = createRegistry();
-  registry.install(assistant);
+
+  for (const extension of extensions) {
+    registry.install(extension);
+  }
 
   const storage = await openNodeSqliteStorage(path);
 
