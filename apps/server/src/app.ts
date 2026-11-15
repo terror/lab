@@ -1,17 +1,23 @@
 import { serveStatic } from '@hono/bun';
+import { ping } from '@lab/db';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
 
 import conversations from './conversations';
+import { db } from './db';
 
 const app = new Hono();
 
 app.use(logger());
 
 const api = new Hono()
-  .get('/health', (c) => c.json({ status: 'ok' }))
+  .get('/health', async (c) => {
+    await ping(db);
+
+    return c.json({ status: 'ok' });
+  })
   .route('/conversations', conversations);
 
 export type AppType = typeof api;
