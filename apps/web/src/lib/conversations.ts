@@ -2,62 +2,48 @@ import { type Op, applyImmutable } from '@earendil-works/chord/delta';
 import type { ConversationView } from '@earendil-works/pi-durable';
 import { queryOptions } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { z } from 'zod';
 
-const conversationsSchema = z.object({
-  conversations: z.array(z.object({ id: z.number() })),
-});
-
-const createdSchema = z.object({ id: z.number() });
-
-const errorSchema = z.object({ error: z.string() });
-
-async function request(path: string, init?: RequestInit) {
-  const response = await fetch(path, init);
-
-  if (!response.ok) {
-    const body = errorSchema.safeParse(
-      await response.json().catch(() => undefined)
-    );
-
-    throw new Error(body.data?.error ?? response.statusText);
-  }
-
-  return response;
-}
+import { call, client } from './client';
 
 export const conversationsQueryOptions = queryOptions({
   queryKey: ['conversations'],
   queryFn: async ({ signal }) => {
-    const response = await request('/api/conversations', { signal });
+    const { conversations } = await call(
+      client.conversations.$get(undefined, { init: { signal } })
+    );
 
-    return conversationsSchema.parse(await response.json()).conversations;
+    return conversations;
   },
 });
 
 export async function createConversation() {
-  const response = await request('/api/conversations', { method: 'POST' });
+  const { id } = await call(client.conversations.$post());
 
-  return createdSchema.parse(await response.json()).id;
+  return id;
 }
 
 export async function sendMessage(id: number, content: string) {
-  await request(`/api/conversations/${id}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-  });
+  await call(
+    client.conversations[':id'].messages.$post({
+      param: { id: String(id) },
+      json: { content },
+    })
+  );
 }
 
 export async function abortConversation(id: number) {
-  await request(`/api/conversations/${id}/abort`, { method: 'POST' });
+  await call(
+    client.conversations[':id'].abort.$post({ param: { id: String(id) } })
+  );
 }
 
 export function useConversationView(id: number) {
   const [view, setView] = useState<ConversationView>();
 
   useEffect(() => {
-    const source = new EventSource(`/api/conversations/${id}/events`);
+    const source = new EventSource(
+      client.conversations[':id'].events.$url({ param: { id: String(id) } })
+    );
 
     source.addEventListener('value', (event) => {
       setView(JSON.parse(event.data));
