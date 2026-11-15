@@ -26,5 +26,8 @@ knip:
 lint:
   bun run lint
 
+migrate:
+  bun run db:migrate
+
 start:
   bun run start

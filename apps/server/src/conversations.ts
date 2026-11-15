@@ -6,6 +6,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
+import { requireUser } from './auth';
 import { harness } from './harness';
 import { chatModels } from './models';
 import { validator } from './validator';
@@ -40,6 +41,7 @@ async function load(id: number) {
 }
 
 const conversations = new Hono()
+  .use(requireUser)
   .get('/', async (c) => {
     const page = await harness.commit(
       (tx) => tx.scanConversations({ order: 'descending' }, 50),

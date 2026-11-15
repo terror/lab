@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
 
+import { auth, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
 import { chatModels } from './models';
@@ -19,7 +20,8 @@ const api = new Hono()
 
     return c.json({ status: 'ok' });
   })
-  .get('/models', (c) =>
+  .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  .get('/models', requireUser, (c) =>
     c.json({
       models: chatModels.map(({ modelId, name }) => ({ id: modelId, name })),
     })
