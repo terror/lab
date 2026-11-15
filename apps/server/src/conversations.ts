@@ -1,5 +1,5 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
+import type { ConversationId, EntryId } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
@@ -23,6 +23,16 @@ const params = validator(
 const message = validator(
   'json',
   z.object({ content: z.string().trim().min(1) })
+);
+
+const entriesQuery = validator(
+  'query',
+  z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    maxEntryId: z.coerce.number().int().positive().optional(),
+    minEntryId: z.coerce.number().int().positive().optional(),
+    order: z.enum(['ascending', 'descending']).optional(),
+  })
 );
 
 const modelChange = validator('json', z.object({ id: z.string().min(1) }));
@@ -93,6 +103,24 @@ const conversations = new Hono()
       .values({ id: conversation.id, ownerId: c.get('user').id });
 
     return c.json({ id: conversation.id }, 201);
+  })
+  .get('/:id/entries', params, entriesQuery, async (c) => {
+    const conversation = await load(c.req.valid('param').id, c.get('user').id);
+
+    const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
+
+    const page = await conversation.entries(
+      {
+        maxEntryId: maxEntryId as EntryId | undefined,
+        minEntryId: minEntryId as EntryId | undefined,
+        order,
+      },
+      limit,
+      undefined,
+      BACKGROUND_CONTEXT
+    );
+
+    return c.json({ items: page.items });
   })
   .get('/:id/events', params, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user').id);
