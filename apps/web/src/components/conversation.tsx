@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   abortConversation,
   contentText,
+  conversationsQueryOptions,
   sendMessage,
   useConversationView,
 } from '@/lib/conversations';
@@ -14,7 +15,7 @@ import type {
   InboxState,
   LiveState,
 } from '@earendil-works/pi-durable';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowUp, Square } from 'lucide-react';
 import {
   type KeyboardEvent,
@@ -56,6 +57,8 @@ export function Conversation({ id }: { id: number }) {
   const view = useConversationView(id);
   const [draft, setDraft] = useState('');
   const end = useRef<HTMLDivElement>(null);
+
+  const queryClient = useQueryClient();
 
   const send = useMutation({
     mutationFn: (content: string) => sendMessage(id, content),
@@ -106,6 +109,13 @@ export function Conversation({ id }: { id: number }) {
   });
 
   const running = live?.run !== undefined;
+  const finishing = live?.run?.afterRun !== undefined;
+
+  useEffect(() => {
+    if (!running) {
+      void queryClient.invalidateQueries(conversationsQueryOptions);
+    }
+  }, [queryClient, running]);
 
   const submit = () => {
     const content = draft.trim();
@@ -141,7 +151,7 @@ export function Conversation({ id }: { id: number }) {
             <>
               <Bubbles bubbles={bubbles} />
               <Bubbles bubbles={streaming} />
-              {running && !partial && (
+              {running && !partial && !finishing && (
                 <p className='text-sm text-muted-foreground motion-safe:animate-pulse'>
                   Thinking…
                 </p>

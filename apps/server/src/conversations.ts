@@ -2,6 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
+import { TitleDoc } from '@lab/harness';
 import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -67,7 +68,19 @@ const conversations = new Hono()
       .orderBy(desc(schema.conversation.createdAt))
       .limit(50);
 
-    return c.json({ conversations: rows });
+    const items = await Promise.all(
+      rows.map(async ({ id }) => {
+        const doc = await harness.snapshot(
+          TitleDoc,
+          id as ConversationId,
+          BACKGROUND_CONTEXT
+        );
+
+        return { id, title: doc?.title ?? null };
+      })
+    );
+
+    return c.json({ conversations: items });
   })
   .post('/', async (c) => {
     const conversation = await harness.createConversation(
