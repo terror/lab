@@ -1,7 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
+import { getBunServer } from '@hono/bun';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { streamSSE } from 'hono/streaming';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
 
@@ -66,6 +68,31 @@ conversations.post('/', async (c) => {
   );
 
   return c.json({ id: conversation.id }, 201);
+});
+
+conversations.get('/:id/events', params, async (c) => {
+  const conversation = await load(c.req.valid('param').id);
+
+  getBunServer<Bun.Server<undefined>>(c)?.timeout(c.req.raw, 0);
+
+  return streamSSE(c, async (stream) => {
+    const watch = await conversation.watch(BACKGROUND_CONTEXT);
+
+    stream.onAbort(() => void watch.stop());
+
+    await stream.writeSSE({
+      event: 'value',
+      data: JSON.stringify(watch.value),
+    });
+
+    watch.start(async (call) => {
+      if (call.kind === 'value') {
+        await stream.writeSSE({ event: 'ops', data: JSON.stringify(call.ops) });
+      }
+    });
+
+    await watch.closed;
+  });
 });
 
 conversations.post('/:id/messages', params, message, async (c) => {
