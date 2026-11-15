@@ -24,6 +24,11 @@ type Bubble = {
   text: string;
 };
 
+const roles = new Map<string, Bubble['role']>([
+  ['pi.user', 'user'],
+  ['pi.assistant', 'assistant'],
+]);
+
 function Bubbles({ bubbles }: { bubbles: Bubble[] }) {
   return bubbles.map((bubble) => (
     <div
@@ -59,16 +64,14 @@ export function Conversation({ id }: { id: number }) {
   const inbox = view?.docs['pi.inbox'] as InboxState | undefined;
 
   const bubbles = (view?.entries ?? []).flatMap((entry): Bubble[] => {
-    const role =
-      entry.kind === 'pi.user'
-        ? 'user'
-        : entry.kind === 'pi.assistant'
-          ? 'assistant'
-          : undefined;
-
+    const role = roles.get(entry.kind);
     const text = contentText(entry.model?.[0]?.content);
 
-    return role && text ? [{ id: `entry-${entry.id}`, role, text }] : [];
+    if (!role || !text) {
+      return [];
+    }
+
+    return [{ id: `entry-${entry.id}`, role, text }];
   });
 
   const partial = contentText(live?.generation?.message?.content);
@@ -77,17 +80,19 @@ export function Conversation({ id }: { id: number }) {
     ? [{ id: 'partial', role: 'assistant', text: partial }]
     : [];
 
-  const queued = (inbox?.items ?? []).flatMap((item): Bubble[] =>
-    item.mode === 'write'
-      ? []
-      : [
-          {
-            id: `queued-${item.id}`,
-            role: 'user',
-            text: contentText(item.content),
-          },
-        ]
-  );
+  const queued = (inbox?.items ?? []).flatMap((item): Bubble[] => {
+    if (item.mode === 'write') {
+      return [];
+    }
+
+    return [
+      {
+        id: `queued-${item.id}`,
+        role: 'user',
+        text: contentText(item.content),
+      },
+    ];
+  });
 
   const running = live?.run !== undefined;
 
