@@ -18,7 +18,7 @@ dev:
   bun run dev
 
 fmt:
-  prettier --write .
+  bunx oxfmt
 
 start:
   bun run start
