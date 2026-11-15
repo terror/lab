@@ -1,7 +1,8 @@
 import { createModels } from '@earendil-works/pi-ai/models';
 import { vercelAIGatewayProvider } from '@earendil-works/pi-ai/providers/vercel-ai-gateway';
 import { openHarness } from '@lab/harness';
-import { fileURLToPath } from 'node:url';
+
+import { env } from './env';
 
 const models = createModels();
 
@@ -14,7 +15,5 @@ export const harness = await openHarness({
   },
   models,
   onReport: (report) => console.error(report),
-  path:
-    Bun.env.LAB_STORAGE_PATH ??
-    fileURLToPath(new URL('../../../lab.sqlite', import.meta.url)),
+  path: env.LAB_STORAGE_PATH,
 });
