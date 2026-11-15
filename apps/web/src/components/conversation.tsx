@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/markdown';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,19 +36,20 @@ const roles = new Map<string, Bubble['role']>([
   ['pi.assistant', 'assistant'],
 ]);
 
-function Bubbles({ bubbles }: { bubbles: Bubble[] }) {
-  return bubbles.map((bubble) => (
-    <div
-      key={bubble.id}
-      className={cn(
-        'leading-relaxed whitespace-pre-wrap',
-        bubble.role === 'user' &&
-          'ml-auto max-w-[80%] rounded-2xl bg-muted px-4 py-2'
-      )}
-    >
+function Message({ bubble }: { bubble: Bubble }) {
+  if (bubble.role === 'assistant') {
+    return <Markdown>{bubble.text}</Markdown>;
+  }
+
+  return (
+    <div className='ml-auto max-w-[80%] rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
       {bubble.text}
     </div>
-  ));
+  );
+}
+
+function Bubbles({ bubbles }: { bubbles: Bubble[] }) {
+  return bubbles.map((bubble) => <Message key={bubble.id} bubble={bubble} />);
 }
 
 export function Conversation({ id }: { id: number }) {
