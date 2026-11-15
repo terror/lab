@@ -14,7 +14,6 @@
     "@earendil-works/pi-durable": "1.5.2",
     "@hono/bun": "^1.0.1",
     "@lab/harness": "workspace:*",
-    "ai": "^7.0.148",
     "hono": "^4.13.13",
     "zod": "^4.6.7"
   },

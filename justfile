@@ -20,6 +20,9 @@ dev:
 fmt:
   bunx oxfmt
 
+knip:
+  bun run knip
+
 lint:
   bun run lint
 
