@@ -146,7 +146,13 @@ const conversations = new Hono()
         }
       });
 
+      const heartbeat = setInterval(() => {
+        void stream.write(': ping\n\n');
+      }, 25_000);
+
       await watch.closed;
+
+      clearInterval(heartbeat);
     });
   })
   .post('/:id/messages', params, message, async (c) => {
