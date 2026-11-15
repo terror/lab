@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["dist/"],
+  "jsxSingleQuote": true,
+  "printWidth": 80,
+  "proseWrap": "always",
+  "semi": true,
+  "singleQuote": true,
+  "sortImports": {
+    "groups": [
+      ["builtin", "external", "internal", "subpath", "unknown"],
+      ["parent", "sibling", "index"]
+    ]
+  },
+  "sortTailwindcss": {
+    "functions": ["cn", "cva"],
+    "stylesheet": "./apps/web/src/index.css"
+  },
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}

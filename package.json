@@ -1,21 +1,19 @@
 {
   "name": "lab",
-  "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
-    "prettier": "^3.9.10",
-    "prettier-plugin-tailwindcss": "^0.8.1",
-    "typescript": "^7.0.2"
-  },
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
   "scripts": {
     "build": "bun run --parallel --filter '@lab/*' build",
     "check": "bun run --parallel --filter '@lab/*' check",
     "dev": "bun run --parallel --filter '@lab/*' dev",
     "start": "bun run --filter @lab/server start"
   },
-  "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "devDependencies": {
+    "oxfmt": "0.78.0",
+    "typescript": "^7.0.2"
+  }
 }
