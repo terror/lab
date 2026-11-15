@@ -3,11 +3,14 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
 
+import conversations from './conversations';
+
 const app = new Hono();
 
 app.use(logger());
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
+app.route('/api/conversations', conversations);
 app.all('/api/*', (c) => c.notFound());
 
 app.get(
