@@ -10,8 +10,13 @@ const app = new Hono();
 
 app.use(logger());
 
-app.get('/api/health', (c) => c.json({ status: 'ok' }));
-app.route('/api/conversations', conversations);
+const api = new Hono()
+  .get('/health', (c) => c.json({ status: 'ok' }))
+  .route('/conversations', conversations);
+
+export type AppType = typeof api;
+
+app.route('/api', api);
 app.all('/api/*', (c) => c.notFound());
 
 app.get(

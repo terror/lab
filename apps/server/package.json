@@ -2,6 +2,7 @@
   "name": "@lab/server",
   "private": true,
   "type": "module",
+  "exports": "./src/app.ts",
   "scripts": {
     "build": "bun build src/server.ts --target=bun --outdir=dist",
     "check": "tsc --noEmit",
