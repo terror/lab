@@ -57,7 +57,9 @@ export function Conversation({ id }: { id: number }) {
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' });
+    if (view) {
+      end.current?.scrollIntoView({ block: 'end' });
+    }
   }, [view]);
 
   const live = view?.docs['pi.live'] as LiveState | undefined;

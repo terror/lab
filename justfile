@@ -20,5 +20,8 @@ dev:
 fmt:
   bunx oxfmt
 
+lint:
+  bun run lint
+
 start:
   bun run start

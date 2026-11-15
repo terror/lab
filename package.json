@@ -10,10 +10,13 @@
     "build": "bun run --parallel --filter '@lab/*' build",
     "check": "bun run --parallel --filter '@lab/*' check",
     "dev": "bun run --parallel --filter '@lab/*' dev",
+    "lint": "oxlint",
     "start": "bun run --filter @lab/server start"
   },
   "devDependencies": {
     "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
     "typescript": "^7.0.2"
   }
 }

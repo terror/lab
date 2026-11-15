@@ -37,9 +37,9 @@ export async function openHarness(
     const harness = await Harness.open(
       storage,
       {
-        conversationCreated: (tx, conversation) => {
+        conversationCreated: async (tx, conversation) => {
           if (!conversation.parent && !conversation.owner) {
-            return configure(tx, conversation.id, { model });
+            await configure(tx, conversation.id, { model });
           }
         },
         models,

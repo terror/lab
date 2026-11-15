@@ -59,7 +59,7 @@ export function useConversationView(id: number) {
 
     source.addEventListener('ops', (event) => {
       const ops = JSON.parse(event.data) as Op[];
-      setView((view) => view && applyImmutable(view, ops));
+      setView((current) => current && applyImmutable(current, ops));
     });
 
     return () => source.close();
