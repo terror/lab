@@ -30,6 +30,7 @@ type Bubble = {
 };
 
 const roles = new Map<string, Bubble['role']>([
+  ['lab.message', 'user'],
   ['pi.user', 'user'],
   ['pi.assistant', 'assistant'],
 ]);

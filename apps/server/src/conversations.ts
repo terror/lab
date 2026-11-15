@@ -109,10 +109,19 @@ const conversations = new Hono()
     });
   })
   .post('/:id/messages', params, message, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user').id);
+    const user = c.get('user');
+
+    const conversation = await load(c.req.valid('param').id, user.id);
 
     const submission = await conversation.submit(
-      { type: 'input', content: c.req.valid('json').content },
+      {
+        type: 'input',
+        content: c.req.valid('json').content,
+        entry: {
+          kind: 'lab.message',
+          data: { author: { id: user.id, name: user.name } },
+        },
+      },
       BACKGROUND_CONTEXT
     );
 
