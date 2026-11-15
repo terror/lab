@@ -11,8 +11,8 @@ import type { InboxState, LiveState } from '@earendil-works/pi-durable';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowUp, Square } from 'lucide-react';
 import {
-  type FormEvent,
   type KeyboardEvent,
+  type SubmitEvent,
   useEffect,
   useRef,
   useState,
@@ -96,9 +96,7 @@ export function Conversation({ id }: { id: number }) {
 
   const running = live?.run !== undefined;
 
-  const submit = (event?: FormEvent) => {
-    event?.preventDefault();
-
+  const submit = () => {
     const content = draft.trim();
 
     if (content && !send.isPending) {
@@ -112,8 +110,14 @@ export function Conversation({ id }: { id: number }) {
       !event.shiftKey &&
       !event.nativeEvent.isComposing
     ) {
-      submit(event);
+      event.preventDefault();
+      submit();
     }
+  };
+
+  const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    submit();
   };
 
   return (
@@ -154,7 +158,7 @@ export function Conversation({ id }: { id: number }) {
           <div ref={end} />
         </div>
       </div>
-      <form onSubmit={submit} className='mx-auto w-full max-w-3xl px-6 pb-6'>
+      <form onSubmit={onSubmit} className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <div className='flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-3 focus-within:ring-ring/50'>
           <textarea
             aria-label='Message'
