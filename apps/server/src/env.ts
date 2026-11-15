@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 const schema = z.object({
   AI_GATEWAY_API_KEY: z.string().min(1),
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
   LAB_STORAGE_PATH: z
     .string()
