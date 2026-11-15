@@ -10,11 +10,17 @@ const conversationsSchema = z.object({
 
 const createdSchema = z.object({ id: z.number() });
 
+const errorSchema = z.object({ error: z.string() });
+
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(path, init);
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    const body = errorSchema.safeParse(
+      await response.json().catch(() => undefined)
+    );
+
+    throw new Error(body.data?.error ?? response.statusText);
   }
 
   return response;
