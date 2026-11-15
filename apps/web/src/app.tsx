@@ -1,13 +1,28 @@
 import { Conversation } from '@/components/conversation';
 import { Sidebar } from '@/components/sidebar';
+import { SignIn } from '@/components/sign-in';
+import { authClient } from '@/lib/auth';
 import { useState } from 'react';
 
 export function App() {
+  const session = authClient.useSession();
   const [selected, setSelected] = useState<number>();
+
+  if (session.isPending) {
+    return null;
+  }
+
+  if (!session.data) {
+    return <SignIn />;
+  }
 
   return (
     <div className='flex h-svh'>
-      <Sidebar selected={selected} onSelect={setSelected} />
+      <Sidebar
+        selected={selected}
+        onSelect={setSelected}
+        user={session.data.user}
+      />
       <main className='flex min-w-0 flex-1 flex-col'>
         {selected === undefined ? (
           <div className='flex flex-1 items-center justify-center p-6'>
