@@ -10,10 +10,12 @@
     "build": "bun run --parallel --filter '@lab/*' build",
     "check": "bun run --parallel --filter '@lab/*' check",
     "dev": "bun run --parallel --filter '@lab/*' dev",
+    "knip": "knip",
     "lint": "oxlint",
     "start": "bun run --filter @lab/server start"
   },
   "devDependencies": {
+    "knip": "6.45.1",
     "oxfmt": "0.78.0",
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
