@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 
 import app from './app';
+import { env } from './env';
 import { harness } from './harness';
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -10,6 +11,6 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 export default {
-  hostname: Bun.env.LAB_HOST ?? '127.0.0.1',
+  hostname: env.LAB_HOST,
   fetch: app.fetch,
 };

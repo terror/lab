@@ -1,0 +1,21 @@
+import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+
+const schema = z.object({
+  AI_GATEWAY_API_KEY: z.string().min(1),
+  LAB_HOST: z.string().min(1).default('127.0.0.1'),
+  LAB_STORAGE_PATH: z
+    .string()
+    .min(1)
+    .default(fileURLToPath(new URL('../../../lab.sqlite', import.meta.url))),
+});
+
+const result = schema.safeParse(process.env);
+
+if (!result.success) {
+  throw new Error(
+    `Invalid environment variables:\n${z.prettifyError(result.error)}`
+  );
+}
+
+export const env = result.data;
