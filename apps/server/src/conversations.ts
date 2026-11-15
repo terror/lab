@@ -4,34 +4,20 @@ import { getBunServer } from '@hono/bun';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
-import { validator } from 'hono/validator';
 import { z } from 'zod';
 
 import { harness } from './harness';
+import { validator } from './validator';
 
-const paramsSchema = z.object({ id: z.coerce.number().int().positive() });
+const params = validator(
+  'param',
+  z.object({ id: z.coerce.number().int().positive() })
+);
 
-const messageSchema = z.object({ content: z.string().trim().min(1) });
-
-const params = validator('param', (value) => {
-  const result = paramsSchema.safeParse(value);
-
-  if (!result.success) {
-    throw new HTTPException(404);
-  }
-
-  return result.data;
-});
-
-const message = validator('json', (value) => {
-  const result = messageSchema.safeParse(value);
-
-  if (!result.success) {
-    throw new HTTPException(400, { message: z.prettifyError(result.error) });
-  }
-
-  return result.data;
-});
+const message = validator(
+  'json',
+  z.object({ content: z.string().trim().min(1) })
+);
 
 async function load(id: number) {
   const conversation = await harness.conversation(
@@ -40,7 +26,7 @@ async function load(id: number) {
   );
 
   if (!conversation) {
-    throw new HTTPException(404);
+    throw new HTTPException(404, { message: 'Conversation not found' });
   }
 
   return conversation;
