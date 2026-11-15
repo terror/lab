@@ -5,6 +5,7 @@ import {
   sendMessage,
   useConversationView,
 } from '@/lib/conversations';
+import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type { InboxState, LiveState } from '@earendil-works/pi-durable';
 import { useMutation } from '@tanstack/react-query';
@@ -126,9 +127,16 @@ export function Conversation({ id }: { id: number }) {
                 </p>
               )}
               {live?.runFailure && (
-                <p role='alert' className='text-sm text-destructive'>
-                  Run failed ({live.runFailure.reason})
-                  {live.runFailure.detail && `: ${live.runFailure.detail}`}
+                <p
+                  role='alert'
+                  className={cn(
+                    'text-sm',
+                    live.runFailure.reason === 'aborted'
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                  )}
+                >
+                  {runFailureTitles[live.runFailure.reason]}
                 </p>
               )}
               {queued.length > 0 && (
