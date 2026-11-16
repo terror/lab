@@ -2,11 +2,11 @@ import { Conversation } from '@/components/conversation';
 import { Sidebar } from '@/components/sidebar';
 import { SignIn } from '@/components/sign-in';
 import { authClient } from '@/lib/auth';
-import { useState } from 'react';
+import { selectConversation, useSelectedConversation } from '@/lib/route';
 
 export function App() {
   const session = authClient.useSession();
-  const [selected, setSelected] = useState<number>();
+  const selected = useSelectedConversation();
 
   if (session.isPending) {
     return null;
@@ -20,7 +20,7 @@ export function App() {
     <div className='flex h-svh'>
       <Sidebar
         selected={selected}
-        onSelect={setSelected}
+        onSelect={selectConversation}
         user={session.data.user}
       />
       <main className='flex min-w-0 flex-1 flex-col'>

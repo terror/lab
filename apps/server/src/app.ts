@@ -33,12 +33,10 @@ export type AppType = typeof api;
 app.route('/api', api);
 app.all('/api/*', (c) => c.notFound());
 
-app.get(
-  '*',
-  serveStatic({
-    root: fileURLToPath(new URL('../../web/dist', import.meta.url)),
-  })
-);
+const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
+
+app.get('*', serveStatic({ root: web }));
+app.get('*', serveStatic({ root: web, path: 'index.html' }));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 
