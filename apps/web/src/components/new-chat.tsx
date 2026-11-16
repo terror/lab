@@ -5,7 +5,7 @@ import {
   conversationsQueryOptions,
   createConversation,
 } from '@/lib/conversations';
-import { modelsQueryOptions } from '@/lib/models';
+import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { selectConversation } from '@/lib/route';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -52,10 +52,13 @@ export function NewChat({ user }: { user: { name: string } }) {
   const models = useQuery(modelsQueryOptions);
 
   const [draft, setDraft] = useState('');
-  const [model, setModel] = useState<string>();
+  const [model, setModel] = useState<ModelChoice>();
   const textarea = useRef<HTMLTextAreaElement>(null);
 
-  const selectedModel = model ?? models.data?.[0]?.id;
+  const fallback = models.data?.[0];
+
+  const selectedModel =
+    model ?? (fallback === undefined ? undefined : { id: fallback.id });
 
   const create = useMutation({
     mutationFn: (content: string) => createConversation(content, selectedModel),

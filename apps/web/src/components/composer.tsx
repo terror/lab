@@ -1,5 +1,6 @@
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
+import type { ModelChoice } from '@/lib/models';
 import { ArrowUp, Square } from 'lucide-react';
 import type { KeyboardEvent, Ref, SubmitEvent } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -20,9 +21,9 @@ export function Composer({
   disabled?: boolean;
   draft: string;
   error?: string;
-  model: string | undefined;
+  model: ModelChoice | undefined;
   onDraftChange: (draft: string) => void;
-  onModelChange: (model: string) => void;
+  onModelChange: (model: ModelChoice) => void;
   onStop?: () => void;
   onSubmit: (content: string) => void;
   running?: boolean;

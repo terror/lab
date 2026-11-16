@@ -13,7 +13,7 @@ import {
   type Gap,
   useConversation,
 } from '@/lib/conversations';
-import { setConversationModel } from '@/lib/models';
+import { type ModelChoice, setConversationModel } from '@/lib/models';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type {
@@ -182,7 +182,7 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
   const changeModel = useMutation({
-    mutationFn: (model: string) => setConversationModel(id, model),
+    mutationFn: (model: ModelChoice) => setConversationModel(id, model),
   });
 
   const earlier = useMutation({ mutationFn: loadEarlier });
@@ -297,7 +297,12 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
           disabled={view === undefined}
           draft={draft}
           error={send.error?.message}
-          model={agent?.model?.modelId}
+          model={
+            agent?.model && {
+              id: agent.model.modelId,
+              thinkingLevel: agent.thinkingLevel,
+            }
+          }
           onDraftChange={setDraft}
           onModelChange={(model) => changeModel.mutate(model)}
           onStop={() => abort.mutate()}

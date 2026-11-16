@@ -14,11 +14,22 @@ export const modelsQueryOptions = queryOptions({
   staleTime: Infinity,
 });
 
-export async function setConversationModel(id: number, model: string) {
+export type ThinkingLevel =
+  | 'off'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max';
+
+export type ModelChoice = { id: string; thinkingLevel?: ThinkingLevel };
+
+export async function setConversationModel(id: number, model: ModelChoice) {
   await call(
     client.conversations[':id'].model.$put({
       param: { id: String(id) },
-      json: { id: model },
+      json: model,
     })
   );
 }

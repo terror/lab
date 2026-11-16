@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { auth, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
-import { chatModels } from './models';
+import { listModels } from './models';
 import users from './users';
 
 const app = new Hono();
@@ -22,11 +22,7 @@ const api = new Hono()
     return c.json({ status: 'ok' });
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
-  .get('/models', requireUser, (c) =>
-    c.json({
-      models: chatModels.map(({ modelId, name }) => ({ id: modelId, name })),
-    })
-  )
+  .get('/models', requireUser, (c) => c.json({ models: listModels() }))
   .route('/conversations', conversations)
   .route('/users', users);
 
