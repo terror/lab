@@ -3,6 +3,7 @@ import type {
   Conversation,
   ConversationId,
   EntryId,
+  SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
@@ -33,6 +34,14 @@ import { validator } from './validator';
 const params = validator(
   'param',
   z.object({ id: z.coerce.number().int().positive() })
+);
+
+const submissionParams = validator(
+  'param',
+  z.object({
+    id: z.coerce.number().int().positive(),
+    submissionId: z.coerce.number().int().positive(),
+  })
 );
 
 const attachmentSchema = z.discriminatedUnion('type', [
@@ -389,6 +398,27 @@ const conversations = new Hono()
       .where(eq(schema.conversation.id, conversation.id));
 
     return c.json({ id: submission.id }, 202);
+  })
+  .delete('/:id/submissions/:submissionId', submissionParams, async (c) => {
+    const { id, submissionId } = c.req.valid('param');
+
+    const conversation = await load(id, c.get('user'));
+
+    const result = await harness.abortSubmission(
+      submissionId as SubmissionId,
+      BACKGROUND_CONTEXT,
+      conversation.id
+    );
+
+    if (result === 'not_found') {
+      throw new HTTPException(404, { message: 'Message not found' });
+    }
+
+    if (result !== 'aborted') {
+      throw new HTTPException(409, { message: 'Message was already sent' });
+    }
+
+    return c.body(null, 204);
   })
   .put('/:id/model', params, modelSelection, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
