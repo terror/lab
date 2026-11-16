@@ -28,6 +28,8 @@ test('library search waits for typing to settle', async () => {
 
   await expect.poll(() => fetch.mock.calls.length).toBe(2);
 
+  await expect.poll(() => result.current.empty).toBe(true);
+
   const searches = fetch.mock.calls.map(([input]) =>
     new URL(input instanceof Request ? input.url : input).searchParams.get(
       'search'
