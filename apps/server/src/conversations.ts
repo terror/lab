@@ -540,9 +540,16 @@ const conversations = new Hono()
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
-    await db
-      .delete(schema.conversation)
-      .where(eq(schema.conversation.id, conversation.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(schema.conversation)
+        .where(eq(schema.conversation.id, conversation.id));
+
+      await tx
+        .insert(schema.conversationDeletion)
+        .values({ id: conversation.id })
+        .onConflictDoNothing();
+    });
 
     return c.body(null, 204);
   });

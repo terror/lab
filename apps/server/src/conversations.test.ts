@@ -457,6 +457,13 @@ test('conversations can be deleted', async () => {
     body: { conversations: [], next: null },
     status: 200,
   });
+
+  expect(
+    await db
+      .select({ id: schema.conversationDeletion.id })
+      .from(schema.conversationDeletion)
+      .where(eq(schema.conversationDeletion.id, id))
+  ).toEqual([{ id }]);
 });
 
 test('conversations are hidden from other users', async () => {
