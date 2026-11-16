@@ -85,7 +85,7 @@ function DesktopWorkspace({
       <ResizablePanelGroup
         className={cn(
           animating &&
-            '[&>[data-panel]]:transition-[flex-grow] [&>[data-panel]]:duration-300 [&>[data-panel]]:ease-out motion-reduce:[&>[data-panel]]:transition-none'
+            '[&>[data-panel]]:transition-all [&>[data-panel]]:duration-300 [&>[data-panel]]:ease-out motion-reduce:[&>[data-panel]]:transition-none'
         )}
         defaultLayout={layout}
         onLayoutChanged={setLayout}

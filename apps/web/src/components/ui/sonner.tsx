@@ -7,7 +7,7 @@ function Toaster(props: ToasterProps) {
 
   return (
     <Sonner
-      className='toaster group'
+      className='group'
       style={
         {
           '--normal-bg': 'var(--popover)',

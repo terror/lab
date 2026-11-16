@@ -59,7 +59,7 @@ const messageDataSchema = z.object({
 
 function UserMessage({ bubble }: { bubble: Bubble }) {
   return (
-    <div className='ml-auto flex max-w-[80%] flex-col items-end gap-1'>
+    <div className='ml-auto flex max-w-4/5 flex-col items-end gap-1'>
       {(bubble.images?.length ?? 0) > 0 && (
         <div className='flex flex-wrap justify-end gap-2'>
           {bubble.images?.map((source, index) => (
@@ -115,7 +115,7 @@ function Activity({ status }: { status: string | undefined }) {
         <m.span
           key={label}
           animate={{ opacity: 1, y: 0 }}
-          className='shimmer'
+          className='shimmer text-muted-foreground'
           exit={{ opacity: 0, y: -4 }}
           initial={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.2 }}
@@ -135,7 +135,7 @@ function RetryStatus({ retry }: { retry: { at: number; error: string } }) {
   return (
     <output className='flex flex-col gap-1 text-sm text-muted-foreground'>
       <span className='motion-safe:animate-pulse'>Retrying {when}…</span>
-      <span className='text-xs break-words'>{retry.error}</span>
+      <span className='text-xs wrap-break-word'>{retry.error}</span>
     </output>
   );
 }

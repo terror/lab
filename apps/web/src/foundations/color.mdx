@@ -1,0 +1,67 @@
+import { Meta, Unstyled } from '@storybook/addon-docs/blocks';
+
+import { Swatches } from './swatches';
+
+<Meta title='Foundations/Color' />
+
+# Color
+
+Colors are OKLCH neutrals defined in `:root` and `.dark`, then mapped to
+utilities in `@theme inline`. Use the semantic token, never a raw value. Switch
+the toolbar theme to compare light and dark.
+
+## Surfaces
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Page and chat background', name: 'background' },
+      { description: 'Sidebar and app chrome', name: 'sidebar' },
+      { description: 'Popovers, menus, dialogs', name: 'popover' },
+      {
+        description: 'Quiet fills: bubbles, inline code, tiles',
+        name: 'muted',
+      },
+      { description: 'Hover and selected rows', name: 'accent' },
+    ]}
+  />
+</Unstyled>
+
+## Text
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Primary text and icons', name: 'foreground' },
+      {
+        description: 'Secondary text, metadata, placeholders',
+        name: 'muted-foreground',
+      },
+    ]}
+  />
+</Unstyled>
+
+## Lines and focus
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Dividers between surfaces', name: 'border' },
+      { description: 'Form control borders', name: 'input' },
+      { description: 'Focus rings', name: 'ring' },
+    ]}
+  />
+</Unstyled>
+
+## Actions
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Primary buttons', name: 'primary' },
+      { description: 'Text on primary', name: 'primary-foreground' },
+      { description: 'Secondary buttons', name: 'secondary' },
+      { description: 'Errors and irreversible actions', name: 'destructive' },
+    ]}
+  />
+</Unstyled>

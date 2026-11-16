@@ -1,0 +1,59 @@
+import { Meta, Unstyled } from '@storybook/addon-docs/blocks';
+
+import { Sample } from './swatches';
+
+<Meta title='Foundations/Typography' />
+
+# Typography
+
+Lab uses the system font stack, so text looks native on every platform. Code
+uses the system monospace stack.
+
+<Sample
+  className='text-3xl font-semibold tracking-tight'
+  label='text-3xl semibold'
+  text='Good afternoon'
+/>
+<Sample
+  className='text-2xl font-semibold tracking-tight'
+  label='text-2xl semibold'
+  text='Page title'
+/>
+<Sample
+  className='text-xl font-semibold tracking-tight'
+  label='text-xl semibold'
+  text='Section title'
+/>
+<Sample
+  className='text-base'
+  label='text-base'
+  text='Message body and composer text'
+/>
+<Sample
+  className='text-sm'
+  label='text-sm'
+  text='Interface text: menus, buttons, lists'
+/>
+<Sample
+  className='text-sm text-muted-foreground'
+  label='text-sm muted'
+  text='Descriptions and secondary text'
+/>
+<Sample
+  className='text-xs text-muted-foreground'
+  label='text-xs muted'
+  text='Labels, metadata, group headings'
+/>
+<Sample
+  className='font-mono text-sm'
+  label='font-mono text-sm'
+  text='const answer = 42;'
+/>
+
+## Guidelines
+
+- Use `text-sm` for interface text and `text-base` for conversation content.
+- Use weight, not size, for hierarchy within a block: `font-medium` for names,
+  `font-semibold` for titles.
+- Use `text-muted-foreground` for anything secondary instead of a smaller size.
+- Use `tabular-nums` for numbers that change in place.

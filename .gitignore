@@ -11,4 +11,5 @@
 .vscode/
 Thumbs.db
 dist/
+storybook-static/
 node_modules/

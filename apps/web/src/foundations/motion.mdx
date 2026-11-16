@@ -1,0 +1,21 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title='Foundations/Motion' />
+
+# Motion
+
+Motion explains change; it never decorates.
+
+| Duration  | Use                                |
+| --------- | ---------------------------------- |
+| 100–150ms | Hover, press, color changes        |
+| 200ms     | Popovers, menus, status text swaps |
+| 300ms     | Panels and sidebars                |
+
+- Ease out for things that enter, and ease in for things that leave.
+- Use the `shimmer` utility for live status text, like the activity line while a
+  reply is thinking.
+- Stream answers with Streamdown's word fade rather than animating whole blocks.
+- Respect reduced motion: `MotionConfig reducedMotion='user'` covers Motion
+  components, `motion-safe:` covers CSS animations, and `shimmer` turns itself
+  off.
