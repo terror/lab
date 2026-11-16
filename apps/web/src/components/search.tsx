@@ -1,11 +1,19 @@
-import { searchSources } from '@/components/search-sources';
 import {
   Command,
   CommandDialog,
   CommandEmpty,
+  CommandGroup,
   CommandInput,
+  CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import {
+  conversationTitle,
+  useConversationSearch,
+  useConversations,
+} from '@/lib/conversations';
+import { useNavigate } from '@tanstack/react-router';
+import { MessageSquare, Settings, SquarePen } from 'lucide-react';
 import {
   type ReactNode,
   createContext,
@@ -25,6 +33,58 @@ export function useSearch() {
   return useContext(SearchContext);
 }
 
+function Actions({ onDone }: { onDone: () => void }) {
+  const navigate = useNavigate();
+
+  const go = (to: '/' | '/settings') => {
+    onDone();
+    void navigate({ to });
+  };
+
+  return (
+    <CommandGroup heading='Actions'>
+      <CommandItem onSelect={() => go('/')} value='New chat'>
+        <SquarePen aria-hidden='true' />
+        New chat
+      </CommandItem>
+      <CommandItem onSelect={() => go('/settings')} value='Settings'>
+        <Settings aria-hidden='true' />
+        Settings
+      </CommandItem>
+    </CommandGroup>
+  );
+}
+
+function Chats({ onDone, search }: { onDone: () => void; search: string }) {
+  const navigate = useNavigate();
+  const conversations = useConversations();
+  const results = useConversationSearch(search);
+
+  const chats = search ? results.data : conversations.data;
+
+  if (!chats?.length) {
+    return null;
+  }
+
+  return (
+    <CommandGroup heading='Chats'>
+      {chats.map(({ id, title }) => (
+        <CommandItem
+          key={id}
+          onSelect={() => {
+            onDone();
+            void navigate({ params: { id }, to: '/c/$id' });
+          }}
+          value={`${conversationTitle(title)} ${id}`}
+        >
+          <MessageSquare aria-hidden='true' />
+          <span className='truncate'>{conversationTitle(title)}</span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
 function SearchCommand({ onDone }: { onDone: () => void }) {
   const [search, setSearch] = useState('');
 
@@ -39,9 +99,8 @@ function SearchCommand({ onDone }: { onDone: () => void }) {
       />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        {searchSources.map(({ component: Source, id }) => (
-          <Source key={id} onDone={onDone} search={query} />
-        ))}
+        <Actions onDone={onDone} />
+        <Chats onDone={onDone} search={query} />
       </CommandList>
     </Command>
   );
