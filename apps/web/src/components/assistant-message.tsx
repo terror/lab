@@ -211,7 +211,7 @@ function MessageActions({ latest, text }: { latest: boolean; text: string }) {
   return (
     <MessageFooter
       className={cn(
-        '-ml-2 gap-0.5 px-0 transition-opacity',
+        'gap-0.5 px-0 transition-opacity',
         !latest &&
           'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100'
       )}

@@ -1,3 +1,4 @@
+import { useLineNumbers } from '@/lib/preferences';
 import { Suspense, lazy } from 'react';
 import type { StreamdownProps } from 'streamdown';
 
@@ -23,6 +24,8 @@ export function Markdown({
   children: string;
   streaming: boolean;
 }) {
+  const [lineNumbers] = useLineNumbers();
+
   return (
     <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
       <Streamdown
@@ -30,6 +33,7 @@ export function Markdown({
           streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
         }
         isAnimating={streaming}
+        lineNumbers={lineNumbers}
       >
         {children}
       </Streamdown>

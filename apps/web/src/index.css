@@ -127,6 +127,41 @@
   --sidebar-ring: oklch(0.985 0 0);
 }
 
+[data-streamdown='code-block'] {
+  gap: 0;
+  border: 0;
+  background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
+  padding: 0;
+}
+
+[data-streamdown='code-block-header'] {
+  display: none;
+}
+
+[data-streamdown='code-block-body'] {
+  border: 0;
+  background-color: transparent;
+  padding: 1rem;
+}
+
+[data-streamdown='code-block-actions'] {
+  border: 0;
+  background-color: transparent;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+[data-streamdown='code-block']:hover [data-streamdown='code-block-actions'],
+[data-streamdown='code-block-actions']:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  [data-streamdown='code-block-actions'] {
+    opacity: 1;
+  }
+}
+
 [data-streamdown='inline-code'] {
   border-radius: 0.3em;
   background-color: color-mix(in oklab, var(--foreground) 5%, transparent);
