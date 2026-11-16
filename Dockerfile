@@ -12,4 +12,4 @@ ENV LAB_STORAGE_PATH=/data/lab.sqlite
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "bun run db:migrate && bun run start"]
+CMD ["sh", "-c", "bun run db:migrate && exec bun apps/server/dist/server.js"]
