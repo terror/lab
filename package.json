@@ -9,6 +9,8 @@
   "scripts": {
     "build": "bun run --parallel --filter '@lab/*' build",
     "check": "bun run --parallel --filter '@lab/*' check",
+    "db:generate": "bun run --filter @lab/db generate",
+    "db:migrate": "bun run --filter @lab/db migrate",
     "dev": "bun run --parallel --filter '@lab/*' dev",
     "knip": "knip",
     "lint": "oxlint",
