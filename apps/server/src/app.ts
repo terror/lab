@@ -8,6 +8,7 @@ import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
 
 import { auth, requireUser } from './auth';
+import changelog from './changelog';
 import conversations from './conversations';
 import { db } from './db';
 import { harness } from './harness';
@@ -33,6 +34,7 @@ const api = new Hono()
     return c.json({ status: 'ok' });
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  .route('/', changelog)
   .get('/models', requireUser, async (c) => {
     const fallback = await defaultModel();
 

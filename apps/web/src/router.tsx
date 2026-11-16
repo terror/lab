@@ -3,6 +3,7 @@ import { ErrorPage } from '@/components/error-page';
 import { NewChat } from '@/components/new-chat';
 import { Settings } from '@/components/settings';
 import { SignIn } from '@/components/sign-in';
+import { Updates } from '@/components/updates';
 import { Workspace } from '@/components/workspace';
 import { authClient, useUser } from '@/lib/auth';
 import { useThemeClass } from '@/lib/theme';
@@ -28,7 +29,12 @@ function Root() {
     return <SignIn />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <Updates />
+    </>
+  );
 }
 
 function NewChatPage() {
