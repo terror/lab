@@ -430,6 +430,8 @@ function ConversationView({ id }: { id: number }) {
 
   const [, setPreferredModel] = usePreferredModel();
 
+  const commandContext = useMemo(() => ({ conversationId: id }), [id]);
+
   const changeModel = useMutation({
     mutationFn: (model: ModelChoice) => setConversationModel(id, model),
     onSuccess: (_, model) => setPreferredModel(model),
@@ -587,6 +589,7 @@ function ConversationView({ id }: { id: number }) {
       <div className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <Composer
           attachments={attachments}
+          commandContext={commandContext}
           disabled={view === undefined}
           draft={draft}
           error={send.error?.message}

@@ -19,9 +19,15 @@ import {
   readLibraryItem,
   textLimit,
 } from '@/lib/attachments';
+import {
+  type CommandContext,
+  type SlashCommand,
+  matchCommands,
+} from '@/lib/commands';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUp,
@@ -45,12 +51,15 @@ import {
   type SubmitEvent,
 } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
+import { toast } from 'sonner';
 
 const LibraryPicker = lazy(async () => ({
   default: (await import('@/components/library-picker')).LibraryPicker,
 }));
 
 const MAX_ATTACHMENTS = 8;
+
+const noCommandContext: CommandContext = { conversationId: undefined };
 
 function AttachmentPreview({
   attachment,
@@ -124,6 +133,7 @@ function SubmitButton({
 
 export function Composer({
   attachments,
+  commandContext = noCommandContext,
   disabled,
   draft,
   error,
@@ -138,6 +148,7 @@ export function Composer({
   submitting,
 }: {
   attachments: Attachment[];
+  commandContext?: CommandContext;
   disabled?: boolean;
   draft: string;
   error?: string;
@@ -155,6 +166,8 @@ export function Composer({
   const [attachError, setAttachError] = useState<string>();
   const [picking, setPicking] = useState(false);
   const [pickerOpened, setPickerOpened] = useState(false);
+  const [active, setActive] = useState(0);
+  const [dismissed, setDismissed] = useState<string>();
   const touch = useMediaQuery('(pointer: coarse)');
   const openingPicker = useRef(false);
 
@@ -217,7 +230,56 @@ export function Composer({
     onSubmit(content);
   };
 
+  const matches = matchCommands(draft, commandContext);
+
+  const menu = matches.length > 0 && dismissed !== draft;
+
+  const selected = matches[Math.min(active, matches.length - 1)];
+
+  const runCommand = async (command: SlashCommand) => {
+    onDraftChange('');
+    setActive(0);
+    setAttachError(undefined);
+
+    try {
+      const message = await command.run(commandContext);
+
+      if (message) {
+        toast(message);
+      }
+    } catch (failure) {
+      setAttachError(
+        failure instanceof Error ? failure.message : String(failure)
+      );
+    }
+  };
+
+  const onMenuKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const keys: Record<string, () => void> = {
+      ArrowDown: () => setActive((active + 1) % matches.length),
+      ArrowUp: () => setActive((active - 1 + matches.length) % matches.length),
+      Enter: () => selected && void runCommand(selected),
+      Escape: () => setDismissed(draft),
+      Tab: () => selected && void runCommand(selected),
+    };
+
+    const handle = keys[event.key];
+
+    if (!handle || event.shiftKey || event.nativeEvent.isComposing) {
+      return false;
+    }
+
+    event.preventDefault();
+    handle();
+
+    return true;
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (menu && onMenuKey(event)) {
+      return;
+    }
+
     const command = event.metaKey || event.ctrlKey;
 
     if (
@@ -263,7 +325,41 @@ export function Composer({
   };
 
   return (
-    <form onSubmit={onFormSubmit} className='w-full'>
+    <form onSubmit={onFormSubmit} className='relative w-full'>
+      {menu && (
+        <div className='absolute inset-x-2 bottom-full mb-2 flex flex-col gap-0.5 rounded-2xl bg-popover p-1.5 shadow-lg ring-1 ring-foreground/10'>
+          <ul aria-label='Commands' className='flex flex-col gap-0.5'>
+            {matches.map((command) => (
+              <li key={command.name}>
+                <button
+                  aria-current={command === selected ? 'true' : undefined}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60',
+                    command === selected && 'bg-muted'
+                  )}
+                  onClick={() => void runCommand(command)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  type='button'
+                >
+                  <command.icon
+                    aria-hidden='true'
+                    className='size-4 shrink-0 text-muted-foreground'
+                  />
+                  <span className='font-medium'>/{command.name}</span>
+                  <span className='truncate text-muted-foreground'>
+                    {command.description}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className='flex gap-3.5 px-3 pt-1 pb-0.5 text-xs text-muted-foreground'>
+            <span>↑↓ to choose</span>
+            <span>↵ to run</span>
+            <span>esc to close</span>
+          </p>
+        </div>
+      )}
       <div className='flex flex-col rounded-3xl border bg-background shadow-sm'>
         {attachments.length > 0 && (
           <div className='flex flex-wrap gap-2 px-4 pt-4'>
