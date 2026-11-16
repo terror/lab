@@ -54,6 +54,10 @@ services:
 start:
   bun run start
 
+[group: 'dev']
+storybook:
+  bun run storybook
+
 [group: 'check']
 test: services
   bun run test

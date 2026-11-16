@@ -199,7 +199,7 @@ export function ModelPicker({
       </PopoverTrigger>
       <PopoverContent
         align='end'
-        className='w-72 max-w-[calc(100vw-2rem)] gap-0 rounded-xl p-1'
+        className='w-72 gap-0 rounded-xl p-1'
         side='top'
         sideOffset={8}
       >

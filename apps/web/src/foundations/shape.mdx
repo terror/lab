@@ -1,0 +1,21 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title='Foundations/Shape and elevation' />
+
+# Shape and elevation
+
+Radii scale from `--radius` (0.625rem). Larger containers get rounder corners.
+
+| Token          | Use                             |
+| -------------- | ------------------------------- |
+| `rounded-md`   | Menu and list items             |
+| `rounded-lg`   | Buttons, inputs, small tiles    |
+| `rounded-xl`   | Popovers, menus, the chat shell |
+| `rounded-2xl`  | Message bubbles, settings rows  |
+| `rounded-3xl`  | The composer                    |
+| `rounded-full` | Icon buttons, avatars           |
+
+Elevation is rare. Popovers and menus use `shadow-md` with a
+`ring-1 ring-foreground/10` edge, the composer uses `shadow-sm`, and everything
+else is flat. Separate surfaces with background color before reaching for a
+border or shadow.

@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": [".claude/skills/", "dist/"],
+  "ignorePatterns": [".claude/skills/", "dist/", "storybook-static/"],
   "jsxSingleQuote": true,
   "printWidth": 80,
   "proseWrap": "always",

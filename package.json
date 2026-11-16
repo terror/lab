@@ -15,12 +15,14 @@
     "knip": "knip",
     "lint": "oxlint",
     "start": "bun run --filter @lab/server start",
-    "test": "bun run --filter @lab/server test"
+    "storybook": "bun run --filter @lab/web storybook",
+    "test": "bun run --filter '@lab/*' test"
   },
   "devDependencies": {
     "knip": "6.45.1",
     "oxfmt": "0.78.0",
     "oxlint": "1.93.0",
+    "oxlint-tailwindcss": "1.17.2",
     "oxlint-tsgolint": "7.0.2007",
     "typescript": "^7.0.2"
   }

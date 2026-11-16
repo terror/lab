@@ -78,7 +78,7 @@ export function NewChat({ user }: { user: { name: string } }) {
   });
 
   return (
-    <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-[12vh]'>
+    <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-24'>
       <div className='flex w-full max-w-3xl flex-col items-center gap-8'>
         <div className='flex animate-in flex-col items-center gap-4 text-center duration-500 fade-in slide-in-from-bottom-2'>
           <LabMark className='size-10' />

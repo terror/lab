@@ -4,7 +4,7 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": [".claude/skills/", "dist/"],
+  "ignorePatterns": [".claude/skills/", "dist/", "storybook-static/"],
   "options": {
     "denyWarnings": true,
     "reportUnusedDisableDirectives": "error",
@@ -31,6 +31,21 @@
     "react/exhaustive-deps": "error",
     "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",
+    "tailwindcss/enforce-canonical": "error",
+    "tailwindcss/no-arbitrary-value": [
+      "error",
+      {
+        "allowVariables": "runtime"
+      }
+    ],
+    "tailwindcss/no-conflicting-classes": "error",
+    "tailwindcss/no-default-palette": "error",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-dynamic-classes": "error",
+    "tailwindcss/no-hardcoded-colors": "error",
+    "tailwindcss/no-unknown-classes": "error",
+    "tailwindcss/no-unnecessary-arbitrary-value": "error",
     "typescript/no-deprecated": "error",
     "typescript/no-unsafe-type-assertion": "off"
   },
@@ -40,8 +55,17 @@
       "rules": {
         "jsx-a11y/click-events-have-key-events": "off",
         "jsx-a11y/no-noninteractive-element-interactions": "off",
-        "jsx-a11y/prefer-tag-over-role": "off"
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "tailwindcss/no-arbitrary-value": "off",
+        "tailwindcss/no-default-palette": "off",
+        "tailwindcss/no-hardcoded-colors": "off"
       }
     }
-  ]
+  ],
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "apps/web/src/index.css"
+    }
+  }
 }
