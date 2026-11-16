@@ -109,12 +109,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -200,12 +196,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -215,9 +207,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -279,9 +269,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -451,12 +439,8 @@
           "name": "conversation_owner_id_user_id_fk",
           "tableFrom": "conversation",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -609,12 +593,8 @@
           "name": "library_item_conversation_id_conversation_id_fk",
           "tableFrom": "library_item",
           "tableTo": "conversation",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -622,12 +602,8 @@
           "name": "library_item_owner_id_user_id_fk",
           "tableFrom": "library_item",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -635,19 +611,14 @@
       "compositePrimaryKeys": {
         "library_item_entry_id_position_pk": {
           "name": "library_item_entry_id_position_pk",
-          "columns": [
-            "entry_id",
-            "position"
-          ]
+          "columns": ["entry_id", "position"]
         }
       },
       "uniqueConstraints": {
         "library_item_id_unique": {
           "name": "library_item_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "policies": {},
@@ -716,12 +687,8 @@
           "name": "spend_budget_owner_id_user_id_fk",
           "tableFrom": "spend_budget",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -855,12 +822,8 @@
           "name": "usage_event_owner_id_user_id_fk",
           "tableFrom": "usage_event",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -870,9 +833,7 @@
         "usage_event_entry_id_unique": {
           "name": "usage_event_entry_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "entry_id"
-          ]
+          "columns": ["entry_id"]
         }
       },
       "policies": {},
