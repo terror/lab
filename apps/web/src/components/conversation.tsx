@@ -1,5 +1,5 @@
+import { Composer } from '@/components/composer';
 import { Markdown } from '@/components/markdown';
-import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
   abortConversation,
@@ -9,6 +9,7 @@ import {
   type Gap,
   useConversation,
 } from '@/lib/conversations';
+import { setConversationModel } from '@/lib/models';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type {
@@ -19,15 +20,7 @@ import type {
   TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowUp, Square } from 'lucide-react';
-import {
-  type KeyboardEvent,
-  type SubmitEvent,
-  type UIEvent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type UIEvent, useEffect, useRef, useState } from 'react';
 
 type Bubble = {
   id: string;
@@ -146,6 +139,10 @@ export function Conversation({ id }: { id: number }) {
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
+  const changeModel = useMutation({
+    mutationFn: (model: string) => setConversationModel(id, model),
+  });
+
   const earlier = useMutation({ mutationFn: loadEarlier });
   const gap = useMutation({ mutationFn: fillGap });
 
@@ -188,35 +185,10 @@ export function Conversation({ id }: { id: number }) {
     }
   }, [queryClient, running]);
 
-  const submit = () => {
-    const content = draft.trim();
-
-    if (content && !send.isPending) {
-      pinned.current = true;
-      send.mutate(content);
-    }
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
-      event.preventDefault();
-      submit();
-    }
-  };
-
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const { clientHeight, scrollHeight, scrollTop } = event.currentTarget;
 
     pinned.current = scrollHeight - scrollTop - clientHeight < 80;
-  };
-
-  const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    submit();
   };
 
   return (
@@ -265,46 +237,23 @@ export function Conversation({ id }: { id: number }) {
           <div ref={end} />
         </div>
       </div>
-      <form onSubmit={onSubmit} className='mx-auto w-full max-w-3xl px-6 pb-6'>
-        <div className='flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-3 focus-within:ring-ring/50'>
-          <textarea
-            aria-label='Message'
-            className='max-h-48 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 outline-none'
-            disabled={view === undefined}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder='Message Lab…'
-            rows={1}
-            value={draft}
-          />
-          <ModelPicker conversation={id} current={agent?.model?.modelId} />
-          {running && (
-            <Button
-              aria-label='Stop'
-              disabled={abort.isPending}
-              onClick={() => abort.mutate()}
-              size='icon'
-              type='button'
-              variant='outline'
-            >
-              <Square aria-hidden='true' />
-            </Button>
-          )}
-          <Button
-            aria-label='Send'
-            disabled={!draft.trim() || send.isPending}
-            size='icon'
-            type='submit'
-          >
-            <ArrowUp aria-hidden='true' />
-          </Button>
-        </div>
-        {send.isError && (
-          <p role='alert' className='mt-2 text-sm text-destructive'>
-            {send.error.message}
-          </p>
-        )}
-      </form>
+      <div className='mx-auto w-full max-w-3xl px-6 pb-6'>
+        <Composer
+          disabled={view === undefined}
+          draft={draft}
+          error={send.error?.message}
+          model={agent?.model?.modelId}
+          onDraftChange={setDraft}
+          onModelChange={(model) => changeModel.mutate(model)}
+          onStop={() => abort.mutate()}
+          onSubmit={(content) => {
+            pinned.current = true;
+            send.mutate(content);
+          }}
+          running={running}
+          submitting={send.isPending}
+        />
+      </div>
     </div>
   );
 }
