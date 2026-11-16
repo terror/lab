@@ -415,7 +415,10 @@ function ConversationView({ id }: { id: number }) {
     <div className='flex min-h-0 flex-1 flex-col'>
       <MessageScroller className='flex-1'>
         <MessageScrollerViewport aria-label='Transcript'>
-          <MessageScrollerContent className='mx-auto max-w-3xl px-6 py-8'>
+          <MessageScrollerContent
+            className='mx-auto max-w-3xl px-6 py-8'
+            spacerClassName={cn(!running && 'hidden!')}
+          >
             {view === undefined && (
               <p className='text-sm text-muted-foreground'>Connecting…</p>
             )}
