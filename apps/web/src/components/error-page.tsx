@@ -28,7 +28,7 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
   };
 
   return (
-    <div className='flex min-h-[60svh] flex-1 items-center justify-center px-6 py-12'>
+    <div className='flex min-h-full flex-1 items-center justify-center px-6 py-12'>
       <div
         className='flex w-full max-w-md animate-in flex-col items-center gap-6 text-center duration-300 fade-in slide-in-from-bottom-2'
         role='alert'
