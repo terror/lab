@@ -1,20 +1,15 @@
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type {
-  Conversation,
-  ConversationId,
-  Cursor,
-  EntryRecord,
-} from '@earendil-works/pi-durable';
+import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, desc, eq, gte, inArray, notExists, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, notExists, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
-import { harness } from './harness';
 import { flushHelperUsage } from './helper-usage';
 import { models as catalog } from './models';
+import { eachEntry, entryChanges, observe } from './pipeline';
+import { owners } from './records';
 import { validator } from './validator';
 
 const table = schema.usageEvent;
@@ -46,22 +41,12 @@ function event(entry: EntryRecord, ownerId: string) {
 }
 
 async function record(entries: readonly EntryRecord[]) {
-  const ids = [...new Set(entries.map(({ conversationId }) => conversationId))];
-
-  const owners = new Map(
-    (
-      await db
-        .select({
-          id: schema.conversation.id,
-          ownerId: schema.conversation.ownerId,
-        })
-        .from(schema.conversation)
-        .where(inArray(schema.conversation.id, ids))
-    ).map(({ id, ownerId }) => [id, ownerId])
+  const owned = await owners(
+    entries.map(({ conversationId }) => conversationId)
   );
 
   const rows = entries.flatMap((entry) => {
-    const ownerId = owners.get(entry.conversationId);
+    const ownerId = owned.get(entry.conversationId);
 
     return ownerId ? event(entry, ownerId) : [];
   });
@@ -71,39 +56,14 @@ async function record(entries: readonly EntryRecord[]) {
   }
 }
 
-let pending = Promise.resolve();
-
-harness.observeCommits({
-  advance: ({ changes }) => {
-    const entries = changes
-      .flatMap((change) => (change.type === 'entry' ? [change.value] : []))
-      .filter((entry) => entry.model?.[0]?.role === 'assistant');
-
-    if (entries.length > 0) {
-      pending = pending.then(() => record(entries).catch(console.error));
-    }
-  },
-  end: () => undefined,
-});
-
-export function flushUsage() {
-  return pending;
+function assistant(entry: EntryRecord) {
+  return entry.model?.[0]?.role === 'assistant';
 }
 
-async function recordHistory(conversation: Conversation, cursor?: Cursor) {
-  const page = await conversation.entries(
-    { order: 'ascending' },
-    100,
-    cursor,
-    BACKGROUND_CONTEXT
-  );
-
-  await record(page.items);
-
-  if (page.next !== undefined) {
-    await recordHistory(conversation, page.next);
-  }
-}
+export const flushUsage = observe(
+  (changes) => entryChanges(changes, assistant),
+  record
+);
 
 export async function backfillUsage() {
   const missing = await db
@@ -124,14 +84,7 @@ export async function backfillUsage() {
     );
 
   for (const { id } of missing) {
-    const conversation = await harness.conversation(
-      id as ConversationId,
-      BACKGROUND_CONTEXT
-    );
-
-    if (conversation) {
-      await recordHistory(conversation);
-    }
+    await eachEntry(id, (page) => record(page.filter(assistant)));
   }
 }
 

@@ -1,20 +1,17 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
-import { eq } from 'drizzle-orm';
 
 import { db } from './db';
+import { owners, serial } from './records';
 
 async function record(
   conversationId: number,
   kind: 'status' | 'title',
   { model, provider, timestamp, usage }: AssistantMessage
 ) {
-  const [owner] = await db
-    .select({ ownerId: schema.conversation.ownerId })
-    .from(schema.conversation)
-    .where(eq(schema.conversation.id, conversationId));
+  const ownerId = (await owners([conversationId])).get(conversationId);
 
-  if (!owner) {
+  if (!ownerId) {
     return;
   }
 
@@ -28,23 +25,19 @@ async function record(
     kind,
     model,
     output: usage.output,
-    ownerId: owner.ownerId,
+    ownerId,
     provider,
   });
 }
 
-let pending = Promise.resolve();
+const queue = serial();
 
 export function recordHelperUsage(
   conversationId: number,
   kind: 'status' | 'title',
   message: AssistantMessage
 ) {
-  pending = pending.then(() =>
-    record(conversationId, kind, message).catch(console.error)
-  );
+  queue.run(() => record(conversationId, kind, message));
 }
 
-export function flushHelperUsage() {
-  return pending;
-}
+export const flushHelperUsage = queue.flush;

@@ -14,6 +14,8 @@ import { eq } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
+import { observe } from './pipeline';
+import { serial } from './records';
 
 type Columns = Partial<
   Omit<typeof schema.conversation.$inferInsert, 'id' | 'ownerId'>
@@ -94,45 +96,36 @@ async function project(id: ConversationId) {
     .where(eq(schema.conversation.id, id));
 }
 
-let pending = Promise.resolve();
+const queue = serial();
 
-function enqueue(id: ConversationId) {
-  pending = pending.then(() => project(id).catch(console.error));
+async function projectEach(ids: readonly ConversationId[]) {
+  for (const id of ids) {
+    await project(id);
+  }
 }
 
-harness.observeCommits({
-  advance: ({ changes }) => {
-    const ids = new Set<ConversationId>();
+export const flushProjections = observe(
+  (changes) => [
+    ...new Set(
+      changes.flatMap((change) =>
+        projections.flatMap(({ source }) => {
+          const id = source(change);
 
-    for (const change of changes) {
-      for (const { source } of projections) {
-        const id = source(change);
-
-        if (id !== undefined) {
-          ids.add(id);
-        }
-      }
-    }
-
-    for (const id of ids) {
-      enqueue(id);
-    }
-  },
-  end: () => undefined,
-});
-
-export function flushProjections() {
-  return pending;
-}
+          return id === undefined ? [] : [id];
+        })
+      )
+    ),
+  ],
+  projectEach,
+  queue
+);
 
 export async function projectAll() {
   const rows = await db
     .select({ id: schema.conversation.id })
     .from(schema.conversation);
 
-  for (const { id } of rows) {
-    enqueue(id as ConversationId);
-  }
+  queue.run(() => projectEach(rows.map(({ id }) => id as ConversationId)));
 
-  await pending;
+  await queue.flush();
 }
