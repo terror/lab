@@ -20,20 +20,28 @@ import {
   useConversationSort,
   useConversations,
 } from '@/lib/conversations';
+import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import {
   ArrowDownUp,
+  ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   SquarePen,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { z } from 'zod';
 
 type User = { email: string; id: string; image?: string | null; name: string };
 
 type Side = 'bottom' | 'right';
+
+const collapsedSchema = z.boolean();
+
+const headerButton =
+  'flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50';
 
 const sorts: { label: string; value: ConversationSort }[] = [
   { label: 'Recent activity', value: 'activity' },
@@ -83,6 +91,42 @@ function SearchButton({ side }: { side?: Side }) {
   );
 }
 
+function CollapseButton({
+  collapsed,
+  controls,
+  onToggle,
+}: {
+  collapsed: boolean;
+  controls: string;
+  onToggle: () => void;
+}) {
+  const label = collapsed ? 'Show chats' : 'Hide chats';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-controls={controls}
+          aria-expanded={!collapsed}
+          aria-label={label}
+          className={headerButton}
+          onClick={onToggle}
+          type='button'
+        >
+          <ChevronDown
+            aria-hidden='true'
+            className={cn(
+              'size-3.5 transition-transform',
+              collapsed && '-rotate-90'
+            )}
+          />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SortMenu() {
   const [sort, setSort] = useConversationSort();
 
@@ -93,7 +137,7 @@ function SortMenu() {
           <DropdownMenuTrigger asChild>
             <button
               aria-label='Sort chats'
-              className='ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'
+              className={cn(headerButton, 'ml-auto')}
               type='button'
             >
               <ArrowDownUp aria-hidden='true' className='size-3.5' />
@@ -268,6 +312,14 @@ function SidebarPanel({
   selected: number | undefined;
   user: User;
 }) {
+  const list = useId();
+
+  const [collapsed, setCollapsed] = usePersistentState(
+    'recents-collapsed',
+    collapsedSchema,
+    false
+  );
+
   return (
     <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
       <div className='flex items-center justify-between px-1'>
@@ -307,12 +359,19 @@ function SidebarPanel({
             <h2 className='text-xs font-medium text-muted-foreground'>
               Recents
             </h2>
+            <CollapseButton
+              collapsed={collapsed}
+              controls={list}
+              onToggle={() => setCollapsed(!collapsed)}
+            />
             <SortMenu />
           </div>
         )}
         <nav
           aria-label='Chats'
           className='flex min-h-0 flex-col gap-1 overflow-y-auto'
+          hidden={collapsed}
+          id={list}
         >
           {error && (
             <p role='alert' className='px-2 text-sm text-destructive'>
