@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -122,14 +123,34 @@ function FileTile({ item }: { item: LibraryItem }) {
   );
 }
 
-function Tile({ item, onOpen }: { item: LibraryItem; onOpen: () => void }) {
+export function Tile({
+  disabled,
+  item,
+  onOpen,
+  selected,
+}: {
+  disabled?: boolean;
+  item: LibraryItem;
+  onOpen: () => void;
+  selected?: boolean;
+}) {
   return (
     <button
       aria-label={item.name}
-      className='group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+      aria-pressed={selected}
+      className={cn(
+        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-40',
+        selected && 'ring-2 ring-foreground'
+      )}
+      disabled={disabled}
       onClick={onOpen}
       type='button'
     >
+      {selected && (
+        <span className='absolute top-2 right-2 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background'>
+          <Check aria-hidden='true' className='size-3.5' />
+        </span>
+      )}
       {item.kind === 'image' ? (
         <>
           <img
