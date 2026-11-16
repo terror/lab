@@ -4,6 +4,7 @@ import app from './app';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
+import { backfillTitles } from './titles';
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
@@ -13,6 +14,8 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     ]).finally(() => process.exit());
   });
 }
+
+await backfillTitles(harness);
 
 export default {
   hostname: env.LAB_HOST,

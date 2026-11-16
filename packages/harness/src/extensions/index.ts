@@ -1,6 +1,8 @@
 import { assistant } from './assistant';
-import { title } from './title';
+import { type Titles, title } from './title';
 
-export { TitleDoc } from './title';
+export { TitleDoc, type Titles } from './title';
 
-export const extensions = [assistant, title];
+export function extensions(titles: Titles) {
+  return [assistant, title(titles)];
+}

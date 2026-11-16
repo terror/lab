@@ -1,29 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
+import { AgentDoc } from '@earendil-works/pi-durable';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call } from '../test/client';
+import { call, create, idle } from '../test/client';
 import { harness } from './harness';
-
-async function idle(id: number) {
-  const conversation = await harness.conversation(
-    id as ConversationId,
-    BACKGROUND_CONTEXT
-  );
-
-  await conversation?.waitForIdle(BACKGROUND_CONTEXT);
-}
-
-async function create(headers: Headers) {
-  const { body } = await call(headers, 'POST', '/conversations', {
-    content: 'foo',
-  });
-
-  await idle(body.id);
-
-  return body.id as number;
-}
 
 test('conversations require a session', async () => {
   expect(await call(new Headers(), 'GET', '/conversations')).toEqual({

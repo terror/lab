@@ -6,7 +6,6 @@ import type {
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
-import { TitleDoc } from '@lab/harness';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
@@ -18,6 +17,7 @@ import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
 import { modelChange, thinkingLevelSchema } from './models';
+import { titles } from './titles';
 import { validator } from './validator';
 
 const params = validator(
@@ -207,7 +207,7 @@ const conversations = new Hono()
     const { cursor, limit, sort } = c.req.valid('query');
 
     const rows = await db
-      .select({ id: schema.conversation.id })
+      .select({ id: schema.conversation.id, title: schema.conversation.title })
       .from(schema.conversation)
       .where(
         and(
@@ -225,19 +225,7 @@ const conversations = new Hono()
 
     const next = rows.length > limit ? page.at(-1)?.id : undefined;
 
-    const items = await Promise.all(
-      page.map(async ({ id }) => {
-        const doc = await harness.snapshot(
-          TitleDoc,
-          id as ConversationId,
-          BACKGROUND_CONTEXT
-        );
-
-        return { id, title: doc?.title ?? null };
-      })
-    );
-
-    return c.json({ conversations: items, next: next ?? null });
+    return c.json({ conversations: page, next: next ?? null });
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');
@@ -256,13 +244,19 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(schema.conversation)
-        .values({ id: conversation.id, ownerId: user.id });
+    await db
+      .insert(schema.conversation)
+      .values({ id: conversation.id, ownerId: user.id });
 
+    try {
       await submitMessage(conversation, { attachments, content: text });
-    });
+    } catch (error) {
+      await db
+        .delete(schema.conversation)
+        .where(eq(schema.conversation.id, conversation.id));
+
+      throw error;
+    }
 
     return c.json({ id: conversation.id }, 201);
   })
@@ -353,11 +347,7 @@ const conversations = new Hono()
   .patch('/:id', params, rename, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
-    const { title } = c.req.valid('json');
-
-    await conversation.commit(async (tx) => {
-      (await tx.doc(TitleDoc, conversation.id)).title = title;
-    }, BACKGROUND_CONTEXT);
+    await titles.set(conversation.id, c.req.valid('json').title);
 
     return c.body(null, 204);
   })

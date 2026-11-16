@@ -1,5 +1,6 @@
 import type { Message } from '@earendil-works/pi-ai';
 import {
+  type ConversationId,
   GenerationTask,
   defineDoc,
   defineExtension,
@@ -31,94 +32,102 @@ function text(message: Message) {
     .join('');
 }
 
-const GenerateTitle = defineTask<
-  Record<string, never>,
-  { phase: 'generate' },
-  null
->({
-  name: 'lab.title.generate',
-  version: 1,
-  initial: () => ({ phase: 'generate' }),
-  phases: {
-    generate: async (_task, runtime, context) => {
-      const finish = (title: string) =>
-        runtime.commit(async (tx) => {
-          if (title) {
-            (await tx.doc(TitleDoc, runtime.conversationId)).title = title;
-          }
+export type Titles = {
+  get(conversationId: ConversationId): Promise<string | null>;
+  set(conversationId: ConversationId, title: string): Promise<void>;
+};
 
-          return {
-            status: 'terminal',
-            outcome: { status: 'completed', result: null },
-          };
-        }, context);
+export function title(titles: Titles) {
+  const GenerateTitle = defineTask<
+    Record<string, never>,
+    { phase: 'generate' },
+    null
+  >({
+    name: 'lab.title.generate',
+    version: 1,
+    initial: () => ({ phase: 'generate' }),
+    phases: {
+      generate: async (_task, runtime, context) => {
+        const finish = () =>
+          runtime.commit(
+            () => ({
+              status: 'terminal',
+              outcome: { status: 'completed', result: null },
+            }),
+            context
+          );
 
-      const agent = await runtime.agent(context);
+        const agent = await runtime.agent(context);
 
-      if (!agent.model) {
-        return finish('');
-      }
-
-      const model = runtime.models.getModel(
-        agent.model.provider,
-        agent.model.modelId
-      );
-
-      if (!model) {
-        return finish('');
-      }
-
-      const { items } = await runtime.entries(
-        { order: 'ascending' },
-        8,
-        undefined,
-        context
-      );
-
-      const transcript = items
-        .flatMap((entry) => entry.model ?? [])
-        .filter(({ role }) => role === 'user' || role === 'assistant')
-        .map((message) => `${message.role}: ${text(message)}`)
-        .join('\n\n');
-
-      const answer = await runtime.models.completeSimple(
-        model,
-        {
-          systemPrompt: PROMPT,
-          messages: [
-            { role: 'user', content: transcript, timestamp: runtime.now() },
-          ],
-        },
-        { maxTokens: 32, signal: runtime.signal }
-      );
-
-      runtime.signal.throwIfAborted();
-
-      return finish(text(answer).trim().replace(/^"|"$/g, ''));
-    },
-  },
-  abort: async (_task, runtime, context) => {
-    await runtime.commit(
-      () => ({ status: 'terminal', outcome: { status: 'aborted' } }),
-      context
-    );
-  },
-});
-
-export const title = defineExtension({
-  name: 'lab.title',
-  tasks: [GenerateTitle],
-  hooks: [
-    hook(GenerationTask, {
-      afterRun: async (_run, api, context) => {
-        const doc = await api.snapshot(TitleDoc, api.conversationId, context);
-
-        if (doc?.title) {
-          return undefined;
+        if (!agent.model) {
+          return finish();
         }
 
-        return { tasks: [runEndTask(GenerateTitle, {})] };
+        const model = runtime.models.getModel(
+          agent.model.provider,
+          agent.model.modelId
+        );
+
+        if (!model) {
+          return finish();
+        }
+
+        const { items } = await runtime.entries(
+          { order: 'ascending' },
+          8,
+          undefined,
+          context
+        );
+
+        const transcript = items
+          .flatMap((entry) => entry.model ?? [])
+          .filter(({ role }) => role === 'user' || role === 'assistant')
+          .map((message) => `${message.role}: ${text(message)}`)
+          .join('\n\n');
+
+        const answer = await runtime.models.completeSimple(
+          model,
+          {
+            systemPrompt: PROMPT,
+            messages: [
+              { role: 'user', content: transcript, timestamp: runtime.now() },
+            ],
+          },
+          { maxTokens: 32, signal: runtime.signal }
+        );
+
+        runtime.signal.throwIfAborted();
+
+        const generated = text(answer).trim().replace(/^"|"$/g, '');
+
+        if (generated) {
+          await titles.set(runtime.conversationId, generated);
+        }
+
+        return finish();
       },
-    }),
-  ],
-});
+    },
+    abort: async (_task, runtime, context) => {
+      await runtime.commit(
+        () => ({ status: 'terminal', outcome: { status: 'aborted' } }),
+        context
+      );
+    },
+  });
+
+  return defineExtension({
+    name: 'lab.title',
+    tasks: [GenerateTitle],
+    hooks: [
+      hook(GenerationTask, {
+        afterRun: async (_run, api) => {
+          if (await titles.get(api.conversationId)) {
+            return undefined;
+          }
+
+          return { tasks: [runEndTask(GenerateTitle, {})] };
+        },
+      }),
+    ],
+  });
+}
