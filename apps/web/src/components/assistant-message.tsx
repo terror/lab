@@ -2,14 +2,10 @@ import { Markdown } from '@/components/markdown';
 import { cn } from '@/lib/utils';
 import {
   ChevronRight,
-  Globe,
   LoaderCircle,
-  type LucideIcon,
-  Search,
   TriangleAlert,
   Wrench,
 } from 'lucide-react';
-import { z } from 'zod';
 
 type Part =
   | { type: 'text'; text: string }
@@ -33,96 +29,7 @@ export type ToolProgress = {
   status: 'pending' | 'running' | 'done';
 };
 
-const searchDetailsSchema = z.object({
-  results: z.array(z.object({ title: z.string(), url: z.string() })),
-});
-
-const pageDetailsSchema = z.object({ title: z.string(), url: z.string() });
-
-const argumentsSchema = z.object({
-  query: z.string().optional(),
-  url: z.string().optional(),
-});
-
-function hostname(url: string | undefined) {
-  if (!url) {
-    return 'a page';
-  }
-
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-}
-
-function describe(
-  name: string,
-  args: Record<string, unknown>,
-  active: boolean
-): { icon: LucideIcon; label: string } {
-  const { query, url } = argumentsSchema.parse(args);
-
-  if (name === 'web_search') {
-    return {
-      icon: Search,
-      label: `${active ? 'Searching' : 'Searched'} for “${query ?? ''}”`,
-    };
-  }
-
-  if (name === 'fetch_page') {
-    return {
-      icon: Globe,
-      label: `${active ? 'Reading' : 'Read'} ${hostname(url)}`,
-    };
-  }
-
-  return { icon: Wrench, label: active ? `Running ${name}` : `Ran ${name}` };
-}
-
-function Link({ href, children }: { href: string; children: string }) {
-  return (
-    <a
-      className='truncate text-foreground underline-offset-4 hover:underline'
-      href={href}
-      rel='noreferrer'
-      target='_blank'
-    >
-      {children}
-    </a>
-  );
-}
-
-function ToolBody({
-  details,
-  name,
-  output,
-}: {
-  details: unknown;
-  name: string;
-  output: string;
-}) {
-  const search = searchDetailsSchema.safeParse(details);
-
-  if (name === 'web_search' && search.success) {
-    return (
-      <ul className='flex flex-col gap-1'>
-        {search.data.results.map(({ title, url }) => (
-          <li key={url} className='flex min-w-0 flex-col'>
-            <Link href={url}>{title}</Link>
-            <span className='truncate text-xs'>{hostname(url)}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  const page = pageDetailsSchema.safeParse(details);
-
-  if (name === 'fetch_page' && page.success) {
-    return <Link href={page.data.url}>{page.data.title || page.data.url}</Link>;
-  }
-
+function ToolOutput({ output }: { output: string }) {
   if (!output) {
     return null;
   }
@@ -145,7 +52,7 @@ function ToolCall({
 }) {
   const active = result === undefined;
   const failed = result?.isError ?? false;
-  const { icon: Icon, label } = describe(call.name, call.arguments, active);
+  const label = active ? `Running ${call.name}` : `Ran ${call.name}`;
 
   return (
     <details className='group text-sm text-muted-foreground'>
@@ -162,7 +69,7 @@ function ToolCall({
             className='size-4 text-destructive'
           />
         )}
-        {!active && !failed && <Icon aria-hidden='true' className='size-4' />}
+        {!active && !failed && <Wrench aria-hidden='true' className='size-4' />}
         <span className={cn(active && 'motion-safe:animate-pulse')}>
           {label}
         </span>
@@ -172,11 +79,7 @@ function ToolCall({
         />
       </summary>
       <div className='mt-2 ml-2 border-l pl-4'>
-        <ToolBody
-          details={result?.details ?? progress?.details}
-          name={call.name}
-          output={result?.output ?? progress?.output ?? ''}
-        />
+        <ToolOutput output={result?.output ?? progress?.output ?? ''} />
       </div>
     </details>
   );

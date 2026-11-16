@@ -8,5 +8,4 @@ export const harness = await openHarness({
   models,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
-  searchApiKey: env.BRAVE_SEARCH_API_KEY,
 });
