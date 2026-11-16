@@ -26,8 +26,10 @@ export const conversationsQueryOptions = queryOptions({
   },
 });
 
-export async function createConversation() {
-  const { id } = await call(client.conversations.$post());
+export async function createConversation(content: string, model?: string) {
+  const { id } = await call(
+    client.conversations.$post({ json: { content, model } })
+  );
 
   return id;
 }

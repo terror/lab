@@ -1,7 +1,7 @@
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, Square } from 'lucide-react';
-import type { KeyboardEvent, SubmitEvent } from 'react';
+import type { KeyboardEvent, Ref, SubmitEvent } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 export function Composer({
@@ -15,6 +15,7 @@ export function Composer({
   onSubmit,
   running,
   submitting,
+  textareaRef,
 }: {
   disabled?: boolean;
   draft: string;
@@ -26,6 +27,7 @@ export function Composer({
   onSubmit: (content: string) => void;
   running?: boolean;
   submitting?: boolean;
+  textareaRef?: Ref<HTMLTextAreaElement>;
 }) {
   const content = draft.trim();
 
@@ -65,6 +67,7 @@ export function Composer({
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder='Ask Lab anything'
+          ref={textareaRef}
           value={draft}
         />
         <div className='flex items-center justify-end gap-2 px-3 pb-3'>

@@ -1,5 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId, EntryId } from '@earendil-works/pi-durable';
+import type {
+  Conversation,
+  ConversationId,
+  EntryId,
+} from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
@@ -9,7 +13,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
-import { requireUser } from './auth';
+import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
 import { chatModels } from './models';
@@ -20,9 +24,13 @@ const params = validator(
   z.object({ id: z.coerce.number().int().positive() })
 );
 
-const message = validator(
+const content = z.string().trim().min(1);
+
+const message = validator('json', z.object({ content }));
+
+const creation = validator(
   'json',
-  z.object({ content: z.string().trim().min(1) })
+  z.object({ content, model: z.string().min(1).optional() })
 );
 
 const entriesQuery = validator(
@@ -36,6 +44,30 @@ const entriesQuery = validator(
 );
 
 const modelChange = validator('json', z.object({ id: z.string().min(1) }));
+
+function findModel(id: string) {
+  const model = chatModels.find(({ modelId }) => modelId === id);
+
+  if (!model) {
+    throw new HTTPException(400, { message: 'Unknown model' });
+  }
+
+  return { provider: model.provider, modelId: model.modelId };
+}
+
+function submitMessage(conversation: Conversation, user: User, text: string) {
+  return conversation.submit(
+    {
+      type: 'input',
+      content: text,
+      entry: {
+        kind: 'lab.message',
+        data: { author: { id: user.id, name: user.name } },
+      },
+    },
+    BACKGROUND_CONTEXT
+  );
+}
 
 type BunServer = {
   timeout(request: Request, seconds: number): void;
@@ -92,7 +124,12 @@ const conversations = new Hono()
 
     return c.json({ conversations: items });
   })
-  .post('/', async (c) => {
+  .post('/', creation, async (c) => {
+    const user = c.get('user');
+    const { content: text, model } = c.req.valid('json');
+
+    const ref = model === undefined ? undefined : findModel(model);
+
     const conversation = await harness.createConversation(
       { ownership: { kind: 'ownerless' } },
       BACKGROUND_CONTEXT
@@ -100,7 +137,13 @@ const conversations = new Hono()
 
     await db
       .insert(schema.conversation)
-      .values({ id: conversation.id, ownerId: c.get('user').id });
+      .values({ id: conversation.id, ownerId: user.id });
+
+    if (ref) {
+      await conversation.configure({ model: ref }, BACKGROUND_CONTEXT);
+    }
+
+    await submitMessage(conversation, user, text);
 
     return c.json({ id: conversation.id }, 201);
   })
@@ -160,16 +203,10 @@ const conversations = new Hono()
 
     const conversation = await load(c.req.valid('param').id, user.id);
 
-    const submission = await conversation.submit(
-      {
-        type: 'input',
-        content: c.req.valid('json').content,
-        entry: {
-          kind: 'lab.message',
-          data: { author: { id: user.id, name: user.name } },
-        },
-      },
-      BACKGROUND_CONTEXT
+    const submission = await submitMessage(
+      conversation,
+      user,
+      c.req.valid('json').content
     );
 
     return c.json({ id: submission.id }, 202);
@@ -177,16 +214,8 @@ const conversations = new Hono()
   .put('/:id/model', params, modelChange, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user').id);
 
-    const model = chatModels.find(
-      ({ modelId }) => modelId === c.req.valid('json').id
-    );
-
-    if (!model) {
-      throw new HTTPException(400, { message: 'Unknown model' });
-    }
-
     await conversation.configure(
-      { model: { provider: model.provider, modelId: model.modelId } },
+      { model: findModel(c.req.valid('json').id) },
       BACKGROUND_CONTEXT
     );
 
