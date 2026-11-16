@@ -370,6 +370,17 @@ test('queued messages can be cancelled', async () => {
   expect(abort).toHaveBeenCalledWith(body.id, BACKGROUND_CONTEXT, id);
 });
 
+test('conversations can be fetched', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  expect(await call(headers, 'GET', `/conversations/${id}`)).toEqual({
+    body: { id, running: false, title: 'foo' },
+    status: 200,
+  });
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 
@@ -417,6 +428,7 @@ test('conversations are hidden from other users', async () => {
     ).toEqual({ body: { error: 'Conversation not found' }, status: 404 });
   }
 
+  await hidden('GET', '');
   await hidden('GET', '/entries');
   await hidden('GET', '/events');
   await hidden('POST', '/messages', { content: 'bar' });

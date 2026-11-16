@@ -327,6 +327,23 @@ const conversations = new Hono()
 
     return c.json({ id: conversation.id }, 201);
   })
+  .get('/:id', params, async (c) => {
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
+
+    const doc = await harness.snapshot(
+      TitleDoc,
+      conversation.id,
+      BACKGROUND_CONTEXT
+    );
+
+    const busy = await running();
+
+    return c.json({
+      id: conversation.id,
+      running: busy.has(conversation.id),
+      title: doc?.title ?? null,
+    });
+  })
   .get('/:id/entries', params, entriesQuery, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
