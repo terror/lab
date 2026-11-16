@@ -24,16 +24,31 @@ test('provider keys can be added and removed', async () => {
 
   expect(await groq()).toEqual({
     models: false,
-    provider: { configured: false, id: 'groq', name: 'Groq', stored: false },
+    provider: {
+      configured: false,
+      id: 'groq',
+      methods: ['api_key'],
+      name: 'Groq',
+      stored: false,
+    },
   });
 
   expect(
-    await call(headers, 'PUT', '/providers/groq', { apiKey: 'foo-bar-baz' })
+    await call(headers, 'PUT', '/providers/groq', {
+      apiKey: 'foo-bar-baz',
+      method: 'api_key',
+    })
   ).toEqual({ body: null, status: 204 });
 
   expect(await groq()).toEqual({
     models: true,
-    provider: { configured: true, id: 'groq', name: 'Groq', stored: true },
+    provider: {
+      configured: true,
+      id: 'groq',
+      methods: ['api_key'],
+      name: 'Groq',
+      stored: true,
+    },
   });
 
   const [row] = await db
@@ -50,12 +65,21 @@ test('provider keys can be added and removed', async () => {
 
   expect(await groq()).toEqual({
     models: false,
-    provider: { configured: false, id: 'groq', name: 'Groq', stored: false },
+    provider: {
+      configured: false,
+      id: 'groq',
+      methods: ['api_key'],
+      name: 'Groq',
+      stored: false,
+    },
   });
 });
 
 test('unknown providers are rejected', async () => {
   expect(
-    await call(await signIn(), 'PUT', '/providers/foo', { apiKey: 'bar' })
+    await call(await signIn(), 'PUT', '/providers/foo', {
+      apiKey: 'bar',
+      method: 'api_key',
+    })
   ).toEqual({ body: { error: 'Provider not found' }, status: 404 });
 });
