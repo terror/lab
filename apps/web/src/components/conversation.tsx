@@ -5,6 +5,7 @@ import {
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
 import { Button } from '@/components/ui/button';
+import { type Attachment, imageSource } from '@/lib/attachments';
 import {
   abortConversation,
   contentText,
@@ -23,19 +24,31 @@ import type {
   TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
 import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 type Bubble = {
   author?: string;
+  files?: string[];
   id: string;
+  images?: string[];
   text: string;
 };
 
 const userKinds = new Set(['lab.message', 'pi.user']);
 
+const imagePartSchema = z.object({
+  data: z.string(),
+  mimeType: z.string(),
+  type: z.literal('image'),
+});
+
 const messageDataSchema = z.object({
   author: z.object({ id: z.string(), name: z.string() }),
+  files: z
+    .array(z.object({ name: z.string(), type: z.enum(['file', 'image']) }))
+    .optional(),
   text: z.string().optional(),
 });
 
@@ -47,11 +60,50 @@ function UserMessage({ bubble }: { bubble: Bubble }) {
           {bubble.author}
         </span>
       )}
-      <div className='rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
-        {bubble.text}
-      </div>
+      {(bubble.images?.length ?? 0) > 0 && (
+        <div className='flex flex-wrap justify-end gap-2'>
+          {bubble.images?.map((source, index) => (
+            <img
+              key={index}
+              alt=''
+              className='max-h-48 max-w-full rounded-2xl border object-cover'
+              src={source}
+            />
+          ))}
+        </div>
+      )}
+      {(bubble.files?.length ?? 0) > 0 && (
+        <div className='flex flex-wrap justify-end gap-2'>
+          {bubble.files?.map((name, index) => (
+            <span
+              key={index}
+              className='flex items-center gap-2 rounded-xl border px-3 py-2 text-sm'
+            >
+              <FileText aria-hidden='true' className='size-4' />
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+      {bubble.text && (
+        <div className='rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
+          {bubble.text}
+        </div>
+      )}
     </div>
   );
+}
+
+function messageImages(content: unknown) {
+  if (!Array.isArray(content)) {
+    return [];
+  }
+
+  return content.flatMap((part: unknown) => {
+    const image = imagePartSchema.safeParse(part);
+
+    return image.success ? [imageSource(image.data)] : [];
+  });
 }
 
 function toolResults(items: readonly TranscriptItem[]) {
@@ -151,10 +203,19 @@ function TranscriptRow({
     );
   }
 
+  if (!userKinds.has(item.entry.kind)) {
+    return null;
+  }
+
   const data = messageDataSchema.safeParse(item.entry.data).data;
   const text = data?.text ?? contentText(message?.content);
+  const images = messageImages(message?.content);
 
-  if (!userKinds.has(item.entry.kind) || !text) {
+  const files = (data?.files ?? [])
+    .filter(({ type }) => type === 'file')
+    .map(({ name }) => name);
+
+  if (!text && images.length === 0 && files.length === 0) {
     return null;
   }
 
@@ -162,21 +223,27 @@ function TranscriptRow({
     data && data.author.id !== userId ? data.author.name : undefined;
 
   return (
-    <UserMessage bubble={{ author, id: `entry-${item.entry.id}`, text }} />
+    <UserMessage
+      bubble={{ author, files, id: `entry-${item.entry.id}`, images, text }}
+    />
   );
 }
 
 export function Conversation({ id, userId }: { id: number; userId: string }) {
   const { view, loadEarlier, fillGap } = useConversation(id);
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
 
   const queryClient = useQueryClient();
 
   const send = useMutation({
-    mutationFn: (content: string) => sendMessage(id, content),
-    onSuccess: () => setDraft(''),
+    mutationFn: (content: string) => sendMessage(id, content, attachments),
+    onSuccess: () => {
+      setDraft('');
+      setAttachments([]);
+    },
   });
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
@@ -294,6 +361,7 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
       </div>
       <div className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <Composer
+          attachments={attachments}
           disabled={view === undefined}
           draft={draft}
           error={send.error?.message}
@@ -303,6 +371,7 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
               thinkingLevel: agent.thinkingLevel,
             }
           }
+          onAttachmentsChange={setAttachments}
           onDraftChange={setDraft}
           onModelChange={(model) => changeModel.mutate(model)}
           onStop={() => abort.mutate()}
