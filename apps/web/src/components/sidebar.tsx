@@ -7,7 +7,7 @@ import {
 } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Plus } from 'lucide-react';
+import { LogOut, SquarePen } from 'lucide-react';
 
 export function Sidebar({
   selected,
@@ -39,14 +39,15 @@ export function Sidebar({
       <div className='px-1'>
         <LabMark className='size-6' />
       </div>
-      <Button
+      <button
+        className='flex w-full items-center gap-2 rounded-lg bg-sidebar-accent px-3 py-2 text-sm text-sidebar-accent-foreground transition-colors outline-none hover:bg-sidebar-accent/80 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50'
         disabled={create.isPending}
         onClick={() => create.mutate()}
-        variant='outline'
+        type='button'
       >
-        <Plus aria-hidden='true' />
+        <SquarePen aria-hidden='true' className='size-4' />
         New chat
-      </Button>
+      </button>
       <nav
         aria-label='Chats'
         className='flex min-h-0 flex-col gap-1 overflow-y-auto'
