@@ -1,5 +1,6 @@
 import { Conversation } from '@/components/conversation';
 import { ErrorPage } from '@/components/error-page';
+import { Library } from '@/components/library';
 import { NewChat } from '@/components/new-chat';
 import { Settings } from '@/components/settings';
 import { SignIn } from '@/components/sign-in';
@@ -64,6 +65,12 @@ const newChatRoute = createRoute({
   path: '/',
 });
 
+const libraryRoute = createRoute({
+  component: Library,
+  getParentRoute: () => chatRoute,
+  path: '/library',
+});
+
 const conversationRoute = createRoute({
   component: ConversationPage,
   getParentRoute: () => chatRoute,
@@ -89,7 +96,7 @@ const settingsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  chatRoute.addChildren([newChatRoute, conversationRoute]),
+  chatRoute.addChildren([newChatRoute, libraryRoute, conversationRoute]),
   settingsRoute,
 ]);
 

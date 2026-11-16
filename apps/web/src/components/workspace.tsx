@@ -17,7 +17,12 @@ import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
+import {
+  Outlet,
+  useNavigate,
+  useParams,
+  useRouterState,
+} from '@tanstack/react-router';
 import { PanelLeft, Search, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
@@ -41,6 +46,9 @@ function useNavigation() {
   const navigate = useNavigate();
 
   return {
+    openLibrary: () => {
+      void navigate({ to: '/library' });
+    },
     openNewChat: () => {
       void navigate({ to: '/' });
     },
@@ -57,7 +65,7 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openNewChat, selectConversation } = useNavigation();
+  const { openLibrary, openNewChat, selectConversation } = useNavigation();
   const panel = usePanelRef();
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -106,6 +114,7 @@ function DesktopWorkspace({
           <Sidebar
             collapsed={collapsed}
             selected={selected}
+            onLibrary={openLibrary}
             onNewChat={openNewChat}
             onSelect={selectConversation}
             onToggle={toggle}
@@ -128,13 +137,19 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openNewChat, selectConversation } = useNavigation();
+  const { openLibrary, openNewChat, selectConversation } = useNavigation();
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
   const conversation = useConversationSummary(selected);
 
-  const title = conversationTitle(conversation.data?.title);
+  const library = useRouterState({
+    select: ({ location }) => location.pathname === '/library',
+  });
+
+  const title = library
+    ? 'Library'
+    : conversationTitle(conversation.data?.title);
 
   return (
     <div className='flex h-svh flex-col'>
@@ -175,6 +190,10 @@ function MobileWorkspace({
           </SheetDescription>
           <Sidebar
             selected={selected}
+            onLibrary={() => {
+              setOpen(false);
+              openLibrary();
+            }}
             onNewChat={() => {
               setOpen(false);
               openNewChat();
