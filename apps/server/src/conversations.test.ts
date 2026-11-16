@@ -81,6 +81,51 @@ test('messages need text or an attachment', async () => {
   });
 });
 
+test('images need a model that reads them', async () => {
+  const headers = await signIn();
+
+  const image = {
+    data: 'Zm9v',
+    mimeType: 'image/png',
+    name: 'foo',
+    type: 'image',
+  };
+
+  expect(
+    await call(headers, 'POST', '/conversations', {
+      attachments: [image],
+      content: 'foo',
+      model: 'alibaba/qwen3-coder',
+    })
+  ).toEqual({ body: { error: 'This model can’t read images' }, status: 400 });
+
+  const id = await create(headers);
+
+  await call(headers, 'PUT', `/conversations/${id}/model`, {
+    id: 'alibaba/qwen3-coder',
+  });
+
+  expect(
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      attachments: [image],
+      content: 'bar',
+    })
+  ).toEqual({ body: { error: 'This model can’t read images' }, status: 400 });
+
+  await call(headers, 'PUT', `/conversations/${id}/model`, {
+    id: 'anthropic/claude-haiku-5.5',
+  });
+
+  expect(
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      attachments: [image],
+      content: 'bar',
+    })
+  ).toEqual({ body: { id: expect.any(Number) }, status: 202 });
+
+  await idle(id);
+});
+
 test('messages are added to the transcript', async () => {
   const headers = await signIn();
 

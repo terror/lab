@@ -16,7 +16,11 @@ await admin.close();
 
 url.pathname = '/lab_test';
 
-const models = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5'];
+const models = [
+  'anthropic/claude-sonnet-5.5',
+  'anthropic/claude-haiku-5.5',
+  'alibaba/qwen3-coder',
+];
 
 Object.assign(process.env, {
   AI_GATEWAY_API_KEY: 'foo',
