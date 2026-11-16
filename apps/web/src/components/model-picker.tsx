@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown } from 'lucide-react';
+import { Slider as SliderPrimitive } from 'radix-ui';
 import { type KeyboardEvent, useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
@@ -64,25 +65,14 @@ function groupByProvider(models: Model[]) {
   return [...groups];
 }
 
-function Bars({
-  level,
-  model,
-  onChange,
-}: {
-  level: ThinkingLevel;
-  model: Model;
-  onChange?: (level: ThinkingLevel) => void;
-}) {
+function LevelGlyph({ level, model }: { level: ThinkingLevel; model: Model }) {
   const index = levels.indexOf(level);
 
-  const available = efforts.filter((effort) =>
-    model.thinkingLevels.includes(effort)
-  );
-
-  if (!onChange) {
-    return (
-      <span aria-hidden='true' className='flex h-3 items-end gap-px'>
-        {available.map((effort, position) => (
+  return (
+    <span aria-hidden='true' className='flex h-3 items-end gap-px'>
+      {efforts
+        .filter((effort) => model.thinkingLevels.includes(effort))
+        .map((effort, position) => (
           <span
             key={effort}
             className={cn(
@@ -94,33 +84,51 @@ function Bars({
             style={{ height: 4 + position * 1.5 }}
           />
         ))}
-      </span>
-    );
-  }
+    </span>
+  );
+}
+
+function ThinkingSlider({
+  level,
+  model,
+  onChange,
+}: {
+  level: ThinkingLevel;
+  model: Model;
+  onChange: (level: ThinkingLevel) => void;
+}) {
+  const supported = supportedLevels(model);
 
   return (
-    <span className='flex items-end'>
-      {available.map((effort, position) => (
-        <button
-          key={effort}
-          aria-label={`Thinking ${levelLabels[effort]}`}
-          aria-pressed={effort === level}
-          className='group/bar flex h-6 w-3 items-end justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
-          onClick={() => onChange(effort === level ? 'off' : effort)}
-          type='button'
-        >
-          <span
-            className={cn(
-              'w-1 rounded-full transition-colors',
-              levels.indexOf(effort) <= index
-                ? 'bg-foreground'
-                : 'bg-foreground/15 group-hover/bar:bg-foreground/35'
-            )}
-            style={{ height: 6 + position * 3 }}
-          />
-        </button>
-      ))}
-    </span>
+    <div className='mt-1 flex flex-col gap-2.5 border-t px-2 pt-2.5 pb-2'>
+      <div className='flex items-center justify-between text-sm'>
+        <span className='text-muted-foreground'>Thinking</span>
+        <span>{levelLabels[level]}</span>
+      </div>
+      <SliderPrimitive.Root
+        className='relative flex h-4 w-full touch-none items-center select-none'
+        max={supported.length - 1}
+        min={0}
+        onValueChange={([index]) => {
+          const next = supported[index ?? 0];
+
+          if (next) {
+            onChange(next);
+          }
+        }}
+        step={1}
+        value={[supported.indexOf(level)]}
+      >
+        <SliderPrimitive.Track className='relative h-1 grow overflow-hidden rounded-full bg-muted'>
+          <SliderPrimitive.Range className='absolute h-full bg-foreground' />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb
+          aria-label='Thinking'
+          aria-valuetext={levelLabels[level]}
+          className='block size-4 rounded-full bg-white shadow-sm ring-1 ring-foreground/20 transition-shadow outline-none hover:ring-foreground/40 focus-visible:ring-3 focus-visible:ring-ring/50'
+        />
+      </SliderPrimitive.Root>
+    </div>
   );
 }
 
@@ -182,6 +190,10 @@ export function ModelPicker({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
     const steps: Record<string, () => void> = {
       ArrowDown: () => moveFocus(event.currentTarget, 1),
       ArrowLeft: () => stepLevel(-1),
@@ -209,7 +221,7 @@ export function ModelPicker({
           <span className='truncate'>
             {current?.name ?? value?.id ?? 'Model'}
           </span>
-          {thinking && <Bars level={level} model={current} />}
+          {thinking && <LevelGlyph level={level} model={current} />}
           <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
         </button>
       </PopoverTrigger>
@@ -248,13 +260,7 @@ export function ModelPicker({
           </fieldset>
         ))}
         {thinking && (
-          <div className='mt-1 flex h-9 items-center justify-between border-t px-2 pt-1'>
-            <span className='text-sm'>
-              <span className='text-muted-foreground'>Thinking</span>{' '}
-              {levelLabels[level]}
-            </span>
-            <Bars level={level} model={current} onChange={setLevel} />
-          </div>
+          <ThinkingSlider level={level} model={current} onChange={setLevel} />
         )}
       </PopoverContent>
     </Popover>
