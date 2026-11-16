@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { ThemeProvider } from './components/theme-provider';
+import { TooltipProvider } from './components/ui/tooltip';
 import './index.css';
 import { router } from './router';
 
@@ -21,7 +22,9 @@ createRoot(root).render(
       <LazyMotion features={domAnimation} strict>
         <MotionConfig reducedMotion='user'>
           <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} />
+            <TooltipProvider>
+              <RouterProvider router={router} />
+            </TooltipProvider>
           </QueryClientProvider>
         </MotionConfig>
       </LazyMotion>
