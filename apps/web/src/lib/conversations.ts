@@ -110,24 +110,20 @@ async function loadEntries(
   id: number,
   { maxEntryId, minEntryId, order }: Omit<EntryQuery, 'conversationId'>,
   limit: number
-): Promise<Page<EntryRecord, Cursor>> {
-  const url = client.conversations[':id'].entries.$url({
-    param: { id: String(id) },
-    query: {
-      limit: String(limit),
-      maxEntryId: maxEntryId?.toString(),
-      minEntryId: minEntryId?.toString(),
-      order,
-    },
-  });
+) {
+  const page = await call(
+    client.conversations[':id'].entries.$get({
+      param: { id: String(id) },
+      query: {
+        limit: String(limit),
+        maxEntryId: maxEntryId?.toString(),
+        minEntryId: minEntryId?.toString(),
+        order,
+      },
+    })
+  );
 
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Unable to load messages: ${response.statusText}`);
-  }
-
-  return response.json();
+  return page as unknown as Page<EntryRecord, Cursor>;
 }
 
 export function useConversation(id: number) {
