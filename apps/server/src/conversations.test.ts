@@ -5,6 +5,7 @@ import { expect, spyOn, test } from 'bun:test';
 import { signIn } from '../test/auth';
 import { call, create, idle } from '../test/client';
 import { harness } from './harness';
+import { flushProjections } from './projections';
 
 test('conversations require a session', async () => {
   expect(await call(new Headers(), 'GET', '/conversations')).toEqual({
@@ -299,6 +300,8 @@ test('messages can steer the running answer', async () => {
   }
 
   const submit = spyOn(conversation, 'submit');
+
+  await flushProjections();
 
   spyOn(harness, 'conversation').mockResolvedValueOnce(conversation);
 
