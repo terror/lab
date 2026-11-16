@@ -31,6 +31,7 @@ import type {
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, X } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -103,6 +104,27 @@ function useSecondsUntil(at: number) {
   }, []);
 
   return Math.max(0, Math.ceil((at - now) / 1_000));
+}
+
+function Activity({ status }: { status: string | undefined }) {
+  const label = status ?? 'Thinking';
+
+  return (
+    <output className='flex text-sm'>
+      <AnimatePresence initial={false} mode='wait'>
+        <m.span
+          key={label}
+          animate={{ opacity: 1, y: 0 }}
+          className='shimmer'
+          exit={{ opacity: 0, y: -4 }}
+          initial={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.2 }}
+        >
+          {label}
+        </m.span>
+      </AnimatePresence>
+    </output>
+  );
 }
 
 function RetryStatus({ retry }: { retry: { at: number; error: string } }) {
@@ -194,6 +216,7 @@ function itemKey(item: TranscriptItem) {
 
 function TranscriptRow({
   item,
+  latest,
   loading,
   onEarlier,
   onGap,
@@ -201,6 +224,7 @@ function TranscriptRow({
   results,
 }: {
   item: TranscriptItem;
+  latest: boolean;
   loading: boolean;
   onEarlier: () => void;
   onGap: (gap: Gap) => void;
@@ -240,6 +264,7 @@ function TranscriptRow({
   if (message?.role === 'assistant') {
     return (
       <AssistantMessage
+        latest={latest}
         parts={message.content}
         progress={progress}
         results={results}
@@ -272,7 +297,7 @@ function TranscriptRow({
 }
 
 export function Conversation({ id }: { id: number }) {
-  const { view, loadEarlier, fillGap } = useConversation(id);
+  const { view, status: activity, loadEarlier, fillGap } = useConversation(id);
   const [draft, setDraft] = useDraft(id);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const end = useRef<HTMLDivElement>(null);
@@ -319,9 +344,19 @@ export function Conversation({ id }: { id: number }) {
 
   const partial = live?.generation?.message?.content ?? [];
 
+  const answering = partial.some(
+    (part) =>
+      (part.type === 'text' && part.text.length > 0) || part.type === 'toolCall'
+  );
+
   const retry = live?.generation?.retry;
 
   const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
+
+  const latest = view?.items.findLast(
+    (item) =>
+      item.kind === 'entry' && item.entry.model?.[0]?.role === 'assistant'
+  );
 
   const progress = toolProgress(live);
 
@@ -366,6 +401,7 @@ export function Conversation({ id }: { id: number }) {
                 <TranscriptRow
                   key={itemKey(item)}
                   item={item}
+                  latest={item === latest && !running}
                   loading={earlier.isPending || gap.isPending}
                   onEarlier={() => earlier.mutate()}
                   onGap={(value) => gap.mutate(value)}
@@ -373,7 +409,7 @@ export function Conversation({ id }: { id: number }) {
                   results={results}
                 />
               ))}
-              {partial.length > 0 && (
+              {answering && (
                 <AssistantMessage
                   parts={partial}
                   progress={progress}
@@ -384,13 +420,9 @@ export function Conversation({ id }: { id: number }) {
               {retry && <RetryStatus retry={retry} />}
               {running &&
                 !retry &&
-                partial.length === 0 &&
+                !answering &&
                 !toolsRunning &&
-                !finishing && (
-                  <p className='text-sm text-muted-foreground motion-safe:animate-pulse'>
-                    Thinking…
-                  </p>
-                )}
+                !finishing && <Activity status={activity} />}
               {live?.runFailure && (
                 <p
                   role='alert'

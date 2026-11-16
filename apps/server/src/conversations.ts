@@ -1,4 +1,5 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { applyImmutable } from '@earendil-works/chord/delta';
 import {
   AgentDoc,
   type Conversation,
@@ -36,6 +37,7 @@ import {
   sortSchema,
   thinkingLevelSchema,
 } from './schemas';
+import { StatusReporter } from './status';
 import { validator } from './validator';
 
 const params = validator(
@@ -385,19 +387,35 @@ const conversations = new Hono()
     return streamSSE(c, async (stream) => {
       const watch = await conversation.watch(BACKGROUND_CONTEXT);
 
-      stream.onAbort(() => void watch.stop());
+      const aborted = new AbortController();
+
+      stream.onAbort(() => {
+        aborted.abort();
+        void watch.stop();
+      });
 
       await stream.writeSSE({
         event: 'value',
         data: JSON.stringify(watch.value),
       });
 
+      const reporter = new StatusReporter(
+        (status) => stream.writeSSE({ event: 'status', data: status }),
+        aborted.signal
+      );
+
+      let view = watch.value;
+
       watch.start(async (call) => {
         if (call.kind === 'value') {
+          view = applyImmutable(view, call.ops);
+
           await stream.writeSSE({
             event: 'ops',
             data: JSON.stringify(call.ops),
           });
+
+          void reporter.report(view);
         }
       });
 

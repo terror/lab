@@ -5,6 +5,7 @@ import {
   type Cursor,
   type EntryRecord,
   type EntryQuery,
+  type LiveState,
   type Page,
   type TranscriptItem,
   type TranscriptView,
@@ -201,6 +202,7 @@ async function loadEntries(
 
 export function useConversation(id: number) {
   const [view, setView] = useState<TranscriptView>();
+  const [status, setStatus] = useState<string>();
   const transcript = useRef<ConversationTranscript>(undefined);
 
   useEffect(() => {
@@ -225,7 +227,15 @@ export function useConversation(id: number) {
       if (base) {
         base = applyImmutable(base, JSON.parse(event.data) as Op[]);
         setView(current.merge(base));
+
+        if (!(base.docs['pi.live'] as LiveState | undefined)?.run) {
+          setStatus(undefined);
+        }
       }
+    });
+
+    source.addEventListener('status', (event) => {
+      setStatus(event.data);
     });
 
     return () => source.close();
@@ -243,7 +253,7 @@ export function useConversation(id: number) {
     }
   }, []);
 
-  return { view, loadEarlier, fillGap };
+  return { view, status, loadEarlier, fillGap };
 }
 
 type Content = string | readonly { type: string; text?: string }[];
