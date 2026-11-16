@@ -130,12 +130,13 @@ export function useDraft(id: number | 'new') {
 export async function sendMessage(
   id: number,
   content: string,
-  attachments: Attachment[]
+  attachments: Attachment[],
+  steer: boolean
 ) {
   await call(
     client.conversations[':id'].messages.$post({
       param: { id: String(id) },
-      json: { attachments, content },
+      json: { attachments, content, steer },
     })
   );
 }
