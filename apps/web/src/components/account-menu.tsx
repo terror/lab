@@ -7,8 +7,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { authClient } from '@/lib/auth';
-import { openSettings } from '@/lib/route';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-react';
 
 type User = { email: string; image?: string | null; name: string };
@@ -44,6 +44,7 @@ function Identity({ user }: { user: User }) {
 
 export function AccountMenu({ user }: { user: User }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const signOut = useMutation({
     mutationFn: () => authClient.signOut(),
@@ -70,7 +71,7 @@ export function AccountMenu({ user }: { user: User }) {
         className='w-(--radix-dropdown-menu-trigger-width) min-w-56'
         side='top'
       >
-        <DropdownMenuItem onSelect={openSettings}>
+        <DropdownMenuItem onSelect={() => void navigate({ to: '/settings' })}>
           <Settings aria-hidden='true' />
           Settings
         </DropdownMenuItem>
