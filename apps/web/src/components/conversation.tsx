@@ -44,7 +44,7 @@ import type {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
 type Bubble = {
@@ -210,9 +210,9 @@ function toolResults(items: readonly TranscriptItem[]) {
   return results;
 }
 
-function toolProgress(live: LiveState | undefined) {
+function toolProgress(tools: LiveState['tools'] | undefined) {
   return new Map<string, ToolProgress>(
-    (live?.tools ?? []).map(({ callId, details, output, status }) => [
+    (tools ?? []).map(({ callId, details, output, status }) => [
       callId,
       { details, output, status },
     ])
@@ -226,6 +226,7 @@ type Row =
       key: string;
       kind: 'assistant';
       parts: Parameters<typeof AssistantMessage>[0]['parts'];
+      streaming?: boolean;
     }
   | { bubble: Bubble; key: string; kind: 'user' };
 
@@ -273,7 +274,50 @@ function rowsFor(item: TranscriptItem): Row[] {
   return [{ bubble: { files, id: key, images, text }, key, kind: 'user' }];
 }
 
-function TranscriptRow({
+const noParts: Parameters<typeof AssistantMessage>[0]['parts'] = [];
+
+const rowCache = new WeakMap<object, Row[]>();
+
+function cachedRows(item: TranscriptItem) {
+  const source = item.kind === 'entry' ? item.entry : item;
+
+  const cached = rowCache.get(source);
+
+  if (cached) {
+    return cached;
+  }
+
+  const rows = rowsFor(item);
+
+  rowCache.set(source, rows);
+
+  return rows;
+}
+
+function replyKeys(rows: readonly Row[]) {
+  return rows.reduce<{ count: number; keys: string[]; user: string }>(
+    (state, row) => {
+      if (row.kind === 'user') {
+        return { count: 0, keys: [...state.keys, row.key], user: row.key };
+      }
+
+      if (row.kind === 'assistant') {
+        const count = state.count + 1;
+
+        return {
+          count,
+          keys: [...state.keys, `reply-${state.user}-${count}`],
+          user: state.user,
+        };
+      }
+
+      return { ...state, keys: [...state.keys, row.key] };
+    },
+    { count: 0, keys: [], user: 'start' }
+  );
+}
+
+const TranscriptRow = memo(function TranscriptRow({
   latest,
   loading,
   onEarlier,
@@ -314,13 +358,13 @@ function TranscriptRow({
         parts={row.parts}
         progress={progress}
         results={results}
-        streaming={false}
+        streaming={row.streaming ?? false}
       />
     );
   }
 
   return <UserMessage bubble={row.bubble} />;
-}
+});
 
 export function Conversation({ id }: { id: number }) {
   return (
@@ -369,7 +413,7 @@ function ConversationView({ id }: { id: number }) {
   const inbox = view?.docs['pi.inbox'] as InboxState | undefined;
   const agent = view?.docs['pi.agent'] as AgentState | undefined;
 
-  const partial = live?.generation?.message?.content ?? [];
+  const partial = live?.generation?.message?.content ?? noParts;
 
   const answering = visible(partial);
 
@@ -377,16 +421,54 @@ function ConversationView({ id }: { id: number }) {
 
   const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
 
-  const rows = useMemo(
-    () => (view?.items ?? []).flatMap(rowsFor),
+  const committed = useMemo(
+    () => (view?.items ?? []).flatMap(cachedRows),
     [view?.items]
   );
 
-  const latest = rows.findLast(({ kind }) => kind === 'assistant');
+  const keyed = useMemo(() => replyKeys(committed), [committed]);
 
-  const anchor = rows.findLast(({ kind }) => kind === 'user');
+  const rows = useMemo(() => {
+    const base = committed.map((row, index) => ({
+      key: keyed.keys[index] ?? row.key,
+      row,
+    }));
 
-  const progress = toolProgress(live);
+    if (!answering) {
+      return base;
+    }
+
+    const key = `reply-${keyed.user}-${keyed.count + 1}`;
+
+    const row: Row = {
+      key,
+      kind: 'assistant',
+      parts: partial,
+      streaming: true,
+    };
+
+    return [...base, { key, row }];
+  }, [answering, committed, keyed, partial]);
+
+  const loadEarlierMessages = earlier.mutate;
+
+  const fillMessageGap = gap.mutate;
+
+  const onEarlier = useCallback(
+    () => loadEarlierMessages(),
+    [loadEarlierMessages]
+  );
+
+  const onGap = useCallback(
+    (value: Gap) => fillMessageGap(value),
+    [fillMessageGap]
+  );
+
+  const latest = committed.findLast(({ kind }) => kind === 'assistant');
+
+  const anchor = committed.findLast(({ kind }) => kind === 'user');
+
+  const progress = useMemo(() => toolProgress(live?.tools), [live?.tools]);
 
   const toolsRunning = (live?.tools ?? []).some(
     ({ status }) => status !== 'done'
@@ -422,33 +504,23 @@ function ConversationView({ id }: { id: number }) {
             {view === undefined && (
               <p className='text-sm text-muted-foreground'>Connecting…</p>
             )}
-            {rows.map((entry) => (
+            {rows.map(({ key, row }) => (
               <MessageScrollerItem
-                key={entry.key}
-                messageId={entry.key}
-                scrollAnchor={entry === anchor}
+                key={key}
+                messageId={key}
+                scrollAnchor={row === anchor}
               >
                 <TranscriptRow
-                  latest={entry === latest && !running}
+                  latest={row === latest && !running}
                   loading={earlier.isPending || gap.isPending}
-                  onEarlier={() => earlier.mutate()}
-                  onGap={(value) => gap.mutate(value)}
+                  onEarlier={onEarlier}
+                  onGap={onGap}
                   progress={progress}
                   results={results}
-                  row={entry}
+                  row={row}
                 />
               </MessageScrollerItem>
             ))}
-            {answering && (
-              <MessageScrollerItem messageId='streaming'>
-                <AssistantMessage
-                  parts={partial}
-                  progress={progress}
-                  results={results}
-                  streaming
-                />
-              </MessageScrollerItem>
-            )}
             {retry && <RetryStatus retry={retry} />}
             {running && !retry && !answering && !toolsRunning && !finishing && (
               <Activity status={activity} />
