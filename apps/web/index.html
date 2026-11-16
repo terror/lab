@@ -6,6 +6,17 @@
     <meta name="description" content="A personal workspace for your agents." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>lab</title>
+    <script>
+      try {
+        const theme = localStorage.getItem('lab-theme');
+        const dark =
+          theme === 'dark' ||
+          (theme !== 'light' &&
+            matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

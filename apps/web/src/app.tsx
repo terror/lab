@@ -1,17 +1,14 @@
 import { Conversation } from '@/components/conversation';
 import { NewChat } from '@/components/new-chat';
+import { Settings } from '@/components/settings';
 import { Sidebar } from '@/components/sidebar';
 import { SignIn } from '@/components/sign-in';
 import { authClient } from '@/lib/auth';
-import {
-  openNewChat,
-  selectConversation,
-  useSelectedConversation,
-} from '@/lib/route';
+import { openNewChat, selectConversation, useRoute } from '@/lib/route';
 
 export function App() {
   const session = authClient.useSession();
-  const selected = useSelectedConversation();
+  const route = useRoute();
 
   if (session.isPending) {
     return null;
@@ -20,6 +17,12 @@ export function App() {
   if (!session.data) {
     return <SignIn />;
   }
+
+  if (route.kind === 'settings') {
+    return <Settings />;
+  }
+
+  const selected = route.kind === 'conversation' ? route.id : undefined;
 
   return (
     <div className='flex h-svh'>
