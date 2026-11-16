@@ -18,11 +18,3 @@ export const conversation = pgTable(
     ),
   ]
 );
-
-export const invitation = pgTable('invitation', {
-  email: text('email').primaryKey(),
-  invitedById: text('invited_by_id').references(() => user.id, {
-    onDelete: 'set null',
-  }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});

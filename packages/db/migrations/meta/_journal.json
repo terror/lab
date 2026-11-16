@@ -36,6 +36,13 @@
       "when": 1794790648425,
       "tag": "0004_remove_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794790782203,
+      "tag": "0005_remove_invitations",
+      "breakpoints": true
     }
   ]
 }
