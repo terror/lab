@@ -235,6 +235,7 @@ export function Conversation({ id }: { id: number }) {
     onSuccess: () => {
       setDraft('');
       setAttachments([]);
+      void queryClient.invalidateQueries(conversationsQueryOptions);
     },
   });
 

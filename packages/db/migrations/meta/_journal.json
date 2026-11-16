@@ -43,6 +43,13 @@
       "when": 1794790782203,
       "tag": "0005_remove_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794842938859,
+      "tag": "0006_conversation_last_message",
+      "breakpoints": true
     }
   ]
 }

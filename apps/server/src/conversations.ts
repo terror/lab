@@ -7,7 +7,7 @@ import type {
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
@@ -170,7 +170,7 @@ const conversations = new Hono()
       .select({ id: schema.conversation.id })
       .from(schema.conversation)
       .where(eq(schema.conversation.ownerId, user.id))
-      .orderBy(desc(schema.conversation.createdAt))
+      .orderBy(desc(schema.conversation.lastMessageAt))
       .limit(50);
 
     const items = await Promise.all(
@@ -273,6 +273,11 @@ const conversations = new Hono()
     const conversation = await load(c.req.valid('param').id, user);
 
     const submission = await submitMessage(conversation, c.req.valid('json'));
+
+    await db
+      .update(schema.conversation)
+      .set({ lastMessageAt: sql`now()` })
+      .where(eq(schema.conversation.id, conversation.id));
 
     return c.json({ id: submission.id }, 202);
   })

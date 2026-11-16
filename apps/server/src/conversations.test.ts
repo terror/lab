@@ -101,6 +101,27 @@ test('messages are added to the transcript', async () => {
   ).toEqual(['foo', 'bar']);
 });
 
+test('conversations are listed by their latest message', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  await call(headers, 'POST', `/conversations/${first}/messages`, {
+    content: 'bar',
+  });
+
+  expect(await call(headers, 'GET', '/conversations')).toEqual({
+    body: {
+      conversations: [
+        { id: first, title: 'foo' },
+        { id: second, title: 'foo' },
+      ],
+    },
+    status: 200,
+  });
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 

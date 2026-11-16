@@ -10,11 +10,12 @@ export const conversation = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
   },
   (table) => [
-    index('conversation_ownerId_createdAt_idx').on(
+    index('conversation_ownerId_lastMessageAt_idx').on(
       table.ownerId,
-      table.createdAt
+      table.lastMessageAt
     ),
   ]
 );
