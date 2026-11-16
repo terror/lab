@@ -1,5 +1,6 @@
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
+import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
   TooltipContent,
@@ -271,6 +272,7 @@ export function Composer({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    aria-keyshortcuts='Meta+Enter'
                     aria-label='Steer'
                     className='rounded-full'
                     disabled={disabled || submitting === true}
@@ -282,7 +284,10 @@ export function Composer({
                     <CornerDownRight aria-hidden='true' />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Steer the current answer (⌘↵)</TooltipContent>
+                <TooltipContent>
+                  Steer the current answer
+                  <Kbd>⌘↵</Kbd>
+                </TooltipContent>
               </Tooltip>
             )}
             <SubmitButton

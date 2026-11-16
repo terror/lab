@@ -1,15 +1,27 @@
 import { Markdown } from '@/components/markdown';
 import {
+  Message,
+  MessageContent,
+  MessageFooter,
+} from '@/components/ui/message';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Trace,
+  TraceCollapsible,
+  TraceCollapsibleContent,
+  TraceCollapsibleTrigger,
+  TraceIcon,
+  TraceLine,
+  TraceTitle,
+} from '@/components/ui/trace';
 import { cn } from '@/lib/utils';
 import {
   Check,
-  ChevronRight,
   Copy,
-  LoaderCircle,
   Square,
   TriangleAlert,
   Volume2,
@@ -39,18 +51,6 @@ export type ToolProgress = {
   status: 'pending' | 'running' | 'done';
 };
 
-function ToolOutput({ output }: { output: string }) {
-  if (!output) {
-    return null;
-  }
-
-  return (
-    <pre className='max-h-64 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap'>
-      {output}
-    </pre>
-  );
-}
-
 function ToolCall({
   call,
   progress,
@@ -62,36 +62,38 @@ function ToolCall({
 }) {
   const active = result === undefined;
   const failed = result?.isError ?? false;
-  const label = active ? `Running ${call.name}` : `Ran ${call.name}`;
+  const output = result?.output ?? progress?.output ?? '';
+
+  const status = active ? 'running' : undefined;
 
   return (
-    <details className='group text-sm text-muted-foreground'>
-      <summary className='flex w-fit list-none items-center gap-2 rounded-md py-0.5 hover:text-foreground [&::-webkit-details-marker]:hidden'>
-        {active && (
-          <LoaderCircle
-            aria-hidden='true'
-            className='size-4 motion-safe:animate-spin'
-          />
-        )}
-        {!active && failed && (
-          <TriangleAlert
-            aria-hidden='true'
-            className='size-4 text-destructive'
-          />
-        )}
-        {!active && !failed && <Wrench aria-hidden='true' className='size-4' />}
-        <span className={cn(active && 'motion-safe:animate-pulse')}>
-          {label}
-        </span>
-        <ChevronRight
-          aria-hidden='true'
-          className='size-3.5 transition-transform group-open:rotate-90'
-        />
-      </summary>
-      <div className='mt-2 ml-2 border-l pl-4'>
-        <ToolOutput output={result?.output ?? progress?.output ?? ''} />
-      </div>
-    </details>
+    <Trace>
+      <TraceCollapsible>
+        <TraceCollapsibleTrigger>
+          <TraceLine status={failed ? 'error' : status}>
+            <TraceIcon>
+              {failed ? (
+                <TriangleAlert aria-hidden='true' />
+              ) : (
+                <Wrench aria-hidden='true' />
+              )}
+            </TraceIcon>
+            <TraceTitle>
+              {active ? `Running ${call.name}` : `Ran ${call.name}`}
+            </TraceTitle>
+          </TraceLine>
+        </TraceCollapsibleTrigger>
+        <TraceCollapsibleContent>
+          {output ? (
+            <pre className='max-h-64 overflow-auto font-mono text-xs whitespace-pre-wrap'>
+              {output}
+            </pre>
+          ) : (
+            <span className='text-xs'>No output</span>
+          )}
+        </TraceCollapsibleContent>
+      </TraceCollapsible>
+    </Trace>
   );
 }
 
@@ -207,16 +209,16 @@ function SpeakAction({ text }: { text: string }) {
 
 function MessageActions({ latest, text }: { latest: boolean; text: string }) {
   return (
-    <div
+    <MessageFooter
       className={cn(
-        '-mt-1 -ml-2 flex items-center gap-0.5 transition-opacity',
+        'gap-0.5 px-0 transition-opacity',
         !latest &&
           'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100'
       )}
     >
       <CopyAction text={text} />
       {'speechSynthesis' in window && <SpeakAction text={text} />}
-    </div>
+    </MessageFooter>
   );
 }
 
@@ -243,37 +245,39 @@ export function AssistantMessage({
     !parts.some(({ type }) => type === 'toolCall');
 
   return (
-    <div className='group/message flex flex-col gap-3'>
-      {parts.map((part, index) => {
-        if (part.type === 'thinking') {
-          return null;
-        }
+    <Message>
+      <MessageContent className='gap-3 text-base'>
+        {parts.map((part, index) => {
+          if (part.type === 'thinking') {
+            return null;
+          }
 
-        if (part.type === 'toolCall') {
+          if (part.type === 'toolCall') {
+            return (
+              <ToolCall
+                key={part.id}
+                call={part}
+                progress={progress.get(part.id)}
+                result={results.get(part.id)}
+              />
+            );
+          }
+
+          if (!part.text) {
+            return null;
+          }
+
           return (
-            <ToolCall
-              key={part.id}
-              call={part}
-              progress={progress.get(part.id)}
-              result={results.get(part.id)}
-            />
+            <Markdown
+              key={index}
+              streaming={streaming && index === parts.length - 1}
+            >
+              {part.text}
+            </Markdown>
           );
-        }
-
-        if (!part.text) {
-          return null;
-        }
-
-        return (
-          <Markdown
-            key={index}
-            streaming={streaming && index === parts.length - 1}
-          >
-            {part.text}
-          </Markdown>
-        );
-      })}
-      {answer && <MessageActions latest={latest} text={text} />}
-    </div>
+        })}
+        {answer && <MessageActions latest={latest} text={text} />}
+      </MessageContent>
+    </Message>
   );
 }

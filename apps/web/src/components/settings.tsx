@@ -7,6 +7,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { useLineNumbers } from '@/lib/preferences';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
@@ -21,6 +23,7 @@ const themes: { label: string; value: Theme }[] = [
 
 function Appearance() {
   const [theme, setTheme] = useTheme();
+  const [lineNumbers, setLineNumbers] = useLineNumbers();
 
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
@@ -65,6 +68,16 @@ function Appearance() {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+      <div className='flex items-center justify-between gap-4'>
+        <label className='text-sm' htmlFor='line-numbers'>
+          Line numbers in code blocks
+        </label>
+        <Switch
+          checked={lineNumbers}
+          id='line-numbers'
+          onCheckedChange={setLineNumbers}
+        />
       </div>
     </section>
   );

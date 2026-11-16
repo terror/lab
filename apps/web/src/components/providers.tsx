@@ -103,7 +103,7 @@ function ProviderRow({ provider }: { provider: Provider }) {
             <Input
               aria-label={`${provider.name} API key`}
               autoComplete='off'
-              className='border-transparent bg-muted shadow-none'
+              className='border-transparent bg-muted shadow-none focus-visible:border-transparent focus-visible:ring-0'
               onChange={(event) => setKey(event.target.value)}
               placeholder='Paste an API key'
               ref={(element) => element?.focus()}

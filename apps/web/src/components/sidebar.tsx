@@ -10,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
   TooltipContent,
@@ -53,18 +54,21 @@ function RailButton({
   children,
   label,
   onClick,
+  shortcut,
   side = 'bottom',
 }: {
   active?: boolean;
   children: ReactNode;
   label: string;
   onClick: () => void;
+  shortcut?: { keys: string; label: string };
   side?: Side;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
+          aria-keyshortcuts={shortcut?.keys}
           aria-label={label}
           className={cn(
             'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
@@ -76,7 +80,10 @@ function RailButton({
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent side={side}>{label}</TooltipContent>
+      <TooltipContent side={side}>
+        {label}
+        {shortcut && <Kbd>{shortcut.label}</Kbd>}
+      </TooltipContent>
     </Tooltip>
   );
 }
@@ -85,7 +92,12 @@ function SearchButton({ side }: { side?: Side }) {
   const { openSearch } = useSearch();
 
   return (
-    <RailButton label='Search (⌘K)' onClick={openSearch} side={side}>
+    <RailButton
+      label='Search'
+      onClick={openSearch}
+      shortcut={{ keys: 'Meta+K', label: '⌘K' }}
+      side={side}
+    >
       <Search aria-hidden='true' className='size-4' />
     </RailButton>
   );
