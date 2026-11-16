@@ -12,7 +12,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { useUser } from '@/lib/auth';
+import { type User, useUser } from '@/lib/auth';
 import { useConversations } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
@@ -22,13 +22,6 @@ import { PanelLeft, Search, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { z } from 'zod';
-
-type User = {
-  email: string;
-  id: string;
-  image?: string | null;
-  name: string;
-};
 
 const layoutSchema = z.record(z.string(), z.number()).optional();
 

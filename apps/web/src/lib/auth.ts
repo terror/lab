@@ -2,7 +2,9 @@ import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient();
 
-export function useUser() {
+export type User = typeof authClient.$Infer.Session.user;
+
+export function useUser(): User {
   const user = authClient.useSession().data?.user;
 
   if (!user) {
