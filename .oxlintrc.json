@@ -4,7 +4,7 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": ["dist/"],
+  "ignorePatterns": [".claude/skills/", "dist/"],
   "options": {
     "denyWarnings": true,
     "reportUnusedDisableDirectives": "error",
