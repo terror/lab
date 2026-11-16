@@ -9,38 +9,61 @@ test('the running version is reported', async () => {
   });
 });
 
-test('the changelog lists merged pull requests newest first', async () => {
-  spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-    Response.json({
-      commits: [
-        {
-          commit: {
-            author: { date: '2026-11-16T00:00:00Z' },
-            message: 'Add foo (#12)\n\nbar',
+test('the changelog lists user-facing pull requests newest first', async () => {
+  const responses = new Map<string, unknown>([
+    [
+      'compare',
+      {
+        commits: [
+          {
+            commit: {
+              author: { date: '2026-11-16T00:00:00Z' },
+              message: 'Add foo (#12)\n\n* bar',
+            },
+            html_url: 'https://github.com/terror/lab/commit/aaa',
+            sha: 'aaa',
           },
-          html_url: 'https://github.com/terror/lab/commit/aaa',
-          sha: 'aaa',
-        },
+          {
+            commit: { author: null, message: 'Fix baz\n\nQux the baz.' },
+            html_url: 'https://github.com/terror/lab/commit/bbb',
+            sha: 'bbb',
+          },
+          {
+            commit: { author: null, message: 'Refactor qux (#13)' },
+            html_url: 'https://github.com/terror/lab/commit/ccc',
+            sha: 'ccc',
+          },
+        ],
+      },
+    ],
+    [
+      'pulls',
+      [
         {
-          commit: { author: null, message: 'Fix baz' },
-          html_url: 'https://github.com/terror/lab/commit/bbb',
-          sha: 'bbb',
+          body: 'Foo the bar.\n\nhttps://example.com/foo.mp4',
+          labels: [{ name: 'user-facing' }],
+          number: 12,
         },
+        { body: 'Qux the quux.', labels: [], number: 13 },
       ],
-    })
-  );
+    ],
+  ]);
+
+  const github = async (input: string | URL) => {
+    const [, kind = ''] =
+      /repos\/[^/]+\/[^/]+\/(compare|pulls)/.exec(String(input)) ?? [];
+
+    return Response.json(responses.get(kind));
+  };
+
+  spyOn(globalThis, 'fetch').mockImplementation(github as typeof fetch);
 
   expect(await call(new Headers(), 'GET', '/changelog?since=abcdef0')).toEqual({
     body: {
       entries: [
         {
-          date: null,
-          sha: 'bbb',
-          title: 'Fix baz',
-          url: 'https://github.com/terror/lab/commit/bbb',
-        },
-        {
           date: '2026-11-16T00:00:00Z',
+          description: 'Foo the bar.',
           sha: 'aaa',
           title: 'Add foo',
           url: 'https://github.com/terror/lab/pull/12',

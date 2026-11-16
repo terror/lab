@@ -41,29 +41,36 @@ export function Changelog({
       }}
       open
     >
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>What’s new</DialogTitle>
           <DialogDescription>
             Lab was updated since you last used it.
           </DialogDescription>
         </DialogHeader>
-        <ul className='-mx-2 flex max-h-80 flex-col overflow-y-auto'>
-          {entries.map(({ date, sha, title, url }) => (
-            <li key={sha}>
-              <a
-                className='flex items-baseline justify-between gap-4 rounded-lg px-2 py-1.5 text-sm hover:bg-muted/50'
-                href={url}
-                rel='noreferrer'
-                target='_blank'
-              >
-                <span className='min-w-0'>{title}</span>
+        <ul className='flex max-h-96 flex-col gap-5 overflow-y-auto'>
+          {entries.map(({ date, description, sha, title, url }) => (
+            <li key={sha} className='flex flex-col gap-1'>
+              <div className='flex items-baseline justify-between gap-4'>
+                <a
+                  className='text-sm font-medium hover:underline'
+                  href={url}
+                  rel='noreferrer'
+                  target='_blank'
+                >
+                  {title}
+                </a>
                 {date && (
                   <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
                     {day.format(new Date(date))}
                   </span>
                 )}
-              </a>
+              </div>
+              {description && (
+                <p className='text-sm leading-relaxed text-muted-foreground'>
+                  {description}
+                </p>
+              )}
             </li>
           ))}
         </ul>
