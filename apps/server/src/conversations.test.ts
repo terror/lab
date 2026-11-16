@@ -53,9 +53,13 @@ test('conversations are not listed when their first message fails', async () => 
 
   const createConversation = harness.createConversation.bind(harness);
 
+  let created = 0;
+
   spyOn(harness, 'createConversation').mockImplementationOnce(
     async (options, context) => {
       const conversation = await createConversation(options, context);
+
+      created = conversation.id;
 
       spyOn(conversation, 'submit').mockRejectedValueOnce(new Error('foo'));
 
@@ -71,6 +75,13 @@ test('conversations are not listed when their first message fails', async () => 
     body: { conversations: [], next: null },
     status: 200,
   });
+
+  expect(
+    await db
+      .select({ id: schema.conversationDeletion.id })
+      .from(schema.conversationDeletion)
+      .where(eq(schema.conversationDeletion.id, created))
+  ).toEqual([{ id: created }]);
 });
 
 test('messages need text or an attachment', async () => {
