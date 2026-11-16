@@ -1,4 +1,3 @@
-import { Members } from '@/components/members';
 import { type Theme, useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,6 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { WorkspaceSettings } from '@/components/workspace-settings';
 import { accountQueryOptions } from '@/lib/members';
 import { closeSettings } from '@/lib/route';
 import { cn } from '@/lib/utils';
@@ -70,17 +70,17 @@ function Appearance() {
   );
 }
 
-type Tab = 'appearance' | 'members';
+type Tab = 'appearance' | 'workspace';
 
 const tabs: { admin: boolean; icon: LucideIcon; label: string; value: Tab }[] =
   [
     { admin: false, icon: Palette, label: 'Appearance', value: 'appearance' },
-    { admin: true, icon: Users, label: 'Members', value: 'members' },
+    { admin: true, icon: Users, label: 'Workspace', value: 'workspace' },
   ];
 
 function TabContent({ tab, userId }: { tab: Tab; userId: string }) {
-  if (tab === 'members') {
-    return <Members userId={userId} />;
+  if (tab === 'workspace') {
+    return <WorkspaceSettings userId={userId} />;
   }
 
   return <Appearance />;
