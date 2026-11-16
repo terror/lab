@@ -5,6 +5,7 @@ import {
   type Conversation,
   type ConversationId,
   type EntryId,
+  type JsonObject,
   type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
@@ -189,6 +190,18 @@ function requireImageInput(
   }
 }
 
+function entryFile(attachment: Attachment): JsonObject {
+  if (attachment.type === 'file') {
+    return {
+      name: attachment.name,
+      text: attachment.text,
+      type: 'file',
+    };
+  }
+
+  return { name: attachment.name, type: 'image' };
+}
+
 function submitMessage(
   conversation: Conversation,
   draft: { attachments: Attachment[]; content: string },
@@ -202,7 +215,7 @@ function submitMessage(
       entry: {
         kind: 'lab.message',
         data: {
-          files: draft.attachments.map(({ name, type }) => ({ name, type })),
+          files: draft.attachments.map(entryFile),
           text: draft.content,
         },
       },

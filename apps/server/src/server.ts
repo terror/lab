@@ -4,6 +4,7 @@ import app from './app';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
+import { backfillLibrary } from './library';
 import { projectAll } from './projections';
 import { backfillUsage } from './usage';
 
@@ -18,6 +19,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 
 void projectAll().catch(console.error);
 void backfillUsage().catch(console.error);
+void backfillLibrary().catch(console.error);
 
 export default {
   hostname: env.LAB_HOST,

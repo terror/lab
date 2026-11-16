@@ -1,6 +1,7 @@
 import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
+import { LoadMore } from '@/components/load-more';
 import { useSearch } from '@/components/search';
 import {
   DropdownMenu,
@@ -22,18 +23,20 @@ import {
   useConversationSort,
   useConversations,
 } from '@/lib/conversations';
+import { usePath } from '@/lib/location';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import {
   ArrowDownUp,
   ChevronDown,
+  LibraryBig,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   SquarePen,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import { z } from 'zod';
 
 type Side = 'bottom' | 'right';
@@ -181,41 +184,43 @@ function SortMenu() {
   );
 }
 
-function LoadMore({ onLoadMore }: { onLoadMore: () => void }) {
-  const sentinel = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const element = sentinel.current;
-
-    if (!element) {
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        onLoadMore();
-      }
-    });
-
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [onLoadMore]);
-
-  return <div ref={sentinel} className='h-px shrink-0' />;
+function NavButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+        active && 'bg-sidebar-accent text-sidebar-accent-foreground'
+      )}
+      onClick={onClick}
+      type='button'
+    >
+      {children}
+    </button>
+  );
 }
 
 function SidebarRail({
+  onLibrary,
   onNewChat,
   onToggle,
-  selected,
   user,
 }: {
+  onLibrary: () => void;
   onNewChat: () => void;
   onToggle: () => void;
-  selected: number | undefined;
   user: User;
 }) {
+  const path = usePath();
+
   return (
     <aside className='flex h-full w-14 flex-col items-center gap-2 bg-sidebar py-3 text-sidebar-foreground'>
       <RailButton label='Expand sidebar' onClick={onToggle} side='right'>
@@ -223,12 +228,20 @@ function SidebarRail({
       </RailButton>
       <SearchButton side='right' />
       <RailButton
-        active={selected === undefined}
+        active={path === '/'}
         label='New chat'
         onClick={onNewChat}
         side='right'
       >
         <SquarePen aria-hidden='true' className='size-4' />
+      </RailButton>
+      <RailButton
+        active={path === '/library'}
+        label='Library'
+        onClick={onLibrary}
+        side='right'
+      >
+        <LibraryBig aria-hidden='true' className='size-4' />
       </RailButton>
       <div className='mt-auto'>
         <AccountMenu compact user={user} />
@@ -240,6 +253,7 @@ function SidebarRail({
 export function Sidebar({
   collapsed = false,
   selected,
+  onLibrary,
   onNewChat,
   onSelect,
   onToggle,
@@ -247,6 +261,7 @@ export function Sidebar({
 }: {
   collapsed?: boolean;
   selected: number | undefined;
+  onLibrary: () => void;
   onNewChat: () => void;
   onSelect: (id: number) => void;
   onToggle?: () => void;
@@ -274,6 +289,7 @@ export function Sidebar({
         <SidebarContent
           conversations={conversations.data}
           error={conversations.isError}
+          onLibrary={onLibrary}
           onLoadMore={loadMore}
           onNewChat={onNewChat}
           onSelect={onSelect}
@@ -294,9 +310,9 @@ function SidebarContent({
   if (rail && props.onToggle) {
     return (
       <SidebarRail
+        onLibrary={props.onLibrary}
         onNewChat={props.onNewChat}
         onToggle={props.onToggle}
-        selected={props.selected}
         user={props.user}
       />
     );
@@ -308,6 +324,7 @@ function SidebarContent({
 function SidebarPanel({
   conversations,
   error,
+  onLibrary,
   onLoadMore,
   onNewChat,
   onSelect,
@@ -319,6 +336,7 @@ function SidebarPanel({
     | { id: number; running: boolean; title: string | null }[]
     | undefined;
   error: boolean;
+  onLibrary: () => void;
   onLoadMore: (() => void) | undefined;
   onNewChat: () => void;
   onSelect: (id: number) => void;
@@ -327,6 +345,7 @@ function SidebarPanel({
   user: User;
 }) {
   const list = useId();
+  const path = usePath();
 
   const [collapsed, setCollapsed] = usePersistentState(
     'recents-collapsed',
@@ -354,19 +373,16 @@ function SidebarPanel({
           )}
         </div>
       </div>
-      <button
-        aria-current={selected === undefined ? 'page' : undefined}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
-          selected === undefined &&
-            'bg-sidebar-accent text-sidebar-accent-foreground'
-        )}
-        onClick={onNewChat}
-        type='button'
-      >
-        <SquarePen aria-hidden='true' className='size-4' />
-        New chat
-      </button>
+      <div className='flex flex-col gap-0.5'>
+        <NavButton active={path === '/'} onClick={onNewChat}>
+          <SquarePen aria-hidden='true' className='size-4' />
+          New chat
+        </NavButton>
+        <NavButton active={path === '/library'} onClick={onLibrary}>
+          <LibraryBig aria-hidden='true' className='size-4' />
+          Library
+        </NavButton>
+      </div>
       <div className='flex min-h-0 flex-col gap-1'>
         {(error || (conversations?.length ?? 0) > 0) && (
           <div className='flex items-center gap-1 px-2'>

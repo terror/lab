@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
+import { usePath } from '@/lib/location';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,9 @@ function useNavigation() {
   const navigate = useNavigate();
 
   return {
+    openLibrary: () => {
+      void navigate({ to: '/library' });
+    },
     openNewChat: () => {
       void navigate({ to: '/' });
     },
@@ -57,7 +61,7 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openNewChat, selectConversation } = useNavigation();
+  const { openLibrary, openNewChat, selectConversation } = useNavigation();
   const panel = usePanelRef();
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -106,6 +110,7 @@ function DesktopWorkspace({
           <Sidebar
             collapsed={collapsed}
             selected={selected}
+            onLibrary={openLibrary}
             onNewChat={openNewChat}
             onSelect={selectConversation}
             onToggle={toggle}
@@ -128,13 +133,18 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openNewChat, selectConversation } = useNavigation();
+  const { openLibrary, openNewChat, selectConversation } = useNavigation();
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
   const conversation = useConversationSummary(selected);
 
-  const title = conversationTitle(conversation.data?.title);
+  const path = usePath();
+
+  const title =
+    path === '/library'
+      ? 'Library'
+      : conversationTitle(conversation.data?.title);
 
   return (
     <div className='flex h-svh flex-col'>
@@ -175,6 +185,10 @@ function MobileWorkspace({
           </SheetDescription>
           <Sidebar
             selected={selected}
+            onLibrary={() => {
+              setOpen(false);
+              openLibrary();
+            }}
             onNewChat={() => {
               setOpen(false);
               openNewChat();

@@ -1,8 +1,10 @@
 import {
+  customType,
   doublePrecision,
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
 } from 'drizzle-orm/pg-core';
@@ -60,6 +62,39 @@ export const usageEvent = pgTable(
   },
   (table) => [
     index('usage_event_ownerId_createdAt_idx').on(
+      table.ownerId,
+      table.createdAt
+    ),
+  ]
+);
+
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType: () => 'bytea',
+});
+
+export const libraryItem = pgTable(
+  'library_item',
+  {
+    id: integer('id').generatedAlwaysAsIdentity().notNull().unique(),
+    entryId: integer('entry_id').notNull(),
+    position: integer('position').notNull(),
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['file', 'image'] }).notNull(),
+    name: text('name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    preview: text('preview'),
+    content: bytea('content').notNull(),
+    createdAt: timestamp('created_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.entryId, table.position] }),
+    index('library_item_ownerId_createdAt_idx').on(
       table.ownerId,
       table.createdAt
     ),
