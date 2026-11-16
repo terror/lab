@@ -10,6 +10,7 @@ import { authClient } from '@/lib/auth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-react';
+import type { ComponentProps } from 'react';
 
 type User = { email: string; image?: string | null; name: string };
 
@@ -42,7 +43,48 @@ function Identity({ user }: { user: User }) {
   );
 }
 
-export function AccountMenu({ user }: { user: User }) {
+function AccountTrigger({
+  compact,
+  user,
+  ...props
+}: ComponentProps<'button'> & { compact: boolean; user: User }) {
+  if (compact) {
+    return (
+      <button
+        aria-label='Account'
+        className='rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+        title={user.name}
+        type='button'
+        {...props}
+      >
+        <UserAvatar className='size-8' user={user} />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className='flex w-full items-center gap-3 rounded-lg p-2 outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent'
+      type='button'
+      {...props}
+    >
+      <UserAvatar className='size-8' user={user} />
+      <Identity user={user} />
+      <ChevronsUpDown
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground'
+      />
+    </button>
+  );
+}
+
+export function AccountMenu({
+  compact = false,
+  user,
+}: {
+  compact?: boolean;
+  user: User;
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -54,22 +96,12 @@ export function AccountMenu({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          className='flex w-full items-center gap-3 rounded-lg p-2 outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-sidebar-accent'
-          type='button'
-        >
-          <UserAvatar className='size-8' user={user} />
-          <Identity user={user} />
-          <ChevronsUpDown
-            aria-hidden='true'
-            className='size-4 shrink-0 text-muted-foreground'
-          />
-        </button>
+        <AccountTrigger compact={compact} user={user} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align='start'
+        align={compact ? 'end' : 'start'}
         className='w-(--radix-dropdown-menu-trigger-width) min-w-56'
-        side='top'
+        side={compact ? 'right' : 'top'}
       >
         <DropdownMenuItem onSelect={() => void navigate({ to: '/settings' })}>
           <Settings aria-hidden='true' />

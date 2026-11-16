@@ -4,25 +4,157 @@ import { LabMark } from '@/components/lab-mark';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { SquarePen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, SquarePen } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
+import type { ReactNode } from 'react';
+
+type User = { email: string; id: string; image?: string | null; name: string };
+
+function RailButton({
+  active = false,
+  children,
+  label,
+  onClick,
+}: {
+  active?: boolean;
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={label}
+      className={cn(
+        'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+        active && 'bg-sidebar-accent text-sidebar-accent-foreground'
+      )}
+      onClick={onClick}
+      title={label}
+      type='button'
+    >
+      {children}
+    </button>
+  );
+}
+
+function SidebarRail({
+  onNewChat,
+  onToggle,
+  selected,
+  user,
+}: {
+  onNewChat: () => void;
+  onToggle: () => void;
+  selected: number | undefined;
+  user: User;
+}) {
+  return (
+    <aside className='flex h-full w-14 flex-col items-center gap-2 bg-sidebar py-3 text-sidebar-foreground'>
+      <RailButton label='Expand sidebar' onClick={onToggle}>
+        <PanelLeftOpen aria-hidden='true' className='size-4' />
+      </RailButton>
+      <RailButton
+        active={selected === undefined}
+        label='New chat'
+        onClick={onNewChat}
+      >
+        <SquarePen aria-hidden='true' className='size-4' />
+      </RailButton>
+      <div className='mt-auto'>
+        <AccountMenu compact user={user} />
+      </div>
+    </aside>
+  );
+}
 
 export function Sidebar({
+  collapsed = false,
   selected,
   onNewChat,
   onSelect,
+  onToggle,
   user,
 }: {
+  collapsed?: boolean;
   selected: number | undefined;
   onNewChat: () => void;
   onSelect: (id: number) => void;
-  user: { email: string; id: string; image?: string | null; name: string };
+  onToggle?: () => void;
+  user: User;
 }) {
   const conversations = useQuery(conversationsQueryOptions);
 
+  const rail = collapsed && onToggle !== undefined;
+
   return (
-    <aside className='flex h-full flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
-      <div className='px-1'>
+    <AnimatePresence initial={false} mode='wait'>
+      <m.div
+        key={rail ? 'rail' : 'full'}
+        animate={{ opacity: 1 }}
+        className='h-full bg-sidebar'
+        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+      >
+        <SidebarContent
+          conversations={conversations.data}
+          error={conversations.isError}
+          onNewChat={onNewChat}
+          onSelect={onSelect}
+          onToggle={onToggle}
+          rail={rail}
+          selected={selected}
+          user={user}
+        />
+      </m.div>
+    </AnimatePresence>
+  );
+}
+
+function SidebarContent({
+  rail,
+  ...props
+}: Parameters<typeof SidebarPanel>[0] & { rail: boolean }) {
+  if (rail && props.onToggle) {
+    return (
+      <SidebarRail
+        onNewChat={props.onNewChat}
+        onToggle={props.onToggle}
+        selected={props.selected}
+        user={props.user}
+      />
+    );
+  }
+
+  return <SidebarPanel {...props} />;
+}
+
+function SidebarPanel({
+  conversations,
+  error,
+  onNewChat,
+  onSelect,
+  onToggle,
+  selected,
+  user,
+}: {
+  conversations: { id: number; title: string | null }[] | undefined;
+  error: boolean;
+  onNewChat: () => void;
+  onSelect: (id: number) => void;
+  onToggle: (() => void) | undefined;
+  selected: number | undefined;
+  user: User;
+}) {
+  return (
+    <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
+      <div className='flex items-center justify-between px-1'>
         <LabMark className='size-6' />
+        {onToggle && (
+          <RailButton label='Collapse sidebar' onClick={onToggle}>
+            <PanelLeftClose aria-hidden='true' className='size-4' />
+          </RailButton>
+        )}
       </div>
       <button
         aria-current={selected === undefined ? 'page' : undefined}
@@ -41,12 +173,12 @@ export function Sidebar({
         aria-label='Chats'
         className='flex min-h-0 flex-col gap-1 overflow-y-auto'
       >
-        {conversations.isError && (
+        {error && (
           <p role='alert' className='px-2 text-sm text-destructive'>
             Unable to load chats.
           </p>
         )}
-        {conversations.data?.map((conversation) => (
+        {conversations?.map((conversation) => (
           <ConversationItem
             key={conversation.id}
             conversation={conversation}

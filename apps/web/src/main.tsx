@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
+import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -17,9 +18,13 @@ if (!root) {
 createRoot(root).render(
   <StrictMode>
     <ThemeProvider defaultTheme='system' storageKey='vite-ui-theme'>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      <LazyMotion features={domAnimation} strict>
+        <MotionConfig reducedMotion='user'>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </MotionConfig>
+      </LazyMotion>
     </ThemeProvider>
   </StrictMode>
 );
