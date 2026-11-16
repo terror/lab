@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from 'bun:test';
 
+import { signIn } from '../test/auth';
 import { call } from '../test/client';
 
 test('the running version is reported', async () => {
@@ -58,19 +59,44 @@ test('the changelog lists user-facing pull requests newest first', async () => {
 
   spyOn(globalThis, 'fetch').mockImplementation(github as typeof fetch);
 
-  expect(await call(new Headers(), 'GET', '/changelog?since=abcdef0')).toEqual({
-    body: {
-      entries: [
-        {
-          date: '2026-11-16T00:00:00Z',
-          description: 'Foo the bar.',
-          sha: 'aaa',
-          title: 'Add foo',
-          url: 'https://github.com/terror/lab/pull/12',
-        },
-      ],
-      version: 'development',
-    },
-    status: 200,
-  });
+  expect(await call(await signIn(), 'GET', '/changelog?since=abcdef0')).toEqual(
+    {
+      body: {
+        entries: [
+          {
+            date: '2026-11-16T00:00:00Z',
+            description: 'Foo the bar.',
+            sha: 'aaa',
+            title: 'Add foo',
+            url: 'https://github.com/terror/lab/pull/12',
+          },
+        ],
+        version: 'development',
+      },
+      status: 200,
+    }
+  );
+});
+
+test('a failed changelog is reported and not cached', async () => {
+  const fetch = spyOn(globalThis, 'fetch').mockImplementation(
+    (async () =>
+      new Response(null, { status: 500 })) as unknown as typeof globalThis.fetch
+  );
+
+  const headers = await signIn();
+
+  const failed = await call(headers, 'GET', '/changelog?since=fedcba9');
+
+  fetch.mockImplementation((async () =>
+    Response.json({ commits: [] })) as unknown as typeof globalThis.fetch);
+
+  const recovered = await call(headers, 'GET', '/changelog?since=fedcba9');
+
+  fetch.mockRestore();
+
+  expect([failed, recovered]).toEqual([
+    { body: { error: 'Unable to load the changelog' }, status: 502 },
+    { body: { entries: [], version: 'development' }, status: 200 },
+  ]);
 });
