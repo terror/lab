@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { type Attachment, imageSource } from '@/lib/attachments';
 import {
   abortConversation,
+  cancelSubmission,
   contentText,
   conversationsQueryKey,
   sendMessage,
@@ -29,7 +30,7 @@ import type {
   TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -88,6 +89,29 @@ function UserMessage({ bubble }: { bubble: Bubble }) {
           {bubble.text}
         </div>
       )}
+    </div>
+  );
+}
+
+function QueuedMessage({
+  bubble,
+  onCancel,
+}: {
+  bubble: Bubble;
+  onCancel: () => void;
+}) {
+  return (
+    <div className='flex items-start justify-end gap-1'>
+      <Button
+        aria-label='Cancel queued message'
+        className='mt-1 text-muted-foreground'
+        onClick={onCancel}
+        size='icon-xs'
+        variant='ghost'
+      >
+        <X aria-hidden='true' />
+      </Button>
+      <UserMessage bubble={bubble} />
     </div>
   );
 }
@@ -244,6 +268,10 @@ export function Conversation({ id }: { id: number }) {
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
+  const cancel = useMutation({
+    mutationFn: (submission: number) => cancelSubmission(id, submission),
+  });
+
   const [, setPreferredModel] = usePreferredModel();
 
   const changeModel = useMutation({
@@ -274,12 +302,14 @@ export function Conversation({ id }: { id: number }) {
     ({ status }) => status !== 'done'
   );
 
-  const queued = (inbox?.items ?? []).flatMap((item): Bubble[] => {
+  const queued = (inbox?.items ?? []).flatMap((item) => {
     if (item.mode === 'write') {
       return [];
     }
 
-    return [{ id: `queued-${item.id}`, text: contentText(item.content) }];
+    const bubble = { id: `queued-${item.id}`, text: contentText(item.content) };
+
+    return [{ bubble, submission: Number(item.id) }];
   });
 
   const running = live?.run !== undefined;
@@ -347,8 +377,12 @@ export function Conversation({ id }: { id: number }) {
               )}
               {queued.length > 0 && (
                 <div className='flex flex-col gap-2 opacity-60'>
-                  {queued.map((bubble) => (
-                    <UserMessage key={bubble.id} bubble={bubble} />
+                  {queued.map(({ bubble, submission }) => (
+                    <QueuedMessage
+                      key={bubble.id}
+                      bubble={bubble}
+                      onCancel={() => cancel.mutate(submission)}
+                    />
                   ))}
                 </div>
               )}

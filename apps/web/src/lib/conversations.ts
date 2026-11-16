@@ -147,6 +147,14 @@ export async function abortConversation(id: number) {
   );
 }
 
+export async function cancelSubmission(id: number, submission: number) {
+  await call(
+    client.conversations[':id'].submissions[':submissionId'].$delete({
+      param: { id: String(id), submissionId: String(submission) },
+    })
+  );
+}
+
 export type Gap = Extract<TranscriptItem, { kind: 'gap' }>;
 
 async function loadEntries(

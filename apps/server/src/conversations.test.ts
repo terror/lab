@@ -318,6 +318,41 @@ test('messages can steer the running answer', async () => {
   );
 });
 
+test('queued messages can be cancelled', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const { body } = await call(
+    headers,
+    'POST',
+    `/conversations/${id}/messages`,
+    {
+      content: 'bar',
+    }
+  );
+
+  await idle(id);
+
+  expect(
+    await call(headers, 'DELETE', `/conversations/${id}/submissions/${body.id}`)
+  ).toEqual({ body: { error: 'Message was already sent' }, status: 409 });
+
+  expect(
+    await call(headers, 'DELETE', `/conversations/${id}/submissions/999999`)
+  ).toEqual({ body: { error: 'Message not found' }, status: 404 });
+
+  const abort = spyOn(harness, 'abortSubmission').mockResolvedValueOnce(
+    'aborted'
+  );
+
+  expect(
+    await call(headers, 'DELETE', `/conversations/${id}/submissions/${body.id}`)
+  ).toEqual({ body: null, status: 204 });
+
+  expect(abort).toHaveBeenCalledWith(body.id, BACKGROUND_CONTEXT, id);
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 
@@ -370,6 +405,7 @@ test('conversations are hidden from other users', async () => {
   await hidden('POST', '/messages', { content: 'bar' });
   await hidden('PUT', '/model', { id: 'anthropic/claude-haiku-5.5' });
   await hidden('POST', '/abort');
+  await hidden('DELETE', '/submissions/1');
   await hidden('PATCH', '', { title: 'bar' });
   await hidden('DELETE', '');
 });
