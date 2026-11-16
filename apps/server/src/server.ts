@@ -15,7 +15,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   });
 }
 
-await projectAll();
+void projectAll().catch(console.error);
 
 export default {
   hostname: env.LAB_HOST,
