@@ -14,7 +14,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import {
   conversationsQueryOptions,
   deleteConversation,
@@ -65,9 +64,9 @@ function RenameInput({
   };
 
   return (
-    <Input
+    <input
       aria-label='Chat title'
-      className='h-8'
+      className='w-full rounded-lg bg-sidebar-accent px-2 py-1.5 text-sm text-sidebar-accent-foreground outline-none'
       onBlur={commit}
       onChange={(event) => setValue(event.target.value)}
       onKeyDown={onKeyDown}
