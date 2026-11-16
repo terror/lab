@@ -5,7 +5,11 @@ import {
   conversationsQueryOptions,
   createConversation,
 } from '@/lib/conversations';
-import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import {
+  type ModelChoice,
+  modelsQueryOptions,
+  usePreferredModel,
+} from '@/lib/models';
 import { selectConversation } from '@/lib/route';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -29,18 +33,28 @@ function greeting(name: string) {
   return `Good evening, ${first}`;
 }
 
+function preferredOrFirst(
+  models: { id: string }[],
+  preferred: ModelChoice | undefined
+) {
+  if (preferred && models.some(({ id }) => id === preferred.id)) {
+    return preferred;
+  }
+
+  const [first] = models;
+
+  return first && { id: first.id };
+}
+
 export function NewChat({ user }: { user: { name: string } }) {
   const queryClient = useQueryClient();
   const models = useQuery(modelsQueryOptions);
 
   const [draft, setDraft] = useState('');
-  const [model, setModel] = useState<ModelChoice>();
+  const [model, setModel] = usePreferredModel();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
-  const fallback = models.data?.[0];
-
-  const selectedModel =
-    model ?? (fallback === undefined ? undefined : { id: fallback.id });
+  const selectedModel = preferredOrFirst(models.data ?? [], model);
 
   const create = useMutation({
     mutationFn: (content: string) =>
