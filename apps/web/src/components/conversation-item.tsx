@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  conversationsQueryOptions,
+  conversationsQueryKey,
   deleteConversation,
   renameConversation,
 } from '@/lib/conversations';
@@ -125,7 +125,7 @@ export function ConversationItem({
   const title = conversation.title ?? 'New chat';
 
   const refresh = () =>
-    queryClient.invalidateQueries(conversationsQueryOptions);
+    queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
 
   const rename = useMutation({
     mutationFn: (value: string) => renameConversation(conversation.id, value),

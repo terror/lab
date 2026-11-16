@@ -1,6 +1,5 @@
 import { CommandGroup, CommandItem } from '@/components/ui/command';
-import { conversationsQueryOptions } from '@/lib/conversations';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useConversations } from '@/lib/conversations';
 import { useNavigate } from '@tanstack/react-router';
 import { MessageSquare, Settings, SquarePen } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -36,7 +35,7 @@ function Actions({ onDone }: SourceProps) {
 
 function Chats({ onDone }: SourceProps) {
   const navigate = useNavigate();
-  const conversations = useInfiniteQuery(conversationsQueryOptions);
+  const conversations = useConversations();
 
   if (!conversations.data?.length) {
     return null;

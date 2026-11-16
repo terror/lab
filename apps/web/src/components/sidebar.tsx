@@ -3,20 +3,42 @@ import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
 import { useSearch } from '@/components/search';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { conversationsQueryOptions } from '@/lib/conversations';
+import {
+  type ConversationSort,
+  useConversationSort,
+  useConversations,
+} from '@/lib/conversations';
 import { cn } from '@/lib/utils';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { PanelLeftClose, PanelLeftOpen, Search, SquarePen } from 'lucide-react';
+import {
+  ArrowDownUp,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  SquarePen,
+} from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type ReactNode, useEffect, useRef } from 'react';
 
 type User = { email: string; id: string; image?: string | null; name: string };
 
 type Side = 'bottom' | 'right';
+
+const sorts: { label: string; value: ConversationSort }[] = [
+  { label: 'Recent activity', value: 'activity' },
+  { label: 'Date created', value: 'created' },
+];
 
 function RailButton({
   active = false,
@@ -58,6 +80,48 @@ function SearchButton({ side }: { side?: Side }) {
     <RailButton label='Search (⌘K)' onClick={openSearch} side={side}>
       <Search aria-hidden='true' className='size-4' />
     </RailButton>
+  );
+}
+
+function SortMenu() {
+  const [sort, setSort] = useConversationSort();
+
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label='Sort chats'
+              className='ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50'
+              type='button'
+            >
+              <ArrowDownUp aria-hidden='true' className='size-3.5' />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Sort chats</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align='end' className='w-auto min-w-44'>
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          onValueChange={(value) => {
+            const choice = sorts.find((candidate) => candidate.value === value);
+
+            if (choice) {
+              setSort(choice.value);
+            }
+          }}
+          value={sort}
+        >
+          {sorts.map(({ label, value }) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -132,7 +196,7 @@ export function Sidebar({
   onToggle?: () => void;
   user: User;
 }) {
-  const conversations = useInfiniteQuery(conversationsQueryOptions);
+  const conversations = useConversations();
 
   const rail = collapsed && onToggle !== undefined;
 
@@ -239,9 +303,12 @@ function SidebarPanel({
       </button>
       <div className='flex min-h-0 flex-col gap-1'>
         {(error || (conversations?.length ?? 0) > 0) && (
-          <h2 className='px-2 text-xs font-medium text-muted-foreground'>
-            Recents
-          </h2>
+          <div className='flex items-center gap-1 px-2'>
+            <h2 className='text-xs font-medium text-muted-foreground'>
+              Recents
+            </h2>
+            <SortMenu />
+          </div>
         )}
         <nav
           aria-label='Chats'

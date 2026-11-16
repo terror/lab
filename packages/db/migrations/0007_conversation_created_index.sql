@@ -1,0 +1,1 @@
+CREATE INDEX "conversation_ownerId_createdAt_idx" ON "conversation" USING btree ("owner_id","created_at");

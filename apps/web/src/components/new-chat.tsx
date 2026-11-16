@@ -1,10 +1,7 @@
 import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
 import type { Attachment } from '@/lib/attachments';
-import {
-  conversationsQueryOptions,
-  createConversation,
-} from '@/lib/conversations';
+import { conversationsQueryKey, createConversation } from '@/lib/conversations';
 import {
   type ModelChoice,
   modelsQueryOptions,
@@ -62,7 +59,7 @@ export function NewChat({ user }: { user: { name: string } }) {
       createConversation(content, attachments, selectedModel),
     onSuccess: async (id) => {
       await navigate({ params: { id }, to: '/c/$id' });
-      await queryClient.invalidateQueries(conversationsQueryOptions);
+      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
   });
 
