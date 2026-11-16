@@ -129,9 +129,12 @@
 
 [data-streamdown='inline-code'] {
   border-radius: 0.3em;
-  background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
+  background-color: color-mix(in oklab, var(--foreground) 5%, transparent);
   padding: 0.1em 0.3em;
-  font-size: 0.875em;
+  font-size: 0.9em;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+  box-decoration-break: clone;
 }
 
 @layer base {
