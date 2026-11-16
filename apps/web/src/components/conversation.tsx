@@ -35,11 +35,12 @@ import {
 } from '@/lib/models';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
-import type {
-  AgentState,
-  InboxState,
-  LiveState,
-  TranscriptItem,
+import {
+  CompactionEntry,
+  type AgentState,
+  type InboxState,
+  type LiveState,
+  type TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, X } from 'lucide-react';
@@ -228,7 +229,8 @@ type Row =
       parts: Parameters<typeof AssistantMessage>[0]['parts'];
       streaming?: boolean;
     }
-  | { bubble: Bubble; key: string; kind: 'user' };
+  | { bubble: Bubble; key: string; kind: 'user' }
+  | { key: string; kind: 'compaction' };
 
 function visible(parts: Extract<Row, { kind: 'assistant' }>['parts']) {
   return parts.some(
@@ -253,6 +255,10 @@ function rowsFor(item: TranscriptItem): Row[] {
     return visible(message.content)
       ? [{ key, kind: 'assistant', parts: message.content }]
       : [];
+  }
+
+  if (item.entry.kind === CompactionEntry.kind) {
+    return [{ key, kind: 'compaction' }];
   }
 
   if (!userKinds.has(item.entry.kind)) {
@@ -334,6 +340,16 @@ const TranscriptRow = memo(function TranscriptRow({
   results: ReadonlyMap<string, ToolResult>;
   row: Row;
 }) {
+  if (row.kind === 'compaction') {
+    return (
+      <div className='flex items-center gap-3 text-xs text-muted-foreground'>
+        <span className='h-px flex-1 bg-border' />
+        Earlier messages summarized
+        <span className='h-px flex-1 bg-border' />
+      </div>
+    );
+  }
+
   if (row.kind === 'earlier' || row.kind === 'gap') {
     return (
       <div className='flex justify-center'>
@@ -537,6 +553,9 @@ function ConversationView({ id }: { id: number }) {
             {retry && <RetryStatus retry={retry} />}
             {running && !retry && !answering && !toolsRunning && !finishing && (
               <Activity status={activity} />
+            )}
+            {!running && (live?.compactions?.length ?? 0) > 0 && (
+              <Activity status='Summarizing earlier messages' />
             )}
             {live?.runFailure && (
               <p

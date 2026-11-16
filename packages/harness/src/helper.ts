@@ -1,9 +1,11 @@
 import type { AssistantMessage, Models } from '@earendil-works/pi-ai';
 import type { ConversationId, ModelRef } from '@earendil-works/pi-durable';
 
+export type HelperKind = 'compaction' | 'status' | 'title';
+
 export type HelperUsage = (
   conversationId: ConversationId,
-  kind: 'status' | 'title',
+  kind: HelperKind,
   message: AssistantMessage
 ) => void;
 
