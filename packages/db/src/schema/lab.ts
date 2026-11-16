@@ -21,6 +21,8 @@ export const conversation = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
     title: text('title'),
+    pinnedAt: timestamp('pinned_at'),
+    archivedAt: timestamp('archived_at'),
   },
   (table) => [
     index('conversation_ownerId_createdAt_idx').on(

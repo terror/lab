@@ -14,6 +14,7 @@ import {
 import { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
+  queryOptions,
   keepPreviousData,
   skipToken,
   useInfiniteQuery,
@@ -45,7 +46,7 @@ function conversationsQueryOptions(sort: ConversationSort) {
     queryFn: ({ pageParam, signal }) =>
       call(
         client.conversations.$get(
-          { query: { cursor: pageParam?.toString(), sort } },
+          { query: { cursor: pageParam?.toString(), filter: 'recent', sort } },
           { init: { signal } }
         )
       ),
@@ -123,13 +124,39 @@ export async function createConversation(
   return id;
 }
 
-export async function renameConversation(id: number, title: string) {
+export async function updateConversation(
+  id: number,
+  json: { archived?: boolean; pinned?: boolean; title?: string }
+) {
   await call(
-    client.conversations[':id'].$patch({
-      param: { id: String(id) },
-      json: { title },
-    })
+    client.conversations[':id'].$patch({ param: { id: String(id) }, json })
   );
+}
+
+function listQueryOptions(filter: 'archived' | 'pinned') {
+  return queryOptions({
+    queryKey: [...conversationsQueryKey, filter],
+    queryFn: async ({ signal }) => {
+      const { conversations } = await call(
+        client.conversations.$get(
+          { query: { filter, limit: '100' } },
+          { init: { signal } }
+        )
+      );
+
+      return conversations;
+    },
+    refetchInterval: ({ state }) =>
+      state.data?.some(({ running }) => running) ? 2_000 : false,
+  });
+}
+
+export function usePinnedConversations() {
+  return useQuery(listQueryOptions('pinned'));
+}
+
+export function useArchivedConversations() {
+  return useQuery(listQueryOptions('archived'));
 }
 
 export async function deleteConversation(id: number) {

@@ -23,7 +23,10 @@ test('created conversations are listed with their generated title', async () => 
   const id = await create(headers);
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, running: false, title: 'foo' }], next: null },
+    body: {
+      conversations: [{ id, pinned: false, running: false, title: 'foo' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -168,8 +171,8 @@ test('conversations are listed by their latest message', async () => {
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
       conversations: [
-        { id: first, running: false, title: 'foo' },
-        { id: second, running: false, title: 'foo' },
+        { id: first, pinned: false, running: false, title: 'foo' },
+        { id: second, pinned: false, running: false, title: 'foo' },
       ],
       next: null,
     },
@@ -185,7 +188,9 @@ test('conversations are listed in pages', async () => {
 
   expect(await call(headers, 'GET', '/conversations?limit=1')).toEqual({
     body: {
-      conversations: [{ id: second, running: false, title: 'foo' }],
+      conversations: [
+        { id: second, pinned: false, running: false, title: 'foo' },
+      ],
       next: second,
     },
     status: 200,
@@ -195,7 +200,9 @@ test('conversations are listed in pages', async () => {
     await call(headers, 'GET', `/conversations?limit=1&cursor=${second}`)
   ).toEqual({
     body: {
-      conversations: [{ id: first, running: false, title: 'foo' }],
+      conversations: [
+        { id: first, pinned: false, running: false, title: 'foo' },
+      ],
       next: null,
     },
     status: 200,
@@ -216,7 +223,9 @@ test('conversations can be listed by creation', async () => {
     await call(headers, 'GET', '/conversations?sort=created&limit=1')
   ).toEqual({
     body: {
-      conversations: [{ id: second, running: false, title: 'foo' }],
+      conversations: [
+        { id: second, pinned: false, running: false, title: 'foo' },
+      ],
       next: second,
     },
     status: 200,
@@ -230,7 +239,9 @@ test('conversations can be listed by creation', async () => {
     )
   ).toEqual({
     body: {
-      conversations: [{ id: first, running: false, title: 'foo' }],
+      conversations: [
+        { id: first, pinned: false, running: false, title: 'foo' },
+      ],
       next: null,
     },
     status: 200,
@@ -282,8 +293,8 @@ test('conversations can be listed by title', async () => {
   ).toEqual({
     body: {
       conversations: [
-        { id: first, running: false, title: 'bar' },
-        { id: second, running: false, title: 'Qux' },
+        { id: first, pinned: false, running: false, title: 'bar' },
+        { id: second, pinned: false, running: false, title: 'Qux' },
       ],
       next: second,
     },
@@ -298,7 +309,9 @@ test('conversations can be listed by title', async () => {
     )
   ).toEqual({
     body: {
-      conversations: [{ id: third, running: false, title: null }],
+      conversations: [
+        { id: third, pinned: false, running: false, title: null },
+      ],
       next: null,
     },
     status: 200,
@@ -316,7 +329,9 @@ test('conversations can be searched by title', async () => {
 
   expect(await call(headers, 'GET', '/conversations?search=foo%25')).toEqual({
     body: {
-      conversations: [{ id: first, running: false, title: 'Foo%' }],
+      conversations: [
+        { id: first, pinned: false, running: false, title: 'Foo%' },
+      ],
       next: null,
     },
     status: 200,
@@ -341,7 +356,10 @@ test('running conversations are marked in the list', async () => {
   });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, running: true, title: 'foo' }], next: null },
+    body: {
+      conversations: [{ id, pinned: false, running: true, title: 'foo' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -438,7 +456,10 @@ test('conversations can be renamed', async () => {
   ).toEqual({ body: null, status: 204 });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, running: false, title: 'bar' }], next: null },
+    body: {
+      conversations: [{ id, pinned: false, running: false, title: 'bar' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -464,6 +485,48 @@ test('conversations can be deleted', async () => {
       .from(schema.conversationDeletion)
       .where(eq(schema.conversationDeletion.id, id))
   ).toEqual([{ id }]);
+});
+
+test('conversations can be pinned and archived', async () => {
+  const headers = await signIn();
+
+  const pinned = await create(headers);
+  const archived = await create(headers);
+  const recent = await create(headers);
+
+  await call(headers, 'PATCH', `/conversations/${pinned}`, { pinned: true });
+  await call(headers, 'PATCH', `/conversations/${archived}`, {
+    archived: true,
+  });
+
+  const ids = async (filter: string) => {
+    const { body } = await call(
+      headers,
+      'GET',
+      `/conversations?filter=${filter}`
+    );
+
+    return body.conversations.map(
+      ({ id, pinned: flag }: { id: number; pinned: boolean }) => [id, flag]
+    );
+  };
+
+  expect({
+    archived: await ids('archived'),
+    patch: await call(headers, 'PATCH', `/conversations/${recent}`, {}),
+    pinned: await ids('pinned'),
+    recent: await ids('recent'),
+    unarchived: await ids('unarchived'),
+  }).toEqual({
+    archived: [[archived, false]],
+    patch: { body: { error: '✖ Nothing to update' }, status: 400 },
+    pinned: [[pinned, true]],
+    recent: [[recent, false]],
+    unarchived: [
+      [recent, false],
+      [pinned, true],
+    ],
+  });
 });
 
 test('conversations are hidden from other users', async () => {
