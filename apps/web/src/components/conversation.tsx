@@ -1,5 +1,9 @@
+import {
+  AssistantMessage,
+  type ToolProgress,
+  type ToolResult,
+} from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
-import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
 import {
   abortConversation,
@@ -14,34 +18,21 @@ import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type {
   AgentState,
-  EntryRecord,
   InboxState,
   LiveState,
   TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type UIEvent, useEffect, useRef, useState } from 'react';
+import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type Bubble = {
   id: string;
-  role: 'user' | 'assistant';
-  streaming?: boolean;
   text: string;
 };
 
-const roles = new Map<string, Bubble['role']>([
-  ['lab.message', 'user'],
-  ['pi.user', 'user'],
-  ['pi.assistant', 'assistant'],
-]);
+const userKinds = new Set(['lab.message', 'pi.user']);
 
-function Message({ bubble }: { bubble: Bubble }) {
-  if (bubble.role === 'assistant') {
-    return (
-      <Markdown streaming={bubble.streaming ?? false}>{bubble.text}</Markdown>
-    );
-  }
-
+function UserMessage({ bubble }: { bubble: Bubble }) {
   return (
     <div className='ml-auto max-w-[80%] rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
       {bubble.text}
@@ -49,15 +40,31 @@ function Message({ bubble }: { bubble: Bubble }) {
   );
 }
 
-function entryBubble(entry: EntryRecord): Bubble | undefined {
-  const role = roles.get(entry.kind);
-  const text = contentText(entry.model?.[0]?.content);
+function toolResults(items: readonly TranscriptItem[]) {
+  const results = new Map<string, ToolResult>();
 
-  if (!role || !text) {
-    return undefined;
+  for (const item of items) {
+    const message = item.kind === 'entry' ? item.entry.model?.[0] : undefined;
+
+    if (message?.role === 'toolResult') {
+      results.set(message.toolCallId, {
+        details: message.details,
+        isError: message.isError,
+        output: contentText(message.content),
+      });
+    }
   }
 
-  return { id: `entry-${entry.id}`, role, text };
+  return results;
+}
+
+function toolProgress(live: LiveState | undefined) {
+  return new Map<string, ToolProgress>(
+    (live?.tools ?? []).map(({ callId, details, output, status }) => [
+      callId,
+      { details, output, status },
+    ])
+  );
 }
 
 function itemKey(item: TranscriptItem) {
@@ -77,11 +84,15 @@ function TranscriptRow({
   loading,
   onEarlier,
   onGap,
+  progress,
+  results,
 }: {
   item: TranscriptItem;
   loading: boolean;
   onEarlier: () => void;
   onGap: (gap: Gap) => void;
+  progress: ReadonlyMap<string, ToolProgress>;
+  results: ReadonlyMap<string, ToolResult>;
 }) {
   if (item.kind === 'earlier') {
     return (
@@ -111,17 +122,26 @@ function TranscriptRow({
     );
   }
 
-  const bubble = entryBubble(item.entry);
+  const message = item.entry.model?.[0];
 
-  if (!bubble) {
+  if (message?.role === 'assistant') {
+    return (
+      <AssistantMessage
+        parts={message.content}
+        progress={progress}
+        results={results}
+        streaming={false}
+      />
+    );
+  }
+
+  const text = contentText(message?.content);
+
+  if (!userKinds.has(item.entry.kind) || !text) {
     return null;
   }
 
-  return <Message bubble={bubble} />;
-}
-
-function Bubbles({ bubbles }: { bubbles: Bubble[] }) {
-  return bubbles.map((bubble) => <Message key={bubble.id} bubble={bubble} />);
+  return <UserMessage bubble={{ id: `entry-${item.entry.id}`, text }} />;
 }
 
 export function Conversation({ id }: { id: number }) {
@@ -156,24 +176,22 @@ export function Conversation({ id }: { id: number }) {
   const inbox = view?.docs['pi.inbox'] as InboxState | undefined;
   const agent = view?.docs['pi.agent'] as AgentState | undefined;
 
-  const partial = contentText(live?.generation?.message?.content);
+  const partial = live?.generation?.message?.content ?? [];
 
-  const streaming: Bubble[] = partial
-    ? [{ id: 'partial', role: 'assistant', streaming: true, text: partial }]
-    : [];
+  const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
+
+  const progress = toolProgress(live);
+
+  const toolsRunning = (live?.tools ?? []).some(
+    ({ status }) => status !== 'done'
+  );
 
   const queued = (inbox?.items ?? []).flatMap((item): Bubble[] => {
     if (item.mode === 'write') {
       return [];
     }
 
-    return [
-      {
-        id: `queued-${item.id}`,
-        role: 'user',
-        text: contentText(item.content),
-      },
-    ];
+    return [{ id: `queued-${item.id}`, text: contentText(item.content) }];
   });
 
   const running = live?.run !== undefined;
@@ -206,14 +224,26 @@ export function Conversation({ id }: { id: number }) {
                   loading={earlier.isPending || gap.isPending}
                   onEarlier={() => earlier.mutate()}
                   onGap={(value) => gap.mutate(value)}
+                  progress={progress}
+                  results={results}
                 />
               ))}
-              <Bubbles bubbles={streaming} />
-              {running && !partial && !finishing && (
-                <p className='text-sm text-muted-foreground motion-safe:animate-pulse'>
-                  Thinking…
-                </p>
+              {partial.length > 0 && (
+                <AssistantMessage
+                  parts={partial}
+                  progress={progress}
+                  results={results}
+                  streaming
+                />
               )}
+              {running &&
+                partial.length === 0 &&
+                !toolsRunning &&
+                !finishing && (
+                  <p className='text-sm text-muted-foreground motion-safe:animate-pulse'>
+                    Thinking…
+                  </p>
+                )}
               {live?.runFailure && (
                 <p
                   role='alert'
@@ -229,7 +259,9 @@ export function Conversation({ id }: { id: number }) {
               )}
               {queued.length > 0 && (
                 <div className='flex flex-col gap-2 opacity-60'>
-                  <Bubbles bubbles={queued} />
+                  {queued.map((bubble) => (
+                    <UserMessage key={bubble.id} bubble={bubble} />
+                  ))}
                 </div>
               )}
             </>
