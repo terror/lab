@@ -3,11 +3,7 @@ import type { ConversationId } from '@earendil-works/pi-durable';
 
 import app from '../src/app';
 import { harness } from '../src/harness';
-import { flushHelperUsage } from '../src/helper-usage';
-import { flushHistory } from '../src/history';
-import { flushLibrary } from '../src/library';
-import { flushProjections } from '../src/projections';
-import { flushUsage } from '../src/usage';
+import { flushAll } from '../src/pipelines';
 
 export async function call(
   headers: Headers,
@@ -53,13 +49,7 @@ export async function settle(id?: number) {
     await idle(id);
   }
 
-  await Promise.all([
-    flushProjections(),
-    flushUsage(),
-    flushLibrary(),
-    flushHelperUsage(),
-    flushHistory(),
-  ]);
+  await flushAll();
 }
 
 export async function chat(headers: Headers, body: object) {
