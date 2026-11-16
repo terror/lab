@@ -277,9 +277,11 @@ const library = new Hono()
     const type =
       item.kind === 'file' ? 'text/plain; charset=utf-8' : item.mimeType;
 
+    const filename = /\.pdf$/i.test(item.name) ? `${item.name}.txt` : item.name;
+
     return c.body(new Uint8Array(item.content), 200, {
       'cache-control': 'private, max-age=31536000, immutable',
-      'content-disposition': `${disposition}; filename*=UTF-8''${encodeURIComponent(item.name)}`,
+      'content-disposition': `${disposition}; filename*=UTF-8''${encodeURIComponent(filename)}`,
       'content-type': type,
       'x-content-type-options': 'nosniff',
     });

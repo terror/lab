@@ -12,6 +12,32 @@ const MAX_IMAGE_BYTES = 4_000_000;
 
 const MAX_TEXT_BYTES = 200_000;
 
+const MAX_PDF_BYTES = 20_000_000;
+
+function isPdf(file: File) {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+}
+
+async function readPdf(file: File): Promise<Attachment> {
+  if (file.size > MAX_PDF_BYTES) {
+    throw new Error(`${file.name} is too large to attach`);
+  }
+
+  const { pdfText } = await import('./pdf');
+
+  const text = await pdfText(file);
+
+  if (!text) {
+    throw new Error(`${file.name} has no text to read`);
+  }
+
+  if (new TextEncoder().encode(text).byteLength > MAX_TEXT_BYTES) {
+    throw new Error(`${file.name} has too much text to attach`);
+  }
+
+  return { name: file.name, text, type: 'file' };
+}
+
 function isImageType(type: string): type is ImageType {
   return imageTypes.some((candidate) => candidate === type);
 }
@@ -80,6 +106,10 @@ export async function readAttachment(file: File): Promise<Attachment> {
     };
   }
 
+  if (isPdf(file)) {
+    return readPdf(file);
+  }
+
   if (file.size > MAX_TEXT_BYTES) {
     throw new Error(`${file.name} is too large to attach`);
   }
@@ -98,6 +128,10 @@ export async function readLibraryItem(item: LibraryItem): Promise<Attachment> {
 
   if (!response.ok) {
     throw new Error(`${item.name} could not be loaded`);
+  }
+
+  if (item.kind === 'file') {
+    return { name: item.name, text: await response.text(), type: 'file' };
   }
 
   return readAttachment(
