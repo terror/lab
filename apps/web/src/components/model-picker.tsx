@@ -18,8 +18,6 @@ import { type KeyboardEvent, useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
 
-const efforts = levels.filter((level) => level !== 'off');
-
 const levelLabels: Record<ThinkingLevel, string> = {
   high: 'High',
   low: 'Low',
@@ -55,6 +53,23 @@ function currentLevel(model: Model, choice: ModelChoice | undefined) {
   return clamp(model, choice?.thinkingLevel ?? 'off');
 }
 
+function triggerLabel(
+  model: Model | undefined,
+  choice: ModelChoice | undefined
+) {
+  if (!model) {
+    return choice?.id ?? 'Model';
+  }
+
+  const level = currentLevel(model, choice);
+
+  if (!hasLevels(model) || level === 'off') {
+    return model.name;
+  }
+
+  return `${model.name} (${levelLabels[level]})`;
+}
+
 function groupByProvider(models: Model[]) {
   const groups = new Map<string, Model[]>();
 
@@ -63,29 +78,6 @@ function groupByProvider(models: Model[]) {
   }
 
   return [...groups];
-}
-
-function LevelGlyph({ level, model }: { level: ThinkingLevel; model: Model }) {
-  const index = levels.indexOf(level);
-
-  return (
-    <span aria-hidden='true' className='flex h-3 items-end gap-px'>
-      {efforts
-        .filter((effort) => model.thinkingLevels.includes(effort))
-        .map((effort, position) => (
-          <span
-            key={effort}
-            className={cn(
-              'w-0.5 rounded-full',
-              levels.indexOf(effort) <= index
-                ? 'bg-current'
-                : 'bg-foreground/20'
-            )}
-            style={{ height: 4 + position * 1.5 }}
-          />
-        ))}
-    </span>
-  );
 }
 
 function ThinkingSlider({
@@ -218,10 +210,7 @@ export function ModelPicker({
           disabled={disabled || options.length === 0}
           type='button'
         >
-          <span className='truncate'>
-            {current?.name ?? value?.id ?? 'Model'}
-          </span>
-          {thinking && <LevelGlyph level={level} model={current} />}
+          <span className='truncate'>{triggerLabel(current, value)}</span>
           <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
         </button>
       </PopoverTrigger>
