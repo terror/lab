@@ -15,7 +15,7 @@ import {
   useSeenVersion,
 } from '@/lib/version';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 const DEVELOPMENT = 'development';
@@ -32,6 +32,8 @@ export function Changelog({
   entries: ChangelogEntry[];
   onClose: () => void;
 }) {
+  const done = useRef<HTMLButtonElement>(null);
+
   return (
     <Dialog
       onOpenChange={(open) => {
@@ -41,14 +43,20 @@ export function Changelog({
       }}
       open
     >
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent
+        className='flex max-h-11/12 flex-col sm:max-w-lg'
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          done.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>What’s new</DialogTitle>
           <DialogDescription>
             Lab was updated since you last used it.
           </DialogDescription>
         </DialogHeader>
-        <ul className='flex max-h-96 flex-col gap-5 overflow-y-auto'>
+        <ul className='flex max-h-96 min-h-0 flex-col gap-5 overflow-y-auto'>
           {entries.map(({ date, description, sha, title, url }) => (
             <li key={sha} className='flex flex-col gap-1'>
               <div className='flex items-baseline justify-between gap-4'>
@@ -75,7 +83,9 @@ export function Changelog({
           ))}
         </ul>
         <DialogFooter>
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose} ref={done}>
+            Done
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -94,10 +104,10 @@ function PendingChangelog({
   const entries = changelog.data?.entries ?? [];
 
   useEffect(() => {
-    if (changelog.isError || (changelog.isSuccess && entries.length === 0)) {
+    if (changelog.isSuccess && entries.length === 0) {
       onDone();
     }
-  }, [changelog.isError, changelog.isSuccess, entries.length, onDone]);
+  }, [changelog.isSuccess, entries.length, onDone]);
 
   if (entries.length === 0) {
     return null;
@@ -124,13 +134,15 @@ export function Updates() {
     });
   }, [current, loaded]);
 
+  const settled = loaded !== undefined && loaded === current;
+
   useEffect(() => {
-    if (loaded && loaded !== DEVELOPMENT && !seen) {
+    if (settled && loaded !== DEVELOPMENT && !seen) {
       setSeen(loaded);
     }
-  }, [loaded, seen, setSeen]);
+  }, [loaded, seen, setSeen, settled]);
 
-  if (!loaded || loaded === DEVELOPMENT || !seen || seen === loaded) {
+  if (!settled || loaded === DEVELOPMENT || !seen || seen === loaded) {
     return null;
   }
 

@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
+import { requireUser } from './auth';
 import { env } from './env';
 import { validator } from './validator';
 
@@ -87,7 +89,15 @@ async function github(path: string) {
     { headers: { accept: 'application/vnd.github+json' } }
   );
 
-  return response.ok ? response.json() : undefined;
+  if (response.status === 404) {
+    return undefined;
+  }
+
+  if (!response.ok) {
+    throw new HTTPException(502, { message: 'Unable to load the changelog' });
+  }
+
+  return response.json();
 }
 
 async function changes(since: string) {
@@ -126,7 +136,7 @@ const query = validator(
 
 const changelog = new Hono()
   .get('/version', (c) => c.json({ version }))
-  .get('/changelog', query, async (c) => {
+  .get('/changelog', requireUser, query, async (c) => {
     const { since } = c.req.valid('query');
 
     const entries = since === version ? [] : await changes(since);
