@@ -24,12 +24,20 @@ import {
   conversationTitle,
   conversationsQueryKey,
   deleteConversation,
-  renameConversation,
+  updateConversation,
 } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Ellipsis, LoaderCircle, Pencil, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  Ellipsis,
+  LoaderCircle,
+  Pencil,
+  Pin,
+  PinOff,
+  Trash2,
+} from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 function RenameInput({
@@ -85,18 +93,32 @@ function RenameInput({
 
 function MenuItems({
   Item,
+  onArchive,
   onDelete,
+  onPin,
   onRename,
+  pinned,
 }: {
   Item: typeof ContextMenuItem | typeof DropdownMenuItem;
+  onArchive: () => void;
   onDelete: () => void;
+  onPin: () => void;
   onRename: () => void;
+  pinned: boolean;
 }) {
   return (
     <>
+      <Item onSelect={onPin}>
+        {pinned ? <PinOff aria-hidden='true' /> : <Pin aria-hidden='true' />}
+        {pinned ? 'Unpin' : 'Pin'}
+      </Item>
       <Item onSelect={onRename}>
         <Pencil aria-hidden='true' />
         Rename
+      </Item>
+      <Item onSelect={onArchive}>
+        <Archive aria-hidden='true' />
+        Archive
       </Item>
       <Item onSelect={onDelete} variant='destructive'>
         <Trash2 aria-hidden='true' />
@@ -111,7 +133,12 @@ export function ConversationItem({
   onSelect,
   selected,
 }: {
-  conversation: { id: number; running: boolean; title: string | null };
+  conversation: {
+    id: number;
+    pinned: boolean;
+    running: boolean;
+    title: string | null;
+  };
   onSelect: (id: number) => void;
   selected: boolean;
 }) {
@@ -128,10 +155,17 @@ export function ConversationItem({
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
 
-  const rename = useMutation({
-    mutationFn: (value: string) => renameConversation(conversation.id, value),
+  const update = useMutation({
+    mutationFn: (change: Parameters<typeof updateConversation>[1]) =>
+      updateConversation(conversation.id, change),
     onSettled: refresh,
   });
+
+  const menuProps = {
+    onArchive: () => update.mutate({ archived: true }),
+    onPin: () => update.mutate({ pinned: !conversation.pinned }),
+    pinned: conversation.pinned,
+  };
 
   const remove = useMutation({
     mutationFn: () => deleteConversation(conversation.id),
@@ -165,7 +199,7 @@ export function ConversationItem({
         onCancel={() => setEditing(false)}
         onSubmit={(value) => {
           setEditing(false);
-          rename.mutate(value);
+          update.mutate({ title: value });
         }}
       />
     );
@@ -207,6 +241,7 @@ export function ConversationItem({
                   onCloseAutoFocus={onCloseAutoFocus}
                 >
                   <MenuItems
+                    {...menuProps}
                     Item={DropdownMenuItem}
                     onDelete={confirmDelete}
                     onRename={startRename}
@@ -224,6 +259,7 @@ export function ConversationItem({
         </ContextMenuTrigger>
         <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
           <MenuItems
+            {...menuProps}
             Item={ContextMenuItem}
             onDelete={confirmDelete}
             onRename={startRename}

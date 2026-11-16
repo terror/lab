@@ -19,6 +19,8 @@ import {
   desc,
   eq,
   ilike,
+  isNotNull,
+  isNull,
   sql,
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -104,6 +106,9 @@ const listQuery = validator(
   'query',
   z.object({
     cursor: z.coerce.number().int().positive().optional(),
+    filter: z
+      .enum(['archived', 'pinned', 'recent', 'unarchived'])
+      .default('unarchived'),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     search: z.string().trim().min(1).max(200).optional(),
     sort: sortSchema.default('activity'),
@@ -141,10 +146,44 @@ const modelSelection = validator(
   })
 );
 
-const rename = validator(
+const update = validator(
   'json',
-  z.object({ title: z.string().trim().min(1).max(200) })
+  z
+    .object({
+      archived: z.boolean().optional(),
+      pinned: z.boolean().optional(),
+      title: z.string().trim().min(1).max(200).optional(),
+    })
+    .refine(
+      (value) => Object.values(value).some((field) => field !== undefined),
+      {
+        message: 'Nothing to update',
+      }
+    )
 );
+
+const filters = {
+  archived: () => isNotNull(schema.conversation.archivedAt),
+  pinned: () =>
+    and(
+      isNotNull(schema.conversation.pinnedAt),
+      isNull(schema.conversation.archivedAt)
+    ),
+  recent: () =>
+    and(
+      isNull(schema.conversation.pinnedAt),
+      isNull(schema.conversation.archivedAt)
+    ),
+  unarchived: () => isNull(schema.conversation.archivedAt),
+};
+
+function timestamp(value: boolean | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value ? new Date() : null;
+}
 
 function escape(value: string) {
   return value
@@ -296,7 +335,7 @@ const conversations = new Hono()
   .get('/', listQuery, async (c) => {
     const user = c.get('user');
 
-    const { cursor, limit, search, sort } = c.req.valid('query');
+    const { cursor, filter, limit, search, sort } = c.req.valid('query');
 
     await flushProjections();
 
@@ -305,11 +344,16 @@ const conversations = new Hono()
     const order = ascending ? asc : desc;
 
     const rows = await db
-      .select({ id: schema.conversation.id, title: schema.conversation.title })
+      .select({
+        id: schema.conversation.id,
+        pinnedAt: schema.conversation.pinnedAt,
+        title: schema.conversation.title,
+      })
       .from(schema.conversation)
       .where(
         and(
           eq(schema.conversation.ownerId, user.id),
+          filters[filter](),
           cursor === undefined ? undefined : after(cursor, user, sort),
           search === undefined ? undefined : matching(search)
         )
@@ -327,7 +371,12 @@ const conversations = new Hono()
     const busy = await running();
 
     return c.json({
-      conversations: page.map((row) => ({ ...row, running: busy.has(row.id) })),
+      conversations: page.map(({ id, pinnedAt, title }) => ({
+        id,
+        pinned: pinnedAt !== null,
+        running: busy.has(id),
+        title,
+      })),
       next: next ?? null,
     });
   })
@@ -521,14 +570,23 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .patch('/:id', params, rename, async (c) => {
+  .patch('/:id', params, update, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
-    const { title } = c.req.valid('json');
+    const { archived, pinned, title } = c.req.valid('json');
 
-    await conversation.commit(async (tx) => {
-      (await tx.doc(TitleDoc, conversation.id)).title = title;
-    }, BACKGROUND_CONTEXT);
+    if (title !== undefined) {
+      await conversation.commit(async (tx) => {
+        (await tx.doc(TitleDoc, conversation.id)).title = title;
+      }, BACKGROUND_CONTEXT);
+    }
+
+    if (archived !== undefined || pinned !== undefined) {
+      await db
+        .update(schema.conversation)
+        .set({ archivedAt: timestamp(archived), pinnedAt: timestamp(pinned) })
+        .where(eq(schema.conversation.id, conversation.id));
+    }
 
     return c.body(null, 204);
   })

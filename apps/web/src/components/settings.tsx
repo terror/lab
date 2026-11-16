@@ -1,3 +1,4 @@
+import { Archived } from '@/components/archived';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +16,7 @@ import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import {
+  Archive,
   ArrowLeft,
   ChartColumn,
   ChevronDown,
@@ -96,14 +98,16 @@ const sections = [
   { icon: Palette, id: 'appearance', label: 'Appearance' },
   { icon: KeyRound, id: 'providers', label: 'Providers' },
   { icon: ChartColumn, id: 'usage', label: 'Usage' },
+  { icon: Archive, id: 'archived', label: 'Archived' },
 ] as const;
 
-const sectionSchema = z.enum(['appearance', 'providers', 'usage']);
+const sectionSchema = z.enum(['appearance', 'archived', 'providers', 'usage']);
 
 type Section = z.infer<typeof sectionSchema>;
 
 const panels: Record<Section, () => ReactNode> = {
   appearance: () => <Appearance />,
+  archived: () => <Archived />,
   providers: () => <Providers />,
   usage: () => <UsagePanel />,
 };

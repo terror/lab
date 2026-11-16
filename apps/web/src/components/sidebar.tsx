@@ -22,6 +22,7 @@ import {
   type ConversationSort,
   useConversationSort,
   useConversations,
+  usePinnedConversations,
 } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
 import { usePersistentState } from '@/lib/storage';
@@ -333,7 +334,7 @@ function SidebarPanel({
   user,
 }: {
   conversations:
-    | { id: number; running: boolean; title: string | null }[]
+    | { id: number; pinned: boolean; running: boolean; title: string | null }[]
     | undefined;
   error: boolean;
   onLibrary: () => void;
@@ -346,6 +347,7 @@ function SidebarPanel({
 }) {
   const list = useId();
   const path = usePath();
+  const pinned = usePinnedConversations();
 
   const [collapsed, setCollapsed] = usePersistentState(
     'recents-collapsed',
@@ -383,6 +385,23 @@ function SidebarPanel({
           Library
         </NavButton>
       </div>
+      {(pinned.data?.length ?? 0) > 0 && (
+        <div className='flex flex-col gap-1'>
+          <h2 className='px-2 text-xs font-medium text-muted-foreground'>
+            Pinned
+          </h2>
+          <nav aria-label='Pinned chats' className='flex flex-col gap-1'>
+            {pinned.data?.map((conversation) => (
+              <ConversationItem
+                key={conversation.id}
+                conversation={conversation}
+                onSelect={onSelect}
+                selected={conversation.id === selected}
+              />
+            ))}
+          </nav>
+        </div>
+      )}
       <div className='flex min-h-0 flex-col gap-1'>
         {(error || (conversations?.length ?? 0) > 0) && (
           <div className='flex items-center gap-1 px-2'>
