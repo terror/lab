@@ -32,6 +32,7 @@ import {
 type Bubble = {
   id: string;
   role: 'user' | 'assistant';
+  streaming?: boolean;
   text: string;
 };
 
@@ -43,7 +44,9 @@ const roles = new Map<string, Bubble['role']>([
 
 function Message({ bubble }: { bubble: Bubble }) {
   if (bubble.role === 'assistant') {
-    return <Markdown>{bubble.text}</Markdown>;
+    return (
+      <Markdown streaming={bubble.streaming ?? false}>{bubble.text}</Markdown>
+    );
   }
 
   return (
@@ -159,7 +162,7 @@ export function Conversation({ id }: { id: number }) {
   const partial = contentText(live?.generation?.message?.content);
 
   const streaming: Bubble[] = partial
-    ? [{ id: 'partial', role: 'assistant', text: partial }]
+    ? [{ id: 'partial', role: 'assistant', streaming: true, text: partial }]
     : [];
 
   const queued = (inbox?.items ?? []).flatMap((item): Bubble[] => {
