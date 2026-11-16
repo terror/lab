@@ -81,7 +81,10 @@ function groupByProvider(models: Model[]) {
   const groups = new Map<string, Model[]>();
 
   for (const model of models) {
-    groups.set(model.provider, [...(groups.get(model.provider) ?? []), model]);
+    groups.set(model.providerName, [
+      ...(groups.get(model.providerName) ?? []),
+      model,
+    ]);
   }
 
   return [...groups];
@@ -131,6 +134,14 @@ function ThinkingSlider({
   );
 }
 
+function matches(value: string, search: string, keywords: string[] = []) {
+  const haystack = [value, ...keywords].join(' ').toLowerCase();
+
+  const terms = search.toLowerCase().split(/\s+/);
+
+  return Number(terms.every((term) => haystack.includes(term)));
+}
+
 export function ModelPicker({
   disabled,
   onChange,
@@ -144,13 +155,19 @@ export function ModelPicker({
   const [open, setOpen] = useState(false);
 
   const options = models.data?.models ?? [];
-  const current = options.find(({ id }) => id === value?.id);
+  const current = options.find(
+    ({ id, provider }) => id === value?.id && provider === value.provider
+  );
   const level = current && currentLevel(current, value);
   const thinking = current && level && hasLevels(current);
 
   const setLevel = (next: ThinkingLevel) => {
     if (current) {
-      onChange({ id: current.id, thinkingLevel: clamp(current, next) });
+      onChange({
+        id: current.id,
+        provider: current.provider,
+        thinkingLevel: clamp(current, next),
+      });
     }
   };
 
@@ -160,7 +177,11 @@ export function ModelPicker({
       return;
     }
 
-    onChange({ id: model.id, thinkingLevel: currentLevel(model, value) });
+    onChange({
+      id: model.id,
+      provider: model.provider,
+      thinkingLevel: currentLevel(model, value),
+    });
   };
 
   return (
@@ -182,7 +203,11 @@ export function ModelPicker({
         side='top'
         sideOffset={8}
       >
-        <Command className='bg-transparent p-0' defaultValue={current?.id}>
+        <Command
+          className='bg-transparent p-0'
+          filter={matches}
+          defaultValue={current && `${current.provider}:${current.id}`}
+        >
           <CommandInput placeholder='Search models' />
           <CommandList className='mt-1'>
             <CommandEmpty>No models found</CommandEmpty>
@@ -191,10 +216,10 @@ export function ModelPicker({
                 {group.map((model) => (
                   <CommandItem
                     key={model.id}
-                    data-checked={model.id === current?.id}
-                    keywords={[model.name, provider]}
+                    data-checked={model === current}
+                    keywords={[model.name, model.id, provider]}
                     onSelect={() => select(model)}
-                    value={model.id}
+                    value={`${model.provider}:${model.id}`}
                   >
                     <span className='truncate'>{model.name}</span>
                   </CommandItem>

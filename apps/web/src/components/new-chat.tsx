@@ -35,18 +35,24 @@ function greeting(name: string) {
 }
 
 function preferredOrDefault(
-  catalog: { default: string; models: { id: string }[] } | undefined,
+  catalog:
+    | {
+        default: { id: string; provider: string } | null;
+        models: { id: string; provider: string }[];
+      }
+    | undefined,
   preferred: ModelChoice | undefined
 ) {
-  if (!catalog) {
-    return undefined;
-  }
+  const available = catalog?.models.some(
+    ({ id, provider }) =>
+      id === preferred?.id && provider === preferred.provider
+  );
 
-  if (preferred && catalog.models.some(({ id }) => id === preferred.id)) {
+  if (available) {
     return preferred;
   }
 
-  return { id: catalog.default };
+  return catalog?.default ?? undefined;
 }
 
 export function NewChat({ user }: { user: { name: string } }) {

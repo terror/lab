@@ -33,7 +33,7 @@ test('conversations are created with the chosen model', async () => {
 
   const { body } = await call(headers, 'POST', '/conversations', {
     content: 'foo',
-    model: 'anthropic/claude-haiku-5.5',
+    model: { id: 'anthropic/claude-haiku-5.5', provider: 'vercel-ai-gateway' },
     thinkingLevel: 'off',
   });
 
@@ -95,7 +95,7 @@ test('images need a model that reads them', async () => {
     await call(headers, 'POST', '/conversations', {
       attachments: [image],
       content: 'foo',
-      model: 'alibaba/qwen3-coder',
+      model: { id: 'alibaba/qwen3-coder', provider: 'vercel-ai-gateway' },
     })
   ).toEqual({ body: { error: 'This model can’t read images' }, status: 400 });
 
@@ -103,6 +103,7 @@ test('images need a model that reads them', async () => {
 
   await call(headers, 'PUT', `/conversations/${id}/model`, {
     id: 'alibaba/qwen3-coder',
+    provider: 'vercel-ai-gateway',
   });
 
   expect(
@@ -114,6 +115,7 @@ test('images need a model that reads them', async () => {
 
   await call(headers, 'PUT', `/conversations/${id}/model`, {
     id: 'anthropic/claude-haiku-5.5',
+    provider: 'vercel-ai-gateway',
   });
 
   expect(
@@ -477,7 +479,10 @@ test('conversations are hidden from other users', async () => {
   await hidden('GET', '/entries');
   await hidden('GET', '/events');
   await hidden('POST', '/messages', { content: 'bar' });
-  await hidden('PUT', '/model', { id: 'anthropic/claude-haiku-5.5' });
+  await hidden('PUT', '/model', {
+    id: 'anthropic/claude-haiku-5.5',
+    provider: 'vercel-ai-gateway',
+  });
   await hidden('POST', '/abort');
   await hidden('DELETE', '/submissions/1');
   await hidden('PATCH', '', { title: 'bar' });

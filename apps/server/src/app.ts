@@ -11,6 +11,7 @@ import conversations from './conversations';
 import { db } from './db';
 import { harness } from './harness';
 import { defaultModel, listModels } from './models';
+import providers from './providers';
 
 const app = new Hono();
 
@@ -29,10 +30,18 @@ const api = new Hono()
     return c.json({ status: 'ok' });
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
-  .get('/models', requireUser, (c) =>
-    c.json({ default: defaultModel.modelId, models: listModels() })
-  )
-  .route('/conversations', conversations);
+  .get('/models', requireUser, async (c) => {
+    const fallback = await defaultModel();
+
+    return c.json({
+      default: fallback
+        ? { id: fallback.id, provider: fallback.provider }
+        : null,
+      models: await listModels(),
+    });
+  })
+  .route('/conversations', conversations)
+  .route('/providers', providers);
 
 export type AppType = typeof api;
 

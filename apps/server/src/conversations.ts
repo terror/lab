@@ -29,7 +29,13 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
-import { acceptsImages, defaultModel, modelChange } from './models';
+import {
+  acceptsImages,
+  defaultModel,
+  findModel,
+  modelChange,
+  models,
+} from './models';
 import { flushProjections } from './projections';
 import {
   type Attachment,
@@ -75,7 +81,9 @@ const creation = validator(
   'json',
   draftSchema
     .extend({
-      model: z.string().min(1).optional(),
+      model: z
+        .object({ id: z.string().min(1), provider: z.string().min(1) })
+        .optional(),
       thinkingLevel: thinkingLevelSchema.optional(),
     })
     .refine(nonEmpty, emptyMessage)
@@ -127,6 +135,7 @@ const modelSelection = validator(
   'json',
   z.object({
     id: z.string().min(1),
+    provider: z.string().min(1),
     thinkingLevel: thinkingLevelSchema.optional(),
   })
 );
@@ -169,7 +178,7 @@ function prompt({
 }
 
 function requireImageInput(
-  model: string | undefined,
+  model: Parameters<typeof acceptsImages>[0],
   attachments: Attachment[]
 ) {
   if (
@@ -318,10 +327,19 @@ const conversations = new Hono()
       thinkingLevel,
     } = c.req.valid('json');
 
-    const change =
-      model === undefined ? undefined : modelChange(model, thinkingLevel);
+    const chosen = model
+      ? await findModel(model.provider, model.id)
+      : await defaultModel();
 
-    requireImageInput(model ?? defaultModel.modelId, attachments);
+    if (!chosen) {
+      throw new HTTPException(400, {
+        message: 'Add a provider in settings to start chatting',
+      });
+    }
+
+    const change = modelChange(chosen, thinkingLevel);
+
+    requireImageInput(chosen, attachments);
 
     const conversation = await harness.createConversation(
       { agent: change, ownership: { kind: 'ownerless' } },
@@ -439,7 +457,11 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    requireImageInput(agent?.model?.modelId, draft.attachments);
+    requireImageInput(
+      agent?.model &&
+        models.getModel(agent.model.provider, agent.model.modelId),
+      draft.attachments
+    );
 
     const submission = await submitMessage(
       conversation,
@@ -473,10 +495,10 @@ const conversations = new Hono()
   .put('/:id/model', params, modelSelection, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
-    const { id, thinkingLevel } = c.req.valid('json');
+    const { id, provider, thinkingLevel } = c.req.valid('json');
 
     await conversation.configure(
-      modelChange(id, thinkingLevel),
+      modelChange(await findModel(provider, id), thinkingLevel),
       BACKGROUND_CONTEXT
     );
 

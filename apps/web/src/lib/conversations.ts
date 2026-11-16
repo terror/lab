@@ -114,7 +114,7 @@ export async function createConversation(
       json: {
         attachments,
         content,
-        model: model?.id,
+        model: model && { id: model.id, provider: model.provider },
         thinkingLevel: model?.thinkingLevel,
       },
     })

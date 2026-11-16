@@ -2,7 +2,6 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 const schema = z.object({
-  AI_GATEWAY_API_KEY: z.string().min(1),
   BETTER_AUTH_SECRET: z.string().min(32),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   GOOGLE_CLIENT_ID: z.string().min(1),

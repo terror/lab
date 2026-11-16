@@ -1,94 +1,95 @@
-import type { ModelThinkingLevel } from '@earendil-works/pi-ai';
+import type { Api, Model, ModelThinkingLevel } from '@earendil-works/pi-ai';
 import {
   clampThinkingLevel,
-  createModels,
   getSupportedThinkingLevels,
 } from '@earendil-works/pi-ai/models';
-import { vercelAIGatewayProvider } from '@earendil-works/pi-ai/providers/vercel-ai-gateway';
+import { builtinModels } from '@earendil-works/pi-ai/providers/all';
 import { HTTPException } from 'hono/http-exception';
 
+import { credentials } from './credentials';
 import { env } from './env';
 
-const vendors = new Map([
-  ['alibaba', 'Alibaba'],
-  ['amazon', 'Amazon'],
-  ['anthropic', 'Anthropic'],
-  ['bytedance', 'ByteDance'],
-  ['cohere', 'Cohere'],
-  ['deepseek', 'DeepSeek'],
-  ['google', 'Google'],
-  ['inclusionai', 'inclusionAI'],
-  ['meta', 'Meta'],
-  ['minimax', 'MiniMax'],
-  ['mistral', 'Mistral'],
-  ['moonshotai', 'Moonshot AI'],
-  ['nvidia', 'NVIDIA'],
-  ['openai', 'OpenAI'],
-  ['stepfun', 'StepFun'],
-  ['tencent', 'Tencent'],
-  ['xai', 'xAI'],
-  ['xiaomi', 'Xiaomi'],
-  ['zai', 'Z.ai'],
-]);
-
-export const models = createModels();
-
-models.setProvider(vercelAIGatewayProvider());
+export const models = builtinModels({ credentials });
 
 export const statusModel = models.getModel(
   'vercel-ai-gateway',
   'anthropic/claude-haiku-5.5'
 );
 
-function vendor(id: string) {
-  const prefix = id.split('/')[0] ?? id;
+export const fallbackModel = {
+  provider: 'vercel-ai-gateway',
+  modelId: env.LAB_DEFAULT_MODEL,
+};
 
-  return vendors.get(prefix) ?? prefix;
+const unsupported = new Set([
+  'amazon-bedrock',
+  'azure',
+  'cloudflare-ai-gateway',
+  'cloudflare-workers-ai',
+  'google-vertex',
+]);
+
+export function keyProviders() {
+  return models
+    .getProviders()
+    .filter(({ auth, id }) => auth.apiKey && !unsupported.has(id))
+    .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
-const chatModels = models
-  .getModels('vercel-ai-gateway')
-  .toSorted((a, b) => vendor(a.id).localeCompare(vendor(b.id)));
+function providerName(id: string) {
+  return models.getProvider(id)?.name ?? id;
+}
 
-const fallback = chatModels.find(({ id }) => id === env.LAB_DEFAULT_MODEL);
+async function availableModels() {
+  const available = await models.getAvailable();
 
-if (!fallback) {
-  throw new Error(
-    `Unknown model \`${env.LAB_DEFAULT_MODEL}\` in \`LAB_DEFAULT_MODEL\``
+  return available.toSorted((a, b) =>
+    providerName(a.provider).localeCompare(providerName(b.provider))
   );
 }
 
-export const defaultModel = {
-  provider: fallback.provider,
-  modelId: fallback.id,
-};
+export async function defaultModel() {
+  const available = await availableModels();
 
-export function listModels() {
-  return chatModels.map((model) => ({
+  return (
+    available.find(({ id }) => id === env.LAB_DEFAULT_MODEL) ?? available[0]
+  );
+}
+
+export async function listModels() {
+  const available = await availableModels();
+
+  return available.map((model) => ({
     contextWindow: model.contextWindow,
     id: model.id,
     images: model.input.includes('image'),
     maxTokens: model.maxTokens,
     name: model.name,
-    provider: vendor(model.id),
+    provider: model.provider,
+    providerName: providerName(model.provider),
     reasoning: model.reasoning,
     thinkingLevels: getSupportedThinkingLevels(model),
   }));
 }
 
-export function acceptsImages(id: string | undefined) {
-  const model = chatModels.find((candidate) => candidate.id === id);
+export async function findModel(provider: string, id: string) {
+  const model = models.getModel(provider, id);
 
-  return model?.input.includes('image') ?? false;
-}
-
-export function modelChange(id: string, thinkingLevel?: ModelThinkingLevel) {
-  const model = chatModels.find((candidate) => candidate.id === id);
-
-  if (!model) {
+  if (!model || !(await models.checkAuth(provider))) {
     throw new HTTPException(400, { message: 'Unknown model' });
   }
 
+  return model;
+}
+
+export function acceptsImages(model: Model<Api> | undefined) {
+  return model?.input.includes('image') ?? false;
+}
+
+export function modelChange(
+  model: Model<Api>,
+  thinkingLevel?: ModelThinkingLevel
+) {
   return {
     model: { provider: model.provider, modelId: model.id },
     thinkingLevel:

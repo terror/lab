@@ -461,6 +461,7 @@ export function Conversation({ id }: { id: number }) {
           model={
             agent?.model && {
               id: agent.model.modelId,
+              provider: agent.model.provider,
               thinkingLevel: agent.thinkingLevel,
             }
           }
