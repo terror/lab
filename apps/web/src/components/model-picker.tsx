@@ -1,38 +1,53 @@
-import { modelsQueryOptions, setConversationModel } from '@/lib/models';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { modelsQueryOptions } from '@/lib/models';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 
 export function ModelPicker({
-  conversation,
-  current,
+  disabled,
+  onChange,
+  value,
 }: {
-  conversation: number;
-  current: string | undefined;
+  disabled?: boolean;
+  onChange: (model: string) => void;
+  value: string | undefined;
 }) {
   const models = useQuery(modelsQueryOptions);
 
-  const change = useMutation({
-    mutationFn: (model: string) => setConversationModel(conversation, model),
-  });
-
   const options = models.data ?? [];
 
-  const unlisted =
-    current !== undefined && !options.some(({ id }) => id === current);
+  const name = options.find(({ id }) => id === value)?.name ?? value;
 
   return (
-    <select
-      aria-label='Model'
-      className='h-8 max-w-48 rounded-lg bg-transparent px-2 text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50'
-      disabled={options.length === 0 || change.isPending}
-      onChange={(event) => change.mutate(event.target.value)}
-      value={current ?? ''}
-    >
-      {unlisted && <option value={current}>{current}</option>}
-      {options.map(({ id, name }) => (
-        <option key={id} value={id}>
-          {name}
-        </option>
-      ))}
-    </select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className='rounded-full text-muted-foreground'
+          disabled={disabled || options.length === 0}
+          size='sm'
+          type='button'
+          variant='ghost'
+        >
+          {name ?? 'Model'}
+          <ChevronDown aria-hidden='true' />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end' className='min-w-48'>
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {options.map(({ id, name: label }) => (
+            <DropdownMenuRadioItem key={id} value={id}>
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
