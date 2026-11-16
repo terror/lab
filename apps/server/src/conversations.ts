@@ -6,6 +6,7 @@ import type {
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
+import { TitleDoc } from '@lab/harness';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
@@ -17,7 +18,7 @@ import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
 import { modelChange, thinkingLevelSchema } from './models';
-import { titles } from './titles';
+import { flushProjections, project } from './projections';
 import { validator } from './validator';
 
 const params = validator(
@@ -206,6 +207,8 @@ const conversations = new Hono()
 
     const { cursor, limit, sort } = c.req.valid('query');
 
+    await flushProjections();
+
     const rows = await db
       .select({ id: schema.conversation.id, title: schema.conversation.title })
       .from(schema.conversation)
@@ -247,6 +250,8 @@ const conversations = new Hono()
     await db
       .insert(schema.conversation)
       .values({ id: conversation.id, ownerId: user.id });
+
+    await project(conversation.id);
 
     try {
       await submitMessage(conversation, { attachments, content: text });
@@ -347,7 +352,11 @@ const conversations = new Hono()
   .patch('/:id', params, rename, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
-    await titles.set(conversation.id, c.req.valid('json').title);
+    const { title } = c.req.valid('json');
+
+    await conversation.commit(async (tx) => {
+      (await tx.doc(TitleDoc, conversation.id)).title = title;
+    }, BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })

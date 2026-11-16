@@ -4,7 +4,7 @@ import app from './app';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
-import { backfillTitles } from './titles';
+import { projectAll } from './projections';
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
@@ -15,7 +15,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   });
 }
 
-await backfillTitles(harness);
+await projectAll();
 
 export default {
   hostname: env.LAB_HOST,

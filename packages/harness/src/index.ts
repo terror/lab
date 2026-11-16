@@ -12,25 +12,24 @@ import {
 } from '@earendil-works/pi-durable';
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 
-import { type Titles, extensions } from './extensions';
+import { extensions } from './extensions';
 
-export { TitleDoc, type Titles } from './extensions';
+export { TitleDoc } from './extensions';
 
 export type HarnessOptions = {
   model: ModelRef;
   models: Models;
   onReport?: (report: Report) => void;
   path: string;
-  titles: Titles;
 };
 
 export async function openHarness(
-  { path, models, model, onReport, titles }: HarnessOptions,
+  { path, models, model, onReport }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
   const registry = createRegistry();
 
-  for (const extension of extensions(titles)) {
+  for (const extension of extensions) {
     registry.install(extension);
   }
 
