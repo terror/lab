@@ -34,9 +34,11 @@ const layoutSchema = z.record(z.string(), z.number()).optional();
 
 const SIDEBAR_ANIMATION_MS = 300;
 
-function Content() {
+function Content({ className }: { className?: string }) {
   return (
-    <main className='flex h-full min-h-0 min-w-0 flex-1 flex-col'>
+    <main
+      className={cn('flex h-full min-h-0 min-w-0 flex-1 flex-col', className)}
+    >
       <Outlet />
     </main>
   );
@@ -86,7 +88,7 @@ function DesktopWorkspace({
   );
 
   return (
-    <div className='h-svh'>
+    <div className='h-svh bg-sidebar'>
       <ResizablePanelGroup
         className={cn(
           animating &&
@@ -117,9 +119,9 @@ function DesktopWorkspace({
             user={user}
           />
         </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel id='main' minSize='40%'>
-          <Content />
+        <ResizableHandle className='bg-transparent' />
+        <ResizablePanel className='py-2 pr-2' id='main' minSize='40%'>
+          <Content className='overflow-hidden rounded-xl border bg-background shadow-xs' />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
