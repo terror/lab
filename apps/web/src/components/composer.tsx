@@ -1,4 +1,3 @@
-import { LibraryPicker } from '@/components/library-picker';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,15 +34,21 @@ import {
   X,
 } from 'lucide-react';
 import {
+  lazy,
+  Suspense,
+  useRef,
+  useState,
   type ClipboardEvent,
   type Dispatch,
   type KeyboardEvent,
   type SetStateAction,
   type SubmitEvent,
-  useRef,
-  useState,
 } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
+
+const LibraryPicker = lazy(async () => ({
+  default: (await import('@/components/library-picker')).LibraryPicker,
+}));
 
 const MAX_ATTACHMENTS = 8;
 
@@ -149,6 +154,7 @@ export function Composer({
   const input = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string>();
   const [picking, setPicking] = useState(false);
+  const [pickerOpened, setPickerOpened] = useState(false);
   const touch = useMediaQuery('(pointer: coarse)');
   const openingPicker = useRef(false);
 
@@ -242,6 +248,7 @@ export function Composer({
 
   const openPicker = () => {
     openingPicker.current = true;
+    setPickerOpened(true);
     setPicking(true);
   };
 
@@ -338,13 +345,17 @@ export function Composer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <LibraryPicker
-            attached={attached}
-            limit={room}
-            onAdd={addFromLibrary}
-            onOpenChange={setPicking}
-            open={picking}
-          />
+          {pickerOpened && (
+            <Suspense fallback={null}>
+              <LibraryPicker
+                attached={attached}
+                limit={room}
+                onAdd={addFromLibrary}
+                onOpenChange={setPicking}
+                open={picking}
+              />
+            </Suspense>
+          )}
           <div className='ml-auto flex min-w-0 items-center gap-2'>
             <ModelPicker
               disabled={disabled}
