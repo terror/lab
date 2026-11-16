@@ -52,6 +52,7 @@ function vendor(id: string) {
 export function listModels() {
   return chatModels.map((model) => ({
     contextWindow: model.contextWindow,
+    cost: { input: model.cost.input, output: model.cost.output },
     id: model.id,
     images: model.input.includes('image'),
     maxTokens: model.maxTokens,
