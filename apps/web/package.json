@@ -25,6 +25,7 @@
     "hono": "^4.13.13",
     "lucide-react": "^1.61.0",
     "motion": "^14.14.0",
+    "pdfjs-dist": "6.5.438",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

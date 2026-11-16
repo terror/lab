@@ -117,3 +117,31 @@ test('attachments are collected into the library', async () => {
     type: 'image/png',
   });
 });
+
+test('text extracted from a PDF downloads as a text file', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    attachments: [{ name: 'foo.pdf', text: 'bar', type: 'file' }],
+    content: 'baz',
+  });
+
+  await idle(body.id);
+  await flushLibrary();
+
+  const library = await call(headers, 'GET', '/library?search=foo.pdf');
+
+  const [item] = library.body.items;
+
+  const response = await app.request(`/api/library/${item.id}?download=1`, {
+    headers,
+  });
+
+  expect({
+    body: await response.text(),
+    disposition: response.headers.get('content-disposition'),
+  }).toEqual({
+    body: 'bar',
+    disposition: "attachment; filename*=UTF-8''foo.pdf.txt",
+  });
+});
