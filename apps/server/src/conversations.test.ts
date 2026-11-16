@@ -529,6 +529,26 @@ test('conversations can be pinned and archived', async () => {
   });
 });
 
+test('attachments must fit the model context window', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  expect(
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      attachments: [
+        { name: 'foo.txt', text: 'x'.repeat(256_001), type: 'file' },
+      ],
+      content: 'bar',
+    })
+  ).toEqual({
+    body: {
+      error: 'These files have too much text for anthropic/claude-sonnet-5.5',
+    },
+    status: 400,
+  });
+});
+
 test('conversations are hidden from other users', async () => {
   const id = await create(await signIn());
 

@@ -73,6 +73,7 @@ export async function listModels() {
   const available = await availableModels();
 
   return available.map((model) => ({
+    contextWindow: model.contextWindow,
     id: model.id,
     name: model.name,
     provider: model.provider,

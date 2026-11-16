@@ -12,6 +12,7 @@ test('models from configured providers are listed', async () => {
       provider: 'vercel-ai-gateway',
     },
     model: {
+      contextWindow: 128_000,
       id: 'alibaba/qwen3-coder',
       name: 'alibaba/qwen3-coder',
       provider: 'vercel-ai-gateway',
