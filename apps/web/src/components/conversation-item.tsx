@@ -19,9 +19,9 @@ import {
   deleteConversation,
   renameConversation,
 } from '@/lib/conversations';
-import { openNewChat } from '@/lib/route';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
@@ -86,6 +86,7 @@ export function ConversationItem({
   selected: boolean;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -106,7 +107,7 @@ export function ConversationItem({
     mutationFn: () => deleteConversation(conversation.id),
     onSuccess: async () => {
       if (selected) {
-        openNewChat();
+        await navigate({ to: '/' });
       }
 
       await refresh();

@@ -7,7 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { closeSettings } from '@/lib/route';
+import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Palette } from 'lucide-react';
 
 const themes: { label: string; value: Theme }[] = [
@@ -60,10 +60,22 @@ function Appearance() {
 }
 
 export function Settings() {
+  const router = useRouter();
+  const navigate = useNavigate();
+  const canGoBack = useCanGoBack();
+
+  const back = () => {
+    if (canGoBack) {
+      router.history.back();
+    } else {
+      void navigate({ to: '/' });
+    }
+  };
+
   return (
     <div className='flex min-h-svh flex-col'>
       <header className='px-4 py-3'>
-        <Button onClick={closeSettings} variant='ghost'>
+        <Button onClick={back} variant='ghost'>
           <ArrowLeft aria-hidden='true' />
           Back to chat
         </Button>

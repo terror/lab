@@ -1,5 +1,3 @@
-import { Conversation } from '@/components/conversation';
-import { NewChat } from '@/components/new-chat';
 import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,11 +11,12 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useUser } from '@/lib/auth';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
-import { openNewChat, selectConversation } from '@/lib/route';
 import { usePersistentState } from '@/lib/storage';
 import { useQuery } from '@tanstack/react-query';
+import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -31,22 +30,25 @@ type User = {
 
 const layoutSchema = z.record(z.string(), z.number()).optional();
 
-function Content({
-  selected,
-  user,
-}: {
-  selected: number | undefined;
-  user: User;
-}) {
+function Content() {
   return (
     <main className='flex h-full min-h-0 min-w-0 flex-1 flex-col'>
-      {selected === undefined ? (
-        <NewChat user={user} />
-      ) : (
-        <Conversation key={selected} id={selected} />
-      )}
+      <Outlet />
     </main>
   );
+}
+
+function useNavigation() {
+  const navigate = useNavigate();
+
+  return {
+    openNewChat: () => {
+      void navigate({ to: '/' });
+    },
+    selectConversation: (id: number) => {
+      void navigate({ params: { id }, to: '/c/$id' });
+    },
+  };
 }
 
 function DesktopWorkspace({
@@ -56,6 +58,8 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
+  const { openNewChat, selectConversation } = useNavigation();
+
   const [layout, setLayout] = usePersistentState(
     'layout',
     layoutSchema,
@@ -85,7 +89,7 @@ function DesktopWorkspace({
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel id='main' minSize='40%'>
-          <Content selected={selected} user={user} />
+          <Content />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
@@ -99,6 +103,8 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
+  const { openNewChat, selectConversation } = useNavigation();
+
   const [open, setOpen] = useState(false);
   const conversations = useQuery(conversationsQueryOptions);
 
@@ -151,18 +157,14 @@ function MobileWorkspace({
           />
         </SheetContent>
       </Sheet>
-      <Content selected={selected} user={user} />
+      <Content />
     </div>
   );
 }
 
-export function Workspace({
-  selected,
-  user,
-}: {
-  selected: number | undefined;
-  user: User;
-}) {
+export function Workspace() {
+  const user = useUser();
+  const selected = useParams({ strict: false }).id;
   const desktop = useMediaQuery('(min-width: 768px)');
 
   if (desktop) {

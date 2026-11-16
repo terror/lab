@@ -10,8 +10,8 @@ import {
   modelsQueryOptions,
   usePreferredModel,
 } from '@/lib/models';
-import { selectConversation } from '@/lib/route';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 function greeting(name: string) {
@@ -48,6 +48,7 @@ function preferredOrFirst(
 
 export function NewChat({ user }: { user: { name: string } }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const models = useQuery(modelsQueryOptions);
 
   const [draft, setDraft] = useState('');
@@ -60,7 +61,7 @@ export function NewChat({ user }: { user: { name: string } }) {
     mutationFn: (content: string) =>
       createConversation(content, attachments, selectedModel),
     onSuccess: async (id) => {
-      selectConversation(id);
+      await navigate({ params: { id }, to: '/c/$id' });
       await queryClient.invalidateQueries(conversationsQueryOptions);
     },
   });
