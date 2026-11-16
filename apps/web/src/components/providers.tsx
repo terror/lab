@@ -66,7 +66,6 @@ function ApiKeyFields({
       <FieldLabel htmlFor='api-key'>API key</FieldLabel>
       <Input
         autoComplete='off'
-        className='focus-visible:border-input focus-visible:ring-0'
         id='api-key'
         onChange={(event) => onChange(event.target.value)}
         placeholder={`Paste your ${provider.name} API key`}
