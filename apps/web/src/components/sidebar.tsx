@@ -237,25 +237,32 @@ function SidebarPanel({
         <SquarePen aria-hidden='true' className='size-4' />
         New chat
       </button>
-      <nav
-        aria-label='Chats'
-        className='flex min-h-0 flex-col gap-1 overflow-y-auto'
-      >
-        {error && (
-          <p role='alert' className='px-2 text-sm text-destructive'>
-            Unable to load chats.
-          </p>
+      <div className='flex min-h-0 flex-col gap-1'>
+        {(error || (conversations?.length ?? 0) > 0) && (
+          <h2 className='px-2 text-xs font-medium text-muted-foreground'>
+            Recents
+          </h2>
         )}
-        {conversations?.map((conversation) => (
-          <ConversationItem
-            key={conversation.id}
-            conversation={conversation}
-            onSelect={onSelect}
-            selected={conversation.id === selected}
-          />
-        ))}
-        {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
-      </nav>
+        <nav
+          aria-label='Chats'
+          className='flex min-h-0 flex-col gap-1 overflow-y-auto'
+        >
+          {error && (
+            <p role='alert' className='px-2 text-sm text-destructive'>
+              Unable to load chats.
+            </p>
+          )}
+          {conversations?.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              onSelect={onSelect}
+              selected={conversation.id === selected}
+            />
+          ))}
+          {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
+        </nav>
+      </div>
       <div className='mt-auto'>
         <AccountMenu user={user} />
       </div>
