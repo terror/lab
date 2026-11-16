@@ -15,12 +15,16 @@ async function read() {
   return {
     instructions: doc?.instructions ?? '',
     memories: [...(doc?.memories ?? [])],
+    referenceChats: doc?.referenceChats ?? false,
   };
 }
 
-const instructions = validator(
+const settings = validator(
   'json',
-  z.object({ instructions: z.string().max(4_000) })
+  z.object({
+    instructions: z.string().max(4_000).optional(),
+    referenceChats: z.boolean().optional(),
+  })
 );
 
 const addition = validator(
@@ -33,11 +37,19 @@ const params = validator('param', z.object({ id: z.string().min(1) }));
 const memory = new Hono()
   .use(requireUser)
   .get('/', async (c) => c.json(await read()))
-  .put('/instructions', instructions, async (c) => {
-    const { instructions: value } = c.req.valid('json');
+  .patch('/', settings, async (c) => {
+    const { instructions, referenceChats } = c.req.valid('json');
 
     await harness.commit(async (tx) => {
-      (await tx.doc(MemoryDoc)).instructions = value;
+      const doc = await tx.doc(MemoryDoc);
+
+      if (instructions !== undefined) {
+        doc.instructions = instructions;
+      }
+
+      if (referenceChats !== undefined) {
+        doc.referenceChats = referenceChats;
+      }
     }, BACKGROUND_CONTEXT);
 
     return c.json(await read());

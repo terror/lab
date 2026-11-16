@@ -16,6 +16,7 @@ export type Memory = { createdAt: number; id: string; text: string };
 export const MemoryDoc = defineDoc<{
   instructions: string;
   memories: Memory[];
+  referenceChats?: boolean;
 }>({
   kind: 'lab.memory',
   version: 1,
@@ -31,9 +32,11 @@ function text(value: string) {
 function render({
   instructions,
   memories,
+  referenceChats,
 }: {
   instructions: string;
   memories: readonly Memory[];
+  referenceChats?: boolean;
 }) {
   const parts = [
     instructions.trim() &&
@@ -43,6 +46,8 @@ function render({
         'Things you remember about the user, with their ids for the forget tool:',
         ...memories.map(({ id, text: memory }) => `- [${id}] ${memory}`),
       ].join('\n'),
+    referenceChats &&
+      "You can search and read the user's other chats with chat_search and chat_read when earlier conversations would help.",
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join('\n\n') : undefined;

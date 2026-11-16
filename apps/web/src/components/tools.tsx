@@ -4,6 +4,8 @@ import {
   FileText,
   Lightbulb,
   LoaderCircle,
+  MessageSquareText,
+  MessagesSquare,
   type LucideIcon,
   Search,
   Wrench,
@@ -231,7 +233,54 @@ function readRange(details: unknown) {
   return `characters ${start}–${end} of ${total}`;
 }
 
+type ChatMatch = { id: number; title: string | null; updatedAt: string };
+
 const renderers: Partial<Record<string, ToolRenderer>> = {
+  chat_read: {
+    icon: MessageSquareText,
+    preview: ({ details }) => {
+      const passage = text(field(details, 'passage'));
+
+      return passage ? <PreviewPassage>{passage}</PreviewPassage> : undefined;
+    },
+    summary: ({ details }) => readRange(details),
+    title: ({ active, details }) => {
+      const title = text(field(details, 'title'));
+
+      if (active) {
+        return 'Reading a chat';
+      }
+
+      return title ? `Read “${title}”` : 'Read a chat';
+    },
+  },
+  chat_search: {
+    icon: MessagesSquare,
+    preview: ({ details }) => {
+      const matches = field(details, 'matches') as ChatMatch[] | undefined;
+
+      if (!matches?.length) {
+        return undefined;
+      }
+
+      return (
+        <PreviewList
+          items={matches.map(({ id, title, updatedAt }) => ({
+            key: String(id),
+            label: title ?? 'Untitled chat',
+            meta: day.format(new Date(updatedAt)),
+          }))}
+        />
+      );
+    },
+    summary: ({ details }) => {
+      const found = count(field(details, 'count'));
+
+      return found === undefined ? undefined : plural(found, 'chat');
+    },
+    title: ({ active, args }) =>
+      `${active ? 'Searching' : 'Searched'} your chats${quoted(args.query)}`,
+  },
   codemode: {
     preview: Script,
     icon: Code,

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   customType,
   doublePrecision,
@@ -136,4 +137,34 @@ export const backfillCheckpoint = pgTable(
     entryId: integer('entry_id').notNull(),
   },
   (table) => [primaryKey({ columns: [table.pipeline, table.conversationId] })]
+);
+
+const tsvector = customType<{ data: string }>({
+  dataType: () => 'tsvector',
+});
+
+export const messageText = pgTable(
+  'message_text',
+  {
+    entryId: integer('entry_id').primaryKey(),
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['assistant', 'user'] }).notNull(),
+    text: text('text').notNull(),
+    createdAt: timestamp('created_at').notNull(),
+    search: tsvector('search')
+      .notNull()
+      .generatedAlwaysAs(sql`to_tsvector('english', "text")`),
+  },
+  (table) => [
+    index('message_text_search_idx').using('gin', table.search),
+    index('message_text_conversationId_idx').on(
+      table.conversationId,
+      table.entryId
+    ),
+  ]
 );

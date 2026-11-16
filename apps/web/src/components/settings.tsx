@@ -1,4 +1,5 @@
 import { Archived } from '@/components/archived';
+import { Memory } from '@/components/memory';
 import { Personalization } from '@/components/personalization';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
   ChevronDown,
   KeyRound,
   Palette,
+  UserRound,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { z } from 'zod';
@@ -98,7 +100,8 @@ function Appearance() {
 
 const sections = [
   { icon: Palette, id: 'appearance', label: 'Appearance' },
-  { icon: Brain, id: 'personalization', label: 'Personalization' },
+  { icon: UserRound, id: 'personalization', label: 'Personalization' },
+  { icon: Brain, id: 'memory', label: 'Memory' },
   { icon: KeyRound, id: 'providers', label: 'Providers' },
   { icon: ChartColumn, id: 'usage', label: 'Usage' },
   { icon: Archive, id: 'archived', label: 'Archived' },
@@ -107,6 +110,7 @@ const sections = [
 const sectionSchema = z.enum([
   'appearance',
   'archived',
+  'memory',
   'personalization',
   'providers',
   'usage',
@@ -116,6 +120,7 @@ type Section = z.infer<typeof sectionSchema>;
 
 const panels: Record<Section, () => ReactNode> = {
   appearance: () => <Appearance />,
+  memory: () => <Memory />,
   personalization: () => <Personalization />,
   archived: () => <Archived />,
   providers: () => <Providers />,
