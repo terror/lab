@@ -69,7 +69,9 @@ export function Sidebar({
             onClick={() => onSelect(conversation.id)}
             type='button'
           >
-            Chat {conversation.id}
+            <span className='block truncate'>
+              {conversation.title ?? 'New chat'}
+            </span>
           </button>
         ))}
       </nav>
