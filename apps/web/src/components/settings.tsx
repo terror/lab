@@ -1,49 +1,36 @@
 import { Members } from '@/components/members';
+import { type Theme, useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { accountQueryOptions } from '@/lib/members';
 import { closeSettings } from '@/lib/route';
-import { type Theme, setTheme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  ChevronDown,
   type LucideIcon,
-  Monitor,
-  Moon,
   Palette,
-  Sun,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const themes: {
-  description: string;
-  icon: LucideIcon;
-  label: string;
-  value: Theme;
-}[] = [
-  {
-    description: 'Always use the light theme.',
-    icon: Sun,
-    label: 'Light',
-    value: 'light',
-  },
-  {
-    description: 'Always use the dark theme.',
-    icon: Moon,
-    label: 'Dark',
-    value: 'dark',
-  },
-  {
-    description: 'Match your device settings.',
-    icon: Monitor,
-    label: 'System',
-    value: 'system',
-  },
+const themes: { label: string; value: Theme }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' },
 ];
 
 function Appearance() {
-  const current = useTheme();
+  const { setTheme, theme } = useTheme();
+
+  const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
   return (
     <section className='space-y-6'>
@@ -53,36 +40,32 @@ function Appearance() {
           Choose how Lab looks to you.
         </p>
       </div>
-      <fieldset className='space-y-3'>
-        <legend className='mb-3 text-sm font-medium'>Theme</legend>
-        <div className='grid gap-3 sm:grid-cols-3'>
-          {themes.map(({ description, icon: Icon, label, value }) => (
-            <label
-              key={value}
-              className={cn(
-                'flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-colors hover:bg-accent has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
-                current === value && 'border-primary bg-accent'
-              )}
+      <div className='flex items-center justify-between gap-4'>
+        <span className='text-sm'>Theme</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className='flex items-center gap-1 text-sm text-muted-foreground outline-none'
+              type='button'
             >
-              <input
-                checked={current === value}
-                className='sr-only'
-                name='theme'
-                onChange={() => setTheme(value)}
-                type='radio'
-                value={value}
-              />
-              <Icon aria-hidden='true' className='size-5' />
-              <span className='space-y-0.5'>
-                <span className='block text-sm font-medium'>{label}</span>
-                <span className='block text-xs text-muted-foreground'>
-                  {description}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+              {label}
+              <ChevronDown aria-hidden='true' className='size-4' />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end'>
+            <DropdownMenuRadioGroup
+              onValueChange={(value) => setTheme(value as Theme)}
+              value={theme}
+            >
+              {themes.map(({ label: name, value }) => (
+                <DropdownMenuRadioItem key={value} value={value}>
+                  {name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </section>
   );
 }

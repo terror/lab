@@ -27,10 +27,6 @@ function parse<T>(raw: string | null, schema: z.ZodType<T>, fallback: T) {
   }
 }
 
-export function readStored<T>(key: string, schema: z.ZodType<T>, fallback: T) {
-  return parse(window.localStorage.getItem(prefix + key), schema, fallback);
-}
-
 export function writeStored(key: string, value: unknown) {
   window.localStorage.setItem(prefix + key, JSON.stringify(value));
 
