@@ -1,3 +1,4 @@
+import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth';
@@ -53,21 +54,12 @@ export function Sidebar({
           </p>
         )}
         {conversations.data?.map((conversation) => (
-          <button
+          <ConversationItem
             key={conversation.id}
-            aria-current={conversation.id === selected ? 'page' : undefined}
-            className={cn(
-              'rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent',
-              conversation.id === selected &&
-                'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-            )}
-            onClick={() => onSelect(conversation.id)}
-            type='button'
-          >
-            <span className='block truncate'>
-              {conversation.title ?? 'New chat'}
-            </span>
-          </button>
+            conversation={conversation}
+            onSelect={onSelect}
+            selected={conversation.id === selected}
+          />
         ))}
       </nav>
       <div className='mt-auto flex items-center gap-2 border-t pt-3'>
