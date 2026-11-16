@@ -1,4 +1,5 @@
 import { Conversation } from '@/components/conversation';
+import { ErrorPage } from '@/components/error-page';
 import { NewChat } from '@/components/new-chat';
 import { Settings } from '@/components/settings';
 import { SignIn } from '@/components/sign-in';
@@ -86,7 +87,10 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  defaultErrorComponent: ErrorPage,
+  routeTree,
+});
 
 declare module '@tanstack/react-router' {
   interface Register {
