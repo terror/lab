@@ -9,6 +9,7 @@ import { auth, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
 import { chatModels } from './models';
+import users from './users';
 
 const app = new Hono();
 
@@ -26,7 +27,8 @@ const api = new Hono()
       models: chatModels.map(({ modelId, name }) => ({ id: modelId, name })),
     })
   )
-  .route('/conversations', conversations);
+  .route('/conversations', conversations)
+  .route('/users', users);
 
 export type AppType = typeof api;
 
