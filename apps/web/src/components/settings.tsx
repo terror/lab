@@ -119,10 +119,10 @@ export function Settings({ userId }: { userId: string }) {
           Back to chat
         </Button>
       </header>
-      <div className='mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-8 sm:flex-row sm:gap-12'>
+      <div className='flex w-full flex-1 flex-col gap-8 px-4 pb-8 sm:flex-row sm:gap-12'>
         <nav
           aria-label='Settings'
-          className='flex shrink-0 flex-col gap-1 sm:w-48'
+          className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
         >
           {visible.map(({ icon: Icon, label, value }) => (
             <button
@@ -140,7 +140,7 @@ export function Settings({ userId }: { userId: string }) {
             </button>
           ))}
         </nav>
-        <main className='min-w-0 flex-1'>
+        <main className='max-w-3xl min-w-0 flex-1 px-2 pt-4 sm:px-0'>
           <TabContent tab={tab} userId={userId} />
         </main>
       </div>
