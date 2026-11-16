@@ -13,7 +13,11 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
 import { useLineNumbers } from '@/lib/preferences';
-import { usePersistentState } from '@/lib/storage';
+import {
+  type SettingsSection,
+  settingsSections,
+  useSettingsSection,
+} from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
@@ -24,11 +28,11 @@ import {
   ChartColumn,
   ChevronDown,
   KeyRound,
+  type LucideIcon,
   Palette,
   UserRound,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { z } from 'zod';
+import type { ComponentType } from 'react';
 
 const themes: { label: string; value: Theme }[] = [
   { label: 'Light', value: 'light' },
@@ -98,41 +102,26 @@ function Appearance() {
   );
 }
 
-const sections = [
-  { icon: Palette, id: 'appearance', label: 'Appearance' },
-  { icon: UserRound, id: 'personalization', label: 'Personalization' },
-  { icon: Brain, id: 'memory', label: 'Memory' },
-  { icon: KeyRound, id: 'providers', label: 'Providers' },
-  { icon: ChartColumn, id: 'usage', label: 'Usage' },
-  { icon: Archive, id: 'archived', label: 'Archived' },
-] as const;
-
-const sectionSchema = z.enum([
-  'appearance',
-  'archived',
-  'memory',
-  'personalization',
-  'providers',
-  'usage',
-]);
-
-type Section = z.infer<typeof sectionSchema>;
-
-const panels: Record<Section, () => ReactNode> = {
-  appearance: () => <Appearance />,
-  memory: () => <Memory />,
-  personalization: () => <Personalization />,
-  archived: () => <Archived />,
-  providers: () => <Providers />,
-  usage: () => <UsagePanel />,
+const sections: Record<
+  SettingsSection,
+  { icon: LucideIcon; label: string; panel: ComponentType }
+> = {
+  appearance: { icon: Palette, label: 'Appearance', panel: Appearance },
+  archived: { icon: Archive, label: 'Archived', panel: Archived },
+  memory: { icon: Brain, label: 'Memory', panel: Memory },
+  personalization: {
+    icon: UserRound,
+    label: 'Personalization',
+    panel: Personalization,
+  },
+  providers: { icon: KeyRound, label: 'Providers', panel: Providers },
+  usage: { icon: ChartColumn, label: 'Usage', panel: UsagePanel },
 };
 
 export function Settings() {
-  const [section, setSection] = usePersistentState(
-    'settings-section',
-    sectionSchema,
-    'appearance'
-  );
+  const [section, setSection] = useSettingsSection();
+
+  const Panel = sections[section].panel;
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
@@ -158,24 +147,29 @@ export function Settings() {
           aria-label='Settings'
           className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
         >
-          {sections.map(({ icon: Icon, id, label }) => (
-            <button
-              key={id}
-              aria-current={section === id ? 'page' : undefined}
-              className={cn(
-                'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-                section === id && 'bg-accent font-medium text-accent-foreground'
-              )}
-              onClick={() => setSection(id)}
-              type='button'
-            >
-              <Icon aria-hidden='true' className='size-4' />
-              {label}
-            </button>
-          ))}
+          {settingsSections.map((id) => {
+            const { icon: Icon, label } = sections[id];
+
+            return (
+              <button
+                key={id}
+                aria-current={section === id ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                  section === id &&
+                    'bg-accent font-medium text-accent-foreground'
+                )}
+                onClick={() => setSection(id)}
+                type='button'
+              >
+                <Icon aria-hidden='true' className='size-4' />
+                {label}
+              </button>
+            );
+          })}
         </nav>
         <main className='max-w-3xl min-w-0 flex-1 px-2 pt-4 sm:px-0'>
-          {panels[section]()}
+          <Panel />
         </main>
       </div>
     </div>

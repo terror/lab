@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePersistentState, writeStored } from '@/lib/storage';
+import { selectSettingsSection } from '@/lib/settings';
+import { usePersistentState } from '@/lib/storage';
 import {
   type Budget,
   budgetLevel,
@@ -176,7 +177,7 @@ export function BudgetAlert() {
       action: {
         label: 'View usage',
         onClick: () => {
-          writeStored('settings-section', 'usage');
+          selectSettingsSection('usage');
           void navigate({ to: '/settings' });
         },
       },
