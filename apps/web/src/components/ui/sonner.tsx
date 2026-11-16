@@ -1,9 +1,9 @@
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/lib/theme';
 import type { CSSProperties } from 'react';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
 function Toaster(props: ToasterProps) {
-  const { theme } = useTheme();
+  const [theme] = useTheme();
 
   return (
     <Sonner

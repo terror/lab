@@ -4,6 +4,7 @@ import { Settings } from '@/components/settings';
 import { SignIn } from '@/components/sign-in';
 import { Workspace } from '@/components/workspace';
 import { authClient, useUser } from '@/lib/auth';
+import { useThemeClass } from '@/lib/theme';
 import {
   Navigate,
   Outlet,
@@ -15,6 +16,8 @@ import {
 
 function Root() {
   const session = authClient.useSession();
+
+  useThemeClass();
 
   if (session.isPending) {
     return null;
