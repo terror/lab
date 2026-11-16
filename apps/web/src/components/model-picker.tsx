@@ -16,16 +16,17 @@ import {
   type ModelChoice,
   type ThinkingLevel,
   modelsQueryOptions,
+  type ModelKey,
+  useFavoriteModels,
   useRecentModels,
 } from '@/lib/models';
+import { cn } from '@/lib/utils';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
-import { Check, ChevronDown, Search } from 'lucide-react';
-import { type KeyboardEvent, useState } from 'react';
+import { Check, ChevronDown, Search, Star } from 'lucide-react';
+import { type KeyboardEvent, type ReactNode, useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
-
-const GROUP_LIMIT = 5;
 
 const RECENT_LIMIT = 5;
 
@@ -121,24 +122,75 @@ function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
   }
 }
 
+function same(a: ModelKey, b: ModelKey) {
+  return a.id === b.id && a.provider === b.provider;
+}
+
+function FavoriteButton({
+  favorite,
+  name,
+  onToggle,
+}: {
+  favorite: boolean;
+  name: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      aria-label={favorite ? `Unfavorite ${name}` : `Favorite ${name}`}
+      aria-pressed={favorite}
+      className={cn(
+        'flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:text-foreground',
+        !favorite &&
+          'opacity-0 group-hover/model:opacity-100 group-focus/model:opacity-100'
+      )}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onToggle();
+      }}
+      tabIndex={-1}
+      type='button'
+    >
+      <Star
+        aria-hidden='true'
+        className={cn('size-3.5', favorite && 'fill-current')}
+      />
+    </button>
+  );
+}
+
 function ModelOption({
   current,
+  favorite,
   model,
+  onFavorite,
   onSelect,
   value,
 }: {
   current: boolean;
+  favorite: boolean;
   model: Model;
+  onFavorite: () => void;
   onSelect: (choice: ModelChoice) => void;
   value: ModelChoice | undefined;
 }) {
-  const check = current && (
-    <Check aria-hidden='true' className='ml-auto size-4' />
+  const label = (
+    <>
+      <span className='min-w-0 flex-1 truncate'>{model.name}</span>
+      {current && <Check aria-hidden='true' className='size-4' />}
+      <FavoriteButton
+        favorite={favorite}
+        name={model.name}
+        onToggle={onFavorite}
+      />
+    </>
   );
 
   if (!hasLevels(model)) {
     return (
       <DropdownMenuItem
+        className='group/model'
         onSelect={() =>
           onSelect({
             id: model.id,
@@ -147,8 +199,7 @@ function ModelOption({
           })
         }
       >
-        <span className='truncate'>{model.name}</span>
-        {check}
+        {label}
       </DropdownMenuItem>
     );
   }
@@ -157,9 +208,8 @@ function ModelOption({
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <span className='truncate'>{model.name}</span>
-        {check}
+      <DropdownMenuSubTrigger className='group/model'>
+        {label}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className='min-w-40'>
         <DropdownMenuLabel className='text-xs text-muted-foreground'>
@@ -193,6 +243,17 @@ function ModelOption({
   );
 }
 
+function Section({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className='text-xs text-muted-foreground'>
+        {title}
+      </DropdownMenuLabel>
+      {children}
+    </DropdownMenuGroup>
+  );
+}
+
 export function ModelPicker({
   disabled,
   onChange,
@@ -204,8 +265,8 @@ export function ModelPicker({
 }) {
   const models = useQuery(modelsQueryOptions);
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [recent, setRecent] = useRecentModels();
+  const [favorites, setFavorites] = useFavoriteModels();
 
   const options = models.data?.models ?? [];
 
@@ -215,38 +276,56 @@ export function ModelPicker({
 
   const searching = search.trim().length > 0;
 
-  const groups = groupByProvider(
-    options.filter((model) => matches(model, search))
+  const resolve = (keys: ModelKey[]) =>
+    keys.flatMap((key) => options.filter((model) => same(model, key)));
+
+  const favoriteModels = resolve(favorites);
+
+  const recentModels = resolve(
+    recent.filter((key) => !favorites.some((other) => same(key, other)))
   );
 
-  const recentModels = searching
-    ? []
-    : recent.flatMap((entry) =>
-        options.filter(
-          ({ id, provider }) => id === entry.id && provider === entry.provider
-        )
-      );
+  const results = searching
+    ? groupByProvider(options.filter((model) => matches(model, search)))
+    : [];
 
   const select = (choice: ModelChoice) => {
     onChange(choice);
 
     setRecent(
-      [
-        { id: choice.id, provider: choice.provider },
-        ...recent.filter(
-          ({ id, provider }) => id !== choice.id || provider !== choice.provider
-        ),
-      ].slice(0, RECENT_LIMIT)
+      [choice, ...recent.filter((key) => !same(key, choice))]
+        .map(({ id, provider }) => ({ id, provider }))
+        .slice(0, RECENT_LIMIT)
     );
   };
 
+  const toggleFavorite = (model: Model) => {
+    const key = { id: model.id, provider: model.provider };
+
+    const others = favorites.filter((other) => !same(other, key));
+
+    setFavorites(
+      others.length < favorites.length ? others : [...favorites, key]
+    );
+  };
+
+  const option = (model: Model) => (
+    <ModelOption
+      key={`${model.provider}:${model.id}`}
+      current={model === current}
+      favorite={favorites.some((key) => same(key, model))}
+      model={model}
+      onFavorite={() => toggleFavorite(model)}
+      onSelect={select}
+      value={value}
+    />
+  );
+
+  const empty =
+    !searching && favoriteModels.length === 0 && recentModels.length === 0;
+
   return (
-    <DropdownMenu
-      onOpenChange={() => {
-        setSearch('');
-        setExpanded(new Set());
-      }}
-    >
+    <DropdownMenu onOpenChange={() => setSearch('')}>
       <DropdownMenuTrigger asChild>
         <button
           aria-label={current ? `Model: ${current.name}` : 'Model'}
@@ -275,67 +354,36 @@ export function ModelPicker({
             className='h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground'
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={onSearchKeyDown}
-            placeholder='Search models'
+            placeholder={`Search ${options.length} models`}
             ref={(element) => element?.focus()}
             value={search}
           />
         </div>
         <div className='p-1'>
-          {groups.length === 0 && (
+          {searching && results.length === 0 && (
             <p className='px-2 py-6 text-center text-sm text-muted-foreground'>
               No models found
             </p>
           )}
-          {recentModels.length > 0 && (
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className='text-xs text-muted-foreground'>
-                Recent
-              </DropdownMenuLabel>
-              {recentModels.map((model) => (
-                <ModelOption
-                  key={`${model.provider}:${model.id}`}
-                  current={model === current}
-                  model={model}
-                  onSelect={select}
-                  value={value}
-                />
-              ))}
-            </DropdownMenuGroup>
+          {!searching && favoriteModels.length > 0 && (
+            <Section title='Favorites'>{favoriteModels.map(option)}</Section>
           )}
-          {groups.map(([provider, group]) => {
-            const visible =
-              searching || expanded.has(provider)
-                ? group
-                : group.slice(0, GROUP_LIMIT);
-
-            return (
-              <DropdownMenuGroup key={provider}>
-                <DropdownMenuLabel className='text-xs text-muted-foreground'>
-                  {provider}
-                </DropdownMenuLabel>
-                {visible.map((model) => (
-                  <ModelOption
-                    key={`${model.provider}:${model.id}`}
-                    current={model === current}
-                    model={model}
-                    onSelect={select}
-                    value={value}
-                  />
-                ))}
-                {visible.length < group.length && (
-                  <DropdownMenuItem
-                    className='text-muted-foreground'
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setExpanded(new Set([...expanded, provider]));
-                    }}
-                  >
-                    Show all {group.length}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuGroup>
-            );
-          })}
+          {!searching && recentModels.length > 0 && (
+            <Section title='Recent'>{recentModels.map(option)}</Section>
+          )}
+          {empty && current && (
+            <Section title='Current'>{option(current)}</Section>
+          )}
+          {empty && (
+            <p className='px-2 py-3 text-xs text-muted-foreground'>
+              Search to find any model, and star the ones you use most.
+            </p>
+          )}
+          {results.map(([provider, group]) => (
+            <Section key={provider} title={provider}>
+              {group.map(option)}
+            </Section>
+          ))}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

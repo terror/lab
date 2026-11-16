@@ -43,16 +43,18 @@ export async function setConversationModel(id: number, model: ModelChoice) {
   );
 }
 
-const recentModelsSchema = z
-  .array(z.object({ id: z.string(), provider: z.string() }))
-  .max(5);
+const modelKeysSchema = z.array(
+  z.object({ id: z.string(), provider: z.string() })
+);
 
-const noRecentModels: z.infer<typeof recentModelsSchema> = [];
+export type ModelKey = z.infer<typeof modelKeysSchema>[number];
+
+const noModels: ModelKey[] = [];
 
 export function useRecentModels() {
-  return usePersistentState(
-    'recent-models',
-    recentModelsSchema,
-    noRecentModels
-  );
+  return usePersistentState('recent-models', modelKeysSchema, noModels);
+}
+
+export function useFavoriteModels() {
+  return usePersistentState('favorite-models', modelKeysSchema, noModels);
 }
