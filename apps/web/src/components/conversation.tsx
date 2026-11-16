@@ -231,6 +231,7 @@ export function Conversation({ id }: { id: number }) {
   const queryClient = useQueryClient();
 
   const send = useMutation({
+    meta: { inlineError: true },
     mutationFn: (content: string) => sendMessage(id, content, attachments),
     onSuccess: () => {
       setDraft('');

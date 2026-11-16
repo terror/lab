@@ -55,6 +55,7 @@ export function NewChat({ user }: { user: { name: string } }) {
   const selectedModel = preferredOrFirst(models.data ?? [], model);
 
   const create = useMutation({
+    meta: { inlineError: true },
     mutationFn: (content: string) =>
       createConversation(content, attachments, selectedModel),
     onSuccess: async (id) => {
