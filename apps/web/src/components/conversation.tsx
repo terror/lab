@@ -20,6 +20,7 @@ import { ArrowUp, Square } from 'lucide-react';
 import {
   type KeyboardEvent,
   type SubmitEvent,
+  type UIEvent,
   useEffect,
   useRef,
   useState,
@@ -57,6 +58,7 @@ export function Conversation({ id }: { id: number }) {
   const view = useConversationView(id);
   const [draft, setDraft] = useState('');
   const end = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
 
   const queryClient = useQueryClient();
 
@@ -68,7 +70,7 @@ export function Conversation({ id }: { id: number }) {
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
   useEffect(() => {
-    if (view) {
+    if (view && pinned.current) {
       end.current?.scrollIntoView({ block: 'end' });
     }
   }, [view]);
@@ -121,6 +123,7 @@ export function Conversation({ id }: { id: number }) {
     const content = draft.trim();
 
     if (content && !send.isPending) {
+      pinned.current = true;
       send.mutate(content);
     }
   };
@@ -136,6 +139,12 @@ export function Conversation({ id }: { id: number }) {
     }
   };
 
+  const onScroll = (event: UIEvent<HTMLDivElement>) => {
+    const { clientHeight, scrollHeight, scrollTop } = event.currentTarget;
+
+    pinned.current = scrollHeight - scrollTop - clientHeight < 80;
+  };
+
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     submit();
@@ -143,7 +152,7 @@ export function Conversation({ id }: { id: number }) {
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <div className='min-h-0 flex-1 overflow-y-auto'>
+      <div className='min-h-0 flex-1 overflow-y-auto' onScroll={onScroll}>
         <div className='mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8'>
           {view === undefined ? (
             <p className='text-sm text-muted-foreground'>Connecting…</p>
