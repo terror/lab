@@ -1,6 +1,5 @@
 import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
-import { Button } from '@/components/ui/button';
 import {
   conversationsQueryOptions,
   createConversation,
@@ -8,25 +7,7 @@ import {
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { selectConversation } from '@/lib/route';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  type LucideIcon,
-  ChefHat,
-  Lightbulb,
-  PenLine,
-  Plane,
-} from 'lucide-react';
-import { useRef, useState } from 'react';
-
-const suggestions: { icon: LucideIcon; label: string; prompt: string }[] = [
-  { icon: Plane, label: 'Plan a trip', prompt: 'Help me plan a trip to ' },
-  { icon: PenLine, label: 'Write something', prompt: 'Help me write ' },
-  { icon: Lightbulb, label: 'Explain a topic', prompt: 'Explain ' },
-  {
-    icon: ChefHat,
-    label: 'Cook dinner',
-    prompt: 'Suggest a dinner recipe using ',
-  },
-];
+import { useState } from 'react';
 
 function greeting(name: string) {
   const hour = new Date().getHours();
@@ -53,7 +34,6 @@ export function NewChat({ user }: { user: { name: string } }) {
 
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState<ModelChoice>();
-  const textarea = useRef<HTMLTextAreaElement>(null);
 
   const fallback = models.data?.[0];
 
@@ -67,11 +47,6 @@ export function NewChat({ user }: { user: { name: string } }) {
       await queryClient.invalidateQueries(conversationsQueryOptions);
     },
   });
-
-  const suggest = (prompt: string) => {
-    setDraft(prompt);
-    textarea.current?.focus();
-  };
 
   return (
     <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-[12vh]'>
@@ -93,23 +68,7 @@ export function NewChat({ user }: { user: { name: string } }) {
           onModelChange={setModel}
           onSubmit={(content) => create.mutate(content)}
           submitting={create.isPending}
-          textareaRef={textarea}
         />
-        <div className='flex flex-wrap justify-center gap-2'>
-          {suggestions.map(({ icon: Icon, label, prompt }) => (
-            <Button
-              key={label}
-              className='rounded-full text-muted-foreground'
-              onClick={() => suggest(prompt)}
-              size='sm'
-              type='button'
-              variant='outline'
-            >
-              <Icon aria-hidden='true' />
-              {label}
-            </Button>
-          ))}
-        </div>
       </div>
     </div>
   );
