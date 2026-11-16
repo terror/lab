@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { credentials } from './credentials';
-import { keyProviders, models } from './models';
+import { keyProviders } from './models';
 import { validator } from './validator';
 
 const params = validator('param', z.object({ id: z.string().min(1) }));
@@ -36,15 +36,12 @@ const providers = new Hono()
       (await credentials.list()).map(({ providerId }) => providerId)
     );
 
-    const list = await Promise.all(
-      keyProviders().map(async ({ id, name }) => ({
-        configured: (await models.checkAuth(id)) !== undefined,
-        id,
-        methods: ['api_key' as const],
-        name,
-        stored: stored.has(id),
-      }))
-    );
+    const list = keyProviders().map(({ id, name }) => ({
+      configured: stored.has(id),
+      id,
+      methods: ['api_key' as const],
+      name,
+    }));
 
     return c.json({ providers: list });
   })

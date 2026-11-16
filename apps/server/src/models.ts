@@ -9,7 +9,13 @@ import { HTTPException } from 'hono/http-exception';
 import { credentials } from './credentials';
 import { env } from './env';
 
-export const models = builtinModels({ credentials });
+export const models = builtinModels({
+  authContext: {
+    env: async () => undefined,
+    fileExists: async () => false,
+  },
+  credentials,
+});
 
 export const statusModel = models.getModel(
   'vercel-ai-gateway',
