@@ -28,7 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, LoaderCircle, Pencil, Trash2 } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 function RenameInput({
@@ -110,7 +110,7 @@ export function ConversationItem({
   onSelect,
   selected,
 }: {
-  conversation: { id: number; title: string | null };
+  conversation: { id: number; running: boolean; title: string | null };
   onSelect: (id: number) => void;
   selected: boolean;
 }) {
@@ -187,7 +187,18 @@ export function ConversationItem({
               onClick={() => onSelect(conversation.id)}
               type='button'
             >
-              <span className='block truncate'>{title}</span>
+              <span className='flex items-center gap-2'>
+                <span className='truncate'>{title}</span>
+                {conversation.running && (
+                  <>
+                    <LoaderCircle
+                      aria-hidden='true'
+                      className='size-3.5 shrink-0 text-muted-foreground motion-safe:animate-spin'
+                    />
+                    <span className='sr-only'>Running</span>
+                  </>
+                )}
+              </span>
             </button>
             <DropdownMenu onOpenChange={setMenu}>
               <DropdownMenuTrigger asChild>

@@ -46,6 +46,13 @@ function conversationsQueryOptions(sort: ConversationSort) {
       ),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: ({ next }) => next ?? undefined,
+    refetchInterval: ({ state }) => {
+      const running = state.data?.pages.some(({ conversations }) =>
+        conversations.some((conversation) => conversation.running)
+      );
+
+      return running ? 2_000 : false;
+    },
     select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
   });
 }

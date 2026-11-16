@@ -20,7 +20,7 @@ test('projections are restored from the harness', async () => {
   await projectAll();
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, title: 'foo' }], next: null },
+    body: { conversations: [{ id, running: false, title: 'foo' }], next: null },
     status: 200,
   });
 });
