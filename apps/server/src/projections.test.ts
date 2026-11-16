@@ -14,13 +14,26 @@ test('projections are restored from the harness', async () => {
 
   await db
     .update(schema.conversation)
-    .set({ title: null })
+    .set({ lastMessageAt: new Date(0), title: null })
     .where(eq(schema.conversation.id, id));
 
   await projectAll();
 
-  expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, running: false, title: 'foo' }], next: null },
-    status: 200,
-  });
+  const { body } = await call(headers, 'GET', `/conversations/${id}/entries`);
+
+  const message = body.items.find(
+    ({ kind }: { kind: string }) => kind === 'lab.message'
+  );
+
+  expect(
+    await db
+      .select({
+        lastMessageAt: schema.conversation.lastMessageAt,
+        title: schema.conversation.title,
+      })
+      .from(schema.conversation)
+      .where(eq(schema.conversation.id, id))
+  ).toEqual([
+    { lastMessageAt: new Date(message.model[0].timestamp), title: 'foo' },
+  ]);
 });
