@@ -1,0 +1,12 @@
+[package]
+name = "lab-desktop"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

@@ -16,6 +16,16 @@ build:
 check:
   bun run check
 
+[group: 'desktop']
+[working-directory: 'apps/desktop']
+desktop:
+  bun run tauri dev
+
+[group: 'desktop']
+[working-directory: 'apps/desktop']
+desktop-build origin='http://127.0.0.1:3000':
+  bun run tauri build --config '{"build":{"frontendDist":"{{origin}}"}}'
+
 [group: 'dev']
 dev: services migrate
   bun run dev
