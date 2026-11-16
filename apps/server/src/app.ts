@@ -10,7 +10,7 @@ import { auth, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
 import { harness } from './harness';
-import { listModels } from './models';
+import { defaultModel, listModels } from './models';
 
 const app = new Hono();
 
@@ -29,7 +29,9 @@ const api = new Hono()
     return c.json({ status: 'ok' });
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
-  .get('/models', requireUser, (c) => c.json({ models: listModels() }))
+  .get('/models', requireUser, (c) =>
+    c.json({ default: defaultModel.modelId, models: listModels() })
+  )
   .route('/conversations', conversations);
 
 export type AppType = typeof api;

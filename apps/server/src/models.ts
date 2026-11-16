@@ -11,43 +11,52 @@ import { env } from './env';
 
 const vendors = new Map([
   ['alibaba', 'Alibaba'],
+  ['amazon', 'Amazon'],
   ['anthropic', 'Anthropic'],
+  ['bytedance', 'ByteDance'],
+  ['cohere', 'Cohere'],
   ['deepseek', 'DeepSeek'],
   ['google', 'Google'],
+  ['inclusionai', 'inclusionAI'],
   ['meta', 'Meta'],
+  ['minimax', 'MiniMax'],
   ['mistral', 'Mistral'],
   ['moonshotai', 'Moonshot AI'],
+  ['nvidia', 'NVIDIA'],
   ['openai', 'OpenAI'],
+  ['stepfun', 'StepFun'],
+  ['tencent', 'Tencent'],
   ['xai', 'xAI'],
+  ['xiaomi', 'Xiaomi'],
+  ['zai', 'Z.ai'],
 ]);
 
 export const models = createModels();
 
 models.setProvider(vercelAIGatewayProvider());
 
-const chatModels = env.LAB_MODELS.map((id) => {
-  const model = models.getModel('vercel-ai-gateway', id);
-
-  if (!model) {
-    throw new Error(`Unknown model \`${id}\` in \`LAB_MODELS\``);
-  }
-
-  return model;
-});
-
-const [first] = chatModels;
-
-if (!first) {
-  throw new Error('`LAB_MODELS` must name at least one model');
-}
-
-export const defaultModel = { provider: first.provider, modelId: first.id };
-
 function vendor(id: string) {
   const prefix = id.split('/')[0] ?? id;
 
   return vendors.get(prefix) ?? prefix;
 }
+
+const chatModels = models
+  .getModels('vercel-ai-gateway')
+  .toSorted((a, b) => vendor(a.id).localeCompare(vendor(b.id)));
+
+const fallback = chatModels.find(({ id }) => id === env.LAB_DEFAULT_MODEL);
+
+if (!fallback) {
+  throw new Error(
+    `Unknown model \`${env.LAB_DEFAULT_MODEL}\` in \`LAB_DEFAULT_MODEL\``
+  );
+}
+
+export const defaultModel = {
+  provider: fallback.provider,
+  modelId: fallback.id,
+};
 
 export function listModels() {
   return chatModels.map((model) => ({

@@ -1,4 +1,12 @@
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -9,12 +17,11 @@ import {
   type ThinkingLevel,
   modelsQueryOptions,
 } from '@/lib/models';
-import { cn } from '@/lib/utils';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Slider as SliderPrimitive } from 'radix-ui';
-import { type KeyboardEvent, useState } from 'react';
+import { useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
 
@@ -111,7 +118,7 @@ function ThinkingSlider({
         step={1}
         value={[supported.indexOf(level)]}
       >
-        <SliderPrimitive.Track className='relative h-1 grow overflow-hidden rounded-full bg-muted'>
+        <SliderPrimitive.Track className='relative h-1 grow overflow-hidden rounded-full bg-foreground/10'>
           <SliderPrimitive.Range className='absolute h-full bg-foreground' />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
@@ -122,16 +129,6 @@ function ThinkingSlider({
       </SliderPrimitive.Root>
     </div>
   );
-}
-
-function moveFocus(container: HTMLElement, step: number) {
-  const rows = [
-    ...container.querySelectorAll<HTMLButtonElement>('[data-model-row]'),
-  ];
-
-  const index = rows.findIndex((row) => row === document.activeElement);
-
-  rows[Math.max(0, Math.min(rows.length - 1, index + step))]?.focus();
 }
 
 export function ModelPicker({
@@ -146,8 +143,7 @@ export function ModelPicker({
   const models = useQuery(modelsQueryOptions);
   const [open, setOpen] = useState(false);
 
-  const options = models.data ?? [];
-  const groups = groupByProvider(options);
+  const options = models.data?.models ?? [];
   const current = options.find(({ id }) => id === value?.id);
   const level = current && currentLevel(current, value);
   const thinking = current && level && hasLevels(current);
@@ -167,40 +163,6 @@ export function ModelPicker({
     onChange({ id: model.id, thinkingLevel: currentLevel(model, value) });
   };
 
-  const stepLevel = (step: number) => {
-    if (!current || !level) {
-      return;
-    }
-
-    const supported = supportedLevels(current);
-
-    const next = supported[supported.indexOf(level) + step];
-
-    if (next) {
-      setLevel(next);
-    }
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented) {
-      return;
-    }
-
-    const steps: Record<string, () => void> = {
-      ArrowDown: () => moveFocus(event.currentTarget, 1),
-      ArrowLeft: () => stepLevel(-1),
-      ArrowRight: () => stepLevel(1),
-      ArrowUp: () => moveFocus(event.currentTarget, -1),
-    };
-
-    const step = steps[event.key];
-
-    if (step) {
-      event.preventDefault();
-      step();
-    }
-  };
-
   return (
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
@@ -216,38 +178,31 @@ export function ModelPicker({
       </PopoverTrigger>
       <PopoverContent
         align='end'
-        className='w-60 gap-0 rounded-xl p-1'
-        onKeyDown={onKeyDown}
+        className='w-72 max-w-[calc(100vw-2rem)] gap-0 rounded-xl p-1'
         side='top'
         sideOffset={8}
       >
-        {groups.map(([provider, group]) => (
-          <fieldset key={provider}>
-            <legend
-              className={cn(
-                'px-2 pt-1.5 pb-1 text-xs text-muted-foreground',
-                groups.length === 1 && 'sr-only'
-              )}
-            >
-              {provider}
-            </legend>
-            {group.map((model) => (
-              <button
-                key={model.id}
-                aria-current={model.id === current?.id ? 'true' : undefined}
-                className='flex h-8 w-full items-center justify-between gap-2 rounded-md px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent'
-                data-model-row
-                onClick={() => select(model)}
-                type='button'
-              >
-                <span className='truncate'>{model.name}</span>
-                {model.id === current?.id && (
-                  <Check aria-hidden='true' className='size-4 shrink-0' />
-                )}
-              </button>
+        <Command className='bg-transparent p-0' defaultValue={current?.id}>
+          <CommandInput placeholder='Search models' />
+          <CommandList className='mt-1'>
+            <CommandEmpty>No models found</CommandEmpty>
+            {groupByProvider(options).map(([provider, group]) => (
+              <CommandGroup key={provider} heading={provider}>
+                {group.map((model) => (
+                  <CommandItem
+                    key={model.id}
+                    data-checked={model.id === current?.id}
+                    keywords={[model.name, provider]}
+                    onSelect={() => select(model)}
+                    value={model.id}
+                  >
+                    <span className='truncate'>{model.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             ))}
-          </fieldset>
-        ))}
+          </CommandList>
+        </Command>
         {thinking && (
           <ThinkingSlider level={level} model={current} onChange={setLevel} />
         )}

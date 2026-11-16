@@ -34,17 +34,19 @@ function greeting(name: string) {
   return `Good evening, ${first}`;
 }
 
-function preferredOrFirst(
-  models: { id: string }[],
+function preferredOrDefault(
+  catalog: { default: string; models: { id: string }[] } | undefined,
   preferred: ModelChoice | undefined
 ) {
-  if (preferred && models.some(({ id }) => id === preferred.id)) {
+  if (!catalog) {
+    return undefined;
+  }
+
+  if (preferred && catalog.models.some(({ id }) => id === preferred.id)) {
     return preferred;
   }
 
-  const [first] = models;
-
-  return first && { id: first.id };
+  return { id: catalog.default };
 }
 
 export function NewChat({ user }: { user: { name: string } }) {
@@ -56,7 +58,7 @@ export function NewChat({ user }: { user: { name: string } }) {
   const [model, setModel] = usePreferredModel();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
-  const selectedModel = preferredOrFirst(models.data ?? [], model);
+  const selectedModel = preferredOrDefault(models.data, model);
 
   const create = useMutation({
     meta: { inlineError: true },
