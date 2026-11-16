@@ -7,6 +7,8 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   LAB_ADMIN_EMAIL: z.email(),
+  LAB_CREDENTIALS_KEY: z.string().min(32).optional(),
+  LAB_CREDENTIALS_KEY_PREVIOUS: z.string().min(32).optional(),
   LAB_DEFAULT_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
   LAB_ORIGIN: z.url(),
