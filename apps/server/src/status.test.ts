@@ -1,11 +1,19 @@
 import type { ConversationView } from '@earendil-works/pi-durable';
-import { expect, test } from 'bun:test';
+import { helperModel } from '@lab/harness';
+import { expect, spyOn, test } from 'bun:test';
 
+import { models } from './models';
 import { StatusReporter } from './status';
 
 function view(thinking: string) {
   return {
     docs: {
+      'pi.agent': {
+        model: {
+          modelId: 'alibaba/qwen3-coder',
+          provider: 'vercel-ai-gateway',
+        },
+      },
       'pi.live': {
         generation: {
           attempt: 1,
@@ -23,8 +31,28 @@ test('thinking is summarized into a throttled status', async () => {
     sent.push(status);
   }, new AbortController().signal);
 
+  const complete = spyOn(models, 'completeSimple');
+
   await reporter.report(view('foo'.repeat(100)));
   await reporter.report(view('foo'.repeat(200)));
 
-  expect(sent).toEqual(['foo']);
+  expect({
+    models: complete.mock.calls.map(([model]) => model.id),
+    sent,
+  }).toEqual({ models: ['anthropic/claude-haiku-5.5'], sent: ['foo'] });
+
+  complete.mockRestore();
+});
+
+test('helper models stay on the conversation provider', () => {
+  const [groq] = models.getModels('groq');
+
+  const helper = (provider: string, modelId: string) =>
+    helperModel(models, { modelId, provider })?.id;
+
+  expect([
+    helper('vercel-ai-gateway', 'alibaba/qwen3-coder'),
+    helper('groq', groq?.id ?? ''),
+    helper('groq', 'foo'),
+  ]).toEqual(['anthropic/claude-haiku-5.5', groq?.id, undefined]);
 });

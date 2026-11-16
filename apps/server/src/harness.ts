@@ -4,7 +4,7 @@ import { inArray } from 'drizzle-orm';
 
 import { db } from './db';
 import { env } from './env';
-import { fallbackModel, models } from './models';
+import { models } from './models';
 
 export async function purgeDeleted(path: string) {
   const deleted = await db
@@ -28,7 +28,6 @@ export async function purgeDeleted(path: string) {
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
 export const harness = await openHarness({
-  model: fallbackModel,
   models,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
