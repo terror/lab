@@ -29,6 +29,13 @@ test('usage is summarized from assistant responses', async () => {
 
   const { body } = await call(headers, 'GET', '/usage?days=7');
 
+  const written = (
+    await db
+      .select({ cacheWrite: schema.usageEvent.cacheWrite })
+      .from(schema.usageEvent)
+      .where(eq(schema.usageEvent.conversationId, id))
+  ).reduce((total, { cacheWrite }) => total + cacheWrite, 0);
+
   expect({
     conversations: body.conversations,
     days: body.daily.length,
@@ -59,7 +66,7 @@ test('usage is summarized from assistant responses', async () => {
     ],
     summary: {
       cacheRead: 0,
-      cacheWrite: 426,
+      cacheWrite: written,
       cost: 0,
       input: 43,
       output: 2,

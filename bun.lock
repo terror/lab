@@ -25,6 +25,7 @@
         "@better-auth/drizzle-adapter": "1.7.25",
         "@earendil-works/chord": "1.5.2",
         "@earendil-works/pi-ai": "1.5.2",
+        "@earendil-works/pi-codemode": "1.5.2",
         "@earendil-works/pi-durable": "1.5.2",
         "@hono/bun": "^1.0.1",
         "@hono/zod-validator": "0.9.1",
@@ -105,6 +106,7 @@
       "dependencies": {
         "@earendil-works/chord": "1.5.2",
         "@earendil-works/pi-ai": "1.5.2",
+        "@earendil-works/pi-codemode": "1.5.2",
         "@earendil-works/pi-durable": "1.5.2",
         "@earendil-works/pi-schema": "1.5.2",
       },
