@@ -6,7 +6,7 @@ import {
   LiveDoc,
   type LiveState,
 } from '@earendil-works/pi-durable';
-import { helperModel } from '@lab/harness';
+import { completeHelper, helperModel } from '@lab/harness';
 
 import { recordHelperUsage } from './helper-usage';
 import { models } from './models';
@@ -26,14 +26,6 @@ function thinking(view: ConversationView) {
   return (live?.generation?.message?.content ?? [])
     .map((part) => (part.type === 'thinking' ? part.thinking : ''))
     .join('');
-}
-
-function phrase(message: AssistantMessage) {
-  return message.content
-    .map((part) => (part.type === 'text' ? part.text : ''))
-    .join('')
-    .trim()
-    .replace(/^["']|["'.]$/g, '');
 }
 
 type Send = (status: string) => Promise<void>;
@@ -79,26 +71,22 @@ class StatusReporter {
     this.#at = Date.now();
 
     try {
-      const answer = await models.completeSimple(
-        model,
-        {
-          systemPrompt: PROMPT,
-          messages: [
-            {
-              role: 'user',
-              content: text.slice(-WINDOW),
-              timestamp: Date.now(),
-            },
-          ],
-        },
-        { maxTokens: 24, signal: this.#signal }
-      );
+      const answer = await completeHelper(models, model, {
+        input: text.slice(-WINDOW),
+        maxTokens: 24,
+        prompt: PROMPT,
+        signal: this.#signal,
+      });
 
-      this.#onUsage(answer);
+      this.#onUsage(answer.message);
 
-      const status = phrase(answer);
+      const status = answer.text.replace(/^["']|["'.]$/g, '');
 
-      if (answer.stopReason !== 'error' && status && !this.#signal.aborted) {
+      if (
+        answer.message.stopReason !== 'error' &&
+        status &&
+        !this.#signal.aborted
+      ) {
         await this.#send(status);
       }
     } catch (error) {

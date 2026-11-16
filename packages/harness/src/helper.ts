@@ -17,6 +17,35 @@ const helpers: Partial<Record<string, string>> = {
   'vercel-ai-gateway': 'anthropic/claude-haiku-5.5',
 };
 
+type HelperModel = NonNullable<ReturnType<typeof helperModel>>;
+
+export async function completeHelper(
+  models: Models,
+  model: HelperModel,
+  {
+    input,
+    maxTokens,
+    prompt,
+    signal,
+  }: { input: string; maxTokens: number; prompt: string; signal?: AbortSignal }
+) {
+  const message = await models.completeSimple(
+    model,
+    {
+      systemPrompt: prompt,
+      messages: [{ content: input, role: 'user', timestamp: Date.now() }],
+    },
+    { maxTokens, signal }
+  );
+
+  const text = message.content
+    .map((part) => (part.type === 'text' ? part.text : ''))
+    .join('')
+    .trim();
+
+  return { message, text };
+}
+
 export function helperModel(models: Models, ref: ModelRef | undefined) {
   if (!ref) {
     return undefined;

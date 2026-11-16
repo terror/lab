@@ -1,4 +1,4 @@
-import type { AssistantMessage, Message } from '@earendil-works/pi-ai';
+import type { Message } from '@earendil-works/pi-ai';
 import {
   AgentDoc,
   CompactionTask,
@@ -6,7 +6,7 @@ import {
   hook,
 } from '@earendil-works/pi-durable';
 
-import { type HelperUsage, helperModel } from '../helper';
+import { type HelperUsage, completeHelper, helperModel } from '../helper';
 
 const PROMPT =
   'Summarize the conversation below so it can continue without the original messages. Keep every decision, fact, open question, file name, and piece of code the conversation still depends on. Write plain prose and short lists, with no preamble.';
@@ -48,13 +48,6 @@ function serialize(messages: readonly Message[]) {
     .join('\n\n');
 }
 
-function answerText(answer: AssistantMessage) {
-  return answer.content
-    .map((part) => (part.type === 'text' ? part.text : ''))
-    .join('')
-    .trim();
-}
-
 export function compaction(onHelperUsage: HelperUsage) {
   return defineExtension({
     name: 'lab.compaction',
@@ -81,26 +74,19 @@ export function compaction(onHelperUsage: HelperUsage) {
             return undefined;
           }
 
-          const answer = await api.models.completeSimple(
-            model,
-            {
-              systemPrompt: instructions
-                ? `${PROMPT}\n\n${instructions}`
-                : PROMPT,
-              messages: [
-                { content: transcript, role: 'user', timestamp: Date.now() },
-              ],
-            },
-            { maxTokens: MAX_TOKENS }
-          );
+          const answer = await completeHelper(api.models, model, {
+            input: transcript,
+            maxTokens: MAX_TOKENS,
+            prompt: instructions ? `${PROMPT}\n\n${instructions}` : PROMPT,
+          });
 
-          if (answer.stopReason === 'error') {
+          if (answer.message.stopReason === 'error') {
             return undefined;
           }
 
-          onHelperUsage(api.conversationId, 'compaction', answer);
+          onHelperUsage(api.conversationId, 'compaction', answer.message);
 
-          const summary = answerText(answer);
+          const summary = answer.text;
 
           if (!summary) {
             return undefined;
