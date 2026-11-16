@@ -56,9 +56,6 @@ export function NewChat({ user }: { user: { name: string } }) {
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
             {greeting(user.name)}
           </h1>
-          <p className='text-muted-foreground'>
-            What can Lab help you with today?
-          </p>
         </div>
         <Composer
           draft={draft}
