@@ -57,6 +57,13 @@
       "when": 1794843498050,
       "tag": "0007_conversation_created_index",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794845131803,
+      "tag": "0008_conversation_title",
+      "breakpoints": true
     }
   ]
 }

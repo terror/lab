@@ -11,6 +11,7 @@ export const conversation = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
+    title: text('title'),
   },
   (table) => [
     index('conversation_ownerId_createdAt_idx').on(

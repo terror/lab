@@ -18,6 +18,7 @@ import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
 import { modelChange, thinkingLevelSchema } from './models';
+import { flushProjections, project } from './projections';
 import { validator } from './validator';
 
 const params = validator(
@@ -206,8 +207,10 @@ const conversations = new Hono()
 
     const { cursor, limit, sort } = c.req.valid('query');
 
+    await flushProjections();
+
     const rows = await db
-      .select({ id: schema.conversation.id })
+      .select({ id: schema.conversation.id, title: schema.conversation.title })
       .from(schema.conversation)
       .where(
         and(
@@ -225,19 +228,7 @@ const conversations = new Hono()
 
     const next = rows.length > limit ? page.at(-1)?.id : undefined;
 
-    const items = await Promise.all(
-      page.map(async ({ id }) => {
-        const doc = await harness.snapshot(
-          TitleDoc,
-          id as ConversationId,
-          BACKGROUND_CONTEXT
-        );
-
-        return { id, title: doc?.title ?? null };
-      })
-    );
-
-    return c.json({ conversations: items, next: next ?? null });
+    return c.json({ conversations: page, next: next ?? null });
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');
@@ -256,13 +247,21 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    await db.transaction(async (tx) => {
-      await tx
-        .insert(schema.conversation)
-        .values({ id: conversation.id, ownerId: user.id });
+    await db
+      .insert(schema.conversation)
+      .values({ id: conversation.id, ownerId: user.id });
 
+    await project(conversation.id);
+
+    try {
       await submitMessage(conversation, { attachments, content: text });
-    });
+    } catch (error) {
+      await db
+        .delete(schema.conversation)
+        .where(eq(schema.conversation.id, conversation.id));
+
+      throw error;
+    }
 
     return c.json({ id: conversation.id }, 201);
   })
