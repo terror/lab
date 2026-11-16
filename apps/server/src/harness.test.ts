@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { db } from './db';
 import { purgeDeleted } from './harness';
-import { fallbackModel, models } from './models';
+import { models } from './models';
 
 const queries = [
   'select id from conversations order by id',
@@ -52,7 +52,7 @@ async function converse(harness: Awaited<ReturnType<typeof openHarness>>) {
 test('deleted conversations are purged from storage', async () => {
   const path = join(await mkdtemp(join(tmpdir(), 'lab-')), 'lab.sqlite');
 
-  const first = await openHarness({ model: fallbackModel, models, path });
+  const first = await openHarness({ models, path });
 
   const keep = await converse(first);
   const drop = await converse(first);
@@ -67,7 +67,7 @@ test('deleted conversations are purged from storage', async () => {
 
   expect(stored(path)).toEqual([[keep], [keep], [keep], [keep]]);
 
-  const second = await openHarness({ model: fallbackModel, models, path });
+  const second = await openHarness({ models, path });
 
   expect([
     (await second.conversation(keep, BACKGROUND_CONTEXT))?.id,
