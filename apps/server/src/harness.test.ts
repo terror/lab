@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { openHarness } from '@lab/harness';
+import { openHarness, purgeConversations } from '@lab/harness';
 import { expect, test } from 'bun:test';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -83,4 +84,51 @@ test('deleted conversations are purged from storage', async () => {
   ]).toEqual([keep, undefined]);
 
   await second.close(BACKGROUND_CONTEXT);
+});
+
+test('fork parents and missing stores are handled by the purge', async () => {
+  const path = join(await mkdtemp(join(tmpdir(), 'lab-')), 'lab.sqlite');
+
+  const harness = await openHarness({
+    models,
+    onHelperUsage: () => undefined,
+    path,
+  });
+
+  const root = await converse(harness);
+
+  const fork = async (parent: number) => {
+    const conversation = await harness.conversation(
+      parent as ConversationId,
+      BACKGROUND_CONTEXT
+    );
+
+    const { items } = await conversation!.entries(
+      { order: 'descending' },
+      1,
+      undefined,
+      BACKGROUND_CONTEXT
+    );
+
+    const record = await conversation!.commit(
+      (tx) =>
+        tx.forkConversation(parent as ConversationId, items[0]!.id, {
+          ownership: { kind: 'ownerless' },
+        }),
+      BACKGROUND_CONTEXT
+    );
+
+    return record.id;
+  };
+
+  const child = await fork(root);
+  const grandchild = await fork(child);
+
+  await harness.close(BACKGROUND_CONTEXT);
+
+  expect([
+    purgeConversations(path, [root, child]),
+    stored(path)[0],
+    purgeConversations(join(tmpdir(), 'missing', 'lab.sqlite'), [root]),
+  ]).toEqual([[], [root, child, grandchild], [root]]);
 });

@@ -179,9 +179,16 @@ const conversations = new Hono()
     try {
       await submitMessage(conversation, { attachments, content: text });
     } catch (error) {
-      await db
-        .delete(schema.conversation)
-        .where(eq(schema.conversation.id, conversation.id));
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(schema.conversation)
+          .where(eq(schema.conversation.id, conversation.id));
+
+        await tx
+          .insert(schema.conversationDeletion)
+          .values({ id: conversation.id })
+          .onConflictDoNothing();
+      });
 
       throw error;
     }
