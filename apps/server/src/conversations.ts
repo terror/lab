@@ -234,19 +234,17 @@ const conversations = new Hono()
       model === undefined ? undefined : modelChange(model, thinkingLevel);
 
     const conversation = await harness.createConversation(
-      { ownership: { kind: 'ownerless' } },
+      { agent: change, ownership: { kind: 'ownerless' } },
       BACKGROUND_CONTEXT
     );
 
-    await db
-      .insert(schema.conversation)
-      .values({ id: conversation.id, ownerId: user.id });
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(schema.conversation)
+        .values({ id: conversation.id, ownerId: user.id });
 
-    if (change) {
-      await conversation.configure(change, BACKGROUND_CONTEXT);
-    }
-
-    await submitMessage(conversation, { attachments, content: text });
+      await submitMessage(conversation, { attachments, content: text });
+    });
 
     return c.json({ id: conversation.id }, 201);
   })

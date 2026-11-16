@@ -1,6 +1,6 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
-import { expect, test } from 'bun:test';
+import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
+import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import app from './app';
@@ -59,6 +59,48 @@ test('created conversations are listed with their generated title', async () => 
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: { conversations: [{ id, title: 'foo' }], next: null },
+    status: 200,
+  });
+});
+
+test('conversations are created with the chosen model', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+    model: 'anthropic/claude-haiku-5.5',
+    thinkingLevel: 'off',
+  });
+
+  const agent = await harness.snapshot(AgentDoc, body.id, BACKGROUND_CONTEXT);
+
+  expect([agent?.model, agent?.thinkingLevel]).toEqual([
+    { modelId: 'anthropic/claude-haiku-5.5', provider: 'vercel-ai-gateway' },
+    'off',
+  ]);
+});
+
+test('conversations are not listed when their first message fails', async () => {
+  const headers = await signIn();
+
+  const createConversation = harness.createConversation.bind(harness);
+
+  spyOn(harness, 'createConversation').mockImplementationOnce(
+    async (options, context) => {
+      const conversation = await createConversation(options, context);
+
+      spyOn(conversation, 'submit').mockRejectedValueOnce(new Error('foo'));
+
+      return conversation;
+    }
+  );
+
+  expect(
+    await call(headers, 'POST', '/conversations', { content: 'foo' })
+  ).toEqual({ body: { error: 'Internal server error' }, status: 500 });
+
+  expect(await call(headers, 'GET', '/conversations')).toEqual({
+    body: { conversations: [], next: null },
     status: 200,
   });
 });
