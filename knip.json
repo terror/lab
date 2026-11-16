@@ -4,5 +4,10 @@
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "apps/web/src/components/ui/**": ["exports"]
+  },
+  "workspaces": {
+    "apps/server": {
+      "ignoreDependencies": ["@earendil-works/pi-codemode"]
+    }
   }
 }

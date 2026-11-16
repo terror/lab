@@ -7,7 +7,7 @@
     "./schemas": "./src/schemas.ts"
   },
   "scripts": {
-    "build": "bun build src/server.ts --target=bun --outdir=dist",
+    "build": "bun build src/server.ts --target=bun --outdir=dist --external @earendil-works/pi-codemode",
     "check": "tsc --noEmit",
     "dev": "bun run --watch src/server.ts",
     "start": "NODE_ENV=production bun run dist/server.js",
@@ -17,6 +17,7 @@
     "@better-auth/drizzle-adapter": "1.7.25",
     "@earendil-works/chord": "1.5.2",
     "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-codemode": "1.5.2",
     "@earendil-works/pi-durable": "1.5.2",
     "@hono/bun": "^1.0.1",
     "@hono/zod-validator": "0.9.1",
