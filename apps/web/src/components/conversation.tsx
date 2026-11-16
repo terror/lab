@@ -1,3 +1,4 @@
+import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
   abortConversation,
@@ -7,7 +8,11 @@ import {
 } from '@/lib/conversations';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
-import type { InboxState, LiveState } from '@earendil-works/pi-durable';
+import type {
+  AgentState,
+  InboxState,
+  LiveState,
+} from '@earendil-works/pi-durable';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowUp, Square } from 'lucide-react';
 import {
@@ -64,6 +69,7 @@ export function Conversation({ id }: { id: number }) {
 
   const live = view?.docs['pi.live'] as LiveState | undefined;
   const inbox = view?.docs['pi.inbox'] as InboxState | undefined;
+  const agent = view?.docs['pi.agent'] as AgentState | undefined;
 
   const bubbles = (view?.entries ?? []).flatMap((entry): Bubble[] => {
     const role = roles.get(entry.kind);
@@ -172,6 +178,7 @@ export function Conversation({ id }: { id: number }) {
             rows={1}
             value={draft}
           />
+          <ModelPicker conversation={id} current={agent?.model?.modelId} />
           {running && (
             <Button
               aria-label='Stop'
