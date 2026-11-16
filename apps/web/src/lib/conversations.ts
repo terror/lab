@@ -10,7 +10,12 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
-import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -42,6 +47,24 @@ function conversationsQueryOptions(sort: ConversationSort) {
     initialPageParam: undefined as number | undefined,
     getNextPageParam: ({ next }) => next ?? undefined,
     select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
+  });
+}
+
+export function useConversationSearch(search: string) {
+  return useQuery({
+    enabled: search.length > 0,
+    placeholderData: keepPreviousData,
+    queryKey: [...conversationsQueryKey, 'search', search],
+    queryFn: async ({ signal }) => {
+      const { conversations } = await call(
+        client.conversations.$get(
+          { query: { limit: '20', search } },
+          { init: { signal } }
+        )
+      );
+
+      return conversations;
+    },
   });
 }
 

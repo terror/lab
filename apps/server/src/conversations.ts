@@ -7,7 +7,16 @@ import type {
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
-import { type AnyColumn, type SQL, and, asc, desc, eq, sql } from 'drizzle-orm';
+import {
+  type AnyColumn,
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  sql,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -80,6 +89,7 @@ const listQuery = validator(
   z.object({
     cursor: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
+    search: z.string().trim().min(1).max(200).optional(),
     sort: z.enum(['activity', 'created', 'title']).default('activity'),
   })
 );
@@ -172,6 +182,12 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
+function matching(search: string) {
+  const pattern = search.replace(/[\\%_]/g, (character) => `\\${character}`);
+
+  return ilike(schema.conversation.title, `%${pattern}%`);
+}
+
 function after(id: number, user: User, sort: Sort) {
   const { ascending, key } = sorts[sort];
 
@@ -219,7 +235,7 @@ const conversations = new Hono()
   .get('/', listQuery, async (c) => {
     const user = c.get('user');
 
-    const { cursor, limit, sort } = c.req.valid('query');
+    const { cursor, limit, search, sort } = c.req.valid('query');
 
     await flushProjections();
 
@@ -233,7 +249,8 @@ const conversations = new Hono()
       .where(
         and(
           eq(schema.conversation.ownerId, user.id),
-          cursor === undefined ? undefined : after(cursor, user, sort)
+          cursor === undefined ? undefined : after(cursor, user, sort),
+          search === undefined ? undefined : matching(search)
         )
       )
       .orderBy(order(key(schema.conversation)), order(schema.conversation.id))

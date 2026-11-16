@@ -225,6 +225,21 @@ test('conversations can be listed by title', async () => {
   });
 });
 
+test('conversations can be searched by title', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  await call(headers, 'PATCH', `/conversations/${first}`, { title: 'Foo%' });
+  await call(headers, 'PATCH', `/conversations/${second}`, { title: 'foobar' });
+
+  expect(await call(headers, 'GET', '/conversations?search=foo%25')).toEqual({
+    body: { conversations: [{ id: first, title: 'Foo%' }], next: null },
+    status: 200,
+  });
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 
