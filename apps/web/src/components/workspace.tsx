@@ -22,7 +22,12 @@ import { PanelLeft, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
 
-type User = { email: string; image?: string | null; name: string };
+type User = {
+  email: string;
+  id: string;
+  image?: string | null;
+  name: string;
+};
 
 const layoutSchema = z.record(z.string(), z.number()).optional();
 
@@ -38,7 +43,7 @@ function Content({
       {selected === undefined ? (
         <NewChat user={user} />
       ) : (
-        <Conversation key={selected} id={selected} />
+        <Conversation key={selected} id={selected} userId={user.id} />
       )}
     </main>
   );

@@ -1,3 +1,4 @@
+import { ShareDialog } from '@/components/share-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +21,10 @@ import {
   renameConversation,
 } from '@/lib/conversations';
 import { openNewChat } from '@/lib/route';
+import type { Visibility } from '@/lib/sharing';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, Share, Trash2, Users } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 function RenameInput({
@@ -80,16 +82,24 @@ export function ConversationItem({
   conversation,
   onSelect,
   selected,
+  userId,
 }: {
-  conversation: { id: number; title: string | null };
+  conversation: {
+    id: number;
+    owned: boolean;
+    title: string | null;
+    visibility: Visibility;
+  };
   onSelect: (id: number) => void;
   selected: boolean;
+  userId: string;
 }) {
   const queryClient = useQueryClient();
 
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const renaming = useRef(false);
 
   const title = conversation.title ?? 'New chat';
@@ -134,8 +144,10 @@ export function ConversationItem({
           'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
       )}
       onContextMenu={(event) => {
-        event.preventDefault();
-        setMenu(true);
+        if (conversation.owned) {
+          event.preventDefault();
+          setMenu(true);
+        }
       }}
     >
       <button
@@ -144,64 +156,87 @@ export function ConversationItem({
         onClick={() => onSelect(conversation.id)}
         type='button'
       >
-        <span className='block truncate'>{title}</span>
+        <span className='flex items-center gap-1.5'>
+          <span className='truncate'>{title}</span>
+          {conversation.visibility !== 'private' && (
+            <Users
+              aria-label='Shared'
+              className='size-3.5 shrink-0 text-muted-foreground'
+            />
+          )}
+        </span>
       </button>
-      <DropdownMenu open={menu} onOpenChange={setMenu}>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Options for ${title}`}
-            className='mr-1 rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
-            type='button'
-          >
-            <Ellipsis aria-hidden='true' className='size-4' />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align='start'
-          onCloseAutoFocus={(event) => {
-            if (renaming.current) {
-              renaming.current = false;
-              event.preventDefault();
-            }
-          }}
-        >
-          <DropdownMenuItem
-            onSelect={() => {
-              renaming.current = true;
-              setEditing(true);
-            }}
-          >
-            <Pencil aria-hidden='true' />
-            Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => setConfirming(true)}
-            variant='destructive'
-          >
-            <Trash2 aria-hidden='true' />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent size='sm'>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete “{title}”.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => remove.mutate()}
-              variant='destructive'
+      {conversation.owned && (
+        <>
+          <DropdownMenu open={menu} onOpenChange={setMenu}>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={`Options for ${title}`}
+                className='mr-1 rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
+                type='button'
+              >
+                <Ellipsis aria-hidden='true' className='size-4' />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align='start'
+              onCloseAutoFocus={(event) => {
+                if (renaming.current) {
+                  renaming.current = false;
+                  event.preventDefault();
+                }
+              }}
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <DropdownMenuItem onSelect={() => setSharing(true)}>
+                <Share aria-hidden='true' />
+                Share
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  renaming.current = true;
+                  setEditing(true);
+                }}
+              >
+                <Pencil aria-hidden='true' />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setConfirming(true)}
+                variant='destructive'
+              >
+                <Trash2 aria-hidden='true' />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <AlertDialog open={confirming} onOpenChange={setConfirming}>
+            <AlertDialogContent size='sm'>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete “{title}”.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => remove.mutate()}
+                  variant='destructive'
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <ShareDialog
+            conversation={conversation.id}
+            onOpenChange={setSharing}
+            open={sharing}
+            title={title}
+            userId={userId}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -24,18 +24,32 @@ import type {
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
 
 type Bubble = {
+  author?: string;
   id: string;
   text: string;
 };
 
 const userKinds = new Set(['lab.message', 'pi.user']);
 
+const messageDataSchema = z.object({
+  author: z.object({ id: z.string(), name: z.string() }),
+  text: z.string().optional(),
+});
+
 function UserMessage({ bubble }: { bubble: Bubble }) {
   return (
-    <div className='ml-auto max-w-[80%] rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
-      {bubble.text}
+    <div className='ml-auto flex max-w-[80%] flex-col items-end gap-1'>
+      {bubble.author && (
+        <span className='px-1 text-xs text-muted-foreground'>
+          {bubble.author}
+        </span>
+      )}
+      <div className='rounded-2xl bg-muted px-4 py-2 leading-relaxed whitespace-pre-wrap'>
+        {bubble.text}
+      </div>
     </div>
   );
 }
@@ -86,6 +100,7 @@ function TranscriptRow({
   onGap,
   progress,
   results,
+  userId,
 }: {
   item: TranscriptItem;
   loading: boolean;
@@ -93,6 +108,7 @@ function TranscriptRow({
   onGap: (gap: Gap) => void;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
+  userId: string;
 }) {
   if (item.kind === 'earlier') {
     return (
@@ -135,16 +151,22 @@ function TranscriptRow({
     );
   }
 
-  const text = contentText(message?.content);
+  const data = messageDataSchema.safeParse(item.entry.data).data;
+  const text = data?.text ?? contentText(message?.content);
 
   if (!userKinds.has(item.entry.kind) || !text) {
     return null;
   }
 
-  return <UserMessage bubble={{ id: `entry-${item.entry.id}`, text }} />;
+  const author =
+    data && data.author.id !== userId ? data.author.name : undefined;
+
+  return (
+    <UserMessage bubble={{ author, id: `entry-${item.entry.id}`, text }} />
+  );
 }
 
-export function Conversation({ id }: { id: number }) {
+export function Conversation({ id, userId }: { id: number; userId: string }) {
   const { view, loadEarlier, fillGap } = useConversation(id);
   const [draft, setDraft] = useState('');
   const end = useRef<HTMLDivElement>(null);
@@ -226,6 +248,7 @@ export function Conversation({ id }: { id: number }) {
                   onGap={(value) => gap.mutate(value)}
                   progress={progress}
                   results={results}
+                  userId={userId}
                 />
               ))}
               {partial.length > 0 && (
