@@ -1,4 +1,8 @@
-import { queryOptions } from '@tanstack/react-query';
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
@@ -11,8 +15,11 @@ export const memoryQueryOptions = queryOptions({
     call(client.memory.$get(undefined, { init: { signal } })),
 });
 
-export function saveInstructions(instructions: string) {
-  return call(client.memory.instructions.$put({ json: { instructions } }));
+export function updateMemory(json: {
+  instructions?: string;
+  referenceChats?: boolean;
+}) {
+  return call(client.memory.$patch({ json }));
 }
 
 export function addMemory(text: string) {
@@ -21,4 +28,17 @@ export function addMemory(text: string) {
 
 export function removeMemory(id: string) {
   return call(client.memory[':id'].$delete({ param: { id } }));
+}
+
+export function useMemoryUpdate<T>(
+  mutationFn: (value: T) => Promise<MemoryState>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { inlineError: true },
+    mutationFn,
+    onSuccess: (state) =>
+      queryClient.setQueryData(memoryQueryOptions.queryKey, state),
+  });
 }

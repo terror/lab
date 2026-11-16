@@ -10,7 +10,7 @@ import { script } from '../test/models';
 test('memories and instructions can be managed', async () => {
   const headers = await signIn();
 
-  await call(headers, 'PUT', '/memory/instructions', { instructions: 'foo' });
+  await call(headers, 'PATCH', '/memory', { instructions: 'foo' });
 
   const added = await call(headers, 'POST', '/memory', { text: 'bar' });
 
@@ -22,11 +22,14 @@ test('memories and instructions can be managed', async () => {
     await call(headers, 'DELETE', `/memory/${entry.id}`),
   ]).toEqual([
     201,
-    { body: { instructions: 'foo', memories: [] }, status: 200 },
+    {
+      body: { instructions: 'foo', memories: [], referenceChats: false },
+      status: 200,
+    },
     { body: { error: 'Memory not found' }, status: 404 },
   ]);
 
-  await call(headers, 'PUT', '/memory/instructions', { instructions: '' });
+  await call(headers, 'PATCH', '/memory', { instructions: '' });
 });
 
 test('the agent remembers facts', async () => {

@@ -55,6 +55,7 @@ test('deleted conversations are purged from storage', async () => {
 
   const first = await openHarness({
     models,
+    history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
     path,
@@ -75,6 +76,7 @@ test('deleted conversations are purged from storage', async () => {
 
   const second = await openHarness({
     models,
+    history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
     path,
@@ -93,6 +95,7 @@ test('fork parents and missing stores are handled by the purge', async () => {
 
   const harness = await openHarness({
     models,
+    history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
     path,

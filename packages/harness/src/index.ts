@@ -10,7 +10,11 @@ import {
 } from '@earendil-works/pi-durable';
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 
-import { type LibraryAccess, extensions } from './extensions';
+import {
+  type HistoryAccess,
+  type LibraryAccess,
+  extensions,
+} from './extensions';
 import type { HelperUsage } from './helper';
 
 export {
@@ -21,6 +25,9 @@ export {
   TitleDoc,
   library,
   memory,
+  type ChatMatch,
+  type ChatTranscript,
+  type HistoryAccess,
   type LibraryAccess,
   type LibraryContent,
   type LibraryEntry,
@@ -29,6 +36,7 @@ export { type HelperKind, type HelperUsage, helperModel } from './helper';
 export { purgeConversations } from './purge';
 
 export type HarnessOptions = {
+  history: HistoryAccess;
   library: LibraryAccess;
   models: Models;
   onHelperUsage: HelperUsage;
@@ -37,12 +45,23 @@ export type HarnessOptions = {
 };
 
 export async function openHarness(
-  { library: access, path, models, onHelperUsage, onReport }: HarnessOptions,
+  {
+    history: chats,
+    library: access,
+    path,
+    models,
+    onHelperUsage,
+    onReport,
+  }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
   const registry = createRegistry();
 
-  for (const extension of extensions({ library: access, onHelperUsage })) {
+  for (const extension of extensions({
+    history: chats,
+    library: access,
+    onHelperUsage,
+  })) {
     registry.install(extension);
   }
 
