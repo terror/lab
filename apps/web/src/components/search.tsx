@@ -11,6 +11,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useDeferredValue,
   useEffect,
   useMemo,
   useState,
@@ -22,6 +23,28 @@ const SearchContext = createContext<{ openSearch: () => void }>({
 
 export function useSearch() {
   return useContext(SearchContext);
+}
+
+function SearchCommand({ onDone }: { onDone: () => void }) {
+  const [search, setSearch] = useState('');
+
+  const query = useDeferredValue(search.trim());
+
+  return (
+    <Command>
+      <CommandInput
+        onValueChange={setSearch}
+        placeholder='Search...'
+        value={search}
+      />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        {searchSources.map(({ component: Source, id }) => (
+          <Source key={id} onDone={onDone} search={query} />
+        ))}
+      </CommandList>
+    </Command>
+  );
 }
 
 export function SearchProvider({ children }: { children: ReactNode }) {
@@ -54,15 +77,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         open={open}
         title='Search'
       >
-        <Command>
-          <CommandInput placeholder='Search...' />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {searchSources.map(({ component: Source, id }) => (
-              <Source key={id} onDone={close} />
-            ))}
-          </CommandList>
-        </Command>
+        <SearchCommand onDone={close} />
       </CommandDialog>
     </SearchContext.Provider>
   );

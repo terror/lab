@@ -1,10 +1,10 @@
 import { CommandGroup, CommandItem } from '@/components/ui/command';
-import { useConversations } from '@/lib/conversations';
+import { useConversationSearch, useConversations } from '@/lib/conversations';
 import { useNavigate } from '@tanstack/react-router';
 import { MessageSquare, Settings, SquarePen } from 'lucide-react';
 import type { ComponentType } from 'react';
 
-type SourceProps = { onDone: () => void };
+type SourceProps = { onDone: () => void; search: string };
 
 export type SearchSource = {
   component: ComponentType<SourceProps>;
@@ -33,17 +33,20 @@ function Actions({ onDone }: SourceProps) {
   );
 }
 
-function Chats({ onDone }: SourceProps) {
+function Chats({ onDone, search }: SourceProps) {
   const navigate = useNavigate();
   const conversations = useConversations();
+  const results = useConversationSearch(search);
 
-  if (!conversations.data?.length) {
+  const chats = search ? results.data : conversations.data;
+
+  if (!chats?.length) {
     return null;
   }
 
   return (
     <CommandGroup heading='Chats'>
-      {conversations.data.map(({ id, title }) => (
+      {chats.map(({ id, title }) => (
         <CommandItem
           key={id}
           onSelect={() => {
