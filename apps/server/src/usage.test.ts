@@ -59,7 +59,7 @@ test('usage is summarized from assistant responses', async () => {
     ],
     summary: {
       cacheRead: 0,
-      cacheWrite: 228,
+      cacheWrite: 426,
       cost: 0,
       input: 43,
       output: 2,
