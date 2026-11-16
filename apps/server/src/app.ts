@@ -13,6 +13,7 @@ import conversations from './conversations';
 import { db } from './db';
 import { harness } from './harness';
 import library from './library';
+import memory from './memory';
 import { defaultModel, listModels } from './models';
 import providers from './providers';
 import usage from './usage';
@@ -49,6 +50,7 @@ const api = new Hono()
   .route('/conversations', conversations)
   .route('/providers', providers)
   .route('/library', library)
+  .route('/memory', memory)
   .route('/usage', usage);
 
 export type AppType = typeof api;
