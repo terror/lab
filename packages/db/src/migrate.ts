@@ -1,7 +1,4 @@
-import { migrate } from 'drizzle-orm/bun-sql/migrator';
-import { fileURLToPath } from 'node:url';
-
-import { createDatabase } from '.';
+import { applyMigrations, createDatabase } from '.';
 
 const url = process.env.DATABASE_URL;
 
@@ -11,8 +8,6 @@ if (!url) {
 
 const db = createDatabase(url);
 
-await migrate(db, {
-  migrationsFolder: fileURLToPath(new URL('../migrations', import.meta.url)),
-});
+await applyMigrations(db);
 
 await db.$client.close();

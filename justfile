@@ -53,3 +53,7 @@ services:
 [group: 'dev']
 start:
   bun run start
+
+[group: 'check']
+test: services
+  bun run test

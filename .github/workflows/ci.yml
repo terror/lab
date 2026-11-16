@@ -18,6 +18,19 @@ jobs:
 
     timeout-minutes: 10
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: lab
+          POSTGRES_PASSWORD: lab
+          POSTGRES_USER: lab
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lab -d lab" --health-interval 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v7
 
@@ -42,3 +55,8 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Test
+        run: bun run test
+        env:
+          DATABASE_URL: postgres://lab:lab@localhost:5432/lab

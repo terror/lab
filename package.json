@@ -14,7 +14,8 @@
     "dev": "bun run --parallel --filter '@lab/*' dev",
     "knip": "knip",
     "lint": "oxlint",
-    "start": "bun run --filter @lab/server start"
+    "start": "bun run --filter @lab/server start",
+    "test": "bun run --filter @lab/server test"
   },
   "devDependencies": {
     "knip": "6.45.1",
