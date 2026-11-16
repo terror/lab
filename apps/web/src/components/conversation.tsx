@@ -93,6 +93,31 @@ function UserMessage({ bubble }: { bubble: Bubble }) {
   );
 }
 
+function useSecondsUntil(at: number) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return Math.max(0, Math.ceil((at - now) / 1_000));
+}
+
+function RetryStatus({ retry }: { retry: { at: number; error: string } }) {
+  const seconds = useSecondsUntil(retry.at);
+
+  const when = seconds > 0 ? `in ${seconds}s` : 'now';
+
+  return (
+    <output className='flex flex-col gap-1 text-sm text-muted-foreground'>
+      <span className='motion-safe:animate-pulse'>Retrying {when}…</span>
+      <span className='text-xs break-words'>{retry.error}</span>
+    </output>
+  );
+}
+
 function QueuedMessage({
   bubble,
   onCancel,
@@ -294,6 +319,8 @@ export function Conversation({ id }: { id: number }) {
 
   const partial = live?.generation?.message?.content ?? [];
 
+  const retry = live?.generation?.retry;
+
   const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
 
   const progress = toolProgress(live);
@@ -354,7 +381,9 @@ export function Conversation({ id }: { id: number }) {
                   streaming
                 />
               )}
+              {retry && <RetryStatus retry={retry} />}
               {running &&
+                !retry &&
                 partial.length === 0 &&
                 !toolsRunning &&
                 !finishing && (
