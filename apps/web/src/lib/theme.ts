@@ -1,21 +1,20 @@
-import { useSyncExternalStore } from 'react';
+import { z } from 'zod';
 
-export type Theme = 'dark' | 'light' | 'system';
+import {
+  readStored,
+  subscribeStorage,
+  usePersistentState,
+  writeStored,
+} from './storage';
 
-const key = 'lab-theme';
+const themeSchema = z.enum(['dark', 'light', 'system']);
+
+export type Theme = z.infer<typeof themeSchema>;
 
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 
-const listeners = new Set<() => void>();
-
-function read(): Theme {
-  const value = window.localStorage.getItem(key);
-
-  if (value === 'dark' || value === 'light') {
-    return value;
-  }
-
-  return 'system';
+function readTheme() {
+  return readStored<Theme>('theme', themeSchema, 'system');
 }
 
 function apply(theme: Theme) {
@@ -25,26 +24,16 @@ function apply(theme: Theme) {
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-
-  return () => listeners.delete(listener);
-}
-
 export function initTheme() {
-  media.addEventListener('change', () => apply(read()));
-  apply(read());
+  media.addEventListener('change', () => apply(readTheme()));
+  subscribeStorage(() => apply(readTheme()));
+  apply(readTheme());
 }
 
 export function setTheme(theme: Theme) {
-  window.localStorage.setItem(key, theme);
-  apply(theme);
-
-  for (const listener of listeners) {
-    listener();
-  }
+  writeStored('theme', theme);
 }
 
 export function useTheme() {
-  return useSyncExternalStore(subscribe, read);
+  return usePersistentState<Theme>('theme', themeSchema, 'system')[0];
 }
