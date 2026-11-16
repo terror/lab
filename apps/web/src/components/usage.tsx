@@ -1,3 +1,4 @@
+import { BudgetPanel } from '@/components/budget';
 import {
   Select,
   SelectContent,
@@ -203,6 +204,7 @@ export function UsagePanel() {
           </SelectContent>
         </Select>
       </div>
+      <BudgetPanel />
       {usage.isError && (
         <p role='alert' className='text-sm text-destructive'>
           Unable to load usage.

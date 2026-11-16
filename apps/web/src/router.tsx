@@ -1,3 +1,4 @@
+import { BudgetAlert } from '@/components/budget';
 import { Conversation } from '@/components/conversation';
 import { ErrorPage } from '@/components/error-page';
 import { Library } from '@/components/library';
@@ -34,6 +35,7 @@ function Root() {
     <>
       <Outlet />
       <Updates />
+      <BudgetAlert />
     </>
   );
 }

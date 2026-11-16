@@ -111,3 +111,14 @@ export const conversationDeletion = pgTable('conversation_deletion', {
   id: integer('id').primaryKey(),
   deletedAt: timestamp('deleted_at').defaultNow().notNull(),
 });
+
+export const spendBudget = pgTable('spend_budget', {
+  ownerId: text('owner_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  monthlyLimit: doublePrecision('monthly_limit').notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});

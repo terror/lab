@@ -67,3 +67,32 @@ test('usage is summarized from assistant responses', async () => {
     },
   });
 });
+
+test('a monthly budget tracks spend this month', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await flushUsage();
+  await flushHelperUsage();
+
+  await db
+    .update(schema.usageEvent)
+    .set({ cost: 1.5 })
+    .where(
+      and(
+        eq(schema.usageEvent.conversationId, id),
+        eq(schema.usageEvent.kind, 'response')
+      )
+    );
+
+  expect([
+    await call(headers, 'GET', '/usage/budget'),
+    await call(headers, 'PUT', '/usage/budget', { limit: 2 }),
+    await call(headers, 'PUT', '/usage/budget', { limit: null }),
+  ]).toEqual([
+    { body: { limit: null, spent: 1.5 }, status: 200 },
+    { body: { limit: 2, spent: 1.5 }, status: 200 },
+    { body: { limit: null, spent: 1.5 }, status: 200 },
+  ]);
+});

@@ -17,3 +17,28 @@ export function usageQueryOptions(days: number) {
       ),
   });
 }
+
+export type Budget = InferResponseType<typeof client.usage.budget.$get, 200>;
+
+export const budgetQueryOptions = queryOptions({
+  queryKey: ['usage', 'budget'],
+  queryFn: ({ signal }) =>
+    call(client.usage.budget.$get(undefined, { init: { signal } })),
+  refetchInterval: 300_000,
+});
+
+export function setBudget(limit: number | null) {
+  return call(client.usage.budget.$put({ json: { limit } }));
+}
+
+export function budgetLevel({ limit, spent }: Budget) {
+  if (limit === null) {
+    return undefined;
+  }
+
+  if (spent >= limit) {
+    return 'over';
+  }
+
+  return spent >= limit * 0.8 ? 'near' : undefined;
+}

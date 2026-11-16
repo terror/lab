@@ -97,36 +97,87 @@ function total<T>(expression: ReturnType<typeof sql<T>>) {
   return sql`coalesce(sum(${expression}), 0)`.mapWith(Number);
 }
 
-const usage = new Hono().use(requireUser).get('/', range, async (c) => {
-  const user = c.get('user');
+const budgetBody = validator(
+  'json',
+  z.object({ limit: z.number().positive().max(1_000_000).nullable() })
+);
 
-  const { days } = c.req.valid('query');
+async function budget(ownerId: string) {
+  const [row] = await db
+    .select({ limit: schema.spendBudget.monthlyLimit })
+    .from(schema.spendBudget)
+    .where(eq(schema.spendBudget.ownerId, ownerId));
 
-  await Promise.all([flushUsage(), flushHelperUsage()]);
+  const [month] = await db
+    .select({ spent: total(sql`${table.cost}`) })
+    .from(table)
+    .where(
+      and(
+        eq(table.ownerId, ownerId),
+        gte(table.createdAt, sql`date_trunc('month', now())`)
+      )
+    );
 
-  const since = sql`date_trunc('day', now()) - make_interval(days => ${days - 1})`;
+  return { limit: row?.limit ?? null, spent: month?.spent ?? 0 };
+}
 
-  const scope = and(eq(table.ownerId, user.id), gte(table.createdAt, since));
+const usage = new Hono()
+  .use(requireUser)
+  .get('/budget', async (c) => {
+    await Promise.all([flushUsage(), flushHelperUsage()]);
 
-  const totals = {
-    cacheRead: total(sql`${table.cacheRead}`),
-    cacheWrite: total(sql`${table.cacheWrite}`),
-    cost: total(sql`${table.cost}`),
-    input: total(sql`${table.input}`),
-    output: total(sql`${table.output}`),
-    responses: sql`count(*) filter (where ${table.kind} = 'response')`.mapWith(
-      Number
-    ),
-  };
+    return c.json(await budget(c.get('user').id));
+  })
+  .put('/budget', budgetBody, async (c) => {
+    const user = c.get('user');
 
-  const [summary] = await db.select(totals).from(table).where(scope);
+    const { limit } = c.req.valid('json');
 
-  const daily = await db.execute<{
-    cost: number;
-    date: string;
-    tokens: number;
-  }>(
-    sql`
+    if (limit === null) {
+      await db
+        .delete(schema.spendBudget)
+        .where(eq(schema.spendBudget.ownerId, user.id));
+    } else {
+      await db
+        .insert(schema.spendBudget)
+        .values({ monthlyLimit: limit, ownerId: user.id })
+        .onConflictDoUpdate({
+          set: { monthlyLimit: limit },
+          target: schema.spendBudget.ownerId,
+        });
+    }
+
+    return c.json(await budget(user.id));
+  })
+  .get('/', range, async (c) => {
+    const user = c.get('user');
+
+    const { days } = c.req.valid('query');
+
+    await Promise.all([flushUsage(), flushHelperUsage()]);
+
+    const since = sql`date_trunc('day', now()) - make_interval(days => ${days - 1})`;
+
+    const scope = and(eq(table.ownerId, user.id), gte(table.createdAt, since));
+
+    const totals = {
+      cacheRead: total(sql`${table.cacheRead}`),
+      cacheWrite: total(sql`${table.cacheWrite}`),
+      cost: total(sql`${table.cost}`),
+      input: total(sql`${table.input}`),
+      output: total(sql`${table.output}`),
+      responses:
+        sql`count(*) filter (where ${table.kind} = 'response')`.mapWith(Number),
+    };
+
+    const [summary] = await db.select(totals).from(table).where(scope);
+
+    const daily = await db.execute<{
+      cost: number;
+      date: string;
+      tokens: number;
+    }>(
+      sql`
       select
         to_char(day, 'YYYY-MM-DD') as date,
         coalesce(sum(${table.cost}), 0)::float8 as cost,
@@ -138,51 +189,51 @@ const usage = new Hono().use(requireUser).get('/', range, async (c) => {
       group by day
       order by day
     `
-  );
+    );
 
-  const models = await db
-    .select({
-      cost: totals.cost,
-      input: totals.input,
-      model: table.model,
-      output: totals.output,
-      provider: table.provider,
-      responses: totals.responses,
-    })
-    .from(table)
-    .where(scope)
-    .groupBy(table.provider, table.model)
-    .orderBy(desc(totals.cost), table.provider, table.model);
+    const models = await db
+      .select({
+        cost: totals.cost,
+        input: totals.input,
+        model: table.model,
+        output: totals.output,
+        provider: table.provider,
+        responses: totals.responses,
+      })
+      .from(table)
+      .where(scope)
+      .groupBy(table.provider, table.model)
+      .orderBy(desc(totals.cost), table.provider, table.model);
 
-  const conversations = await db
-    .select({
-      cost: totals.cost,
-      id: table.conversationId,
-      title: schema.conversation.title,
-    })
-    .from(table)
-    .leftJoin(
-      schema.conversation,
-      eq(schema.conversation.id, table.conversationId)
-    )
-    .where(scope)
-    .groupBy(table.conversationId, schema.conversation.title)
-    .orderBy(desc(totals.cost))
-    .limit(5);
+    const conversations = await db
+      .select({
+        cost: totals.cost,
+        id: table.conversationId,
+        title: schema.conversation.title,
+      })
+      .from(table)
+      .leftJoin(
+        schema.conversation,
+        eq(schema.conversation.id, table.conversationId)
+      )
+      .where(scope)
+      .groupBy(table.conversationId, schema.conversation.title)
+      .orderBy(desc(totals.cost))
+      .limit(5);
 
-  return c.json({
-    conversations,
-    daily: [...daily].map(({ cost, date, tokens }) => ({
-      cost: Number(cost),
-      date,
-      tokens: Number(tokens),
-    })),
-    models: models.map((row) => ({
-      ...row,
-      name: catalog.getModel(row.provider, row.model)?.name ?? row.model,
-    })),
-    summary,
+    return c.json({
+      conversations,
+      daily: [...daily].map(({ cost, date, tokens }) => ({
+        cost: Number(cost),
+        date,
+        tokens: Number(tokens),
+      })),
+      models: models.map((row) => ({
+        ...row,
+        name: catalog.getModel(row.provider, row.model)?.name ?? row.model,
+      })),
+      summary,
+    });
   });
-});
 
 export default usage;
