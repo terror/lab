@@ -1,4 +1,11 @@
-import { index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  doublePrecision,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 import { user } from './auth';
 
@@ -33,3 +40,28 @@ export const providerCredential = pgTable('provider_credential', {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+export const usageEvent = pgTable(
+  'usage_event',
+  {
+    entryId: integer('entry_id').primaryKey(),
+    conversationId: integer('conversation_id').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    createdAt: timestamp('created_at').notNull(),
+    input: integer('input').notNull(),
+    output: integer('output').notNull(),
+    cacheRead: integer('cache_read').notNull(),
+    cacheWrite: integer('cache_write').notNull(),
+    cost: doublePrecision('cost').notNull(),
+  },
+  (table) => [
+    index('usage_event_ownerId_createdAt_idx').on(
+      table.ownerId,
+      table.createdAt
+    ),
+  ]
+);
