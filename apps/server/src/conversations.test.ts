@@ -197,18 +197,51 @@ test('conversations are listed in pages', async () => {
   const first = await create(headers);
   const second = await create(headers);
 
-  expect(await call(headers, 'GET', '/conversations?limit=1')).toEqual({
+  const page = await call(headers, 'GET', '/conversations?limit=1');
+
+  expect(page).toEqual({
     body: {
       conversations: [
         { id: second, pinned: false, running: false, title: 'foo' },
       ],
-      next: second,
+      next: expect.any(String),
     },
     status: 200,
   });
 
   expect(
-    await call(headers, 'GET', `/conversations?limit=1&cursor=${second}`)
+    await call(
+      headers,
+      'GET',
+      `/conversations?limit=1&cursor=${page.body.next}`
+    )
+  ).toEqual({
+    body: {
+      conversations: [
+        { id: first, pinned: false, running: false, title: 'foo' },
+      ],
+      next: null,
+    },
+    status: 200,
+  });
+});
+
+test('paging continues after the cursor chat is deleted', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  const page = await call(headers, 'GET', '/conversations?limit=1');
+
+  await call(headers, 'DELETE', `/conversations/${second}`);
+
+  expect(
+    await call(
+      headers,
+      'GET',
+      `/conversations?limit=1&cursor=${page.body.next}`
+    )
   ).toEqual({
     body: {
       conversations: [
@@ -230,14 +263,18 @@ test('conversations can be listed by creation', async () => {
     content: 'bar',
   });
 
-  expect(
-    await call(headers, 'GET', '/conversations?sort=created&limit=1')
-  ).toEqual({
+  const page = await call(
+    headers,
+    'GET',
+    '/conversations?sort=created&limit=1'
+  );
+
+  expect(page).toEqual({
     body: {
       conversations: [
         { id: second, pinned: false, running: false, title: 'foo' },
       ],
-      next: second,
+      next: expect.any(String),
     },
     status: 200,
   });
@@ -246,7 +283,7 @@ test('conversations can be listed by creation', async () => {
     await call(
       headers,
       'GET',
-      `/conversations?sort=created&limit=1&cursor=${second}`
+      `/conversations?sort=created&limit=1&cursor=${page.body.next}`
     )
   ).toEqual({
     body: {
@@ -299,15 +336,15 @@ test('conversations can be listed by title', async () => {
     .set({ title: null })
     .where(eq(schema.conversation.id, third));
 
-  expect(
-    await call(headers, 'GET', '/conversations?sort=title&limit=2')
-  ).toEqual({
+  const page = await call(headers, 'GET', '/conversations?sort=title&limit=2');
+
+  expect(page).toEqual({
     body: {
       conversations: [
         { id: first, pinned: false, running: false, title: 'bar' },
         { id: second, pinned: false, running: false, title: 'Qux' },
       ],
-      next: second,
+      next: expect.any(String),
     },
     status: 200,
   });
@@ -316,7 +353,7 @@ test('conversations can be listed by title', async () => {
     await call(
       headers,
       'GET',
-      `/conversations?sort=title&limit=2&cursor=${second}`
+      `/conversations?sort=title&limit=2&cursor=${page.body.next}`
     )
   ).toEqual({
     body: {

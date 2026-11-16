@@ -11,7 +11,7 @@ import {
   isNull,
   sql,
 } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import type { User } from './auth';
@@ -22,7 +22,7 @@ import { contains } from './records';
 import { sortSchema } from './schemas';
 
 export const listSchema = z.object({
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: z.string().min(1).max(2_000).optional(),
   filter: z
     .enum(['archived', 'pinned', 'recent', 'unarchived'])
     .default('unarchived'),
@@ -37,21 +37,47 @@ type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
 
 const sorts: Record<
   Sort,
-  { ascending: boolean; keys: (columns: SortColumns) => SQL[] }
+  {
+    ascending: boolean;
+    keys: (columns: SortColumns) => SQL[];
+    types: string[];
+  }
 > = {
   activity: {
     ascending: false,
     keys: ({ lastMessageAt }) => [sql`${lastMessageAt}`],
+    types: ['timestamp'],
   },
-  created: { ascending: false, keys: ({ createdAt }) => [sql`${createdAt}`] },
+  created: {
+    ascending: false,
+    keys: ({ createdAt }) => [sql`${createdAt}`],
+    types: ['timestamp'],
+  },
   title: {
     ascending: true,
     keys: ({ title }) => [
       sql`${title} is null`,
       sql`lower(coalesce(${title}, ''))`,
     ],
+    types: ['boolean', 'text'],
   },
 };
+
+const positionSchema = z.tuple([z.array(z.string()), z.number().int()]);
+
+function encode(values: string[], id: number) {
+  return Buffer.from(JSON.stringify([values, id])).toString('base64url');
+}
+
+function decode(cursor: string) {
+  try {
+    return positionSchema.parse(
+      JSON.parse(Buffer.from(cursor, 'base64url').toString())
+    );
+  } catch {
+    throw new HTTPException(400, { message: 'Invalid cursor' });
+  }
+}
 
 const filters = {
   archived: () => isNotNull(schema.conversation.archivedAt),
@@ -68,24 +94,32 @@ const filters = {
   unarchived: () => isNull(schema.conversation.archivedAt),
 };
 
-function after(id: number, user: User, sort: Sort) {
-  const { ascending, keys } = sorts[sort];
+function after(cursor: string, sort: Sort) {
+  const { ascending, keys, types } = sorts[sort];
 
-  const cursor = alias(schema.conversation, 'cursor');
+  const [values, id] = decode(cursor);
 
-  const position = db
-    .select({ ...Object.fromEntries(keys(cursor).entries()), id: cursor.id })
-    .from(cursor)
-    .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
+  if (values.length !== types.length) {
+    throw new HTTPException(400, { message: 'Invalid cursor' });
+  }
 
   const columns = [
     ...keys(schema.conversation),
     sql`${schema.conversation.id}`,
   ];
 
+  const position = [
+    ...values.map(
+      (value, index) => sql`${value}::${sql.raw(types[index] ?? 'text')}`
+    ),
+    sql`${id}`,
+  ];
+
   const row = sql`(${sql.join(columns, sql`, `)})`;
 
-  return ascending ? sql`${row} > (${position})` : sql`${row} < (${position})`;
+  const target = sql`(${sql.join(position, sql`, `)})`;
+
+  return ascending ? sql`${row} > ${target}` : sql`${row} < ${target}`;
 }
 
 export async function running() {
@@ -108,10 +142,16 @@ export async function listConversations(
 
   const order = ascending ? asc : desc;
 
+  const position = sql<string[]>`array[${sql.join(
+    keys(schema.conversation).map((key) => sql`(${key})::text`),
+    sql`, `
+  )}]`;
+
   const rows = await db
     .select({
       id: schema.conversation.id,
       pinnedAt: schema.conversation.pinnedAt,
+      position,
       title: schema.conversation.title,
     })
     .from(schema.conversation)
@@ -119,7 +159,7 @@ export async function listConversations(
       and(
         eq(schema.conversation.ownerId, user.id),
         filters[filter](),
-        cursor === undefined ? undefined : after(cursor, user, sort),
+        cursor === undefined ? undefined : after(cursor, sort),
         search === undefined
           ? undefined
           : contains(schema.conversation.title, search)
@@ -133,7 +173,10 @@ export async function listConversations(
 
   const page = rows.slice(0, limit);
 
-  const next = rows.length > limit ? page.at(-1)?.id : undefined;
+  const last = page.at(-1);
+
+  const next =
+    last && rows.length > limit ? encode(last.position, last.id) : undefined;
 
   const busy = await running();
 
