@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["dist/"],
+  "ignorePatterns": [".claude/skills/", "dist/"],
   "jsxSingleQuote": true,
   "printWidth": 80,
   "proseWrap": "always",
