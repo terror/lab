@@ -1,4 +1,3 @@
-import { type Theme, useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -7,6 +6,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { type Theme, useTheme } from '@/lib/theme';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Palette } from 'lucide-react';
 
@@ -17,7 +17,7 @@ const themes: { label: string; value: Theme }[] = [
 ];
 
 function Appearance() {
-  const { setTheme, theme } = useTheme();
+  const [theme, setTheme] = useTheme();
 
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
@@ -43,7 +43,15 @@ function Appearance() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
             <DropdownMenuRadioGroup
-              onValueChange={(value) => setTheme(value as Theme)}
+              onValueChange={(value) => {
+                const choice = themes.find(
+                  (candidate) => candidate.value === value
+                );
+
+                if (choice) {
+                  setTheme(choice.value);
+                }
+              }}
               value={theme}
             >
               {themes.map(({ label: name, value }) => (

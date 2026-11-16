@@ -9,7 +9,6 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 
-import { ThemeProvider } from './components/theme-provider';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import './index.css';
@@ -39,17 +38,15 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <ThemeProvider defaultTheme='system' storageKey='vite-ui-theme'>
-      <LazyMotion features={domAnimation} strict>
-        <MotionConfig reducedMotion='user'>
-          <QueryClientProvider client={queryClient}>
-            <TooltipProvider>
-              <RouterProvider router={router} />
-              <Toaster />
-            </TooltipProvider>
-          </QueryClientProvider>
-        </MotionConfig>
-      </LazyMotion>
-    </ThemeProvider>
+    <LazyMotion features={domAnimation} strict>
+      <MotionConfig reducedMotion='user'>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <RouterProvider router={router} />
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </MotionConfig>
+    </LazyMotion>
   </StrictMode>
 );
