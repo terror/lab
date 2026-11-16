@@ -35,14 +35,16 @@ function phrase(message: AssistantMessage) {
     .replace(/^["']|["'.]$/g, '');
 }
 
-export class StatusReporter {
+type Send = (status: string) => Promise<void>;
+
+class StatusReporter {
   #at = 0;
   #pending = false;
-  #send: (status: string) => Promise<void>;
+  #send: Send;
   #signal: AbortSignal;
   #summarized = 0;
 
-  constructor(send: (status: string) => Promise<void>, signal: AbortSignal) {
+  constructor(send: Send, signal: AbortSignal) {
     this.#send = send;
     this.#signal = signal;
   }
@@ -100,4 +102,52 @@ export class StatusReporter {
       this.#pending = false;
     }
   }
+}
+
+type Channel = {
+  controller: AbortController;
+  listeners: Set<Send>;
+  reporter: StatusReporter;
+};
+
+const channels = new Map<number, Channel>();
+
+function channel(id: number) {
+  const existing = channels.get(id);
+
+  if (existing) {
+    return existing;
+  }
+
+  const controller = new AbortController();
+
+  const listeners = new Set<Send>();
+
+  const reporter = new StatusReporter(async (status) => {
+    await Promise.allSettled([...listeners].map((send) => send(status)));
+  }, controller.signal);
+
+  const created = { controller, listeners, reporter };
+
+  channels.set(id, created);
+
+  return created;
+}
+
+export function subscribeStatus(id: number, send: Send) {
+  const subscribed = channel(id);
+
+  subscribed.listeners.add(send);
+
+  return {
+    report: (view: ConversationView) => subscribed.reporter.report(view),
+    unsubscribe: () => {
+      subscribed.listeners.delete(send);
+
+      if (subscribed.listeners.size === 0) {
+        subscribed.controller.abort();
+        channels.delete(id);
+      }
+    },
+  };
 }
