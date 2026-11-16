@@ -1,10 +1,11 @@
 import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
+import { useSearch } from '@/components/search';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { PanelLeftClose, PanelLeftOpen, SquarePen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Search, SquarePen } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import type { ReactNode } from 'react';
 
@@ -37,6 +38,16 @@ function RailButton({
   );
 }
 
+function SearchButton() {
+  const { openSearch } = useSearch();
+
+  return (
+    <RailButton label='Search (⌘K)' onClick={openSearch}>
+      <Search aria-hidden='true' className='size-4' />
+    </RailButton>
+  );
+}
+
 function SidebarRail({
   onNewChat,
   onToggle,
@@ -53,6 +64,7 @@ function SidebarRail({
       <RailButton label='Expand sidebar' onClick={onToggle}>
         <PanelLeftOpen aria-hidden='true' className='size-4' />
       </RailButton>
+      <SearchButton />
       <RailButton
         active={selected === undefined}
         label='New chat'
@@ -150,11 +162,14 @@ function SidebarPanel({
     <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
       <div className='flex items-center justify-between px-1'>
         <LabMark className='size-6' />
-        {onToggle && (
-          <RailButton label='Collapse sidebar' onClick={onToggle}>
-            <PanelLeftClose aria-hidden='true' className='size-4' />
-          </RailButton>
-        )}
+        <div className='flex items-center gap-1'>
+          <SearchButton />
+          {onToggle && (
+            <RailButton label='Collapse sidebar' onClick={onToggle}>
+              <PanelLeftClose aria-hidden='true' className='size-4' />
+            </RailButton>
+          )}
+        </div>
       </div>
       <button
         aria-current={selected === undefined ? 'page' : undefined}
