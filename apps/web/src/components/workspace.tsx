@@ -43,7 +43,7 @@ function Content({
       {selected === undefined ? (
         <NewChat user={user} />
       ) : (
-        <Conversation key={selected} id={selected} userId={user.id} />
+        <Conversation key={selected} id={selected} />
       )}
     </main>
   );

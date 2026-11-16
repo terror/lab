@@ -33,7 +33,6 @@ import { type UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 type Bubble = {
-  author?: string;
   files?: string[];
   id: string;
   images?: string[];
@@ -49,7 +48,6 @@ const imagePartSchema = z.object({
 });
 
 const messageDataSchema = z.object({
-  author: z.object({ id: z.string(), name: z.string() }),
   files: z
     .array(z.object({ name: z.string(), type: z.enum(['file', 'image']) }))
     .optional(),
@@ -59,11 +57,6 @@ const messageDataSchema = z.object({
 function UserMessage({ bubble }: { bubble: Bubble }) {
   return (
     <div className='ml-auto flex max-w-[80%] flex-col items-end gap-1'>
-      {bubble.author && (
-        <span className='px-1 text-xs text-muted-foreground'>
-          {bubble.author}
-        </span>
-      )}
       {(bubble.images?.length ?? 0) > 0 && (
         <div className='flex flex-wrap justify-end gap-2'>
           {bubble.images?.map((source, index) => (
@@ -156,7 +149,6 @@ function TranscriptRow({
   onGap,
   progress,
   results,
-  userId,
 }: {
   item: TranscriptItem;
   loading: boolean;
@@ -164,7 +156,6 @@ function TranscriptRow({
   onGap: (gap: Gap) => void;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
-  userId: string;
 }) {
   if (item.kind === 'earlier') {
     return (
@@ -223,17 +214,14 @@ function TranscriptRow({
     return null;
   }
 
-  const author =
-    data && data.author.id !== userId ? data.author.name : undefined;
-
   return (
     <UserMessage
-      bubble={{ author, files, id: `entry-${item.entry.id}`, images, text }}
+      bubble={{ files, id: `entry-${item.entry.id}`, images, text }}
     />
   );
 }
 
-export function Conversation({ id, userId }: { id: number; userId: string }) {
+export function Conversation({ id }: { id: number }) {
   const { view, loadEarlier, fillGap } = useConversation(id);
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -322,7 +310,6 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
                   onGap={(value) => gap.mutate(value)}
                   progress={progress}
                   results={results}
-                  userId={userId}
                 />
               ))}
               {partial.length > 0 && (

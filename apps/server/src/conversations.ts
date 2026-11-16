@@ -7,7 +7,7 @@ import type {
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
-import { and, desc, eq, exists, inArray, ne, or } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
@@ -86,19 +86,13 @@ const rename = validator(
   z.object({ title: z.string().trim().min(1).max(200) })
 );
 
-const sharing = validator(
-  'json',
-  z.object({
-    members: z.array(z.string().min(1)).max(50),
-    visibility: z.enum(['private', 'shared', 'family']),
-  })
-);
-
-function prompt(
-  user: User,
-  { attachments, content }: { attachments: Attachment[]; content: string },
-  shared: boolean
-) {
+function prompt({
+  attachments,
+  content,
+}: {
+  attachments: Attachment[];
+  content: string;
+}) {
   const files = attachments
     .filter((attachment) => attachment.type === 'file')
     .map(({ name, text }) => `<file name="${name}">\n${text}\n</file>`);
@@ -107,9 +101,7 @@ function prompt(
     .filter((attachment) => attachment.type === 'image')
     .map(({ data, mimeType }) => ({ data, mimeType, type: 'image' as const }));
 
-  const intro = content && shared ? `${user.name}: ${content}` : content;
-
-  const text = [intro, ...files].filter(Boolean).join('\n\n');
+  const text = [content, ...files].filter(Boolean).join('\n\n');
 
   if (images.length === 0) {
     return text;
@@ -120,18 +112,15 @@ function prompt(
 
 function submitMessage(
   conversation: Conversation,
-  user: User,
-  draft: { attachments: Attachment[]; content: string },
-  shared: boolean
+  draft: { attachments: Attachment[]; content: string }
 ) {
   return conversation.submit(
     {
       type: 'input',
-      content: prompt(user, draft, shared),
+      content: prompt(draft),
       entry: {
         kind: 'lab.message',
         data: {
-          author: { id: user.id, name: user.name },
           files: draft.attachments.map(({ name, type }) => ({ name, type })),
           text: draft.content,
         },
@@ -145,48 +134,19 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-function accessible(userId: string) {
-  return or(
-    eq(schema.conversation.ownerId, userId),
-    eq(schema.conversation.visibility, 'family'),
-    and(
-      eq(schema.conversation.visibility, 'shared'),
-      exists(
-        db
-          .select({ userId: schema.conversationMember.userId })
-          .from(schema.conversationMember)
-          .where(
-            and(
-              eq(
-                schema.conversationMember.conversationId,
-                schema.conversation.id
-              ),
-              eq(schema.conversationMember.userId, userId)
-            )
-          )
-      )
-    )
-  );
-}
-
-async function load(id: number, user: User, { owner = false } = {}) {
+async function load(id: number, user: User) {
   const [record] = await db
-    .select({
-      id: schema.conversation.id,
-      ownerId: schema.conversation.ownerId,
-      visibility: schema.conversation.visibility,
-    })
+    .select({ id: schema.conversation.id })
     .from(schema.conversation)
-    .where(and(eq(schema.conversation.id, id), accessible(user.id)));
+    .where(
+      and(
+        eq(schema.conversation.id, id),
+        eq(schema.conversation.ownerId, user.id)
+      )
+    );
 
   if (!record) {
     throw new HTTPException(404, { message: 'Conversation not found' });
-  }
-
-  if (owner && record.ownerId !== user.id) {
-    throw new HTTPException(403, {
-      message: 'Only the owner can change this conversation',
-    });
   }
 
   const conversation = await harness.conversation(
@@ -198,7 +158,7 @@ async function load(id: number, user: User, { owner = false } = {}) {
     throw new HTTPException(404, { message: 'Conversation not found' });
   }
 
-  return { conversation, record };
+  return conversation;
 }
 
 const conversations = new Hono()
@@ -207,30 +167,21 @@ const conversations = new Hono()
     const user = c.get('user');
 
     const rows = await db
-      .select({
-        id: schema.conversation.id,
-        ownerId: schema.conversation.ownerId,
-        visibility: schema.conversation.visibility,
-      })
+      .select({ id: schema.conversation.id })
       .from(schema.conversation)
-      .where(accessible(user.id))
+      .where(eq(schema.conversation.ownerId, user.id))
       .orderBy(desc(schema.conversation.createdAt))
       .limit(50);
 
     const items = await Promise.all(
-      rows.map(async ({ id, ownerId, visibility }) => {
+      rows.map(async ({ id }) => {
         const doc = await harness.snapshot(
           TitleDoc,
           id as ConversationId,
           BACKGROUND_CONTEXT
         );
 
-        return {
-          id,
-          owned: ownerId === user.id,
-          title: doc?.title ?? null,
-          visibility,
-        };
+        return { id, title: doc?.title ?? null };
       })
     );
 
@@ -261,17 +212,12 @@ const conversations = new Hono()
       await conversation.configure(change, BACKGROUND_CONTEXT);
     }
 
-    await submitMessage(
-      conversation,
-      user,
-      { attachments, content: text },
-      false
-    );
+    await submitMessage(conversation, { attachments, content: text });
 
     return c.json({ id: conversation.id }, 201);
   })
   .get('/:id/entries', params, entriesQuery, async (c) => {
-    const { conversation } = await load(c.req.valid('param').id, c.get('user'));
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
 
@@ -289,7 +235,7 @@ const conversations = new Hono()
     return c.json({ items: page.items });
   })
   .get('/:id/events', params, async (c) => {
-    const { conversation } = await load(c.req.valid('param').id, c.get('user'));
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
 
@@ -324,19 +270,14 @@ const conversations = new Hono()
   .post('/:id/messages', params, message, async (c) => {
     const user = c.get('user');
 
-    const { conversation, record } = await load(c.req.valid('param').id, user);
+    const conversation = await load(c.req.valid('param').id, user);
 
-    const submission = await submitMessage(
-      conversation,
-      user,
-      c.req.valid('json'),
-      record.visibility !== 'private'
-    );
+    const submission = await submitMessage(conversation, c.req.valid('json'));
 
     return c.json({ id: submission.id }, 202);
   })
   .put('/:id/model', params, modelSelection, async (c) => {
-    const { conversation } = await load(c.req.valid('param').id, c.get('user'));
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     const { id, thinkingLevel } = c.req.valid('json');
 
@@ -348,18 +289,14 @@ const conversations = new Hono()
     return c.body(null, 204);
   })
   .post('/:id/abort', params, async (c) => {
-    const { conversation } = await load(c.req.valid('param').id, c.get('user'));
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })
   .patch('/:id', params, rename, async (c) => {
-    const { conversation } = await load(
-      c.req.valid('param').id,
-      c.get('user'),
-      { owner: true }
-    );
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     const { title } = c.req.valid('json');
 
@@ -370,70 +307,13 @@ const conversations = new Hono()
     return c.body(null, 204);
   })
   .delete('/:id', params, async (c) => {
-    const { conversation } = await load(
-      c.req.valid('param').id,
-      c.get('user'),
-      { owner: true }
-    );
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
     await db
       .delete(schema.conversation)
       .where(eq(schema.conversation.id, conversation.id));
-
-    return c.body(null, 204);
-  })
-  .get('/:id/sharing', params, async (c) => {
-    const { record } = await load(c.req.valid('param').id, c.get('user'));
-
-    const members = await db
-      .select({ userId: schema.conversationMember.userId })
-      .from(schema.conversationMember)
-      .where(eq(schema.conversationMember.conversationId, record.id));
-
-    return c.json({
-      members: members.map(({ userId }) => userId),
-      visibility: record.visibility,
-    });
-  })
-  .put('/:id/sharing', params, sharing, async (c) => {
-    const user = c.get('user');
-
-    const { record } = await load(c.req.valid('param').id, user, {
-      owner: true,
-    });
-
-    const { members, visibility } = c.req.valid('json');
-
-    const valid =
-      members.length === 0
-        ? []
-        : await db
-            .select({ id: schema.user.id })
-            .from(schema.user)
-            .where(
-              and(inArray(schema.user.id, members), ne(schema.user.id, user.id))
-            );
-
-    await db.transaction(async (tx) => {
-      await tx
-        .update(schema.conversation)
-        .set({ visibility })
-        .where(eq(schema.conversation.id, record.id));
-
-      await tx
-        .delete(schema.conversationMember)
-        .where(eq(schema.conversationMember.conversationId, record.id));
-
-      if (valid.length > 0) {
-        await tx
-          .insert(schema.conversationMember)
-          .values(
-            valid.map(({ id }) => ({ conversationId: record.id, userId: id }))
-          );
-      }
-    });
 
     return c.body(null, 204);
   });

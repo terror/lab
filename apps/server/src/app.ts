@@ -10,7 +10,6 @@ import conversations from './conversations';
 import { db } from './db';
 import members from './members';
 import { listModels } from './models';
-import users from './users';
 
 const app = new Hono();
 
@@ -28,8 +27,7 @@ const api = new Hono()
   )
   .get('/models', requireUser, (c) => c.json({ models: listModels() }))
   .route('/conversations', conversations)
-  .route('/members', members)
-  .route('/users', users);
+  .route('/members', members);
 
 export type AppType = typeof api;
 
