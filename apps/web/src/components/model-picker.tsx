@@ -16,6 +16,7 @@ import {
   type ModelChoice,
   type ThinkingLevel,
   modelsQueryOptions,
+  useRecentModels,
 } from '@/lib/models';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
@@ -23,6 +24,10 @@ import { Check, ChevronDown, Search } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
+
+const GROUP_LIMIT = 5;
+
+const RECENT_LIMIT = 5;
 
 const levelLabels: Record<ThinkingLevel, string> = {
   high: 'High',
@@ -199,6 +204,8 @@ export function ModelPicker({
 }) {
   const models = useQuery(modelsQueryOptions);
   const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [recent, setRecent] = useRecentModels();
 
   const options = models.data?.models ?? [];
 
@@ -206,12 +213,40 @@ export function ModelPicker({
     ({ id, provider }) => id === value?.id && provider === value.provider
   );
 
+  const searching = search.trim().length > 0;
+
   const groups = groupByProvider(
     options.filter((model) => matches(model, search))
   );
 
+  const recentModels = searching
+    ? []
+    : recent.flatMap((entry) =>
+        options.filter(
+          ({ id, provider }) => id === entry.id && provider === entry.provider
+        )
+      );
+
+  const select = (choice: ModelChoice) => {
+    onChange(choice);
+
+    setRecent(
+      [
+        { id: choice.id, provider: choice.provider },
+        ...recent.filter(
+          ({ id, provider }) => id !== choice.id || provider !== choice.provider
+        ),
+      ].slice(0, RECENT_LIMIT)
+    );
+  };
+
   return (
-    <DropdownMenu onOpenChange={() => setSearch('')}>
+    <DropdownMenu
+      onOpenChange={() => {
+        setSearch('');
+        setExpanded(new Set());
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <button
           aria-label={current ? `Model: ${current.name}` : 'Model'}
@@ -251,22 +286,56 @@ export function ModelPicker({
               No models found
             </p>
           )}
-          {groups.map(([provider, group]) => (
-            <DropdownMenuGroup key={provider}>
+          {recentModels.length > 0 && (
+            <DropdownMenuGroup>
               <DropdownMenuLabel className='text-xs text-muted-foreground'>
-                {provider}
+                Recent
               </DropdownMenuLabel>
-              {group.map((model) => (
+              {recentModels.map((model) => (
                 <ModelOption
                   key={`${model.provider}:${model.id}`}
                   current={model === current}
                   model={model}
-                  onSelect={onChange}
+                  onSelect={select}
                   value={value}
                 />
               ))}
             </DropdownMenuGroup>
-          ))}
+          )}
+          {groups.map(([provider, group]) => {
+            const visible =
+              searching || expanded.has(provider)
+                ? group
+                : group.slice(0, GROUP_LIMIT);
+
+            return (
+              <DropdownMenuGroup key={provider}>
+                <DropdownMenuLabel className='text-xs text-muted-foreground'>
+                  {provider}
+                </DropdownMenuLabel>
+                {visible.map((model) => (
+                  <ModelOption
+                    key={`${model.provider}:${model.id}`}
+                    current={model === current}
+                    model={model}
+                    onSelect={select}
+                    value={value}
+                  />
+                ))}
+                {visible.length < group.length && (
+                  <DropdownMenuItem
+                    className='text-muted-foreground'
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setExpanded(new Set([...expanded, provider]));
+                    }}
+                  >
+                    Show all {group.length}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
+            );
+          })}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

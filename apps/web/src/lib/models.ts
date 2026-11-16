@@ -42,3 +42,17 @@ export async function setConversationModel(id: number, model: ModelChoice) {
     })
   );
 }
+
+const recentModelsSchema = z
+  .array(z.object({ id: z.string(), provider: z.string() }))
+  .max(5);
+
+const noRecentModels: z.infer<typeof recentModelsSchema> = [];
+
+export function useRecentModels() {
+  return usePersistentState(
+    'recent-models',
+    recentModelsSchema,
+    noRecentModels
+  );
+}
