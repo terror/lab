@@ -160,13 +160,15 @@ export async function readLibraryItem(
 
     checkText(item.name, text, limit);
 
-    return { name: item.name, text, type: 'file' };
+    return { libraryId: item.id, name: item.name, text, type: 'file' };
   }
 
-  return readAttachment(
+  const attachment = await readAttachment(
     new File([await response.blob()], item.name, { type: item.mimeType }),
     limit
   );
+
+  return { ...attachment, libraryId: item.id };
 }
 
 export function imageSource({

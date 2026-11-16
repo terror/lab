@@ -19,7 +19,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 
 type PickerProps = {
-  attached: ReadonlySet<string>;
+  attached: ReadonlySet<number>;
   limit: number;
   onAdd: (items: LibraryItem[]) => Promise<void>;
   onCancel: () => void;
@@ -95,7 +95,7 @@ function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
             return (
               <Tile
                 key={item.id}
-                disabled={attached.has(item.name) || (full && !chosen)}
+                disabled={attached.has(item.id) || (full && !chosen)}
                 item={item}
                 onOpen={() => toggle(item)}
                 selected={chosen}

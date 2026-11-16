@@ -70,8 +70,11 @@ export function NewChat({ user }: { user: { name: string } }) {
     meta: { inlineError: true },
     mutationFn: (content: string) =>
       createConversation(content, attachments, selectedModel),
-    onSuccess: async (id) => {
-      setDraft('');
+    onSuccess: async (id, content) => {
+      if (draft.trim() === content) {
+        setDraft('');
+      }
+
       await navigate({ params: { id }, to: '/c/$id' });
       await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
@@ -92,7 +95,13 @@ export function NewChat({ user }: { user: { name: string } }) {
           error={create.error?.message}
           model={selectedModel}
           onAttachmentsChange={setAttachments}
-          onDraftChange={setDraft}
+          onDraftChange={(value) => {
+            if (create.isError) {
+              create.reset();
+            }
+
+            setDraft(value);
+          }}
           onModelChange={setModel}
           onSubmit={(content) => create.mutate(content)}
           submitting={create.isPending}

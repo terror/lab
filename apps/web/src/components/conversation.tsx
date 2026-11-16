@@ -340,11 +340,24 @@ function ConversationView({ id }: { id: number }) {
 
   const send = useMutation({
     meta: { inlineError: true },
-    mutationFn: ({ content, steer }: { content: string; steer: boolean }) =>
-      sendMessage(id, content, attachments, steer),
-    onSuccess: () => {
-      setDraft('');
-      setAttachments([]);
+    mutationFn: ({
+      content,
+      sent,
+      steer,
+    }: {
+      content: string;
+      sent: Attachment[];
+      steer: boolean;
+    }) => sendMessage(id, content, sent, steer),
+    onSuccess: (_, { content, sent }) => {
+      if (draft.trim() === content) {
+        setDraft('');
+      }
+
+      setAttachments((current) =>
+        current.filter((attachment) => !sent.includes(attachment))
+      );
+
       void queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
   });
@@ -494,16 +507,22 @@ function ConversationView({ id }: { id: number }) {
             }
           }
           onAttachmentsChange={setAttachments}
-          onDraftChange={setDraft}
+          onDraftChange={(value) => {
+            if (send.isError) {
+              send.reset();
+            }
+
+            setDraft(value);
+          }}
           onModelChange={(model) => changeModel.mutate(model)}
           onStop={() => abort.mutate()}
           onSteer={(content) => {
             scrollToEnd({ behavior: 'smooth' });
-            send.mutate({ content, steer: true });
+            send.mutate({ content, steer: true, sent: attachments });
           }}
           onSubmit={(content) => {
             scrollToEnd({ behavior: 'smooth' });
-            send.mutate({ content, steer: false });
+            send.mutate({ content, steer: false, sent: attachments });
           }}
           running={running}
           submitting={send.isPending}
