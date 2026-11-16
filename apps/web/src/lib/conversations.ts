@@ -46,11 +46,11 @@ function conversationsQueryOptions(sort: ConversationSort) {
     queryFn: ({ pageParam, signal }) =>
       call(
         client.conversations.$get(
-          { query: { cursor: pageParam?.toString(), filter: 'recent', sort } },
+          { query: { cursor: pageParam, filter: 'recent', sort } },
           { init: { signal } }
         )
       ),
-    initialPageParam: undefined as number | undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: ({ next }) => next ?? undefined,
     refetchInterval: ({ state }) => {
       const running = state.data?.pages.some(({ conversations }) =>
