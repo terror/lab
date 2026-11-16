@@ -35,7 +35,7 @@ export const auth = betterAuth({
   },
 });
 
-type User = typeof auth.$Infer.Session.user;
+export type User = typeof auth.$Infer.Session.user;
 
 export const requireUser = createMiddleware<{ Variables: { user: User } }>(
   async (c, next) => {

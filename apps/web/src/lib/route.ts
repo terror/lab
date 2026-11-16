@@ -16,7 +16,15 @@ export function useSelectedConversation() {
   return useSyncExternalStore(subscribe, selected);
 }
 
-export function selectConversation(id: number) {
-  window.history.pushState(null, '', `/c/${id}`);
+function navigate(path: string) {
+  window.history.pushState(null, '', path);
   window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+export function selectConversation(id: number) {
+  navigate(`/c/${id}`);
+}
+
+export function openNewChat() {
+  navigate('/');
 }

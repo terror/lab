@@ -1,8 +1,13 @@
 import { Conversation } from '@/components/conversation';
+import { NewChat } from '@/components/new-chat';
 import { Sidebar } from '@/components/sidebar';
 import { SignIn } from '@/components/sign-in';
 import { authClient } from '@/lib/auth';
-import { selectConversation, useSelectedConversation } from '@/lib/route';
+import {
+  openNewChat,
+  selectConversation,
+  useSelectedConversation,
+} from '@/lib/route';
 
 export function App() {
   const session = authClient.useSession();
@@ -20,16 +25,13 @@ export function App() {
     <div className='flex h-svh'>
       <Sidebar
         selected={selected}
+        onNewChat={openNewChat}
         onSelect={selectConversation}
         user={session.data.user}
       />
       <main className='flex min-w-0 flex-1 flex-col'>
         {selected === undefined ? (
-          <div className='flex flex-1 items-center justify-center p-6'>
-            <p className='text-muted-foreground'>
-              Start a new chat to talk to Lab.
-            </p>
-          </div>
+          <NewChat user={session.data.user} />
         ) : (
           <Conversation key={selected} id={selected} />
         )}
