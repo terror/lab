@@ -28,7 +28,7 @@ import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
 import { modelChange, thinkingLevelSchema } from './models';
-import { flushProjections, project } from './projections';
+import { flushProjections } from './projections';
 import { validator } from './validator';
 
 const params = validator(
@@ -313,8 +313,6 @@ const conversations = new Hono()
     await db
       .insert(schema.conversation)
       .values({ id: conversation.id, ownerId: user.id });
-
-    await project(conversation.id);
 
     try {
       await submitMessage(conversation, { attachments, content: text });

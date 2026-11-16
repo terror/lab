@@ -38,7 +38,7 @@ const projections = [projection(TitleDoc, ({ title }) => ({ title }))];
 
 const kinds = new Set(projections.map(({ kind }) => kind));
 
-export async function project(id: ConversationId) {
+async function project(id: ConversationId) {
   const columns = await Promise.all(projections.map(({ read }) => read(id)));
 
   const values = Object.assign({}, ...columns);
