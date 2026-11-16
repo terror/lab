@@ -4,7 +4,11 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { acceptsImages } from './models';
-import { type Attachment, attachmentSchema } from './schemas';
+import {
+  type Attachment,
+  attachmentSchema,
+  attachmentTextLimit,
+} from './schemas';
 
 export const draftSchema = z.object({
   attachments: z.array(attachmentSchema).max(8).default([]),
@@ -54,7 +58,7 @@ function prompt({
   return text ? [{ text, type: 'text' as const }, ...images] : images;
 }
 
-export function requireImageInput(
+export function checkAttachments(
   model: Parameters<typeof acceptsImages>[0],
   attachments: Attachment[]
 ) {
@@ -63,6 +67,18 @@ export function requireImageInput(
     !acceptsImages(model)
   ) {
     throw new HTTPException(400, { message: 'This model can’t read images' });
+  }
+
+  const text = attachments.reduce(
+    (total, attachment) =>
+      attachment.type === 'file' ? total + attachment.text.length : total,
+    0
+  );
+
+  if (text > attachmentTextLimit(model?.contextWindow)) {
+    throw new HTTPException(400, {
+      message: `These files have too much text for ${model?.name ?? 'this model'}`,
+    });
   }
 }
 

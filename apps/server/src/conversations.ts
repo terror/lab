@@ -23,7 +23,7 @@ import {
   draftSchema,
   emptyMessage,
   nonEmpty,
-  requireImageInput,
+  checkAttachments,
   submitMessage,
 } from './messages';
 import { defaultModel, findModel, modelChange, models } from './models';
@@ -165,7 +165,7 @@ const conversations = new Hono()
 
     const change = modelChange(chosen, thinkingLevel);
 
-    requireImageInput(chosen, attachments);
+    checkAttachments(chosen, attachments);
 
     const conversation = await harness.createConversation(
       { agent: change, ownership: { kind: 'ownerless' } },
@@ -280,7 +280,7 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    requireImageInput(
+    checkAttachments(
       agent?.model &&
         models.getModel(agent.model.provider, agent.model.modelId),
       draft.attachments

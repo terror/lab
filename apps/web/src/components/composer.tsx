@@ -18,9 +18,11 @@ import {
   imageSource,
   readAttachment,
   readLibraryItem,
+  textLimit,
 } from '@/lib/attachments';
 import type { LibraryItem } from '@/lib/library';
-import type { ModelChoice } from '@/lib/models';
+import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUp,
   CornerDownRight,
@@ -155,6 +157,14 @@ export function Composer({
 
   const room = MAX_ATTACHMENTS - attachments.length;
 
+  const catalog = useQuery(modelsQueryOptions).data?.models;
+
+  const limit = textLimit(
+    catalog?.find(
+      ({ id, provider }) => id === model?.id && provider === model.provider
+    )
+  );
+
   const attach = async <T,>(
     sources: T[],
     read: (source: T) => Promise<Attachment>
@@ -215,7 +225,7 @@ export function Composer({
 
     if (files.length > 0) {
       event.preventDefault();
-      void attach(files, readAttachment);
+      void attach(files, (file) => readAttachment(file, limit));
     }
   };
 
@@ -227,7 +237,7 @@ export function Composer({
   };
 
   const addFromLibrary = async (items: LibraryItem[]) => {
-    await attach(items, readLibraryItem);
+    await attach(items, (item) => readLibraryItem(item, limit));
     setPicking(false);
   };
 
@@ -271,7 +281,9 @@ export function Composer({
             className='hidden'
             multiple
             onChange={(event) => {
-              void attach([...(event.target.files ?? [])], readAttachment);
+              void attach([...(event.target.files ?? [])], (file) =>
+                readAttachment(file, limit)
+              );
               event.target.value = '';
             }}
             ref={input}

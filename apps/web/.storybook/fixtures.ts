@@ -22,7 +22,14 @@ function model(
   id: string,
   name: string
 ): Model {
-  return { id, name, provider, providerName, thinkingLevels: levels };
+  return {
+    contextWindow: 1_000_000,
+    id,
+    name,
+    provider,
+    providerName,
+    thinkingLevels: levels,
+  };
 }
 
 export const catalog: Catalog = {

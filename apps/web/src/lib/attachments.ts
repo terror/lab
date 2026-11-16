@@ -1,4 +1,8 @@
-import { type Attachment, imageTypes } from '@lab/server/schemas';
+import {
+  type Attachment,
+  attachmentTextLimit,
+  imageTypes,
+} from '@lab/server/schemas';
 
 import { type LibraryItem, libraryItemUrl } from './library';
 
@@ -10,15 +14,30 @@ const MAX_DIMENSION = 2000;
 
 const MAX_IMAGE_BYTES = 4_000_000;
 
-const MAX_TEXT_BYTES = 200_000;
-
 const MAX_PDF_BYTES = 20_000_000;
 
 function isPdf(file: File) {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 }
 
-async function readPdf(file: File): Promise<Attachment> {
+export type TextLimit = { chars: number; model: string };
+
+export function textLimit(
+  model: { contextWindow: number; name: string } | undefined
+): TextLimit {
+  return {
+    chars: attachmentTextLimit(model?.contextWindow),
+    model: model?.name ?? 'this model',
+  };
+}
+
+function checkText(name: string, text: string, limit: TextLimit) {
+  if (text.length > limit.chars) {
+    throw new Error(`${name} has too much text for ${limit.model}`);
+  }
+}
+
+async function readPdf(file: File, limit: TextLimit): Promise<Attachment> {
   if (file.size > MAX_PDF_BYTES) {
     throw new Error(`${file.name} is too large to attach`);
   }
@@ -31,9 +50,7 @@ async function readPdf(file: File): Promise<Attachment> {
     throw new Error(`${file.name} has no text to read`);
   }
 
-  if (new TextEncoder().encode(text).byteLength > MAX_TEXT_BYTES) {
-    throw new Error(`${file.name} has too much text to attach`);
-  }
+  checkText(file.name, text, limit);
 
   return { name: file.name, text, type: 'file' };
 }
@@ -86,7 +103,10 @@ async function shrink(file: File) {
   return canvas.convertToBlob({ quality: 0.85, type: 'image/webp' });
 }
 
-export async function readAttachment(file: File): Promise<Attachment> {
+export async function readAttachment(
+  file: File,
+  limit: TextLimit
+): Promise<Attachment> {
   if (isImageType(file.type)) {
     const blob = await shrink(file);
 
@@ -107,11 +127,11 @@ export async function readAttachment(file: File): Promise<Attachment> {
   }
 
   if (isPdf(file)) {
-    return readPdf(file);
+    return readPdf(file, limit);
   }
 
-  if (file.size > MAX_TEXT_BYTES) {
-    throw new Error(`${file.name} is too large to attach`);
+  if (file.size > limit.chars * 4) {
+    throw new Error(`${file.name} has too much text for ${limit.model}`);
   }
 
   const text = await file.text();
@@ -120,10 +140,15 @@ export async function readAttachment(file: File): Promise<Attachment> {
     throw new Error(`${file.name} is not a text file`);
   }
 
+  checkText(file.name, text, limit);
+
   return { name: file.name, text, type: 'file' };
 }
 
-export async function readLibraryItem(item: LibraryItem): Promise<Attachment> {
+export async function readLibraryItem(
+  item: LibraryItem,
+  limit: TextLimit
+): Promise<Attachment> {
   const response = await fetch(libraryItemUrl(item.id));
 
   if (!response.ok) {
@@ -131,11 +156,16 @@ export async function readLibraryItem(item: LibraryItem): Promise<Attachment> {
   }
 
   if (item.kind === 'file') {
-    return { name: item.name, text: await response.text(), type: 'file' };
+    const text = await response.text();
+
+    checkText(item.name, text, limit);
+
+    return { name: item.name, text, type: 'file' };
   }
 
   return readAttachment(
-    new File([await response.blob()], item.name, { type: item.mimeType })
+    new File([await response.blob()], item.name, { type: item.mimeType }),
+    limit
   );
 }
 
