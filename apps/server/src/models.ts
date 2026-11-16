@@ -62,6 +62,12 @@ export function listModels() {
   }));
 }
 
+export function acceptsImages(id: string | undefined) {
+  const model = chatModels.find((candidate) => candidate.id === id);
+
+  return model?.input.includes('image') ?? false;
+}
+
 export function modelChange(id: string, thinkingLevel?: ModelThinkingLevel) {
   const model = chatModels.find((candidate) => candidate.id === id);
 

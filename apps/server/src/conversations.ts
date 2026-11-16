@@ -1,9 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type {
-  Conversation,
-  ConversationId,
-  EntryId,
-  SubmissionId,
+import {
+  AgentDoc,
+  type Conversation,
+  type ConversationId,
+  type EntryId,
+  type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
@@ -27,7 +28,7 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
-import { modelChange } from './models';
+import { acceptsImages, defaultModel, modelChange } from './models';
 import { flushProjections } from './projections';
 import {
   type Attachment,
@@ -163,6 +164,18 @@ function prompt({
   }
 
   return text ? [{ text, type: 'text' as const }, ...images] : images;
+}
+
+function requireImageInput(
+  model: string | undefined,
+  attachments: Attachment[]
+) {
+  if (
+    attachments.some(({ type }) => type === 'image') &&
+    !acceptsImages(model)
+  ) {
+    throw new HTTPException(400, { message: 'This model can’t read images' });
+  }
 }
 
 function submitMessage(
@@ -306,6 +319,8 @@ const conversations = new Hono()
     const change =
       model === undefined ? undefined : modelChange(model, thinkingLevel);
 
+    requireImageInput(model ?? defaultModel.modelId, attachments);
+
     const conversation = await harness.createConversation(
       { agent: change, ownership: { kind: 'ownerless' } },
       BACKGROUND_CONTEXT
@@ -399,6 +414,14 @@ const conversations = new Hono()
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     const { steer, ...draft } = c.req.valid('json');
+
+    const agent = await harness.snapshot(
+      AgentDoc,
+      conversation.id,
+      BACKGROUND_CONTEXT
+    );
+
+    requireImageInput(agent?.model?.modelId, draft.attachments);
 
     const submission = await submitMessage(
       conversation,
