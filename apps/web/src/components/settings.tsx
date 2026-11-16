@@ -8,12 +8,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { UsagePanel } from '@/components/usage';
 import { useLineNumbers } from '@/lib/preferences';
 import { usePersistentState } from '@/lib/storage';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
-import { ArrowLeft, ChevronDown, KeyRound, Palette } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChartColumn,
+  ChevronDown,
+  KeyRound,
+  Palette,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { z } from 'zod';
 
@@ -88,15 +95,17 @@ function Appearance() {
 const sections = [
   { icon: Palette, id: 'appearance', label: 'Appearance' },
   { icon: KeyRound, id: 'providers', label: 'Providers' },
+  { icon: ChartColumn, id: 'usage', label: 'Usage' },
 ] as const;
 
-const sectionSchema = z.enum(['appearance', 'providers']);
+const sectionSchema = z.enum(['appearance', 'providers', 'usage']);
 
 type Section = z.infer<typeof sectionSchema>;
 
 const panels: Record<Section, () => ReactNode> = {
   appearance: () => <Appearance />,
   providers: () => <Providers />,
+  usage: () => <UsagePanel />,
 };
 
 export function Settings() {

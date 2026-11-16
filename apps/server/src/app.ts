@@ -12,6 +12,7 @@ import { db } from './db';
 import { harness } from './harness';
 import { defaultModel, listModels } from './models';
 import providers from './providers';
+import usage from './usage';
 
 const app = new Hono();
 
@@ -41,7 +42,8 @@ const api = new Hono()
     });
   })
   .route('/conversations', conversations)
-  .route('/providers', providers);
+  .route('/providers', providers)
+  .route('/usage', usage);
 
 export type AppType = typeof api;
 
