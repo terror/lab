@@ -15,10 +15,12 @@ import { useUser } from '@/lib/auth';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, SquarePen } from 'lucide-react';
 import { useState } from 'react';
+import { usePanelRef } from 'react-resizable-panels';
 import { z } from 'zod';
 
 type User = {
@@ -29,6 +31,8 @@ type User = {
 };
 
 const layoutSchema = z.record(z.string(), z.number()).optional();
+
+const SIDEBAR_ANIMATION_MS = 300;
 
 function Content() {
   return (
@@ -59,6 +63,21 @@ function DesktopWorkspace({
   user: User;
 }) {
   const { openNewChat, selectConversation } = useNavigation();
+  const panel = usePanelRef();
+  const [collapsed, setCollapsed] = useState(false);
+  const [animating, setAnimating] = useState(false);
+
+  const toggle = () => {
+    setAnimating(true);
+
+    if (panel.current?.isCollapsed()) {
+      panel.current.expand();
+    } else {
+      panel.current?.collapse();
+    }
+
+    window.setTimeout(() => setAnimating(false), SIDEBAR_ANIMATION_MS);
+  };
 
   const [layout, setLayout] = usePersistentState(
     'layout',
@@ -69,21 +88,32 @@ function DesktopWorkspace({
   return (
     <div className='h-svh'>
       <ResizablePanelGroup
+        className={cn(
+          animating &&
+            '[&>[data-panel]]:transition-[flex-grow] [&>[data-panel]]:duration-300 [&>[data-panel]]:ease-out motion-reduce:[&>[data-panel]]:transition-none'
+        )}
         defaultLayout={layout}
         onLayoutChanged={setLayout}
         orientation='horizontal'
       >
         <ResizablePanel
+          className='overflow-hidden!'
+          collapsedSize={56}
+          collapsible
           defaultSize={256}
           groupResizeBehavior='preserve-pixel-size'
           id='sidebar'
           maxSize={480}
           minSize={200}
+          onResize={() => setCollapsed(panel.current?.isCollapsed() ?? false)}
+          panelRef={panel}
         >
           <Sidebar
+            collapsed={collapsed}
             selected={selected}
             onNewChat={openNewChat}
             onSelect={selectConversation}
+            onToggle={toggle}
             user={user}
           />
         </ResizablePanel>
