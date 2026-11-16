@@ -1,7 +1,11 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type {
+  CommitChange,
+  Conversation,
   ConversationDocToken,
   ConversationId,
+  Cursor,
+  EntryRecord,
   JsonObject,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
@@ -16,8 +20,8 @@ type Columns = Partial<
 >;
 
 type Projection = {
-  kind: string;
   read: (id: ConversationId) => Promise<Columns>;
+  source: (change: CommitChange) => ConversationId | undefined;
 };
 
 function projection<T extends JsonObject>(
@@ -25,18 +29,55 @@ function projection<T extends JsonObject>(
   columns: (value: T) => Columns
 ): Projection {
   return {
-    kind: doc.definition.kind,
     read: async (id) => {
       const value = await harness.snapshot(doc, id, BACKGROUND_CONTEXT);
 
       return value ? columns(value) : {};
     },
+    source: (change) =>
+      change.type === 'document' && change.record.kind === doc.definition.kind
+        ? change.conversationId
+        : undefined,
   };
 }
 
-const projections = [projection(TitleDoc, ({ title }) => ({ title }))];
+async function latestMessage(
+  conversation: Conversation,
+  cursor?: Cursor
+): Promise<EntryRecord | undefined> {
+  const page = await conversation.entries({}, 50, cursor, BACKGROUND_CONTEXT);
 
-const kinds = new Set(projections.map(({ kind }) => kind));
+  const entry = page.items.find(({ kind }) => kind === 'lab.message');
+
+  if (entry || page.next === undefined) {
+    return entry;
+  }
+
+  return latestMessage(conversation, page.next);
+}
+
+const lastMessage: Projection = {
+  read: async (id) => {
+    const conversation = await harness.conversation(id, BACKGROUND_CONTEXT);
+
+    const entry = conversation && (await latestMessage(conversation));
+
+    const timestamp = entry?.model?.[0]?.timestamp;
+
+    return timestamp === undefined
+      ? {}
+      : { lastMessageAt: new Date(timestamp) };
+  },
+  source: (change) =>
+    change.type === 'entry' && change.value.kind === 'lab.message'
+      ? change.value.conversationId
+      : undefined,
+};
+
+const projections = [
+  projection(TitleDoc, ({ title }) => ({ title })),
+  lastMessage,
+];
 
 async function project(id: ConversationId) {
   const columns = await Promise.all(projections.map(({ read }) => read(id)));
@@ -64,12 +105,12 @@ harness.observeCommits({
     const ids = new Set<ConversationId>();
 
     for (const change of changes) {
-      if (
-        change.type === 'document' &&
-        change.conversationId !== undefined &&
-        kinds.has(change.record.kind)
-      ) {
-        ids.add(change.conversationId);
+      for (const { source } of projections) {
+        const id = source(change);
+
+        if (id !== undefined) {
+          ids.add(id);
+        }
       }
     }
 

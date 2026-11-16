@@ -378,9 +378,7 @@ const conversations = new Hono()
     });
   })
   .post('/:id/messages', params, message, async (c) => {
-    const user = c.get('user');
-
-    const conversation = await load(c.req.valid('param').id, user);
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
 
     const { steer, ...draft } = c.req.valid('json');
 
@@ -389,11 +387,6 @@ const conversations = new Hono()
       draft,
       steer ? 'steer' : 'followUp'
     );
-
-    await db
-      .update(schema.conversation)
-      .set({ lastMessageAt: sql`now()` })
-      .where(eq(schema.conversation.id, conversation.id));
 
     return c.json({ id: submission.id }, 202);
   })
