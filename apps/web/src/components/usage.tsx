@@ -189,7 +189,7 @@ export function UsagePanel() {
         >
           <SelectTrigger
             aria-label='Range'
-            className='h-auto gap-1 border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground focus-visible:ring-0 data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-transparent'
+            className='h-auto gap-1 border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-transparent'
             size='sm'
           >
             <SelectValue />
