@@ -1,25 +1,19 @@
-import type { ComponentProps } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { Suspense, lazy } from 'react';
 
-const remarkPlugins = [remarkGfm];
+const Streamdown = lazy(async () => ({
+  default: (await import('streamdown')).Streamdown,
+}));
 
-function Link({ href, children }: ComponentProps<'a'>) {
+export function Markdown({
+  children,
+  streaming,
+}: {
+  children: string;
+  streaming: boolean;
+}) {
   return (
-    <a href={href} rel='noreferrer' target='_blank'>
-      {children}
-    </a>
-  );
-}
-
-const components = { a: Link };
-
-export function Markdown({ children }: { children: string }) {
-  return (
-    <div className='prose max-w-none prose-neutral dark:prose-invert prose-pre:bg-muted prose-pre:text-foreground'>
-      <ReactMarkdown components={components} remarkPlugins={remarkPlugins}>
-        {children}
-      </ReactMarkdown>
-    </div>
+    <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
+      <Streamdown isAnimating={streaming}>{children}</Streamdown>
+    </Suspense>
   );
 }
