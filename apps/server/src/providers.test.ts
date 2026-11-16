@@ -109,3 +109,36 @@ test('environment variables do not configure providers', async () => {
     delete process.env.GROQ_API_KEY;
   }
 });
+
+test('keys that cannot be decrypted count as disconnected', async () => {
+  const headers = await signIn();
+
+  await db
+    .insert(schema.providerCredential)
+    .values({ credential: 'Zm9v', providerId: 'mistral' });
+
+  try {
+    const providers = await call(headers, 'GET', '/providers');
+
+    const models = await call(headers, 'GET', '/models');
+
+    expect({
+      mistral: providers.body.providers.find(
+        ({ id }: { id: string }) => id === 'mistral'
+      ),
+      models: models.status,
+    }).toEqual({
+      mistral: {
+        configured: false,
+        id: 'mistral',
+        methods: ['api_key'],
+        name: 'Mistral',
+      },
+      models: 200,
+    });
+  } finally {
+    await db
+      .delete(schema.providerCredential)
+      .where(eq(schema.providerCredential.providerId, 'mistral'));
+  }
+});
