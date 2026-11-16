@@ -9,7 +9,15 @@ import { validator } from './validator';
 
 const params = validator('param', z.object({ id: z.string().min(1) }));
 
-const key = validator('json', z.object({ apiKey: z.string().trim().min(1) }));
+const connection = validator(
+  'json',
+  z.discriminatedUnion('method', [
+    z.object({
+      apiKey: z.string().trim().min(1),
+      method: z.literal('api_key'),
+    }),
+  ])
+);
 
 function provider(id: string) {
   const match = keyProviders().find((candidate) => candidate.id === id);
@@ -32,6 +40,7 @@ const providers = new Hono()
       keyProviders().map(async ({ id, name }) => ({
         configured: (await models.checkAuth(id)) !== undefined,
         id,
+        methods: ['api_key' as const],
         name,
         stored: stored.has(id),
       }))
@@ -39,7 +48,7 @@ const providers = new Hono()
 
     return c.json({ providers: list });
   })
-  .put('/:id', params, key, async (c) => {
+  .put('/:id', params, connection, async (c) => {
     const { id } = provider(c.req.valid('param').id);
 
     const { apiKey } = c.req.valid('json');

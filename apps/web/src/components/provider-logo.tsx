@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import anthropic from '@lobehub/icons-static-svg/icons/anthropic.svg';
 import baseten from '@lobehub/icons-static-svg/icons/baseten.svg';
 import cerebras from '@lobehub/icons-static-svg/icons/cerebras.svg';
@@ -50,17 +51,33 @@ const logos: [string, string][] = [
   ['zai', zai],
 ];
 
-export function ProviderLogo({ id, name }: { id: string; name: string }) {
+const sizes = {
+  default: { icon: 'size-4.5', tile: 'size-9 rounded-xl text-sm' },
+  sm: { icon: 'size-3', tile: 'size-5 rounded-md text-xs' },
+};
+
+export function ProviderLogo({
+  id,
+  name,
+  size = 'default',
+}: {
+  id: string;
+  name: string;
+  size?: keyof typeof sizes;
+}) {
   const logo = logos.find(([prefix]) => id.startsWith(prefix))?.[1];
 
   return (
     <span
       aria-hidden='true'
-      className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-sm font-semibold text-muted-foreground'
+      className={cn(
+        'flex shrink-0 items-center justify-center bg-muted font-semibold text-muted-foreground',
+        sizes[size].tile
+      )}
     >
       {logo ? (
         <span
-          className='size-4.5 bg-foreground'
+          className={cn('bg-foreground', sizes[size].icon)}
           style={{
             maskImage: `url(${JSON.stringify(logo)})`,
             maskPosition: 'center',
