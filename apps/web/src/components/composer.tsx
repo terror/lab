@@ -1,5 +1,12 @@
+import { LibraryPicker } from '@/components/library-picker';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
 import {
   Tooltip,
@@ -10,13 +17,17 @@ import {
   type Attachment,
   imageSource,
   readAttachment,
+  readLibraryItem,
 } from '@/lib/attachments';
+import type { LibraryItem } from '@/lib/library';
 import type { ModelChoice } from '@/lib/models';
 import {
   ArrowUp,
   CornerDownRight,
   FileText,
+  Images,
   Paperclip,
+  Plus,
   Square,
   X,
 } from 'lucide-react';
@@ -134,20 +145,22 @@ export function Composer({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string>();
+  const [picking, setPicking] = useState(false);
 
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
 
   const steering = running === true && !empty && onSteer !== undefined;
 
-  const attach = async (files: File[]) => {
+  const room = MAX_ATTACHMENTS - attachments.length;
+
+  const attach = async <T,>(
+    sources: T[],
+    read: (source: T) => Promise<Attachment>
+  ) => {
     setAttachError(undefined);
 
-    const room = MAX_ATTACHMENTS - attachments.length;
-
-    const results = await Promise.allSettled(
-      files.slice(0, room).map(readAttachment)
-    );
+    const results = await Promise.allSettled(sources.slice(0, room).map(read));
 
     const added = results.flatMap((result) =>
       result.status === 'fulfilled' ? [result.value] : []
@@ -163,7 +176,7 @@ export function Composer({
       );
     }
 
-    if (files.length > room) {
+    if (sources.length > room) {
       setAttachError(`You can attach up to ${MAX_ATTACHMENTS} files`);
     }
 
@@ -201,8 +214,13 @@ export function Composer({
 
     if (files.length > 0) {
       event.preventDefault();
-      void attach(files);
+      void attach(files, readAttachment);
     }
+  };
+
+  const addFromLibrary = (items: LibraryItem[]) => {
+    setPicking(false);
+    void attach(items, readLibraryItem);
   };
 
   const onFormSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -245,23 +263,50 @@ export function Composer({
             className='hidden'
             multiple
             onChange={(event) => {
-              void attach([...(event.target.files ?? [])]);
+              void attach([...(event.target.files ?? [])], readAttachment);
               event.target.value = '';
             }}
             ref={input}
             type='file'
           />
-          <Button
-            aria-label='Attach files'
-            className='rounded-full text-muted-foreground'
-            disabled={disabled || attachments.length >= MAX_ATTACHMENTS}
-            onClick={() => input.current?.click()}
-            size='icon'
-            type='button'
-            variant='ghost'
-          >
-            <Paperclip aria-hidden='true' />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label='Add photos and files'
+                className='rounded-full text-muted-foreground'
+                disabled={disabled || room <= 0}
+                size='icon'
+                type='button'
+                variant='ghost'
+              >
+                <Plus aria-hidden='true' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='start' className='w-auto' side='top'>
+              <DropdownMenuItem onSelect={() => input.current?.click()}>
+                <Paperclip aria-hidden='true' />
+                Add photos & files
+                <span className='text-muted-foreground'>
+                  Upload from computer
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPicking(true)}>
+                <Images aria-hidden='true' />
+                Add from library
+                <span className='text-muted-foreground'>
+                  Browse and search your files
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {picking && (
+            <LibraryPicker
+              limit={room}
+              onAdd={addFromLibrary}
+              onOpenChange={setPicking}
+              open
+            />
+          )}
           <div className='ml-auto flex min-w-0 items-center gap-2'>
             <ModelPicker
               disabled={disabled}

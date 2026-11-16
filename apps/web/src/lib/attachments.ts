@@ -1,5 +1,7 @@
 import { type Attachment, imageTypes } from '@lab/server/schemas';
 
+import { type LibraryItem, libraryItemUrl } from './library';
+
 export type { Attachment };
 
 type ImageType = (typeof imageTypes)[number];
@@ -89,6 +91,29 @@ export async function readAttachment(file: File): Promise<Attachment> {
   }
 
   return { name: file.name, text, type: 'file' };
+}
+
+export async function readLibraryItem(item: LibraryItem): Promise<Attachment> {
+  const response = await fetch(libraryItemUrl(item.id));
+
+  if (!response.ok) {
+    throw new Error(`${item.name} could not be loaded`);
+  }
+
+  if (item.kind === 'file') {
+    return { name: item.name, text: await response.text(), type: 'file' };
+  }
+
+  if (!isImageType(item.mimeType)) {
+    throw new Error(`${item.name} is not a supported image`);
+  }
+
+  return {
+    data: await encode(await response.blob()),
+    mimeType: item.mimeType,
+    name: item.name,
+    type: 'image',
+  };
 }
 
 export function imageSource({
