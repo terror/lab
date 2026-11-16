@@ -366,7 +366,7 @@ const conversations = new Hono()
 
       await tx
         .insert(schema.conversationDeletion)
-        .values({ id: conversation.id })
+        .values({ id: conversation.id, ownerId: c.get('user').id })
         .onConflictDoNothing();
     });
 

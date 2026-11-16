@@ -1,5 +1,5 @@
 import { schema } from '@lab/db';
-import { ilike, inArray } from 'drizzle-orm';
+import { and, ilike, inArray, isNotNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from './db';
@@ -20,15 +20,35 @@ export async function owners(ids: readonly number[]) {
     return new Map<number, string>();
   }
 
-  const rows = await db
-    .select({
-      id: schema.conversation.id,
-      ownerId: schema.conversation.ownerId,
-    })
-    .from(schema.conversation)
-    .where(inArray(schema.conversation.id, [...new Set(ids)]));
+  const unique = [...new Set(ids)];
 
-  return new Map(rows.map(({ id, ownerId }) => [id, ownerId]));
+  const [live, deleted] = await Promise.all([
+    db
+      .select({
+        id: schema.conversation.id,
+        ownerId: schema.conversation.ownerId,
+      })
+      .from(schema.conversation)
+      .where(inArray(schema.conversation.id, unique)),
+    db
+      .select({
+        id: schema.conversationDeletion.id,
+        ownerId: schema.conversationDeletion.ownerId,
+      })
+      .from(schema.conversationDeletion)
+      .where(
+        and(
+          inArray(schema.conversationDeletion.id, unique),
+          isNotNull(schema.conversationDeletion.ownerId)
+        )
+      ),
+  ]);
+
+  return new Map(
+    [...deleted, ...live].flatMap(({ id, ownerId }) =>
+      ownerId === null ? [] : [[id, ownerId] as const]
+    )
+  );
 }
 
 export function contains(column: AnyPgColumn, search: string) {
