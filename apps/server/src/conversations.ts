@@ -79,8 +79,16 @@ const listQuery = validator(
   z.object({
     cursor: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
+    sort: z.enum(['activity', 'created']).default('activity'),
   })
 );
+
+const sortColumns = {
+  activity: 'lastMessageAt',
+  created: 'createdAt',
+} as const;
+
+type Sort = keyof typeof sortColumns;
 
 const modelSelection = validator(
   'json',
@@ -143,15 +151,17 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-function before(id: number, user: User) {
+function before(id: number, user: User, sort: Sort) {
+  const column = sortColumns[sort];
+
   const cursor = alias(schema.conversation, 'cursor');
 
   const position = db
-    .select({ lastMessageAt: cursor.lastMessageAt, id: cursor.id })
+    .select({ at: cursor[column], id: cursor.id })
     .from(cursor)
     .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
 
-  return sql`(${schema.conversation.lastMessageAt}, ${schema.conversation.id}) < (${position})`;
+  return sql`(${schema.conversation[column]}, ${schema.conversation.id}) < (${position})`;
 }
 
 async function load(id: number, user: User) {
@@ -186,7 +196,7 @@ const conversations = new Hono()
   .get('/', listQuery, async (c) => {
     const user = c.get('user');
 
-    const { cursor, limit } = c.req.valid('query');
+    const { cursor, limit, sort } = c.req.valid('query');
 
     const rows = await db
       .select({ id: schema.conversation.id })
@@ -194,11 +204,11 @@ const conversations = new Hono()
       .where(
         and(
           eq(schema.conversation.ownerId, user.id),
-          cursor === undefined ? undefined : before(cursor, user)
+          cursor === undefined ? undefined : before(cursor, user, sort)
         )
       )
       .orderBy(
-        desc(schema.conversation.lastMessageAt),
+        desc(schema.conversation[sortColumns[sort]]),
         desc(schema.conversation.id)
       )
       .limit(limit + 1);

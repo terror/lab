@@ -13,6 +13,10 @@ export const conversation = pgTable(
     lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
   },
   (table) => [
+    index('conversation_ownerId_createdAt_idx').on(
+      table.ownerId,
+      table.createdAt
+    ),
     index('conversation_ownerId_lastMessageAt_idx').on(
       table.ownerId,
       table.lastMessageAt

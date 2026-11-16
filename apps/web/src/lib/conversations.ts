@@ -10,26 +10,46 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
-import { infiniteQueryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { z } from 'zod';
 
 import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
+import { usePersistentState } from './storage';
 
-export const conversationsQueryOptions = infiniteQueryOptions({
-  queryKey: ['conversations'],
-  queryFn: ({ pageParam, signal }) =>
-    call(
-      client.conversations.$get(
-        { query: { cursor: pageParam?.toString() } },
-        { init: { signal } }
-      )
-    ),
-  initialPageParam: undefined as number | undefined,
-  getNextPageParam: ({ next }) => next ?? undefined,
-  select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
-});
+const sortSchema = z.enum(['activity', 'created']);
+
+export type ConversationSort = z.infer<typeof sortSchema>;
+
+export function useConversationSort() {
+  return usePersistentState('sort', sortSchema, 'activity');
+}
+
+export const conversationsQueryKey = ['conversations'];
+
+function conversationsQueryOptions(sort: ConversationSort) {
+  return infiniteQueryOptions({
+    queryKey: [...conversationsQueryKey, sort],
+    queryFn: ({ pageParam, signal }) =>
+      call(
+        client.conversations.$get(
+          { query: { cursor: pageParam?.toString(), sort } },
+          { init: { signal } }
+        )
+      ),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: ({ next }) => next ?? undefined,
+    select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
+  });
+}
+
+export function useConversations() {
+  const [sort] = useConversationSort();
+
+  return useInfiniteQuery(conversationsQueryOptions(sort));
+}
 
 export async function createConversation(
   content: string,

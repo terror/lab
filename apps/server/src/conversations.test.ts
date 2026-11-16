@@ -184,6 +184,35 @@ test('conversations are listed in pages', async () => {
   });
 });
 
+test('conversations can be listed by creation', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  await call(headers, 'POST', `/conversations/${first}/messages`, {
+    content: 'bar',
+  });
+
+  expect(
+    await call(headers, 'GET', '/conversations?sort=created&limit=1')
+  ).toEqual({
+    body: { conversations: [{ id: second, title: 'foo' }], next: second },
+    status: 200,
+  });
+
+  expect(
+    await call(
+      headers,
+      'GET',
+      `/conversations?sort=created&limit=1&cursor=${second}`
+    )
+  ).toEqual({
+    body: { conversations: [{ id: first, title: 'foo' }], next: null },
+    status: 200,
+  });
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 

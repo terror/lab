@@ -9,7 +9,7 @@ import { type Attachment, imageSource } from '@/lib/attachments';
 import {
   abortConversation,
   contentText,
-  conversationsQueryOptions,
+  conversationsQueryKey,
   sendMessage,
   type Gap,
   useConversation,
@@ -235,7 +235,7 @@ export function Conversation({ id }: { id: number }) {
     onSuccess: () => {
       setDraft('');
       setAttachments([]);
-      void queryClient.invalidateQueries(conversationsQueryOptions);
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
   });
 
@@ -284,7 +284,7 @@ export function Conversation({ id }: { id: number }) {
 
   useEffect(() => {
     if (!running) {
-      void queryClient.invalidateQueries(conversationsQueryOptions);
+      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     }
   }, [queryClient, running]);
 
