@@ -1,11 +1,11 @@
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -17,19 +17,25 @@ import {
   modelsQueryOptions,
 } from '@/lib/models';
 import { useQuery } from '@tanstack/react-query';
-import { Brain, Check, ChevronDown, Image } from 'lucide-react';
-import { Fragment } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 type Model = {
-  contextWindow: number;
   id: string;
-  images: boolean;
-  maxTokens: number;
   name: string;
   provider: string;
   reasoning: boolean;
   thinkingLevels: ThinkingLevel[];
 };
+
+const levels: ThinkingLevel[] = [
+  'off',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
 
 const levelLabels: Record<ThinkingLevel, string> = {
   high: 'High',
@@ -41,16 +47,58 @@ const levelLabels: Record<ThinkingLevel, string> = {
   xhigh: 'Extra high',
 };
 
-function formatTokens(tokens: number) {
-  if (tokens >= 1_000_000) {
-    return `${Number((tokens / 1_000_000).toFixed(1))}M`;
+function ModelOption({
+  active,
+  level,
+  model,
+  onSelect,
+}: {
+  active: boolean;
+  level: ThinkingLevel;
+  model: Model;
+  onSelect: (choice: ModelChoice) => void;
+}) {
+  if (!hasLevels(model)) {
+    return (
+      <DropdownMenuItem
+        onSelect={() => onSelect({ id: model.id, thinkingLevel: 'off' })}
+      >
+        <span className='truncate'>{model.name}</span>
+      </DropdownMenuItem>
+    );
   }
 
-  if (tokens >= 1_000) {
-    return `${Math.round(tokens / 1_000)}K`;
-  }
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <span className='truncate'>{model.name}</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className='min-w-40'>
+        <DropdownMenuLabel className='text-xs text-muted-foreground'>
+          Thinking
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          aria-label={`Thinking for ${model.name}`}
+          onValueChange={(value) => {
+            const thinkingLevel = levels.find(
+              (candidate) => candidate === value
+            );
 
-  return String(tokens);
+            if (thinkingLevel) {
+              onSelect({ id: model.id, thinkingLevel });
+            }
+          }}
+          value={active ? level : ''}
+        >
+          {model.thinkingLevels.map((option) => (
+            <DropdownMenuRadioItem key={option} value={option}>
+              {levelLabels[option]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
 }
 
 function groupByProvider(models: Model[]) {
@@ -63,95 +111,46 @@ function groupByProvider(models: Model[]) {
   return [...groups];
 }
 
-function ModelSummary({ active, model }: { active: boolean; model: Model }) {
+function hasLevels(model: Model) {
+  return model.thinkingLevels.length > 1;
+}
+
+function clamp(model: Model, level: ThinkingLevel) {
+  const supported = (candidate: ThinkingLevel) =>
+    model.thinkingLevels.includes(candidate);
+
+  const index = levels.indexOf(level);
+
   return (
-    <span className='flex min-w-0 flex-1 items-start gap-2'>
-      <Check
-        aria-hidden='true'
-        className={active ? 'mt-0.5 size-4' : 'invisible mt-0.5 size-4'}
-      />
-      <span className='flex min-w-0 flex-1 flex-col'>
-        <span className='flex items-center gap-1.5'>
-          <span className='truncate'>{model.name}</span>
-          {model.reasoning && (
-            <Brain
-              aria-label='Reasoning'
-              className='size-3.5 text-muted-foreground'
-            />
-          )}
-          {model.images && (
-            <Image
-              aria-label='Image input'
-              className='size-3.5 text-muted-foreground'
-            />
-          )}
-        </span>
-        <span className='text-xs text-muted-foreground'>
-          {formatTokens(model.contextWindow)} context ·{' '}
-          {formatTokens(model.maxTokens)} output
-        </span>
-      </span>
-    </span>
+    levels.slice(index).find(supported) ??
+    levels.slice(0, index).findLast(supported) ??
+    'off'
   );
 }
 
-function ModelOption({
-  model,
-  onChange,
-  value,
-}: {
-  model: Model;
-  onChange: (model: ModelChoice) => void;
-  value: ModelChoice | undefined;
-}) {
-  const active = value?.id === model.id;
-
-  if (!model.reasoning || model.thinkingLevels.length <= 1) {
-    return (
-      <DropdownMenuItem onSelect={() => onChange({ id: model.id })}>
-        <ModelSummary active={active} model={model} />
-      </DropdownMenuItem>
-    );
-  }
-
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <ModelSummary active={active} model={model} />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className='min-w-40'>
-        <DropdownMenuLabel className='text-xs text-muted-foreground'>
-          Reasoning
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          onValueChange={(level) =>
-            onChange({ id: model.id, thinkingLevel: level as ThinkingLevel })
-          }
-          value={active ? (value.thinkingLevel ?? '') : ''}
-        >
-          {model.thinkingLevels.map((level) => (
-            <DropdownMenuRadioItem key={level} value={level}>
-              {levelLabels[level]}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
+function currentLevel(model: Model, choice: ModelChoice | undefined) {
+  return clamp(model, choice?.thinkingLevel ?? 'off');
 }
 
-function triggerLabel(models: Model[], value: ModelChoice | undefined) {
-  if (!value) {
+function triggerLabel(
+  model: Model | undefined,
+  choice: ModelChoice | undefined
+) {
+  if (!choice) {
     return 'Model';
   }
 
-  const name = models.find(({ id }) => id === value.id)?.name ?? value.id;
-
-  if (!value.thinkingLevel || value.thinkingLevel === 'off') {
-    return name;
+  if (!model) {
+    return choice.id;
   }
 
-  return `${name} · ${levelLabels[value.thinkingLevel]}`;
+  const level = currentLevel(model, choice);
+
+  if (!hasLevels(model) || level === 'off') {
+    return model.name;
+  }
+
+  return `${model.name} (${levelLabels[level]})`;
 }
 
 export function ModelPicker({
@@ -165,36 +164,40 @@ export function ModelPicker({
 }) {
   const models = useQuery(modelsQueryOptions);
 
-  const options = models.data ?? [];
+  const options: Model[] = models.data ?? [];
+  const current = options.find(({ id }) => id === value?.id);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className='flex items-center gap-1 text-sm text-muted-foreground outline-none disabled:opacity-50'
+          className='flex min-w-0 items-center gap-1 text-sm text-muted-foreground outline-none disabled:opacity-50'
           disabled={disabled || options.length === 0}
           type='button'
         >
-          {triggerLabel(options, value)}
-          <ChevronDown aria-hidden='true' className='size-4' />
+          <span className='truncate'>{triggerLabel(current, value)}</span>
+          <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-72'>
-        {groupByProvider(options).map(([provider, group], index) => (
-          <Fragment key={provider}>
-            {index > 0 && <DropdownMenuSeparator />}
+      <DropdownMenuContent
+        align='end'
+        className='w-72 max-w-[calc(100vw-2rem)]'
+      >
+        {groupByProvider(options).map(([provider, group]) => (
+          <DropdownMenuGroup aria-label={provider} key={provider}>
             <DropdownMenuLabel className='text-xs text-muted-foreground'>
               {provider}
             </DropdownMenuLabel>
             {group.map((model) => (
               <ModelOption
                 key={model.id}
+                active={model.id === current?.id}
+                level={currentLevel(model, value)}
                 model={model}
-                onChange={onChange}
-                value={value}
+                onSelect={onChange}
               />
             ))}
-          </Fragment>
+          </DropdownMenuGroup>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
