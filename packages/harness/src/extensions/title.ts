@@ -42,10 +42,10 @@ function generateTitle(onHelperUsage: HelperUsage) {
     initial: () => ({ phase: 'generate' }),
     phases: {
       generate: async (_task, runtime, context) => {
-        const finish = (title: string) =>
+        const finish = (value: string) =>
           runtime.commit(async (tx) => {
-            if (title) {
-              (await tx.doc(TitleDoc, runtime.conversationId)).title = title;
+            if (value) {
+              (await tx.doc(TitleDoc, runtime.conversationId)).title = value;
             }
 
             return {

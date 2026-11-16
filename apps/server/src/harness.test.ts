@@ -52,7 +52,11 @@ async function converse(harness: Awaited<ReturnType<typeof openHarness>>) {
 test('deleted conversations are purged from storage', async () => {
   const path = join(await mkdtemp(join(tmpdir(), 'lab-')), 'lab.sqlite');
 
-  const first = await openHarness({ models, path });
+  const first = await openHarness({
+    models,
+    onHelperUsage: () => undefined,
+    path,
+  });
 
   const keep = await converse(first);
   const drop = await converse(first);
@@ -67,7 +71,11 @@ test('deleted conversations are purged from storage', async () => {
 
   expect(stored(path)).toEqual([[keep], [keep], [keep], [keep]]);
 
-  const second = await openHarness({ models, path });
+  const second = await openHarness({
+    models,
+    onHelperUsage: () => undefined,
+    path,
+  });
 
   expect([
     (await second.conversation(keep, BACKGROUND_CONTEXT))?.id,

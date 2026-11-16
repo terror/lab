@@ -199,7 +199,7 @@ const usage = new Hono().use(requireUser).get('/', range, async (c) => {
     .from(table)
     .where(scope)
     .groupBy(table.provider, table.model)
-    .orderBy(desc(totals.cost));
+    .orderBy(desc(totals.cost), table.provider, table.model);
 
   const conversations = await db
     .select({
