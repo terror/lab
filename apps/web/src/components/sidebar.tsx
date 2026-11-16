@@ -2,6 +2,11 @@ import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
 import { useSearch } from '@/components/search';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -11,38 +16,46 @@ import type { ReactNode } from 'react';
 
 type User = { email: string; id: string; image?: string | null; name: string };
 
+type Side = 'bottom' | 'right';
+
 function RailButton({
   active = false,
   children,
   label,
   onClick,
+  side = 'bottom',
 }: {
   active?: boolean;
   children: ReactNode;
   label: string;
   onClick: () => void;
+  side?: Side;
 }) {
   return (
-    <button
-      aria-label={label}
-      className={cn(
-        'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
-        active && 'bg-sidebar-accent text-sidebar-accent-foreground'
-      )}
-      onClick={onClick}
-      title={label}
-      type='button'
-    >
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-label={label}
+          className={cn(
+            'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+            active && 'bg-sidebar-accent text-sidebar-accent-foreground'
+          )}
+          onClick={onClick}
+          type='button'
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
-function SearchButton() {
+function SearchButton({ side }: { side?: Side }) {
   const { openSearch } = useSearch();
 
   return (
-    <RailButton label='Search (⌘K)' onClick={openSearch}>
+    <RailButton label='Search (⌘K)' onClick={openSearch} side={side}>
       <Search aria-hidden='true' className='size-4' />
     </RailButton>
   );
@@ -61,14 +74,15 @@ function SidebarRail({
 }) {
   return (
     <aside className='flex h-full w-14 flex-col items-center gap-2 bg-sidebar py-3 text-sidebar-foreground'>
-      <RailButton label='Expand sidebar' onClick={onToggle}>
+      <RailButton label='Expand sidebar' onClick={onToggle} side='right'>
         <PanelLeftOpen aria-hidden='true' className='size-4' />
       </RailButton>
-      <SearchButton />
+      <SearchButton side='right' />
       <RailButton
         active={selected === undefined}
         label='New chat'
         onClick={onNewChat}
+        side='right'
       >
         <SquarePen aria-hidden='true' className='size-4' />
       </RailButton>
