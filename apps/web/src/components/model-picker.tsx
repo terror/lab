@@ -1,16 +1,16 @@
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   type Model,
   type ModelChoice,
@@ -19,9 +19,8 @@ import {
 } from '@/lib/models';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
-import { Slider as SliderPrimitive } from 'radix-ui';
-import { useState } from 'react';
+import { Check, ChevronDown, Search } from 'lucide-react';
+import { type KeyboardEvent, useState } from 'react';
 
 const levels = thinkingLevelSchema.options;
 
@@ -90,56 +89,103 @@ function groupByProvider(models: Model[]) {
   return [...groups];
 }
 
-function ThinkingSlider({
-  level,
-  model,
-  onChange,
-}: {
-  level: ThinkingLevel;
-  model: Model;
-  onChange: (level: ThinkingLevel) => void;
-}) {
-  const supported = supportedLevels(model);
+function matches(model: Model, search: string) {
+  const haystack = [model.name, model.id, model.providerName]
+    .join(' ')
+    .toLowerCase();
 
-  return (
-    <div className='mt-1 flex flex-col gap-2.5 border-t px-2 pt-2.5 pb-2'>
-      <div className='flex items-center justify-between text-sm'>
-        <span className='text-muted-foreground'>Thinking</span>
-        <span>{levelLabels[level]}</span>
-      </div>
-      <SliderPrimitive.Root
-        className='relative flex h-4 w-full touch-none items-center select-none'
-        max={supported.length - 1}
-        min={0}
-        onValueChange={([index]) => {
-          const next = supported[index ?? 0];
+  const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
 
-          if (next) {
-            onChange(next);
-          }
-        }}
-        step={1}
-        value={[supported.indexOf(level)]}
-      >
-        <SliderPrimitive.Track className='relative h-1 grow overflow-hidden rounded-full bg-foreground/10'>
-          <SliderPrimitive.Range className='absolute h-full bg-foreground' />
-        </SliderPrimitive.Track>
-        <SliderPrimitive.Thumb
-          aria-label='Thinking'
-          aria-valuetext={levelLabels[level]}
-          className='block size-4 rounded-full bg-white shadow-sm ring-1 ring-foreground/20 transition-shadow outline-none hover:ring-foreground/40 focus-visible:ring-3 focus-visible:ring-ring/50'
-        />
-      </SliderPrimitive.Root>
-    </div>
-  );
+  return terms.every((term) => haystack.includes(term));
 }
 
-function matches(value: string, search: string, keywords: string[] = []) {
-  const haystack = [value, ...keywords].join(' ').toLowerCase();
+function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
 
-  const terms = search.toLowerCase().split(/\s+/);
+    event.currentTarget
+      .closest('[role=menu]')
+      ?.querySelector<HTMLElement>('[role^=menuitem]')
+      ?.focus();
 
-  return Number(terms.every((term) => haystack.includes(term)));
+    return;
+  }
+
+  if (event.key !== 'Escape' && event.key !== 'Tab') {
+    event.stopPropagation();
+  }
+}
+
+function ModelOption({
+  current,
+  model,
+  onSelect,
+  value,
+}: {
+  current: boolean;
+  model: Model;
+  onSelect: (choice: ModelChoice) => void;
+  value: ModelChoice | undefined;
+}) {
+  const check = current && (
+    <Check aria-hidden='true' className='ml-auto size-4' />
+  );
+
+  if (!hasLevels(model)) {
+    return (
+      <DropdownMenuItem
+        onSelect={() =>
+          onSelect({
+            id: model.id,
+            provider: model.provider,
+            thinkingLevel: 'off',
+          })
+        }
+      >
+        <span className='truncate'>{model.name}</span>
+        {check}
+      </DropdownMenuItem>
+    );
+  }
+
+  const level = current ? currentLevel(model, value) : '';
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <span className='truncate'>{model.name}</span>
+        {check}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className='min-w-40'>
+        <DropdownMenuLabel className='text-xs text-muted-foreground'>
+          Thinking
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          aria-label={`Thinking for ${model.name}`}
+          onValueChange={(next) => {
+            const thinkingLevel = supportedLevels(model).find(
+              (candidate) => candidate === next
+            );
+
+            if (thinkingLevel) {
+              onSelect({
+                id: model.id,
+                provider: model.provider,
+                thinkingLevel,
+              });
+            }
+          }}
+          value={level}
+        >
+          {supportedLevels(model).map((option) => (
+            <DropdownMenuRadioItem key={option} value={option}>
+              {levelLabels[option]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
 }
 
 export function ModelPicker({
@@ -152,41 +198,21 @@ export function ModelPicker({
   value: ModelChoice | undefined;
 }) {
   const models = useQuery(modelsQueryOptions);
-  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const options = models.data?.models ?? [];
+
   const current = options.find(
     ({ id, provider }) => id === value?.id && provider === value.provider
   );
-  const level = current && currentLevel(current, value);
-  const thinking = current && level && hasLevels(current);
 
-  const setLevel = (next: ThinkingLevel) => {
-    if (current) {
-      onChange({
-        id: current.id,
-        provider: current.provider,
-        thinkingLevel: clamp(current, next),
-      });
-    }
-  };
-
-  const select = (model: Model) => {
-    if (model.id === current?.id) {
-      setOpen(false);
-      return;
-    }
-
-    onChange({
-      id: model.id,
-      provider: model.provider,
-      thinkingLevel: currentLevel(model, value),
-    });
-  };
+  const groups = groupByProvider(
+    options.filter((model) => matches(model, search))
+  );
 
   return (
-    <Popover onOpenChange={setOpen} open={open}>
-      <PopoverTrigger asChild>
+    <DropdownMenu onOpenChange={() => setSearch('')}>
+      <DropdownMenuTrigger asChild>
         <button
           aria-label={current ? `Model: ${current.name}` : 'Model'}
           className='flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
@@ -196,42 +222,53 @@ export function ModelPicker({
           <span className='truncate'>{triggerLabel(current, value)}</span>
           <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
         </button>
-      </PopoverTrigger>
-      <PopoverContent
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
         align='end'
-        className='w-72 gap-0 rounded-xl p-1'
+        className='w-72 p-0'
+        onCloseAutoFocus={(event) => event.preventDefault()}
         side='top'
         sideOffset={8}
       >
-        <Command
-          className='bg-transparent p-0'
-          filter={matches}
-          defaultValue={current && `${current.provider}:${current.id}`}
-        >
-          <CommandInput placeholder='Search models' />
-          <CommandList className='mt-1'>
-            <CommandEmpty>No models found</CommandEmpty>
-            {groupByProvider(options).map(([provider, group]) => (
-              <CommandGroup key={provider} heading={provider}>
-                {group.map((model) => (
-                  <CommandItem
-                    key={model.id}
-                    data-checked={model === current}
-                    keywords={[model.name, model.id, provider]}
-                    onSelect={() => select(model)}
-                    value={`${model.provider}:${model.id}`}
-                  >
-                    <span className='truncate'>{model.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-        {thinking && (
-          <ThinkingSlider level={level} model={current} onChange={setLevel} />
-        )}
-      </PopoverContent>
-    </Popover>
+        <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-popover px-3'>
+          <Search
+            aria-hidden='true'
+            className='size-4 shrink-0 text-muted-foreground'
+          />
+          <input
+            aria-label='Search models'
+            className='h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground'
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={onSearchKeyDown}
+            placeholder='Search models'
+            ref={(element) => element?.focus()}
+            value={search}
+          />
+        </div>
+        <div className='p-1'>
+          {groups.length === 0 && (
+            <p className='px-2 py-6 text-center text-sm text-muted-foreground'>
+              No models found
+            </p>
+          )}
+          {groups.map(([provider, group]) => (
+            <DropdownMenuGroup key={provider}>
+              <DropdownMenuLabel className='text-xs text-muted-foreground'>
+                {provider}
+              </DropdownMenuLabel>
+              {group.map((model) => (
+                <ModelOption
+                  key={`${model.provider}:${model.id}`}
+                  current={model === current}
+                  model={model}
+                  onSelect={onChange}
+                  value={value}
+                />
+              ))}
+            </DropdownMenuGroup>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
