@@ -9,11 +9,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useLineNumbers } from '@/lib/preferences';
+import { usePersistentState } from '@/lib/storage';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, KeyRound, Palette } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
+import { z } from 'zod';
 
 const themes: { label: string; value: Theme }[] = [
   { label: 'Light', value: 'light' },
@@ -88,7 +90,9 @@ const sections = [
   { icon: KeyRound, id: 'providers', label: 'Providers' },
 ] as const;
 
-type Section = (typeof sections)[number]['id'];
+const sectionSchema = z.enum(['appearance', 'providers']);
+
+type Section = z.infer<typeof sectionSchema>;
 
 const panels: Record<Section, () => ReactNode> = {
   appearance: () => <Appearance />,
@@ -96,7 +100,11 @@ const panels: Record<Section, () => ReactNode> = {
 };
 
 export function Settings() {
-  const [section, setSection] = useState<Section>('appearance');
+  const [section, setSection] = usePersistentState(
+    'settings-section',
+    sectionSchema,
+    'appearance'
+  );
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
