@@ -8,6 +8,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { helperModel } from '@lab/harness';
 
+import { recordHelperUsage } from './helper-usage';
 import { models } from './models';
 
 const PROMPT =
@@ -37,14 +38,18 @@ function phrase(message: AssistantMessage) {
 
 type Send = (status: string) => Promise<void>;
 
+type Usage = (message: AssistantMessage) => void;
+
 class StatusReporter {
   #at = 0;
+  #onUsage: Usage;
   #pending = false;
   #send: Send;
   #signal: AbortSignal;
   #summarized = 0;
 
-  constructor(send: Send, signal: AbortSignal) {
+  constructor(send: Send, signal: AbortSignal, onUsage: Usage) {
+    this.#onUsage = onUsage;
     this.#send = send;
     this.#signal = signal;
   }
@@ -89,6 +94,8 @@ class StatusReporter {
         { maxTokens: 24, signal: this.#signal }
       );
 
+      this.#onUsage(answer);
+
       const status = phrase(answer);
 
       if (answer.stopReason !== 'error' && status && !this.#signal.aborted) {
@@ -123,9 +130,13 @@ function channel(id: number) {
 
   const listeners = new Set<Send>();
 
-  const reporter = new StatusReporter(async (status) => {
-    await Promise.allSettled([...listeners].map((send) => send(status)));
-  }, controller.signal);
+  const reporter = new StatusReporter(
+    async (status) => {
+      await Promise.allSettled([...listeners].map((send) => send(status)));
+    },
+    controller.signal,
+    (message) => recordHelperUsage(id, 'status', message)
+  );
 
   const created = { controller, listeners, reporter };
 

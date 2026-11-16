@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { flushHelperUsage } from './helper-usage';
 import { models as catalog } from './models';
 import { validator } from './validator';
 
@@ -113,7 +114,12 @@ export async function backfillUsage() {
         db
           .select()
           .from(table)
-          .where(eq(table.conversationId, schema.conversation.id))
+          .where(
+            and(
+              eq(table.conversationId, schema.conversation.id),
+              eq(table.kind, 'response')
+            )
+          )
       )
     );
 
@@ -143,7 +149,7 @@ const usage = new Hono().use(requireUser).get('/', range, async (c) => {
 
   const { days } = c.req.valid('query');
 
-  await flushUsage();
+  await Promise.all([flushUsage(), flushHelperUsage()]);
 
   const since = sql`date_trunc('day', now()) - make_interval(days => ${days - 1})`;
 
@@ -155,7 +161,9 @@ const usage = new Hono().use(requireUser).get('/', range, async (c) => {
     cost: total(sql`${table.cost}`),
     input: total(sql`${table.input}`),
     output: total(sql`${table.output}`),
-    responses: sql`count(*)`.mapWith(Number),
+    responses: sql`count(*) filter (where ${table.kind} = 'response')`.mapWith(
+      Number
+    ),
   };
 
   const [summary] = await db.select(totals).from(table).where(scope);
@@ -191,7 +199,7 @@ const usage = new Hono().use(requireUser).get('/', range, async (c) => {
     .from(table)
     .where(scope)
     .groupBy(table.provider, table.model)
-    .orderBy(desc(totals.cost));
+    .orderBy(desc(totals.cost), table.provider, table.model);
 
   const conversations = await db
     .select({

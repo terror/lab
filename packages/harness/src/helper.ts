@@ -1,5 +1,11 @@
-import type { Models } from '@earendil-works/pi-ai';
-import type { ModelRef } from '@earendil-works/pi-durable';
+import type { AssistantMessage, Models } from '@earendil-works/pi-ai';
+import type { ConversationId, ModelRef } from '@earendil-works/pi-durable';
+
+export type HelperUsage = (
+  conversationId: ConversationId,
+  kind: 'status' | 'title',
+  message: AssistantMessage
+) => void;
 
 const helpers: Partial<Record<string, string>> = {
   anthropic: 'claude-haiku-5-5',
