@@ -10,10 +10,12 @@ const schema = z.object({
   LAB_DEFAULT_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
   LAB_ORIGIN: z.url(),
+  LAB_REPOSITORY: z.string().min(1).default('terror/lab'),
   LAB_STORAGE_PATH: z
     .string()
     .min(1)
     .default(fileURLToPath(new URL('../../../lab.sqlite', import.meta.url))),
+  RAILWAY_GIT_COMMIT_SHA: z.string().min(1).default('development'),
 });
 
 const result = schema.safeParse(process.env);
