@@ -5,7 +5,10 @@ import type {
   Cursor,
   EntryRecord,
 } from '@earendil-works/pi-durable';
+import { schema } from '@lab/db';
+import { and, eq } from 'drizzle-orm';
 
+import { db } from './db';
 import { harness } from './harness';
 import { serial } from './records';
 
@@ -40,6 +43,7 @@ export function entryChanges(
 export async function eachEntry(
   id: number,
   visit: (entries: readonly EntryRecord[]) => Promise<void>,
+  after?: number,
   cursor?: Cursor
 ): Promise<void> {
   const conversation = await harness.conversation(
@@ -48,7 +52,11 @@ export async function eachEntry(
   );
 
   const page = await conversation?.entries(
-    { order: 'ascending' },
+    {
+      minEntryId:
+        after === undefined ? undefined : ((after + 1) as EntryRecord['id']),
+      order: 'ascending',
+    },
     100,
     cursor,
     BACKGROUND_CONTEXT
@@ -61,6 +69,39 @@ export async function eachEntry(
   await visit(page.items);
 
   if (page.next !== undefined) {
-    await eachEntry(id, visit, page.next);
+    await eachEntry(id, visit, after, page.next);
   }
+}
+
+export async function backfill(
+  pipeline: string,
+  id: number,
+  visit: (entries: readonly EntryRecord[]) => Promise<void>
+) {
+  const table = schema.backfillCheckpoint;
+
+  const [checkpoint] = await db
+    .select({ entryId: table.entryId })
+    .from(table)
+    .where(and(eq(table.pipeline, pipeline), eq(table.conversationId, id)));
+
+  await eachEntry(
+    id,
+    async (entries) => {
+      await visit(entries);
+
+      const last = entries.at(-1);
+
+      if (last) {
+        await db
+          .insert(table)
+          .values({ conversationId: id, entryId: last.id, pipeline })
+          .onConflictDoUpdate({
+            set: { entryId: last.id },
+            target: [table.pipeline, table.conversationId],
+          });
+      }
+    },
+    checkpoint?.entryId
+  );
 }

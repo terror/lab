@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
-import { eachEntry, entryChanges, observe } from './pipeline';
+import { backfill, entryChanges, observe } from './pipeline';
 import { contains, owners } from './records';
 import { validator } from './validator';
 
@@ -142,16 +142,7 @@ export async function backfillLibrary() {
     .from(schema.conversation);
 
   for (const { id } of conversations) {
-    const rows = await db
-      .selectDistinct({ entryId: table.entryId })
-      .from(table)
-      .where(eq(table.conversationId, id));
-
-    const recorded = new Set(rows.map(({ entryId }) => entryId));
-
-    await eachEntry(id, (page) =>
-      record(page.filter((entry) => attached(entry) && !recorded.has(entry.id)))
-    );
+    await backfill('library', id, (page) => record(page.filter(attached)));
   }
 }
 

@@ -120,6 +120,13 @@
       "when": 1794870068122,
       "tag": "0016_deletion_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794870521242,
+      "tag": "0017_backfill_checkpoints",
+      "breakpoints": true
     }
   ]
 }

@@ -125,7 +125,5 @@ export async function projectAll() {
     .select({ id: schema.conversation.id })
     .from(schema.conversation);
 
-  queue.run(() => projectEach(rows.map(({ id }) => id as ConversationId)));
-
-  await queue.flush();
+  await projectEach(rows.map(({ id }) => id as ConversationId));
 }
