@@ -15,6 +15,7 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { extensions } from './extensions';
 
 export { TitleDoc } from './extensions';
+export { purgeConversations } from './purge';
 
 export type HarnessOptions = {
   model: ModelRef;

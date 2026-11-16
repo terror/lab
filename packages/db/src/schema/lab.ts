@@ -100,3 +100,8 @@ export const libraryItem = pgTable(
     ),
   ]
 );
+
+export const conversationDeletion = pgTable('conversation_deletion', {
+  id: integer('id').primaryKey(),
+  deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+});
