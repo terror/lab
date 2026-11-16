@@ -1,19 +1,14 @@
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type {
-  Conversation,
-  ConversationId,
-  Cursor,
-  EntryRecord,
-} from '@earendil-works/pi-durable';
+import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
-import { harness } from './harness';
+import { eachEntry, entryChanges, observe } from './pipeline';
+import { contains, owners } from './records';
 import { validator } from './validator';
 
 const table = schema.libraryItem;
@@ -116,62 +111,30 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
   return [...imageItems, ...fileItems];
 }
 
-async function record(entry: EntryRecord) {
-  const [owner] = await db
-    .select({ ownerId: schema.conversation.ownerId })
-    .from(schema.conversation)
-    .where(eq(schema.conversation.id, entry.conversationId));
+async function record(entries: readonly EntryRecord[]) {
+  const owned = await owners(
+    entries.map(({ conversationId }) => conversationId)
+  );
 
-  const rows = owner ? items(entry, owner.ownerId) : [];
+  for (const entry of entries) {
+    const ownerId = owned.get(entry.conversationId);
 
-  if (rows.length > 0) {
-    await db.insert(table).values(rows).onConflictDoNothing();
-  }
-}
+    const rows = ownerId ? items(entry, ownerId) : [];
 
-let pending = Promise.resolve();
-
-harness.observeCommits({
-  advance: ({ changes }) => {
-    const entries = changes
-      .flatMap((change) => (change.type === 'entry' ? [change.value] : []))
-      .filter((entry) => attachments(entry).length > 0);
-
-    for (const entry of entries) {
-      pending = pending.then(() => record(entry).catch(console.error));
+    if (rows.length > 0) {
+      await db.insert(table).values(rows).onConflictDoNothing();
     }
-  },
-  end: () => undefined,
-});
-
-export function flushLibrary() {
-  return pending;
-}
-
-async function recordHistory(
-  conversation: Conversation,
-  recorded: ReadonlySet<number>,
-  cursor?: Cursor
-) {
-  const page = await conversation.entries(
-    { order: 'ascending' },
-    100,
-    cursor,
-    BACKGROUND_CONTEXT
-  );
-
-  const missing = page.items.filter(
-    (entry) => attachments(entry).length > 0 && !recorded.has(entry.id)
-  );
-
-  for (const entry of missing) {
-    await record(entry);
-  }
-
-  if (page.next !== undefined) {
-    await recordHistory(conversation, recorded, page.next);
   }
 }
+
+function attached(entry: EntryRecord) {
+  return attachments(entry).length > 0;
+}
+
+export const flushLibrary = observe(
+  (changes) => entryChanges(changes, attached),
+  record
+);
 
 export async function backfillLibrary() {
   const conversations = await db
@@ -179,22 +142,16 @@ export async function backfillLibrary() {
     .from(schema.conversation);
 
   for (const { id } of conversations) {
-    const conversation = await harness.conversation(
-      id as ConversationId,
-      BACKGROUND_CONTEXT
+    const rows = await db
+      .selectDistinct({ entryId: table.entryId })
+      .from(table)
+      .where(eq(table.conversationId, id));
+
+    const recorded = new Set(rows.map(({ entryId }) => entryId));
+
+    await eachEntry(id, (page) =>
+      record(page.filter((entry) => attached(entry) && !recorded.has(entry.id)))
     );
-
-    if (conversation) {
-      const rows = await db
-        .selectDistinct({ entryId: table.entryId })
-        .from(table)
-        .where(eq(table.conversationId, id));
-
-      await recordHistory(
-        conversation,
-        new Set(rows.map(({ entryId }) => entryId))
-      );
-    }
   }
 }
 
@@ -220,12 +177,6 @@ const download = validator(
   'query',
   z.object({ download: z.literal('1').optional() })
 );
-
-function matching(search: string) {
-  const pattern = search.replace(/[\\%_]/g, (character) => `\\${character}`);
-
-  return ilike(table.name, `%${pattern}%`);
-}
 
 function after(cursor: string) {
   const [time = 0, entryId = 0, position = 0] = cursor.split('.').map(Number);
@@ -277,7 +228,7 @@ const library = new Hono()
         and(
           eq(table.ownerId, user.id),
           kind === undefined ? undefined : eq(table.kind, kind),
-          search === undefined ? undefined : matching(search),
+          search === undefined ? undefined : contains(table.name, search),
           cursor === undefined ? undefined : after(cursor)
         )
       )

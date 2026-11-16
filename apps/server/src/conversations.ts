@@ -18,7 +18,6 @@ import {
   asc,
   desc,
   eq,
-  ilike,
   isNotNull,
   isNull,
   sql,
@@ -40,6 +39,7 @@ import {
   models,
 } from './models';
 import { flushProjections } from './projections';
+import { contains } from './records';
 import {
   type Attachment,
   attachmentSchema,
@@ -267,12 +267,6 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-function matching(search: string) {
-  const pattern = search.replace(/[\\%_]/g, (character) => `\\${character}`);
-
-  return ilike(schema.conversation.title, `%${pattern}%`);
-}
-
 function after(id: number, user: User, sort: Sort) {
   const { ascending, keys } = sorts[sort];
 
@@ -355,7 +349,9 @@ const conversations = new Hono()
           eq(schema.conversation.ownerId, user.id),
           filters[filter](),
           cursor === undefined ? undefined : after(cursor, user, sort),
-          search === undefined ? undefined : matching(search)
+          search === undefined
+            ? undefined
+            : contains(schema.conversation.title, search)
         )
       )
       .orderBy(
