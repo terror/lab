@@ -66,6 +66,10 @@ export async function readAttachment(file: File): Promise<Attachment> {
       throw new Error(`${file.name} could not be converted`);
     }
 
+    if (blob.size > MAX_IMAGE_BYTES) {
+      throw new Error(`${file.name} is too large to attach`);
+    }
+
     return {
       data: await encode(blob),
       mimeType: blob.type,
