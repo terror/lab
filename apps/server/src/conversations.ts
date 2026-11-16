@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { imageAt, stripImages, stripView } from './images';
 import { listConversations, listSchema, running } from './listing';
 import {
   draftSchema,
@@ -34,6 +35,15 @@ import { validator } from './validator';
 const params = validator(
   'param',
   z.object({ id: z.coerce.number().int().positive() })
+);
+
+const imageParams = validator(
+  'param',
+  z.object({
+    entryId: z.coerce.number().int().positive(),
+    id: z.coerce.number().int().positive(),
+    index: z.coerce.number().int().min(0),
+  })
 );
 
 const submissionParams = validator(
@@ -228,7 +238,34 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    return c.json({ items: page.items });
+    return c.json({ items: page.items.map(stripImages) });
+  })
+  .get('/:id/entries/:entryId/images/:index', imageParams, async (c) => {
+    const { entryId, id, index } = c.req.valid('param');
+
+    const conversation = await load(id, c.get('user'));
+
+    const { items } = await conversation.entries(
+      {
+        maxEntryId: entryId as EntryId,
+        minEntryId: entryId as EntryId,
+      },
+      1,
+      undefined,
+      BACKGROUND_CONTEXT
+    );
+
+    const image = imageAt(items[0], index);
+
+    if (!image) {
+      throw new HTTPException(404, { message: 'Image not found' });
+    }
+
+    return c.body(Buffer.from(image.data, 'base64'), 200, {
+      'cache-control': 'private, max-age=31536000, immutable',
+      'content-type': image.mimeType,
+      'x-content-type-options': 'nosniff',
+    });
   })
   .get('/:id/events', params, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
@@ -260,7 +297,7 @@ const conversations = new Hono()
 
       await stream.writeSSE({
         event: 'value',
-        data: JSON.stringify(watch.value),
+        data: JSON.stringify(stripView(watch.value)),
       });
 
       let view = watch.value;
