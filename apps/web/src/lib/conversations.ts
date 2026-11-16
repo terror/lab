@@ -19,7 +19,7 @@ import { call, client } from './client';
 import type { ModelChoice } from './models';
 import { removeStored, usePersistentState } from './storage';
 
-const sortSchema = z.enum(['activity', 'created']);
+const sortSchema = z.enum(['activity', 'created', 'title']);
 
 export type ConversationSort = z.infer<typeof sortSchema>;
 

@@ -45,6 +45,7 @@ const headerButton =
 const sorts: { label: string; value: ConversationSort }[] = [
   { label: 'Recent activity', value: 'activity' },
   { label: 'Date created', value: 'created' },
+  { label: 'Title', value: 'title' },
 ];
 
 function RailButton({
