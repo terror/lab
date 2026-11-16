@@ -23,7 +23,6 @@ import {
 import {
   conversationTitle,
   conversationsQueryKey,
-  compactConversation,
   deleteConversation,
   updateConversation,
 } from '@/lib/conversations';
@@ -32,7 +31,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Archive,
-  Shrink,
   Ellipsis,
   LoaderCircle,
   Pencil,
@@ -41,7 +39,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 function RenameInput({
   initial,
@@ -97,7 +94,6 @@ function RenameInput({
 function MenuItems({
   Item,
   onArchive,
-  onCompact,
   onDelete,
   onPin,
   onRename,
@@ -105,7 +101,6 @@ function MenuItems({
 }: {
   Item: typeof ContextMenuItem | typeof DropdownMenuItem;
   onArchive: () => void;
-  onCompact: () => void;
   onDelete: () => void;
   onPin: () => void;
   onRename: () => void;
@@ -120,10 +115,6 @@ function MenuItems({
       <Item onSelect={onRename}>
         <Pencil aria-hidden='true' />
         Rename
-      </Item>
-      <Item onSelect={onCompact}>
-        <Shrink aria-hidden='true' />
-        Compact
       </Item>
       <Item onSelect={onArchive}>
         <Archive aria-hidden='true' />
@@ -170,14 +161,8 @@ export function ConversationItem({
     onSettled: refresh,
   });
 
-  const compact = useMutation({
-    mutationFn: () => compactConversation(conversation.id),
-    onSuccess: () => toast('Compacting this chat.'),
-  });
-
   const menuProps = {
     onArchive: () => update.mutate({ archived: true }),
-    onCompact: () => compact.mutate(),
     onPin: () => update.mutate({ pinned: !conversation.pinned }),
     pinned: conversation.pinned,
   };
