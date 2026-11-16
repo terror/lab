@@ -13,7 +13,13 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { extensions } from './extensions';
 import type { HelperUsage } from './helper';
 
-export { TitleDoc } from './extensions';
+export {
+  MEMORY_LENGTH,
+  MEMORY_LIMIT,
+  MemoryDoc,
+  TitleDoc,
+  memory,
+} from './extensions';
 export { type HelperUsage, helperModel } from './helper';
 export { purgeConversations } from './purge';
 

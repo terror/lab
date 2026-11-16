@@ -1,4 +1,4 @@
-import { fauxAssistantMessage, fauxProvider } from '@earendil-works/pi-ai';
+import { fauxProvider } from '@earendil-works/pi-ai';
 import { SQL } from 'bun';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -48,9 +48,9 @@ const faux = fauxProvider({
   provider: 'vercel-ai-gateway',
 });
 
-faux.setResponses(
-  Array.from({ length: 1_000 }, () => fauxAssistantMessage('foo'))
-);
+const { respond } = await import('./models');
+
+faux.setResponses(Array.from({ length: 10_000 }, () => respond));
 
 const server = await import('../src/models');
 

@@ -1,0 +1,80 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai';
+import { memory } from '@lab/harness';
+import { expect, test } from 'bun:test';
+
+import { signIn } from '../test/auth';
+import { call, idle } from '../test/client';
+import { script } from '../test/models';
+
+test('memories and instructions can be managed', async () => {
+  const headers = await signIn();
+
+  await call(headers, 'PUT', '/memory/instructions', { instructions: 'foo' });
+
+  const added = await call(headers, 'POST', '/memory', { text: 'bar' });
+
+  const [entry] = added.body.memories;
+
+  expect([
+    added.status,
+    await call(headers, 'DELETE', `/memory/${entry.id}`),
+    await call(headers, 'DELETE', `/memory/${entry.id}`),
+  ]).toEqual([
+    201,
+    { body: { instructions: 'foo', memories: [] }, status: 200 },
+    { body: { error: 'Memory not found' }, status: 404 },
+  ]);
+
+  await call(headers, 'PUT', '/memory/instructions', { instructions: '' });
+});
+
+test('the agent remembers facts', async () => {
+  const headers = await signIn();
+
+  script(
+    fauxAssistantMessage(fauxToolCall('remember', { text: 'baz' }), {
+      stopReason: 'toolUse',
+    }),
+    fauxAssistantMessage('foo')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await idle(body.id);
+
+  const state = await call(headers, 'GET', '/memory');
+
+  const [saved] = state.body.memories;
+
+  await call(headers, 'DELETE', `/memory/${saved.id}`);
+
+  expect(saved.text).toBe('baz');
+});
+
+test('instructions and memories are added to the prompt', async () => {
+  const [section] = memory.sections ?? [];
+
+  const render = (doc: unknown) =>
+    section?.render(
+      {
+        read: { snapshot: async () => doc },
+      } as unknown as Parameters<NonNullable<typeof section>['render']>[0],
+      BACKGROUND_CONTEXT
+    );
+
+  expect([
+    await render(undefined),
+    await render({ instructions: '', memories: [] }),
+    await render({
+      instructions: 'foo',
+      memories: [{ createdAt: 0, id: 'bar', text: 'baz' }],
+    }),
+  ]).toEqual([
+    undefined,
+    undefined,
+    "The user's custom instructions:\nfoo\n\nThings you remember about the user, with their ids for the forget tool:\n- [bar] baz",
+  ]);
+});
