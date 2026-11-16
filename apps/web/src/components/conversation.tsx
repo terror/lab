@@ -6,14 +6,17 @@ import {
   contentText,
   conversationsQueryOptions,
   sendMessage,
-  useConversationView,
+  type Gap,
+  useConversation,
 } from '@/lib/conversations';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type {
   AgentState,
+  EntryRecord,
   InboxState,
   LiveState,
+  TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowUp, Square } from 'lucide-react';
@@ -50,12 +53,83 @@ function Message({ bubble }: { bubble: Bubble }) {
   );
 }
 
+function entryBubble(entry: EntryRecord): Bubble | undefined {
+  const role = roles.get(entry.kind);
+  const text = contentText(entry.model?.[0]?.content);
+
+  if (!role || !text) {
+    return undefined;
+  }
+
+  return { id: `entry-${entry.id}`, role, text };
+}
+
+function itemKey(item: TranscriptItem) {
+  if (item.kind === 'entry') {
+    return `entry-${item.entry.id}`;
+  }
+
+  if (item.kind === 'gap') {
+    return `gap-${item.after}`;
+  }
+
+  return 'earlier';
+}
+
+function TranscriptRow({
+  item,
+  loading,
+  onEarlier,
+  onGap,
+}: {
+  item: TranscriptItem;
+  loading: boolean;
+  onEarlier: () => void;
+  onGap: (gap: Gap) => void;
+}) {
+  if (item.kind === 'earlier') {
+    return (
+      <Button
+        className='self-center'
+        disabled={loading}
+        onClick={onEarlier}
+        size='sm'
+        variant='ghost'
+      >
+        Load earlier messages
+      </Button>
+    );
+  }
+
+  if (item.kind === 'gap') {
+    return (
+      <Button
+        className='self-center'
+        disabled={loading}
+        onClick={() => onGap(item)}
+        size='sm'
+        variant='ghost'
+      >
+        Load missing messages
+      </Button>
+    );
+  }
+
+  const bubble = entryBubble(item.entry);
+
+  if (!bubble) {
+    return null;
+  }
+
+  return <Message bubble={bubble} />;
+}
+
 function Bubbles({ bubbles }: { bubbles: Bubble[] }) {
   return bubbles.map((bubble) => <Message key={bubble.id} bubble={bubble} />);
 }
 
 export function Conversation({ id }: { id: number }) {
-  const view = useConversationView(id);
+  const { view, loadEarlier, fillGap } = useConversation(id);
   const [draft, setDraft] = useState('');
   const end = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -69,6 +143,9 @@ export function Conversation({ id }: { id: number }) {
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
+  const earlier = useMutation({ mutationFn: loadEarlier });
+  const gap = useMutation({ mutationFn: fillGap });
+
   useEffect(() => {
     if (view && pinned.current) {
       end.current?.scrollIntoView({ block: 'end' });
@@ -78,17 +155,6 @@ export function Conversation({ id }: { id: number }) {
   const live = view?.docs['pi.live'] as LiveState | undefined;
   const inbox = view?.docs['pi.inbox'] as InboxState | undefined;
   const agent = view?.docs['pi.agent'] as AgentState | undefined;
-
-  const bubbles = (view?.entries ?? []).flatMap((entry): Bubble[] => {
-    const role = roles.get(entry.kind);
-    const text = contentText(entry.model?.[0]?.content);
-
-    if (!role || !text) {
-      return [];
-    }
-
-    return [{ id: `entry-${entry.id}`, role, text }];
-  });
 
   const partial = contentText(live?.generation?.message?.content);
 
@@ -158,7 +224,15 @@ export function Conversation({ id }: { id: number }) {
             <p className='text-sm text-muted-foreground'>Connecting…</p>
           ) : (
             <>
-              <Bubbles bubbles={bubbles} />
+              {view.items.map((item) => (
+                <TranscriptRow
+                  key={itemKey(item)}
+                  item={item}
+                  loading={earlier.isPending || gap.isPending}
+                  onEarlier={() => earlier.mutate()}
+                  onGap={(value) => gap.mutate(value)}
+                />
+              ))}
               <Bubbles bubbles={streaming} />
               {running && !partial && !finishing && (
                 <p className='text-sm text-muted-foreground motion-safe:animate-pulse'>
