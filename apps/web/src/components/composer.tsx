@@ -234,7 +234,7 @@ export function Composer({
           >
             <Paperclip aria-hidden='true' />
           </Button>
-          <div className='ml-auto flex items-center gap-2'>
+          <div className='ml-auto flex min-w-0 items-center gap-2'>
             <ModelPicker
               disabled={disabled}
               onChange={onModelChange}
