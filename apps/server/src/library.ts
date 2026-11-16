@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
+import { messageData } from './message-entry';
 import { backfill, entryChanges, observe } from './pipeline';
 import { contains, owners } from './records';
 import { validator } from './validator';
@@ -15,26 +16,10 @@ const table = schema.libraryItem;
 
 const PREVIEW_LENGTH = 400;
 
-const dataSchema = z.object({
-  files: z
-    .array(
-      z.object({
-        name: z.string(),
-        text: z.string().optional(),
-        type: z.enum(['file', 'image']),
-      })
-    )
-    .default([]),
-});
-
 type Item = Omit<typeof table.$inferInsert, 'id'>;
 
 function attachments(entry: EntryRecord) {
-  if (entry.kind !== 'lab.message') {
-    return [];
-  }
-
-  return dataSchema.safeParse(entry.data).data?.files ?? [];
+  return messageData(entry)?.files ?? [];
 }
 
 function items(entry: EntryRecord, ownerId: string): Item[] {

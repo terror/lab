@@ -1,20 +1,18 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { z } from 'zod';
 
 import { db } from './db';
+import { isMessage, messageData } from './message-entry';
 import { backfill, entryChanges, observe } from './pipeline';
 import { owners } from './records';
 
 const table = schema.messageText;
 
-const messageData = z.object({ text: z.string().default('') });
-
 function messageText(entry: EntryRecord) {
   const message = entry.model?.[0];
 
-  if (entry.kind === 'lab.message') {
-    const content = messageData.safeParse(entry.data).data?.text.trim();
+  if (isMessage(entry)) {
+    const content = messageData(entry)?.text.trim();
 
     return content ? { role: 'user' as const, text: content } : undefined;
   }
