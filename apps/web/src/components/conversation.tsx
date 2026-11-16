@@ -384,6 +384,8 @@ function ConversationView({ id }: { id: number }) {
 
   const latest = rows.findLast(({ kind }) => kind === 'assistant');
 
+  const anchor = rows.findLast(({ kind }) => kind === 'user');
+
   const progress = toolProgress(live);
 
   const toolsRunning = (live?.tools ?? []).some(
@@ -421,7 +423,7 @@ function ConversationView({ id }: { id: number }) {
               <MessageScrollerItem
                 key={entry.key}
                 messageId={entry.key}
-                scrollAnchor={entry.kind === 'user'}
+                scrollAnchor={entry === anchor}
               >
                 <TranscriptRow
                   latest={entry === latest && !running}
