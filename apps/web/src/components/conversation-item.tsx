@@ -188,40 +188,38 @@ export function ConversationItem({
               onClick={() => onSelect(conversation.id)}
               type='button'
             >
-              <span className='flex items-center gap-2'>
-                <span className='truncate'>{title}</span>
-                {conversation.running && (
-                  <>
-                    <LoaderCircle
-                      aria-hidden='true'
-                      className='size-3.5 shrink-0 text-muted-foreground motion-safe:animate-spin'
-                    />
-                    <span className='sr-only'>Running</span>
-                  </>
-                )}
-              </span>
+              <span className='block truncate'>{title}</span>
+              {conversation.running && <span className='sr-only'>Running</span>}
             </button>
-            <DropdownMenu onOpenChange={setMenu}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  aria-label={`Options for ${title}`}
-                  className='mr-1 rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
-                  type='button'
+            <div className='relative mr-1 flex'>
+              <DropdownMenu onOpenChange={setMenu}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    aria-label={`Options for ${title}`}
+                    className='peer rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
+                    type='button'
+                  >
+                    <Ellipsis aria-hidden='true' className='size-4' />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='start'
+                  onCloseAutoFocus={onCloseAutoFocus}
                 >
-                  <Ellipsis aria-hidden='true' className='size-4' />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align='start'
-                onCloseAutoFocus={onCloseAutoFocus}
-              >
-                <MenuItems
-                  Item={DropdownMenuItem}
-                  onDelete={confirmDelete}
-                  onRename={startRename}
+                  <MenuItems
+                    Item={DropdownMenuItem}
+                    onDelete={confirmDelete}
+                    onRename={startRename}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {conversation.running && (
+                <LoaderCircle
+                  aria-hidden='true'
+                  className='pointer-events-none absolute inset-0 m-auto size-3.5 text-muted-foreground group-hover:opacity-0 peer-focus-visible:opacity-0 peer-data-[state=open]:opacity-0 motion-safe:animate-spin'
                 />
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
