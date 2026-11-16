@@ -1,3 +1,4 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
 import { Hono } from 'hono';
@@ -8,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { auth, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
+import { harness } from './harness';
 import { listModels } from './models';
 
 const app = new Hono();
@@ -17,6 +19,12 @@ app.use(logger());
 const api = new Hono()
   .get('/health', async (c) => {
     await ping(db);
+
+    const { scheduling } = await harness.inspect(BACKGROUND_CONTEXT);
+
+    if (scheduling !== 'running') {
+      throw new HTTPException(503, { message: 'Harness is not running' });
+    }
 
     return c.json({ status: 'ok' });
   })

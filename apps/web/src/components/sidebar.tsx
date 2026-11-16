@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import type { User } from '@/lib/auth';
 import {
   type ConversationSort,
   useConversationSort,
@@ -33,8 +34,6 @@ import {
 import { AnimatePresence, m } from 'motion/react';
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { z } from 'zod';
-
-type User = { email: string; id: string; image?: string | null; name: string };
 
 type Side = 'bottom' | 'right';
 

@@ -6,13 +6,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { authClient } from '@/lib/auth';
+import { type User, authClient } from '@/lib/auth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-react';
 import type { ComponentProps } from 'react';
-
-type User = { email: string; image?: string | null; name: string };
 
 function initials(name: string) {
   return name

@@ -3,28 +3,8 @@ import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import app from './app';
+import { call } from '../test/client';
 import { harness } from './harness';
-
-async function call(
-  headers: Headers,
-  method: string,
-  path: string,
-  body?: unknown
-) {
-  const response = await app.request(`/api${path}`, {
-    body: body === undefined ? undefined : JSON.stringify(body),
-    headers: {
-      ...Object.fromEntries(headers),
-      'content-type': 'application/json',
-    },
-    method,
-  });
-
-  const text = await response.text();
-
-  return { body: text ? JSON.parse(text) : null, status: response.status };
-}
 
 async function idle(id: number) {
   const conversation = await harness.conversation(
@@ -211,6 +191,29 @@ test('conversations can be listed by creation', async () => {
     body: { conversations: [{ id: first, title: 'foo' }], next: null },
     status: 200,
   });
+});
+
+test('attachment names are escaped in the prompt', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    attachments: [{ name: 'foo"<bar>&', text: 'baz', type: 'file' }],
+    content: 'foo',
+  });
+
+  await idle(body.id);
+
+  const entries = await call(
+    headers,
+    'GET',
+    `/conversations/${body.id}/entries?order=ascending`
+  );
+
+  expect(
+    entries.body.items.find(
+      ({ kind }: { kind: string }) => kind === 'lab.message'
+    ).model[0].content
+  ).toBe('foo\n\n<file name="foo&quot;&lt;bar&gt;&amp;">\nbaz\n</file>');
 });
 
 test('conversations can be renamed', async () => {
