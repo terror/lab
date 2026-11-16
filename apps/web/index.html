@@ -8,13 +8,12 @@
     <title>lab</title>
     <script>
       try {
-        const theme = JSON.parse(localStorage.getItem('lab:theme'));
+        const theme = localStorage.getItem('vite-ui-theme') || 'system';
         const dark =
           theme === 'dark' ||
-          (theme !== 'light' &&
+          (theme === 'system' &&
             matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        document.documentElement.classList.add(dark ? 'dark' : 'light');
       } catch {}
     </script>
   </head>

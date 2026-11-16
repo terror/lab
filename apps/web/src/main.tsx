@@ -3,10 +3,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app';
-import { initTheme } from './lib/theme';
+import { ThemeProvider } from './components/theme-provider';
 import './index.css';
-
-initTheme();
 
 const queryClient = new QueryClient();
 const root = document.getElementById('root');
@@ -17,8 +15,10 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme='system' storageKey='vite-ui-theme'>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>
 );
