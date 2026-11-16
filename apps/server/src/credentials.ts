@@ -30,7 +30,7 @@ function seal(credential: Credential) {
   return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
 }
 
-function unseal(sealed: string) {
+function open(sealed: string) {
   const bytes = Buffer.from(sealed, 'base64');
 
   const decipher = createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
@@ -45,6 +45,15 @@ function unseal(sealed: string) {
   return JSON.parse(json) as Credential;
 }
 
+function unseal(providerId: string, sealed: string) {
+  try {
+    return open(sealed);
+  } catch {
+    console.error(`Unable to decrypt the ${providerId} credential`);
+    return undefined;
+  }
+}
+
 const cache = new Map<string, Credential | undefined>();
 
 async function read(providerId: string) {
@@ -57,7 +66,7 @@ async function read(providerId: string) {
     .from(table)
     .where(eq(table.providerId, providerId));
 
-  const credential = row && unseal(row.credential);
+  const credential = row && unseal(providerId, row.credential);
 
   cache.set(providerId, credential);
 
@@ -69,10 +78,11 @@ export const credentials: CredentialStore = {
   list: async () => {
     const rows = await db.select().from(table);
 
-    return rows.map(({ credential, providerId }) => ({
-      providerId,
-      type: unseal(credential).type,
-    }));
+    return rows.flatMap(({ credential, providerId }) => {
+      const type = unseal(providerId, credential)?.type;
+
+      return type ? [{ providerId, type }] : [];
+    });
   },
   modify: async (providerId, change) => {
     const next = await change(await read(providerId));
