@@ -5,9 +5,7 @@ import {
 import type { Models } from '@earendil-works/pi-ai';
 import {
   Harness,
-  type ModelRef,
   type Report,
-  configure,
   createRegistry,
 } from '@earendil-works/pi-durable';
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
@@ -15,17 +13,17 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { extensions } from './extensions';
 
 export { TitleDoc } from './extensions';
+export { helperModel } from './helper';
 export { purgeConversations } from './purge';
 
 export type HarnessOptions = {
-  model: ModelRef;
   models: Models;
   onReport?: (report: Report) => void;
   path: string;
 };
 
 export async function openHarness(
-  { path, models, model, onReport }: HarnessOptions,
+  { path, models, onReport }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
   const registry = createRegistry();
@@ -40,11 +38,6 @@ export async function openHarness(
     const harness = await Harness.open(
       storage,
       {
-        conversationCreated: async (tx, conversation) => {
-          if (!conversation.parent && !conversation.owner) {
-            await configure(tx, conversation.id, { model });
-          }
-        },
         models,
         onReport,
         registry,

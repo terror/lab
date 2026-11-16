@@ -1,11 +1,14 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import {
+  AgentDoc,
+  type AgentState,
   type ConversationView,
   LiveDoc,
   type LiveState,
 } from '@earendil-works/pi-durable';
+import { helperModel } from '@lab/harness';
 
-import { models, statusModel } from './models';
+import { models } from './models';
 
 const PROMPT =
   'You label what an assistant is doing from a passage of its private reasoning. Reply with one phrase of two to six words that starts with a present participle, like "Comparing train routes". No quotes or final punctuation.';
@@ -47,12 +50,16 @@ export class StatusReporter {
   async report(view: ConversationView) {
     const text = thinking(view);
 
+    const agent = view.docs[AgentDoc.definition.kind] as AgentState | undefined;
+
+    const model = helperModel(models, agent?.model);
+
     if (text.length < this.#summarized) {
       this.#summarized = 0;
     }
 
     if (
-      !statusModel ||
+      !model ||
       this.#pending ||
       text.length - this.#summarized < MIN_GROWTH ||
       Date.now() - this.#at < INTERVAL_MS
@@ -66,7 +73,7 @@ export class StatusReporter {
 
     try {
       const answer = await models.completeSimple(
-        statusModel,
+        model,
         {
           systemPrompt: PROMPT,
           messages: [

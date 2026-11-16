@@ -17,16 +17,6 @@ export const models = builtinModels({
   credentials,
 });
 
-export const statusModel = models.getModel(
-  'vercel-ai-gateway',
-  'anthropic/claude-haiku-5.5'
-);
-
-export const fallbackModel = {
-  provider: 'vercel-ai-gateway',
-  modelId: env.LAB_DEFAULT_MODEL,
-};
-
 const unsupported = new Set([
   'amazon-bedrock',
   'azure',
