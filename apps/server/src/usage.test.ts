@@ -3,18 +3,16 @@ import { expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
-import { call, create } from '../test/client';
+import { call, create, settle } from '../test/client';
 import { db } from './db';
-import { flushHelperUsage } from './helper-usage';
-import { backfillUsage, flushUsage } from './usage';
+import { backfillUsage } from './usage';
 
 test('usage is summarized from assistant responses', async () => {
   const headers = await signIn();
 
   const id = await create(headers);
 
-  await flushUsage();
-  await flushHelperUsage();
+  await settle();
 
   await db
     .delete(schema.usageEvent)
@@ -80,8 +78,7 @@ test('a monthly budget tracks spend this month', async () => {
 
   const id = await create(headers);
 
-  await flushUsage();
-  await flushHelperUsage();
+  await settle();
 
   await db
     .update(schema.usageEvent)

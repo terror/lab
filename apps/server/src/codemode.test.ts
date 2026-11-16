@@ -1,20 +1,17 @@
-import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import { call, idle } from '../test/client';
-import { script } from '../test/models';
+import { script, toolCall } from '../test/models';
 
 test('the agent can run code that calls other tools', async () => {
   const headers = await signIn();
 
   script(
-    fauxAssistantMessage(
-      fauxToolCall('codemode', {
-        code: 'const found = await tools.library_search({ query: "foo" }); return [1 + 2, found];',
-      }),
-      { stopReason: 'toolUse' }
-    ),
+    toolCall('codemode', {
+      code: 'const found = await tools.library_search({ query: "foo" }); return [1 + 2, found];',
+    }),
     fauxAssistantMessage('bar')
   );
 

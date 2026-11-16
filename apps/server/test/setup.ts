@@ -1,5 +1,6 @@
 import { fauxProvider } from '@earendil-works/pi-ai';
 import { SQL } from 'bun';
+import { afterAll, afterEach, mock } from 'bun:test';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,13 +9,43 @@ const url = new URL(
   process.env.DATABASE_URL ?? 'postgres://lab:lab@127.0.0.1:5432/lab'
 );
 
+const database = `lab_test_${process.pid}`;
+
 const admin = new SQL(url.href);
 
-await admin.unsafe('drop database if exists lab_test with (force)');
-await admin.unsafe('create database lab_test');
-await admin.close();
+function alive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-url.pathname = '/lab_test';
+const stale = await admin<{ datname: string }[]>`
+  select datname from pg_database where datname like 'lab_test%'
+`;
+
+for (const { datname } of stale) {
+  const pid = Number(/^lab_test_(\d+)$/.exec(datname)?.[1]);
+
+  if (!pid || !alive(pid)) {
+    await admin.unsafe(`drop database if exists "${datname}" with (force)`);
+  }
+}
+
+await admin.unsafe(`create database "${database}"`);
+
+afterAll(async () => {
+  await admin.unsafe(`drop database if exists "${database}" with (force)`);
+  await admin.close();
+});
+
+afterEach(() => {
+  mock.restore();
+});
+
+url.pathname = `/${database}`;
 
 const models = [
   { id: 'anthropic/claude-sonnet-5.5' },

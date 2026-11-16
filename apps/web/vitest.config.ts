@@ -17,7 +17,13 @@ function browser() {
 export default mergeConfig(
   viteConfig({ command: 'serve', mode: 'test' }),
   defineConfig({
+    optimizeDeps: {
+      entries: ['src/**/*.{ts,tsx}', '.storybook/*.{ts,tsx}'],
+    },
     test: {
+      restoreMocks: true,
+      setupFiles: ['./src/test/setup.ts'],
+      unstubGlobals: true,
       projects: [
         {
           extends: true,

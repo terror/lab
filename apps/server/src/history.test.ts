@@ -1,65 +1,35 @@
-import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
-import { script } from '../test/models';
-import { flushHistory } from './history';
-
-async function chat(headers: Headers, content: string) {
-  const { body } = await call(headers, 'POST', '/conversations', { content });
-
-  await idle(body.id);
-
-  return body.id as number;
-}
-
-async function toolOutputs(headers: Headers, id: number) {
-  const { body } = await call(
-    headers,
-    'GET',
-    `/conversations/${id}/entries?order=ascending`
-  );
-
-  return body.items.flatMap(
-    ({ model }: { model?: { content: { text?: string }[]; role: string }[] }) =>
-      model?.[0]?.role === 'toolResult'
-        ? [model[0].content.map(({ text }) => text).join('')]
-        : []
-  );
-}
-
-function tool(name: string, args: Parameters<typeof fauxToolCall>[1]) {
-  return fauxAssistantMessage(fauxToolCall(name, args), {
-    stopReason: 'toolUse',
-  });
-}
+import { call, chat, settle, toolOutputs } from '../test/client';
+import { script, toolCall } from '../test/models';
 
 test('other chats can be searched and read only when allowed', async () => {
   const headers = await signIn();
 
-  const earlier = await chat(headers, 'zebracorn plans');
+  const earlier = await chat(headers, { content: 'zebracorn plans' });
 
-  await flushHistory();
+  await settle();
 
   await call(headers, 'PATCH', '/memory', { referenceChats: true });
 
   script(
-    tool('chat_search', { query: 'zebracorn quux' }),
-    tool('chat_read', { id: earlier }),
+    toolCall('chat_search', { query: 'zebracorn quux' }),
+    toolCall('chat_read', { id: earlier }),
     fauxAssistantMessage('bar')
   );
 
-  const allowed = await chat(headers, 'baz');
+  const allowed = await chat(headers, { content: 'baz' });
 
   await call(headers, 'PATCH', '/memory', { referenceChats: false });
 
   script(
-    tool('chat_search', { query: 'zebracorn' }),
+    toolCall('chat_search', { query: 'zebracorn' }),
     fauxAssistantMessage('bar')
   );
 
-  const blocked = await chat(headers, 'baz');
+  const blocked = await chat(headers, { content: 'baz' });
 
   const [searched = '', read = ''] = await toolOutputs(headers, allowed);
 

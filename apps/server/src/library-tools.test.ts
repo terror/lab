@@ -1,39 +1,9 @@
-import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
-import { script } from '../test/models';
-import { flushLibrary } from './library';
-
-async function chat(headers: Headers, body: object) {
-  const { body: created } = await call(headers, 'POST', '/conversations', body);
-
-  await idle(created.id);
-
-  return created.id as number;
-}
-
-async function toolOutputs(headers: Headers, id: number) {
-  const { body } = await call(
-    headers,
-    'GET',
-    `/conversations/${id}/entries?order=ascending`
-  );
-
-  return body.items.flatMap(
-    ({ model }: { model?: { content: { text?: string }[]; role: string }[] }) =>
-      model?.[0]?.role === 'toolResult'
-        ? [model[0].content.map(({ text }) => text).join('')]
-        : []
-  );
-}
-
-function tool(name: string, args: Parameters<typeof fauxToolCall>[1]) {
-  return fauxAssistantMessage(fauxToolCall(name, args), {
-    stopReason: 'toolUse',
-  });
-}
+import { call, chat, settle, toolOutputs } from '../test/client';
+import { script, toolCall } from '../test/models';
 
 test('the agent searches and reads the library in pages', async () => {
   const headers = await signIn();
@@ -43,21 +13,24 @@ test('the agent searches and reads the library in pages', async () => {
     content: 'bar',
   });
 
-  await flushLibrary();
+  await settle();
 
   const { body } = await call(headers, 'GET', '/library');
 
   const [item] = body.items;
 
   script(
-    tool('library_search', { query: 'foo txt' }),
-    tool('library_read', { id: item.id, length: 3, offset: 2 }),
+    toolCall('library_search', { query: 'foo txt' }),
+    toolCall('library_read', { id: item.id, length: 3, offset: 2 }),
     fauxAssistantMessage('baz')
   );
 
   const id = await chat(headers, { content: 'baz' });
 
-  script(tool('library_read', { id: item.id }), fauxAssistantMessage('baz'));
+  script(
+    toolCall('library_read', { id: item.id }),
+    fauxAssistantMessage('baz')
+  );
 
   const stranger = await signIn();
 
