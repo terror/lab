@@ -1,7 +1,11 @@
 import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
 import type { Attachment } from '@/lib/attachments';
-import { conversationsQueryKey, createConversation } from '@/lib/conversations';
+import {
+  conversationsQueryKey,
+  createConversation,
+  useDraft,
+} from '@/lib/conversations';
 import {
   type ModelChoice,
   modelsQueryOptions,
@@ -48,7 +52,7 @@ export function NewChat({ user }: { user: { name: string } }) {
   const navigate = useNavigate();
   const models = useQuery(modelsQueryOptions);
 
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useDraft('new');
   const [model, setModel] = usePreferredModel();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
@@ -59,6 +63,7 @@ export function NewChat({ user }: { user: { name: string } }) {
     mutationFn: (content: string) =>
       createConversation(content, attachments, selectedModel),
     onSuccess: async (id) => {
+      setDraft('');
       await navigate({ params: { id }, to: '/c/$id' });
       await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },

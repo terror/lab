@@ -13,6 +13,7 @@ import {
   sendMessage,
   type Gap,
   useConversation,
+  useDraft,
 } from '@/lib/conversations';
 import {
   type ModelChoice,
@@ -223,7 +224,7 @@ function TranscriptRow({
 
 export function Conversation({ id }: { id: number }) {
   const { view, loadEarlier, fillGap } = useConversation(id);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useDraft(id);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);

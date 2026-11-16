@@ -27,12 +27,20 @@ function parse<T>(raw: string | null, schema: z.ZodType<T>, fallback: T) {
   }
 }
 
-export function writeStored(key: string, value: unknown) {
-  window.localStorage.setItem(prefix + key, JSON.stringify(value));
-
+function notify() {
   for (const listener of listeners) {
     listener();
   }
+}
+
+export function writeStored(key: string, value: unknown) {
+  window.localStorage.setItem(prefix + key, JSON.stringify(value));
+  notify();
+}
+
+export function removeStored(key: string) {
+  window.localStorage.removeItem(prefix + key);
+  notify();
 }
 
 export function usePersistentState<T>(
@@ -49,7 +57,16 @@ export function usePersistentState<T>(
     [raw, schema, fallback]
   );
 
-  const setValue = useCallback((next: T) => writeStored(key, next), [key]);
+  const setValue = useCallback(
+    (next: T) => {
+      if (next === fallback) {
+        removeStored(key);
+      } else {
+        writeStored(key, next);
+      }
+    },
+    [fallback, key]
+  );
 
   return [value, setValue] as const;
 }
