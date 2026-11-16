@@ -1,23 +1,49 @@
-import { createModels } from '@earendil-works/pi-ai/models';
+import type { ModelThinkingLevel } from '@earendil-works/pi-ai';
+import {
+  clampThinkingLevel,
+  createModels,
+  getSupportedThinkingLevels,
+} from '@earendil-works/pi-ai/models';
 import { vercelAIGatewayProvider } from '@earendil-works/pi-ai/providers/vercel-ai-gateway';
-import type { ModelRef } from '@earendil-works/pi-durable';
+import { HTTPException } from 'hono/http-exception';
+import { z } from 'zod';
 
 import { env } from './env';
 
-type ChatModel = ModelRef & { name: string };
+export const thinkingLevelSchema = z.enum([
+  'off',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+]);
+
+const vendors = new Map([
+  ['alibaba', 'Alibaba'],
+  ['anthropic', 'Anthropic'],
+  ['deepseek', 'DeepSeek'],
+  ['google', 'Google'],
+  ['meta', 'Meta'],
+  ['mistral', 'Mistral'],
+  ['moonshotai', 'Moonshot AI'],
+  ['openai', 'OpenAI'],
+  ['xai', 'xAI'],
+]);
 
 export const models = createModels();
 
 models.setProvider(vercelAIGatewayProvider());
 
-export const chatModels = env.LAB_MODELS.map((id): ChatModel => {
+const chatModels = env.LAB_MODELS.map((id) => {
   const model = models.getModel('vercel-ai-gateway', id);
 
   if (!model) {
     throw new Error(`Unknown model \`${id}\` in \`LAB_MODELS\``);
   }
 
-  return { provider: model.provider, modelId: model.id, name: model.name };
+  return model;
 });
 
 const [first] = chatModels;
@@ -26,4 +52,39 @@ if (!first) {
   throw new Error('`LAB_MODELS` must name at least one model');
 }
 
-export const defaultModel = first;
+export const defaultModel = { provider: first.provider, modelId: first.id };
+
+function vendor(id: string) {
+  const prefix = id.split('/')[0] ?? id;
+
+  return vendors.get(prefix) ?? prefix;
+}
+
+export function listModels() {
+  return chatModels.map((model) => ({
+    contextWindow: model.contextWindow,
+    id: model.id,
+    images: model.input.includes('image'),
+    maxTokens: model.maxTokens,
+    name: model.name,
+    provider: vendor(model.id),
+    reasoning: model.reasoning,
+    thinkingLevels: getSupportedThinkingLevels(model),
+  }));
+}
+
+export function modelChange(id: string, thinkingLevel?: ModelThinkingLevel) {
+  const model = chatModels.find((candidate) => candidate.id === id);
+
+  if (!model) {
+    throw new HTTPException(400, { message: 'Unknown model' });
+  }
+
+  return {
+    model: { provider: model.provider, modelId: model.id },
+    thinkingLevel:
+      thinkingLevel === undefined
+        ? undefined
+        : clampThinkingLevel(model, thinkingLevel),
+  };
+}

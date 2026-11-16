@@ -14,6 +14,7 @@ import { queryOptions } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { call, client } from './client';
+import type { ModelChoice } from './models';
 
 export const conversationsQueryOptions = queryOptions({
   queryKey: ['conversations'],
@@ -26,9 +27,18 @@ export const conversationsQueryOptions = queryOptions({
   },
 });
 
-export async function createConversation(content: string, model?: string) {
+export async function createConversation(
+  content: string,
+  model: ModelChoice | undefined
+) {
   const { id } = await call(
-    client.conversations.$post({ json: { content, model } })
+    client.conversations.$post({
+      json: {
+        content,
+        model: model?.id,
+        thinkingLevel: model?.thinkingLevel,
+      },
+    })
   );
 
   return id;

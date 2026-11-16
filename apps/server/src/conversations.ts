@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
-import { chatModels } from './models';
+import { modelChange, thinkingLevelSchema } from './models';
 import { validator } from './validator';
 
 const params = validator(
@@ -30,7 +30,11 @@ const message = validator('json', z.object({ content }));
 
 const creation = validator(
   'json',
-  z.object({ content, model: z.string().min(1).optional() })
+  z.object({
+    content,
+    model: z.string().min(1).optional(),
+    thinkingLevel: thinkingLevelSchema.optional(),
+  })
 );
 
 const entriesQuery = validator(
@@ -43,7 +47,13 @@ const entriesQuery = validator(
   })
 );
 
-const modelChange = validator('json', z.object({ id: z.string().min(1) }));
+const modelSelection = validator(
+  'json',
+  z.object({
+    id: z.string().min(1),
+    thinkingLevel: thinkingLevelSchema.optional(),
+  })
+);
 
 const rename = validator(
   'json',
@@ -57,16 +67,6 @@ const sharing = validator(
     visibility: z.enum(['private', 'shared', 'family']),
   })
 );
-
-function findModel(id: string) {
-  const model = chatModels.find(({ modelId }) => modelId === id);
-
-  if (!model) {
-    throw new HTTPException(400, { message: 'Unknown model' });
-  }
-
-  return { provider: model.provider, modelId: model.modelId };
-}
 
 function submitMessage(
   conversation: Conversation,
@@ -184,9 +184,10 @@ const conversations = new Hono()
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');
-    const { content: text, model } = c.req.valid('json');
+    const { content: text, model, thinkingLevel } = c.req.valid('json');
 
-    const ref = model === undefined ? undefined : findModel(model);
+    const change =
+      model === undefined ? undefined : modelChange(model, thinkingLevel);
 
     const conversation = await harness.createConversation(
       { ownership: { kind: 'ownerless' } },
@@ -197,8 +198,8 @@ const conversations = new Hono()
       .insert(schema.conversation)
       .values({ id: conversation.id, ownerId: user.id });
 
-    if (ref) {
-      await conversation.configure({ model: ref }, BACKGROUND_CONTEXT);
+    if (change) {
+      await conversation.configure(change, BACKGROUND_CONTEXT);
     }
 
     await submitMessage(conversation, user, text, false);
@@ -270,11 +271,13 @@ const conversations = new Hono()
 
     return c.json({ id: submission.id }, 202);
   })
-  .put('/:id/model', params, modelChange, async (c) => {
+  .put('/:id/model', params, modelSelection, async (c) => {
     const { conversation } = await load(c.req.valid('param').id, c.get('user'));
 
+    const { id, thinkingLevel } = c.req.valid('json');
+
     await conversation.configure(
-      { model: findModel(c.req.valid('json').id) },
+      modelChange(id, thinkingLevel),
       BACKGROUND_CONTEXT
     );
 
