@@ -28,6 +28,10 @@ const sortSchema = z.enum(['activity', 'created', 'title']);
 
 export type ConversationSort = z.infer<typeof sortSchema>;
 
+export function conversationTitle(title: string | null | undefined) {
+  return title ?? 'New chat';
+}
+
 export function useConversationSort() {
   return usePersistentState('sort', sortSchema, 'activity');
 }

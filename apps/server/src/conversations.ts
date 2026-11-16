@@ -114,16 +114,19 @@ type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
 
 const sorts: Record<
   Sort,
-  { ascending: boolean; key: (columns: SortColumns) => SQL }
+  { ascending: boolean; keys: (columns: SortColumns) => SQL[] }
 > = {
   activity: {
     ascending: false,
-    key: ({ lastMessageAt }) => sql`${lastMessageAt}`,
+    keys: ({ lastMessageAt }) => [sql`${lastMessageAt}`],
   },
-  created: { ascending: false, key: ({ createdAt }) => sql`${createdAt}` },
+  created: { ascending: false, keys: ({ createdAt }) => [sql`${createdAt}`] },
   title: {
     ascending: true,
-    key: ({ title }) => sql`lower(coalesce(${title}, 'New chat'))`,
+    keys: ({ title }) => [
+      sql`${title} is null`,
+      sql`lower(coalesce(${title}, ''))`,
+    ],
   },
 };
 
@@ -205,16 +208,21 @@ function matching(search: string) {
 }
 
 function after(id: number, user: User, sort: Sort) {
-  const { ascending, key } = sorts[sort];
+  const { ascending, keys } = sorts[sort];
 
   const cursor = alias(schema.conversation, 'cursor');
 
   const position = db
-    .select({ key: key(cursor), id: cursor.id })
+    .select({ ...Object.fromEntries(keys(cursor).entries()), id: cursor.id })
     .from(cursor)
     .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
 
-  const row = sql`(${key(schema.conversation)}, ${schema.conversation.id})`;
+  const columns = [
+    ...keys(schema.conversation),
+    sql`${schema.conversation.id}`,
+  ];
+
+  const row = sql`(${sql.join(columns, sql`, `)})`;
 
   return ascending ? sql`${row} > (${position})` : sql`${row} < (${position})`;
 }
@@ -265,7 +273,7 @@ const conversations = new Hono()
 
     await flushProjections();
 
-    const { ascending, key } = sorts[sort];
+    const { ascending, keys } = sorts[sort];
 
     const order = ascending ? asc : desc;
 
@@ -279,7 +287,10 @@ const conversations = new Hono()
           search === undefined ? undefined : matching(search)
         )
       )
-      .orderBy(order(key(schema.conversation)), order(schema.conversation.id))
+      .orderBy(
+        ...keys(schema.conversation).map((key) => order(key)),
+        order(schema.conversation.id)
+      )
       .limit(limit + 1);
 
     const page = rows.slice(0, limit);

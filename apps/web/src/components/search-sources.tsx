@@ -1,5 +1,9 @@
 import { CommandGroup, CommandItem } from '@/components/ui/command';
-import { useConversationSearch, useConversations } from '@/lib/conversations';
+import {
+  conversationTitle,
+  useConversationSearch,
+  useConversations,
+} from '@/lib/conversations';
 import { useNavigate } from '@tanstack/react-router';
 import { MessageSquare, Settings, SquarePen } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -53,10 +57,10 @@ function Chats({ onDone, search }: SourceProps) {
             onDone();
             void navigate({ params: { id }, to: '/c/$id' });
           }}
-          value={`${title ?? 'New chat'} ${id}`}
+          value={`${conversationTitle(title)} ${id}`}
         >
           <MessageSquare aria-hidden='true' />
-          <span className='truncate'>{title ?? 'New chat'}</span>
+          <span className='truncate'>{conversationTitle(title)}</span>
         </CommandItem>
       ))}
     </CommandGroup>
