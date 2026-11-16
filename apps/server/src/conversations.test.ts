@@ -1,5 +1,5 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { AgentDoc } from '@earendil-works/pi-durable';
+import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
@@ -282,6 +282,40 @@ test('running conversations are marked in the list', async () => {
     body: { conversations: [{ id, running: true, title: 'foo' }], next: null },
     status: 200,
   });
+});
+
+test('messages can steer the running answer', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const conversation = await harness.conversation(
+    id as ConversationId,
+    BACKGROUND_CONTEXT
+  );
+
+  if (!conversation) {
+    throw new Error('missing conversation');
+  }
+
+  const submit = spyOn(conversation, 'submit');
+
+  spyOn(harness, 'conversation').mockResolvedValueOnce(conversation);
+
+  await call(headers, 'POST', `/conversations/${id}/messages`, {
+    content: 'bar',
+    steer: true,
+  });
+
+  expect(submit).toHaveBeenCalledWith(
+    {
+      content: 'bar',
+      entry: { data: { files: [], text: 'bar' }, kind: 'lab.message' },
+      type: 'input',
+      whenBusy: 'steer',
+    },
+    BACKGROUND_CONTEXT
+  );
 });
 
 test('conversations can be renamed', async () => {

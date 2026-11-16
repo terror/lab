@@ -62,7 +62,12 @@ function nonEmpty(draft: { attachments: Attachment[]; content: string }) {
 
 const emptyMessage = { message: 'A message needs text or an attachment' };
 
-const message = validator('json', draftSchema.refine(nonEmpty, emptyMessage));
+const message = validator(
+  'json',
+  draftSchema
+    .extend({ steer: z.boolean().default(false) })
+    .refine(nonEmpty, emptyMessage)
+);
 
 const creation = validator(
   'json',
@@ -160,11 +165,13 @@ function prompt({
 
 function submitMessage(
   conversation: Conversation,
-  draft: { attachments: Attachment[]; content: string }
+  draft: { attachments: Attachment[]; content: string },
+  whenBusy: 'followUp' | 'steer' = 'followUp'
 ) {
   return conversation.submit(
     {
       type: 'input',
+      whenBusy,
       content: prompt(draft),
       entry: {
         kind: 'lab.message',
@@ -368,7 +375,13 @@ const conversations = new Hono()
 
     const conversation = await load(c.req.valid('param').id, user);
 
-    const submission = await submitMessage(conversation, c.req.valid('json'));
+    const { steer, ...draft } = c.req.valid('json');
+
+    const submission = await submitMessage(
+      conversation,
+      draft,
+      steer ? 'steer' : 'followUp'
+    );
 
     await db
       .update(schema.conversation)

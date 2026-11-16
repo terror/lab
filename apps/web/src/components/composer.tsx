@@ -1,12 +1,24 @@
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   type Attachment,
   imageSource,
   readAttachment,
 } from '@/lib/attachments';
 import type { ModelChoice } from '@/lib/models';
-import { ArrowUp, FileText, Paperclip, Square, X } from 'lucide-react';
+import {
+  ArrowUp,
+  CornerDownRight,
+  FileText,
+  Paperclip,
+  Square,
+  X,
+} from 'lucide-react';
 import {
   type ClipboardEvent,
   type KeyboardEvent,
@@ -97,6 +109,7 @@ export function Composer({
   onAttachmentsChange,
   onDraftChange,
   onModelChange,
+  onSteer,
   onStop,
   onSubmit,
   running,
@@ -110,6 +123,7 @@ export function Composer({
   onAttachmentsChange: (attachments: Attachment[]) => void;
   onDraftChange: (draft: string) => void;
   onModelChange: (model: ModelChoice) => void;
+  onSteer?: (content: string) => void;
   onStop?: () => void;
   onSubmit: (content: string) => void;
   running?: boolean;
@@ -120,6 +134,8 @@ export function Composer({
 
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
+
+  const steering = running === true && !empty && onSteer !== undefined;
 
   const attach = async (files: File[]) => {
     setAttachError(undefined);
@@ -151,10 +167,17 @@ export function Composer({
     onAttachmentsChange([...attachments, ...added]);
   };
 
-  const submit = () => {
-    if (!empty && !submitting) {
-      onSubmit(content);
+  const submit = (steer: boolean) => {
+    if (empty || submitting) {
+      return;
     }
+
+    if (steer && onSteer) {
+      onSteer(content);
+      return;
+    }
+
+    onSubmit(content);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -164,7 +187,7 @@ export function Composer({
       !event.nativeEvent.isComposing
     ) {
       event.preventDefault();
-      submit();
+      submit(steering && (event.metaKey || event.ctrlKey));
     }
   };
 
@@ -179,7 +202,7 @@ export function Composer({
 
   const onFormSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    submit();
+    submit(false);
   };
 
   return (
@@ -240,6 +263,24 @@ export function Composer({
               onChange={onModelChange}
               value={model}
             />
+            {steering && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label='Steer'
+                    className='rounded-full'
+                    disabled={disabled || submitting === true}
+                    onClick={() => submit(true)}
+                    size='icon'
+                    type='button'
+                    variant='outline'
+                  >
+                    <CornerDownRight aria-hidden='true' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Steer the current answer (⌘↵)</TooltipContent>
+              </Tooltip>
+            )}
             <SubmitButton
               disabled={disabled || empty || submitting === true}
               onStop={onStop}

@@ -233,7 +233,8 @@ export function Conversation({ id }: { id: number }) {
 
   const send = useMutation({
     meta: { inlineError: true },
-    mutationFn: (content: string) => sendMessage(id, content, attachments),
+    mutationFn: ({ content, steer }: { content: string; steer: boolean }) =>
+      sendMessage(id, content, attachments, steer),
     onSuccess: () => {
       setDraft('');
       setAttachments([]);
@@ -372,9 +373,13 @@ export function Conversation({ id }: { id: number }) {
           onDraftChange={setDraft}
           onModelChange={(model) => changeModel.mutate(model)}
           onStop={() => abort.mutate()}
+          onSteer={(content) => {
+            pinned.current = true;
+            send.mutate({ content, steer: true });
+          }}
           onSubmit={(content) => {
             pinned.current = true;
-            send.mutate(content);
+            send.mutate({ content, steer: false });
           }}
           running={running}
           submitting={send.isPending}
