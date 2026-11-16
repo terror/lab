@@ -36,9 +36,8 @@ export function Sidebar({
 
   return (
     <aside className='flex w-64 shrink-0 flex-col gap-4 border-r bg-sidebar p-3 text-sidebar-foreground'>
-      <div className='flex items-center gap-2 px-1'>
+      <div className='px-1'>
         <LabMark className='size-6' />
-        <span className='font-semibold tracking-tight'>lab</span>
       </div>
       <Button
         disabled={create.isPending}
