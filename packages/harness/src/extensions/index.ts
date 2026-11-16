@@ -1,5 +1,6 @@
 import type { HelperUsage } from '../helper';
 import { assistant } from './assistant';
+import { compaction } from './compaction';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { title } from './title';
@@ -20,5 +21,11 @@ export type ExtensionDeps = {
 };
 
 export function extensions({ library: access, onHelperUsage }: ExtensionDeps) {
-  return [assistant, library(access), memory, title(onHelperUsage)];
+  return [
+    assistant,
+    compaction(onHelperUsage),
+    library(access),
+    memory,
+    title(onHelperUsage),
+  ];
 }

@@ -1,12 +1,13 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
+import type { HelperKind } from '@lab/harness';
 
 import { db } from './db';
 import { owners, serial } from './records';
 
 async function record(
   conversationId: number,
-  kind: 'status' | 'title',
+  kind: HelperKind,
   { model, provider, timestamp, usage }: AssistantMessage
 ) {
   const ownerId = (await owners([conversationId])).get(conversationId);
@@ -34,7 +35,7 @@ const queue = serial();
 
 export function recordHelperUsage(
   conversationId: number,
-  kind: 'status' | 'title',
+  kind: HelperKind,
   message: AssistantMessage
 ) {
   queue.run(() => record(conversationId, kind, message));

@@ -25,7 +25,7 @@ export {
   type LibraryContent,
   type LibraryEntry,
 } from './extensions';
-export { type HelperUsage, helperModel } from './helper';
+export { type HelperKind, type HelperUsage, helperModel } from './helper';
 export { purgeConversations } from './purge';
 
 export type HarnessOptions = {

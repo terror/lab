@@ -346,6 +346,13 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
+  .post('/:id/compact', params, async (c) => {
+    const conversation = await load(c.req.valid('param').id, c.get('user'));
+
+    await conversation.compact(undefined, BACKGROUND_CONTEXT);
+
+    return c.body(null, 202);
+  })
   .post('/:id/abort', params, async (c) => {
     const conversation = await load(c.req.valid('param').id, c.get('user'));
 
