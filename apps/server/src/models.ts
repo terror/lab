@@ -6,19 +6,8 @@ import {
 } from '@earendil-works/pi-ai/models';
 import { vercelAIGatewayProvider } from '@earendil-works/pi-ai/providers/vercel-ai-gateway';
 import { HTTPException } from 'hono/http-exception';
-import { z } from 'zod';
 
 import { env } from './env';
-
-export const thinkingLevelSchema = z.enum([
-  'off',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-]);
 
 const vendors = new Map([
   ['alibaba', 'Alibaba'],

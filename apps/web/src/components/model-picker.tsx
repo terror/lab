@@ -12,30 +12,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  type Model,
   type ModelChoice,
   type ThinkingLevel,
   modelsQueryOptions,
 } from '@/lib/models';
+import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 
-type Model = {
-  id: string;
-  name: string;
-  provider: string;
-  reasoning: boolean;
-  thinkingLevels: ThinkingLevel[];
-};
-
-const levels: ThinkingLevel[] = [
-  'off',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-];
+const levels = thinkingLevelSchema.options;
 
 const levelLabels: Record<ThinkingLevel, string> = {
   high: 'High',
@@ -164,7 +150,7 @@ export function ModelPicker({
 }) {
   const models = useQuery(modelsQueryOptions);
 
-  const options: Model[] = models.data ?? [];
+  const options = models.data ?? [];
   const current = options.find(({ id }) => id === value?.id);
 
   return (
