@@ -10,22 +10,25 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
 
-export const conversationsQueryOptions = queryOptions({
+export const conversationsQueryOptions = infiniteQueryOptions({
   queryKey: ['conversations'],
-  queryFn: async ({ signal }) => {
-    const { conversations } = await call(
-      client.conversations.$get(undefined, { init: { signal } })
-    );
-
-    return conversations;
-  },
+  queryFn: ({ pageParam, signal }) =>
+    call(
+      client.conversations.$get(
+        { query: { cursor: pageParam?.toString() } },
+        { init: { signal } }
+      )
+    ),
+  initialPageParam: undefined as number | undefined,
+  getNextPageParam: ({ next }) => next ?? undefined,
+  select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
 });
 
 export async function createConversation(

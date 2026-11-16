@@ -9,10 +9,10 @@ import {
 } from '@/components/ui/tooltip';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { PanelLeftClose, PanelLeftOpen, Search, SquarePen } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 type User = { email: string; id: string; image?: string | null; name: string };
 
@@ -59,6 +59,30 @@ function SearchButton({ side }: { side?: Side }) {
       <Search aria-hidden='true' className='size-4' />
     </RailButton>
   );
+}
+
+function LoadMore({ onLoadMore }: { onLoadMore: () => void }) {
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = sentinel.current;
+
+    if (!element) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        onLoadMore();
+      }
+    });
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [onLoadMore]);
+
+  return <div ref={sentinel} className='h-px shrink-0' />;
 }
 
 function SidebarRail({
@@ -108,9 +132,14 @@ export function Sidebar({
   onToggle?: () => void;
   user: User;
 }) {
-  const conversations = useQuery(conversationsQueryOptions);
+  const conversations = useInfiniteQuery(conversationsQueryOptions);
 
   const rail = collapsed && onToggle !== undefined;
+
+  const loadMore =
+    conversations.hasNextPage && !conversations.isFetchingNextPage
+      ? () => void conversations.fetchNextPage()
+      : undefined;
 
   return (
     <AnimatePresence initial={false} mode='wait'>
@@ -125,6 +154,7 @@ export function Sidebar({
         <SidebarContent
           conversations={conversations.data}
           error={conversations.isError}
+          onLoadMore={loadMore}
           onNewChat={onNewChat}
           onSelect={onSelect}
           onToggle={onToggle}
@@ -158,6 +188,7 @@ function SidebarContent({
 function SidebarPanel({
   conversations,
   error,
+  onLoadMore,
   onNewChat,
   onSelect,
   onToggle,
@@ -166,6 +197,7 @@ function SidebarPanel({
 }: {
   conversations: { id: number; title: string | null }[] | undefined;
   error: boolean;
+  onLoadMore: (() => void) | undefined;
   onNewChat: () => void;
   onSelect: (id: number) => void;
   onToggle: (() => void) | undefined;
@@ -222,6 +254,7 @@ function SidebarPanel({
             selected={conversation.id === selected}
           />
         ))}
+        {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
       </nav>
       <div className='mt-auto'>
         <AccountMenu user={user} />
