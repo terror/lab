@@ -7,7 +7,7 @@ import type {
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { type AnyColumn, type SQL, and, asc, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -80,16 +80,28 @@ const listQuery = validator(
   z.object({
     cursor: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
-    sort: z.enum(['activity', 'created']).default('activity'),
+    sort: z.enum(['activity', 'created', 'title']).default('activity'),
   })
 );
 
-const sortColumns = {
-  activity: 'lastMessageAt',
-  created: 'createdAt',
-} as const;
+type Sort = 'activity' | 'created' | 'title';
 
-type Sort = keyof typeof sortColumns;
+type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
+
+const sorts: Record<
+  Sort,
+  { ascending: boolean; key: (columns: SortColumns) => SQL }
+> = {
+  activity: {
+    ascending: false,
+    key: ({ lastMessageAt }) => sql`${lastMessageAt}`,
+  },
+  created: { ascending: false, key: ({ createdAt }) => sql`${createdAt}` },
+  title: {
+    ascending: true,
+    key: ({ title }) => sql`lower(coalesce(${title}, 'New chat'))`,
+  },
+};
 
 const modelSelection = validator(
   'json',
@@ -160,17 +172,19 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-function before(id: number, user: User, sort: Sort) {
-  const column = sortColumns[sort];
+function after(id: number, user: User, sort: Sort) {
+  const { ascending, key } = sorts[sort];
 
   const cursor = alias(schema.conversation, 'cursor');
 
   const position = db
-    .select({ at: cursor[column], id: cursor.id })
+    .select({ key: key(cursor), id: cursor.id })
     .from(cursor)
     .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
 
-  return sql`(${schema.conversation[column]}, ${schema.conversation.id}) < (${position})`;
+  const row = sql`(${key(schema.conversation)}, ${schema.conversation.id})`;
+
+  return ascending ? sql`${row} > (${position})` : sql`${row} < (${position})`;
 }
 
 async function load(id: number, user: User) {
@@ -209,19 +223,20 @@ const conversations = new Hono()
 
     await flushProjections();
 
+    const { ascending, key } = sorts[sort];
+
+    const order = ascending ? asc : desc;
+
     const rows = await db
       .select({ id: schema.conversation.id, title: schema.conversation.title })
       .from(schema.conversation)
       .where(
         and(
           eq(schema.conversation.ownerId, user.id),
-          cursor === undefined ? undefined : before(cursor, user, sort)
+          cursor === undefined ? undefined : after(cursor, user, sort)
         )
       )
-      .orderBy(
-        desc(schema.conversation[sortColumns[sort]]),
-        desc(schema.conversation.id)
-      )
+      .orderBy(order(key(schema.conversation)), order(schema.conversation.id))
       .limit(limit + 1);
 
     const page = rows.slice(0, limit);

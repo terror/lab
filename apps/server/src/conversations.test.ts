@@ -197,6 +197,34 @@ test('attachment names are escaped in the prompt', async () => {
   ).toBe('foo\n\n<file name="foo&quot;&lt;bar&gt;&amp;">\nbaz\n</file>');
 });
 
+test('conversations can be listed by title', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  await call(headers, 'PATCH', `/conversations/${first}`, { title: 'bar' });
+  await call(headers, 'PATCH', `/conversations/${second}`, { title: 'Foo' });
+
+  expect(
+    await call(headers, 'GET', '/conversations?sort=title&limit=1')
+  ).toEqual({
+    body: { conversations: [{ id: first, title: 'bar' }], next: first },
+    status: 200,
+  });
+
+  expect(
+    await call(
+      headers,
+      'GET',
+      `/conversations?sort=title&limit=1&cursor=${first}`
+    )
+  ).toEqual({
+    body: { conversations: [{ id: second, title: 'Foo' }], next: null },
+    status: 200,
+  });
+});
+
 test('conversations can be renamed', async () => {
   const headers = await signIn();
 
