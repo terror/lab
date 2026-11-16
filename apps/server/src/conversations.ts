@@ -2,27 +2,14 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { applyImmutable } from '@earendil-works/chord/delta';
 import {
   AgentDoc,
-  type Conversation,
   type ConversationId,
   type EntryId,
-  type JsonObject,
   type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
-import {
-  type AnyColumn,
-  type SQL,
-  and,
-  asc,
-  desc,
-  eq,
-  isNotNull,
-  isNull,
-  sql,
-} from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
@@ -31,21 +18,16 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { listConversations, listSchema, running } from './listing';
 import {
-  acceptsImages,
-  defaultModel,
-  findModel,
-  modelChange,
-  models,
-} from './models';
-import { flushProjections } from './projections';
-import { contains } from './records';
-import {
-  type Attachment,
-  attachmentSchema,
-  sortSchema,
-  thinkingLevelSchema,
-} from './schemas';
+  draftSchema,
+  emptyMessage,
+  nonEmpty,
+  requireImageInput,
+  submitMessage,
+} from './messages';
+import { defaultModel, findModel, modelChange, models } from './models';
+import { thinkingLevelSchema } from './schemas';
 import { subscribeStatus } from './status';
 import { validator } from './validator';
 
@@ -61,17 +43,6 @@ const submissionParams = validator(
     submissionId: z.coerce.number().int().positive(),
   })
 );
-
-const draftSchema = z.object({
-  attachments: z.array(attachmentSchema).max(8).default([]),
-  content: z.string().trim(),
-});
-
-function nonEmpty(draft: { attachments: Attachment[]; content: string }) {
-  return draft.content.length > 0 || draft.attachments.length > 0;
-}
-
-const emptyMessage = { message: 'A message needs text or an attachment' };
 
 const message = validator(
   'json',
@@ -102,40 +73,7 @@ const entriesQuery = validator(
   })
 );
 
-const listQuery = validator(
-  'query',
-  z.object({
-    cursor: z.coerce.number().int().positive().optional(),
-    filter: z
-      .enum(['archived', 'pinned', 'recent', 'unarchived'])
-      .default('unarchived'),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
-    search: z.string().trim().min(1).max(200).optional(),
-    sort: sortSchema.default('activity'),
-  })
-);
-
-type Sort = z.infer<typeof sortSchema>;
-
-type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
-
-const sorts: Record<
-  Sort,
-  { ascending: boolean; keys: (columns: SortColumns) => SQL[] }
-> = {
-  activity: {
-    ascending: false,
-    keys: ({ lastMessageAt }) => [sql`${lastMessageAt}`],
-  },
-  created: { ascending: false, keys: ({ createdAt }) => [sql`${createdAt}`] },
-  title: {
-    ascending: true,
-    keys: ({ title }) => [
-      sql`${title} is null`,
-      sql`lower(coalesce(${title}, ''))`,
-    ],
-  },
-};
+const listQuery = validator('query', listSchema);
 
 const modelSelection = validator(
   'json',
@@ -162,21 +100,6 @@ const update = validator(
     )
 );
 
-const filters = {
-  archived: () => isNotNull(schema.conversation.archivedAt),
-  pinned: () =>
-    and(
-      isNotNull(schema.conversation.pinnedAt),
-      isNull(schema.conversation.archivedAt)
-    ),
-  recent: () =>
-    and(
-      isNull(schema.conversation.pinnedAt),
-      isNull(schema.conversation.archivedAt)
-    ),
-  unarchived: () => isNull(schema.conversation.archivedAt),
-};
-
 function timestamp(value: boolean | undefined) {
   if (value === undefined) {
     return undefined;
@@ -185,117 +108,9 @@ function timestamp(value: boolean | undefined) {
   return value ? new Date() : null;
 }
 
-function escape(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
-}
-
-function prompt({
-  attachments,
-  content,
-}: {
-  attachments: Attachment[];
-  content: string;
-}) {
-  const files = attachments
-    .filter((attachment) => attachment.type === 'file')
-    .map(({ name, text }) => `<file name="${escape(name)}">\n${text}\n</file>`);
-
-  const images = attachments
-    .filter((attachment) => attachment.type === 'image')
-    .map(({ data, mimeType }) => ({ data, mimeType, type: 'image' as const }));
-
-  const text = [content, ...files].filter(Boolean).join('\n\n');
-
-  if (images.length === 0) {
-    return text;
-  }
-
-  return text ? [{ text, type: 'text' as const }, ...images] : images;
-}
-
-function requireImageInput(
-  model: Parameters<typeof acceptsImages>[0],
-  attachments: Attachment[]
-) {
-  if (
-    attachments.some(({ type }) => type === 'image') &&
-    !acceptsImages(model)
-  ) {
-    throw new HTTPException(400, { message: 'This model can’t read images' });
-  }
-}
-
-function entryFile(attachment: Attachment): JsonObject {
-  if (attachment.type === 'file') {
-    return {
-      name: attachment.name,
-      text: attachment.text,
-      type: 'file',
-    };
-  }
-
-  return { name: attachment.name, type: 'image' };
-}
-
-function submitMessage(
-  conversation: Conversation,
-  draft: { attachments: Attachment[]; content: string },
-  whenBusy: 'followUp' | 'steer' = 'followUp'
-) {
-  return conversation.submit(
-    {
-      type: 'input',
-      whenBusy,
-      content: prompt(draft),
-      entry: {
-        kind: 'lab.message',
-        data: {
-          files: draft.attachments.map(entryFile),
-          text: draft.content,
-        },
-      },
-    },
-    BACKGROUND_CONTEXT
-  );
-}
-
 type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
-
-function after(id: number, user: User, sort: Sort) {
-  const { ascending, keys } = sorts[sort];
-
-  const cursor = alias(schema.conversation, 'cursor');
-
-  const position = db
-    .select({ ...Object.fromEntries(keys(cursor).entries()), id: cursor.id })
-    .from(cursor)
-    .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
-
-  const columns = [
-    ...keys(schema.conversation),
-    sql`${schema.conversation.id}`,
-  ];
-
-  const row = sql`(${sql.join(columns, sql`, `)})`;
-
-  return ascending ? sql`${row} > (${position})` : sql`${row} < (${position})`;
-}
-
-async function running() {
-  const { tasks } = await harness.inspect(BACKGROUND_CONTEXT);
-
-  return new Set<number>(
-    tasks
-      .filter(({ record }) => !record.background)
-      .map(({ record }) => record.conversationId)
-  );
-}
 
 async function load(id: number, user: User) {
   const [record] = await db
@@ -326,56 +141,9 @@ async function load(id: number, user: User) {
 
 const conversations = new Hono()
   .use(requireUser)
-  .get('/', listQuery, async (c) => {
-    const user = c.get('user');
-
-    const { cursor, filter, limit, search, sort } = c.req.valid('query');
-
-    await flushProjections();
-
-    const { ascending, keys } = sorts[sort];
-
-    const order = ascending ? asc : desc;
-
-    const rows = await db
-      .select({
-        id: schema.conversation.id,
-        pinnedAt: schema.conversation.pinnedAt,
-        title: schema.conversation.title,
-      })
-      .from(schema.conversation)
-      .where(
-        and(
-          eq(schema.conversation.ownerId, user.id),
-          filters[filter](),
-          cursor === undefined ? undefined : after(cursor, user, sort),
-          search === undefined
-            ? undefined
-            : contains(schema.conversation.title, search)
-        )
-      )
-      .orderBy(
-        ...keys(schema.conversation).map((key) => order(key)),
-        order(schema.conversation.id)
-      )
-      .limit(limit + 1);
-
-    const page = rows.slice(0, limit);
-
-    const next = rows.length > limit ? page.at(-1)?.id : undefined;
-
-    const busy = await running();
-
-    return c.json({
-      conversations: page.map(({ id, pinnedAt, title }) => ({
-        id,
-        pinned: pinnedAt !== null,
-        running: busy.has(id),
-        title,
-      })),
-      next: next ?? null,
-    });
-  })
+  .get('/', listQuery, async (c) =>
+    c.json(await listConversations(c.get('user'), c.req.valid('query')))
+  )
   .post('/', creation, async (c) => {
     const user = c.get('user');
     const {
