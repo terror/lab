@@ -621,6 +621,8 @@ test('conversations are hidden from other users', async () => {
     provider: 'vercel-ai-gateway',
   });
   await hidden('POST', '/abort');
+  await hidden('POST', '/compact');
+  await hidden('GET', '/entries/1/images/0');
   await hidden('DELETE', '/submissions/1');
   await hidden('PATCH', '', { title: 'bar' });
   await hidden('DELETE', '');
