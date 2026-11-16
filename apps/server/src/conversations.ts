@@ -229,16 +229,27 @@ const conversations = new Hono()
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
 
     return streamSSE(c, async (stream) => {
+      const closed = new AbortController();
+
+      stream.onAbort(() => closed.abort());
+
       const watch = await conversation.watch(BACKGROUND_CONTEXT);
 
       const status = subscribeStatus(conversation.id, (value) =>
         stream.writeSSE({ event: 'status', data: value })
       );
 
-      stream.onAbort(() => {
+      const stop = () => {
         status.unsubscribe();
         void watch.stop();
-      });
+      };
+
+      if (closed.signal.aborted) {
+        stop();
+        return;
+      }
+
+      closed.signal.addEventListener('abort', stop, { once: true });
 
       await stream.writeSSE({
         event: 'value',
@@ -267,6 +278,7 @@ const conversations = new Hono()
       await watch.closed;
 
       clearInterval(heartbeat);
+      status.unsubscribe();
     });
   })
   .post('/:id/messages', params, message, async (c) => {

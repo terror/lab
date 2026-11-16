@@ -148,16 +148,23 @@ function channel(id: number) {
 export function subscribeStatus(id: number, send: Send) {
   const subscribed = channel(id);
 
-  subscribed.listeners.add(send);
+  const listener: Send = (status) => send(status);
+
+  subscribed.listeners.add(listener);
 
   return {
     report: (view: ConversationView) => subscribed.reporter.report(view),
     unsubscribe: () => {
-      subscribed.listeners.delete(send);
+      if (!subscribed.listeners.delete(listener)) {
+        return;
+      }
 
       if (subscribed.listeners.size === 0) {
         subscribed.controller.abort();
-        channels.delete(id);
+
+        if (channels.get(id) === subscribed) {
+          channels.delete(id);
+        }
       }
     },
   };
