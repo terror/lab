@@ -9,6 +9,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,6 +82,29 @@ function RenameInput({
   );
 }
 
+function MenuItems({
+  Item,
+  onDelete,
+  onRename,
+}: {
+  Item: typeof ContextMenuItem | typeof DropdownMenuItem;
+  onDelete: () => void;
+  onRename: () => void;
+}) {
+  return (
+    <>
+      <Item onSelect={onRename}>
+        <Pencil aria-hidden='true' />
+        Rename
+      </Item>
+      <Item onSelect={onDelete} variant='destructive'>
+        <Trash2 aria-hidden='true' />
+        Delete
+      </Item>
+    </>
+  );
+}
+
 export function ConversationItem({
   conversation,
   onSelect,
@@ -114,6 +143,20 @@ export function ConversationItem({
     },
   });
 
+  const startRename = () => {
+    renaming.current = true;
+    setEditing(true);
+  };
+
+  const confirmDelete = () => setConfirming(true);
+
+  const onCloseAutoFocus = (event: Event) => {
+    if (renaming.current) {
+      renaming.current = false;
+      event.preventDefault();
+    }
+  };
+
   if (editing) {
     return (
       <RenameInput
@@ -128,62 +171,55 @@ export function ConversationItem({
   }
 
   return (
-    <div
-      className={cn(
-        'group flex items-center rounded-lg hover:bg-sidebar-accent',
-        (selected || menu) &&
-          'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-      )}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        setMenu(true);
-      }}
-    >
-      <button
-        aria-current={selected ? 'page' : undefined}
-        className='min-w-0 flex-1 px-2 py-1.5 text-left text-sm'
-        onClick={() => onSelect(conversation.id)}
-        type='button'
-      >
-        <span className='block truncate'>{title}</span>
-      </button>
-      <DropdownMenu open={menu} onOpenChange={setMenu}>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Options for ${title}`}
-            className='mr-1 rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
-            type='button'
+    <>
+      <ContextMenu onOpenChange={setMenu}>
+        <ContextMenuTrigger asChild>
+          <div
+            className={cn(
+              'group flex items-center rounded-lg hover:bg-sidebar-accent',
+              (selected || menu) &&
+                'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+            )}
           >
-            <Ellipsis aria-hidden='true' className='size-4' />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align='start'
-          onCloseAutoFocus={(event) => {
-            if (renaming.current) {
-              renaming.current = false;
-              event.preventDefault();
-            }
-          }}
-        >
-          <DropdownMenuItem
-            onSelect={() => {
-              renaming.current = true;
-              setEditing(true);
-            }}
-          >
-            <Pencil aria-hidden='true' />
-            Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => setConfirming(true)}
-            variant='destructive'
-          >
-            <Trash2 aria-hidden='true' />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <button
+              aria-current={selected ? 'page' : undefined}
+              className='min-w-0 flex-1 px-2 py-1.5 text-left text-sm'
+              onClick={() => onSelect(conversation.id)}
+              type='button'
+            >
+              <span className='block truncate'>{title}</span>
+            </button>
+            <DropdownMenu onOpenChange={setMenu}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label={`Options for ${title}`}
+                  className='mr-1 rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
+                  type='button'
+                >
+                  <Ellipsis aria-hidden='true' className='size-4' />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align='start'
+                onCloseAutoFocus={onCloseAutoFocus}
+              >
+                <MenuItems
+                  Item={DropdownMenuItem}
+                  onDelete={confirmDelete}
+                  onRename={startRename}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
+          <MenuItems
+            Item={ContextMenuItem}
+            onDelete={confirmDelete}
+            onRename={startRename}
+          />
+        </ContextMenuContent>
+      </ContextMenu>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent size='sm'>
           <AlertDialogHeader>
@@ -203,6 +239,6 @@ export function ConversationItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
