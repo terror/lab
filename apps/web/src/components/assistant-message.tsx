@@ -266,14 +266,15 @@ export function AssistantMessage({
   results: ReadonlyMap<string, ToolResult>;
   streaming: boolean;
 }) {
-  const text = parts
+  const final = parts.slice(
+    parts.findLastIndex(({ type }) => type === 'toolCall') + 1
+  );
+
+  const text = final
     .flatMap((part) => (part.type === 'text' && part.text ? [part.text] : []))
     .join('\n\n');
 
-  const answer =
-    !streaming &&
-    text.length > 0 &&
-    !parts.some(({ type }) => type === 'toolCall');
+  const answer = !streaming && text.length > 0;
 
   return (
     <Message>
