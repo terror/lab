@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create, idle } from '../test/client';
+import app from './app';
 import { db } from './db';
 import { harness } from './harness';
 import { flushProjections } from './projections';
@@ -625,4 +626,51 @@ test('conversations are hidden from other users', async () => {
   await hidden('DELETE', '/submissions/1');
   await hidden('PATCH', '', { title: 'bar' });
   await hidden('DELETE', '');
+});
+
+test('images are served by url instead of inline', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    attachments: [
+      { data: 'Zm9v', mimeType: 'image/png', name: 'foo.png', type: 'image' },
+    ],
+    content: 'bar',
+    model: { id: 'anthropic/claude-haiku-5.5', provider: 'vercel-ai-gateway' },
+  });
+
+  await idle(body.id);
+
+  const entries = await call(
+    headers,
+    'GET',
+    `/conversations/${body.id}/entries?order=ascending`
+  );
+
+  const message = entries.body.items.find(
+    ({ kind }: { kind: string }) => kind === 'lab.message'
+  );
+
+  const image = await app.request(
+    `/api/conversations/${body.id}/entries/${message.id}/images/0`,
+    { headers }
+  );
+
+  const missing = await app.request(
+    `/api/conversations/${body.id}/entries/${message.id}/images/1`,
+    { headers }
+  );
+
+  expect({
+    content: message.model[0].content,
+    image: [image.headers.get('content-type'), await image.text()],
+    missing: missing.status,
+  }).toEqual({
+    content: [
+      { text: 'bar', type: 'text' },
+      { data: '', mimeType: 'image/png', type: 'image' },
+    ],
+    image: ['image/png', 'foo'],
+    missing: 404,
+  });
 });

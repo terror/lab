@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/message-scroller';
 import { TraceLine, TraceTitle } from '@/components/ui/trace';
 import { type Attachment, imageSource } from '@/lib/attachments';
+import { client } from '@/lib/client';
 import {
   abortConversation,
   cancelSubmission,
@@ -38,6 +39,7 @@ import { cn } from '@/lib/utils';
 import {
   CompactionEntry,
   type AgentState,
+  type EntryRecord,
   type InboxState,
   type LiveState,
   type TranscriptItem,
@@ -181,15 +183,31 @@ function QueuedMessage({
   );
 }
 
-function messageImages(content: unknown) {
+function messageImages(content: unknown, entry: EntryRecord) {
   if (!Array.isArray(content)) {
     return [];
   }
 
-  return content.flatMap((part: unknown) => {
+  const images = content.flatMap((part: unknown) => {
     const image = imagePartSchema.safeParse(part);
 
-    return image.success ? [imageSource(image.data)] : [];
+    return image.success ? [image.data] : [];
+  });
+
+  return images.map((image, index) => {
+    if (image.data) {
+      return imageSource(image);
+    }
+
+    return client.conversations[':id'].entries[':entryId'].images[
+      ':index'
+    ].$url({
+      param: {
+        entryId: String(entry.id),
+        id: String(entry.conversationId),
+        index: String(index),
+      },
+    }).href;
   });
 }
 
@@ -267,7 +285,7 @@ function rowsFor(item: TranscriptItem): Row[] {
 
   const data = messageDataSchema.safeParse(item.entry.data).data;
   const text = data?.text ?? contentText(message?.content);
-  const images = messageImages(message?.content);
+  const images = messageImages(message?.content, item.entry);
 
   const files = (data?.files ?? [])
     .filter(({ type }) => type === 'file')
