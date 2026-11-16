@@ -1,3 +1,4 @@
+import { ProviderLogo } from '@/components/provider-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { modelsQueryOptions } from '@/lib/models';
@@ -21,7 +22,7 @@ function status({ configured, stored }: Provider) {
     return 'Connected';
   }
 
-  return configured ? 'From environment' : undefined;
+  return configured ? 'Connected through an environment variable' : undefined;
 }
 
 function ProviderRow({ provider }: { provider: Provider }) {
@@ -61,13 +62,18 @@ function ProviderRow({ provider }: { provider: Provider }) {
   const label = status(provider);
 
   return (
-    <li className='flex flex-col gap-3 py-3'>
+    <li className='flex flex-col gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
       <div className='flex items-center gap-3'>
-        <span className='text-sm font-medium'>{provider.name}</span>
-        {label && (
-          <span className='text-xs text-muted-foreground'>{label}</span>
-        )}
-        <div className='ml-auto flex items-center gap-1'>
+        <ProviderLogo id={provider.id} name={provider.name} />
+        <div className='flex min-w-0 flex-col'>
+          <span className='truncate text-sm font-medium'>{provider.name}</span>
+          {label && (
+            <span className='truncate text-xs text-muted-foreground'>
+              {label}
+            </span>
+          )}
+        </div>
+        <div className='ml-auto flex shrink-0 items-center gap-1'>
           {provider.stored && (
             <Button
               aria-label={`Remove ${provider.name} key`}
@@ -84,22 +90,23 @@ function ProviderRow({ provider }: { provider: Provider }) {
               aria-label={`${provider.stored ? 'Replace' : 'Add'} ${provider.name} key`}
               onClick={() => setEditing(true)}
               size='sm'
-              variant='outline'
+              variant='secondary'
             >
-              {provider.stored ? 'Replace key' : 'Add key'}
+              {provider.stored ? 'Replace' : 'Add key'}
             </Button>
           )}
         </div>
       </div>
       {editing && (
-        <form className='flex flex-col gap-2' onSubmit={onSubmit}>
+        <form className='flex flex-col gap-2 pl-12' onSubmit={onSubmit}>
           <div className='flex items-center gap-2'>
             <Input
               aria-label={`${provider.name} API key`}
               autoComplete='off'
-              ref={(element) => element?.focus()}
+              className='border-transparent bg-muted shadow-none'
               onChange={(event) => setKey(event.target.value)}
-              placeholder='API key'
+              placeholder='Paste an API key'
+              ref={(element) => element?.focus()}
               type='password'
               value={key}
             />
@@ -133,15 +140,38 @@ function ProviderRow({ provider }: { provider: Provider }) {
   );
 }
 
+function ProviderList({
+  providers,
+  title,
+}: {
+  providers: Provider[];
+  title: string;
+}) {
+  if (providers.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className='space-y-1'>
+      <h2 className='px-3 text-xs font-medium text-muted-foreground'>
+        {title}
+      </h2>
+      <ul className='flex flex-col'>
+        {providers.map((provider) => (
+          <ProviderRow key={provider.id} provider={provider} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function Providers() {
   const providers = useQuery(providersQueryOptions);
 
-  const sorted = (providers.data ?? []).toSorted(
-    (a, b) => Number(b.configured) - Number(a.configured)
-  );
+  const all = providers.data ?? [];
 
   return (
-    <section className='space-y-6'>
+    <section className='space-y-8'>
       <div className='space-y-1'>
         <h1 className='text-2xl font-semibold tracking-tight'>Providers</h1>
         <p className='text-sm text-muted-foreground'>
@@ -153,11 +183,16 @@ export function Providers() {
           Unable to load providers.
         </p>
       )}
-      <ul className='divide-y'>
-        {sorted.map((provider) => (
-          <ProviderRow key={provider.id} provider={provider} />
-        ))}
-      </ul>
+      <div className='-mx-3 space-y-6'>
+        <ProviderList
+          providers={all.filter(({ configured }) => configured)}
+          title='Connected'
+        />
+        <ProviderList
+          providers={all.filter(({ configured }) => !configured)}
+          title='Available'
+        />
+      </div>
     </section>
   );
 }
