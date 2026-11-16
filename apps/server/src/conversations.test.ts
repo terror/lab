@@ -1,9 +1,12 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
+import { schema } from '@lab/db';
 import { expect, spyOn, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create, idle } from '../test/client';
+import { db } from './db';
 import { harness } from './harness';
 import { flushProjections } from './projections';
 
@@ -215,16 +218,27 @@ test('conversations can be listed by title', async () => {
 
   const first = await create(headers);
   const second = await create(headers);
+  const third = await create(headers);
 
   await call(headers, 'PATCH', `/conversations/${first}`, { title: 'bar' });
-  await call(headers, 'PATCH', `/conversations/${second}`, { title: 'Foo' });
+  await call(headers, 'PATCH', `/conversations/${second}`, { title: 'Qux' });
+
+  await flushProjections();
+
+  await db
+    .update(schema.conversation)
+    .set({ title: null })
+    .where(eq(schema.conversation.id, third));
 
   expect(
-    await call(headers, 'GET', '/conversations?sort=title&limit=1')
+    await call(headers, 'GET', '/conversations?sort=title&limit=2')
   ).toEqual({
     body: {
-      conversations: [{ id: first, running: false, title: 'bar' }],
-      next: first,
+      conversations: [
+        { id: first, running: false, title: 'bar' },
+        { id: second, running: false, title: 'Qux' },
+      ],
+      next: second,
     },
     status: 200,
   });
@@ -233,11 +247,11 @@ test('conversations can be listed by title', async () => {
     await call(
       headers,
       'GET',
-      `/conversations?sort=title&limit=1&cursor=${first}`
+      `/conversations?sort=title&limit=2&cursor=${second}`
     )
   ).toEqual({
     body: {
-      conversations: [{ id: second, running: false, title: 'Foo' }],
+      conversations: [{ id: third, running: false, title: null }],
       next: null,
     },
     status: 200,

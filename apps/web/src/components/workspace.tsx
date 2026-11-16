@@ -13,7 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { type User, useUser } from '@/lib/auth';
-import { useConversations } from '@/lib/conversations';
+import { conversationTitle, useConversations } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
@@ -134,11 +134,9 @@ function MobileWorkspace({
   const [open, setOpen] = useState(false);
   const conversations = useConversations();
 
-  const title =
-    selected === undefined
-      ? 'New chat'
-      : (conversations.data?.find(({ id }) => id === selected)?.title ??
-        'New chat');
+  const title = conversationTitle(
+    conversations.data?.find(({ id }) => id === selected)?.title
+  );
 
   return (
     <div className='flex h-svh flex-col'>

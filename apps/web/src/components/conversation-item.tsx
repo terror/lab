@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  conversationTitle,
   conversationsQueryKey,
   deleteConversation,
   renameConversation,
@@ -122,7 +123,7 @@ export function ConversationItem({
   const [confirming, setConfirming] = useState(false);
   const renaming = useRef(false);
 
-  const title = conversation.title ?? 'New chat';
+  const title = conversationTitle(conversation.title);
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
