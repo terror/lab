@@ -175,7 +175,14 @@ function SidebarPanel({
   return (
     <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
       <div className='flex items-center justify-between px-1'>
-        <LabMark className='size-6' />
+        <button
+          aria-label='New chat'
+          className='flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+          onClick={onNewChat}
+          type='button'
+        >
+          <LabMark className='size-6' />
+        </button>
         <div className='flex items-center gap-1'>
           <SearchButton />
           {onToggle && (
