@@ -1,8 +1,20 @@
 import { Suspense, lazy } from 'react';
+import type { StreamdownProps } from 'streamdown';
 
-const Streamdown = lazy(async () => ({
-  default: (await import('streamdown')).Streamdown,
-}));
+const Streamdown = lazy(async () => {
+  const [{ Streamdown: Renderer }, { code }] = await Promise.all([
+    import('streamdown'),
+    import('@streamdown/code'),
+  ]);
+
+  const plugins = { code };
+
+  return {
+    default: (props: StreamdownProps) => (
+      <Renderer plugins={plugins} {...props} />
+    ),
+  };
+});
 
 export function Markdown({
   children,
