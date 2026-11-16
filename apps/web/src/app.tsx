@@ -17,7 +17,7 @@ export function App() {
   }
 
   if (route.kind === 'settings') {
-    return <Settings />;
+    return <Settings userId={session.data.user.id} />;
   }
 
   return (

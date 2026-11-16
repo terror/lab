@@ -1,17 +1,42 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
+import { eq, sql } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
 import { env } from './env';
 
-const allowed = new Set(
-  [env.LAB_ADMIN_EMAIL, ...env.LAB_ALLOWED_EMAILS].map((email) =>
-    email.toLowerCase()
-  )
-);
+export function isAdmin(email: string) {
+  return email.toLowerCase() === env.LAB_ADMIN_EMAIL.toLowerCase();
+}
+
+async function admitted(email: string) {
+  if (isAdmin(email)) {
+    return true;
+  }
+
+  const normalized = email.toLowerCase();
+
+  const [invited] = await db
+    .select({ email: schema.invitation.email })
+    .from(schema.invitation)
+    .where(eq(schema.invitation.email, normalized))
+    .limit(1);
+
+  if (invited) {
+    return true;
+  }
+
+  const [member] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(sql`lower(${schema.user.email})`, normalized))
+    .limit(1);
+
+  return member !== undefined;
+}
 
 export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
@@ -25,13 +50,16 @@ export const auth = betterAuth({
     },
   },
   user: {
-    validateUserInfo: ({ user }) =>
-      user.email && allowed.has(user.email.toLowerCase())
-        ? undefined
-        : {
-            error: 'not_allowed',
-            errorDescription: 'This account is not allowed to use Lab.',
-          },
+    validateUserInfo: async ({ user }) => {
+      if (user.email && (await admitted(user.email))) {
+        return undefined;
+      }
+
+      return {
+        error: 'not_allowed',
+        errorDescription: 'This account is not allowed to use Lab.',
+      };
+    },
   },
 });
 
@@ -46,6 +74,16 @@ export const requireUser = createMiddleware<{ Variables: { user: User } }>(
     }
 
     c.set('user', session.user);
+
+    await next();
+  }
+);
+
+export const requireAdmin = createMiddleware<{ Variables: { user: User } }>(
+  async (c, next) => {
+    if (!isAdmin(c.get('user').email)) {
+      throw new HTTPException(403, { message: 'Only the admin can do this' });
+    }
 
     await next();
   }

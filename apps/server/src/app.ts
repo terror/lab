@@ -5,9 +5,10 @@ import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
 
-import { auth, requireUser } from './auth';
+import { auth, isAdmin, requireUser } from './auth';
 import conversations from './conversations';
 import { db } from './db';
+import members from './members';
 import { listModels } from './models';
 import users from './users';
 
@@ -22,8 +23,12 @@ const api = new Hono()
     return c.json({ status: 'ok' });
   })
   .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  .get('/account', requireUser, (c) =>
+    c.json({ admin: isAdmin(c.get('user').email) })
+  )
   .get('/models', requireUser, (c) => c.json({ models: listModels() }))
   .route('/conversations', conversations)
+  .route('/members', members)
   .route('/users', users);
 
 export type AppType = typeof api;
