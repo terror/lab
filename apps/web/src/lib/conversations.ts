@@ -17,7 +17,7 @@ import { z } from 'zod';
 import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
-import { usePersistentState } from './storage';
+import { removeStored, usePersistentState } from './storage';
 
 const sortSchema = z.enum(['activity', 'created']);
 
@@ -83,6 +83,18 @@ export async function deleteConversation(id: number) {
   await call(
     client.conversations[':id'].$delete({ param: { id: String(id) } })
   );
+
+  removeStored(draftKey(id));
+}
+
+const draftSchema = z.string();
+
+function draftKey(id: number | 'new') {
+  return `draft:${id}`;
+}
+
+export function useDraft(id: number | 'new') {
+  return usePersistentState(draftKey(id), draftSchema, '');
 }
 
 export async function sendMessage(
