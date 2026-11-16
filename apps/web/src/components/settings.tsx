@@ -1,7 +1,10 @@
+import { Members } from '@/components/members';
 import { Button } from '@/components/ui/button';
+import { accountQueryOptions } from '@/lib/members';
 import { closeSettings } from '@/lib/route';
 import { type Theme, setTheme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   type LucideIcon,
@@ -9,7 +12,9 @@ import {
   Moon,
   Palette,
   Sun,
+  Users,
 } from 'lucide-react';
+import { useState } from 'react';
 
 const themes: {
   description: string;
@@ -82,7 +87,30 @@ function Appearance() {
   );
 }
 
-export function Settings() {
+type Tab = 'appearance' | 'members';
+
+const tabs: { admin: boolean; icon: LucideIcon; label: string; value: Tab }[] =
+  [
+    { admin: false, icon: Palette, label: 'Appearance', value: 'appearance' },
+    { admin: true, icon: Users, label: 'Members', value: 'members' },
+  ];
+
+function TabContent({ tab, userId }: { tab: Tab; userId: string }) {
+  if (tab === 'members') {
+    return <Members userId={userId} />;
+  }
+
+  return <Appearance />;
+}
+
+export function Settings({ userId }: { userId: string }) {
+  const account = useQuery(accountQueryOptions);
+  const [tab, setTab] = useState<Tab>('appearance');
+
+  const visible = tabs.filter(
+    ({ admin }) => !admin || account.data?.admin === true
+  );
+
   return (
     <div className='flex min-h-svh flex-col'>
       <header className='px-4 py-3'>
@@ -96,17 +124,24 @@ export function Settings() {
           aria-label='Settings'
           className='flex shrink-0 flex-col gap-1 sm:w-48'
         >
-          <button
-            aria-current='page'
-            className='flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-left text-sm font-medium text-accent-foreground'
-            type='button'
-          >
-            <Palette aria-hidden='true' className='size-4' />
-            Appearance
-          </button>
+          {visible.map(({ icon: Icon, label, value }) => (
+            <button
+              key={value}
+              aria-current={tab === value ? 'page' : undefined}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent',
+                tab === value && 'bg-accent font-medium text-accent-foreground'
+              )}
+              onClick={() => setTab(value)}
+              type='button'
+            >
+              <Icon aria-hidden='true' className='size-4' />
+              {label}
+            </button>
+          ))}
         </nav>
         <main className='min-w-0 flex-1'>
-          <Appearance />
+          <TabContent tab={tab} userId={userId} />
         </main>
       </div>
     </div>

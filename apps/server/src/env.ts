@@ -21,7 +21,6 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   LAB_ADMIN_EMAIL: z.email(),
-  LAB_ALLOWED_EMAILS: list().pipe(z.array(z.email())),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
   LAB_MODELS: list(
     'anthropic/claude-sonnet-5.5,anthropic/claude-haiku-5.5,anthropic/claude-opus-5.5'
