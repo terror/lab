@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import {
   type ClipboardEvent,
+  type Dispatch,
   type KeyboardEvent,
+  type SetStateAction,
   type SubmitEvent,
   useRef,
   useState,
@@ -120,7 +122,7 @@ export function Composer({
   draft: string;
   error?: string;
   model: ModelChoice | undefined;
-  onAttachmentsChange: (attachments: Attachment[]) => void;
+  onAttachmentsChange: Dispatch<SetStateAction<Attachment[]>>;
   onDraftChange: (draft: string) => void;
   onModelChange: (model: ModelChoice) => void;
   onSteer?: (content: string) => void;
@@ -164,7 +166,9 @@ export function Composer({
       setAttachError(`You can attach up to ${MAX_ATTACHMENTS} files`);
     }
 
-    onAttachmentsChange([...attachments, ...added]);
+    onAttachmentsChange((current) =>
+      [...current, ...added].slice(0, MAX_ATTACHMENTS)
+    );
   };
 
   const submit = (steer: boolean) => {
