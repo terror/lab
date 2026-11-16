@@ -1,5 +1,11 @@
 import { Markdown } from '@/components/markdown';
 import {
+  type ToolProgress,
+  type ToolResult,
+  ToolBody,
+  toolRenderer,
+} from '@/components/tools';
+import {
   Message,
   MessageContent,
   MessageFooter,
@@ -19,14 +25,7 @@ import {
   TraceTitle,
 } from '@/components/ui/trace';
 import { cn } from '@/lib/utils';
-import {
-  Check,
-  Copy,
-  Square,
-  TriangleAlert,
-  Volume2,
-  Wrench,
-} from 'lucide-react';
+import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 type Part =
@@ -39,16 +38,13 @@ type Part =
       arguments: Record<string, unknown>;
     };
 
-export type ToolResult = {
-  details?: unknown;
-  isError: boolean;
-  output: string;
-};
+export type { ToolProgress, ToolResult };
 
-export type ToolProgress = {
-  details?: unknown;
-  output?: string;
-  status: 'pending' | 'running' | 'done';
+const statuses: Record<string, 'error' | 'running' | undefined> = {
+  'false-false': undefined,
+  'false-true': 'running',
+  'true-false': 'error',
+  'true-true': 'error',
 };
 
 function ToolCall({
@@ -62,35 +58,40 @@ function ToolCall({
 }) {
   const active = result === undefined;
   const failed = result?.isError ?? false;
-  const output = result?.output ?? progress?.output ?? '';
 
-  const status = active ? 'running' : undefined;
+  const view = {
+    active,
+    args: call.arguments,
+    details: result?.details ?? progress?.details,
+    output: result?.output ?? progress?.output ?? '',
+  };
+
+  const renderer = toolRenderer(call.name);
+
+  const Icon = failed ? TriangleAlert : renderer.icon;
+
+  const summary = renderer.summary?.(view);
+
+  const status = statuses[`${failed}-${active}`];
 
   return (
     <Trace>
       <TraceCollapsible>
         <TraceCollapsibleTrigger>
-          <TraceLine status={failed ? 'error' : status}>
+          <TraceLine status={status}>
             <TraceIcon>
-              {failed ? (
-                <TriangleAlert aria-hidden='true' />
-              ) : (
-                <Wrench aria-hidden='true' />
-              )}
+              <Icon aria-hidden='true' />
             </TraceIcon>
-            <TraceTitle>
-              {active ? `Running ${call.name}` : `Ran ${call.name}`}
-            </TraceTitle>
+            <TraceTitle>{renderer.title(view)}</TraceTitle>
+            {summary && (
+              <span className='shrink-0 text-muted-foreground/70'>
+                · {summary}
+              </span>
+            )}
           </TraceLine>
         </TraceCollapsibleTrigger>
-        <TraceCollapsibleContent>
-          {output ? (
-            <pre className='max-h-64 overflow-auto font-mono text-xs whitespace-pre-wrap'>
-              {output}
-            </pre>
-          ) : (
-            <span className='text-xs'>No output</span>
-          )}
+        <TraceCollapsibleContent className='mt-1.5 mb-2 ml-0 flex flex-col gap-3 border-l-0 pl-6'>
+          <ToolBody {...view} name={call.name} />
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>
