@@ -21,6 +21,7 @@ import {
   textLimit,
 } from '@/lib/attachments';
 import type { LibraryItem } from '@/lib/library';
+import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -148,6 +149,7 @@ export function Composer({
   const input = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string>();
   const [picking, setPicking] = useState(false);
+  const touch = useMediaQuery('(pointer: coarse)');
   const openingPicker = useRef(false);
 
   const content = draft.trim();
@@ -210,13 +212,16 @@ export function Composer({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const command = event.metaKey || event.ctrlKey;
+
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
-      !event.nativeEvent.isComposing
+      !event.nativeEvent.isComposing &&
+      (command || !touch)
     ) {
       event.preventDefault();
-      submit(steering && (event.metaKey || event.ctrlKey));
+      submit(steering && command);
     }
   };
 
@@ -229,7 +234,11 @@ export function Composer({
     }
   };
 
-  const attached = new Set(attachments.map(({ name }) => name));
+  const attached = new Set(
+    attachments.flatMap(({ libraryId }) =>
+      libraryId === undefined ? [] : [libraryId]
+    )
+  );
 
   const openPicker = () => {
     openingPicker.current = true;
@@ -372,9 +381,9 @@ export function Composer({
           </div>
         </div>
       </div>
-      {(error ?? attachError) && (
+      {(attachError ?? error) && (
         <p role='alert' className='mt-2 px-4 text-sm text-destructive'>
-          {error ?? attachError}
+          {attachError ?? error}
         </p>
       )}
     </form>

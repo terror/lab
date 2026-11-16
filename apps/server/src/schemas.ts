@@ -31,10 +31,12 @@ export const attachmentSchema = z.discriminatedUnion('type', [
   z.object({
     data: z.base64().max(8_000_000),
     mimeType: z.enum(imageTypes),
+    libraryId: z.number().int().positive().optional(),
     name: z.string().max(200),
     type: z.literal('image'),
   }),
   z.object({
+    libraryId: z.number().int().positive().optional(),
     name: z.string().max(200),
     text: z.string().max(MAX_ATTACHMENT_TEXT),
     type: z.literal('file'),
