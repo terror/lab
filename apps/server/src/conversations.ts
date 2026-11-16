@@ -44,7 +44,7 @@ import {
   sortSchema,
   thinkingLevelSchema,
 } from './schemas';
-import { StatusReporter } from './status';
+import { subscribeStatus } from './status';
 import { validator } from './validator';
 
 const params = validator(
@@ -418,10 +418,12 @@ const conversations = new Hono()
     return streamSSE(c, async (stream) => {
       const watch = await conversation.watch(BACKGROUND_CONTEXT);
 
-      const aborted = new AbortController();
+      const status = subscribeStatus(conversation.id, (value) =>
+        stream.writeSSE({ event: 'status', data: value })
+      );
 
       stream.onAbort(() => {
-        aborted.abort();
+        status.unsubscribe();
         void watch.stop();
       });
 
@@ -429,11 +431,6 @@ const conversations = new Hono()
         event: 'value',
         data: JSON.stringify(watch.value),
       });
-
-      const reporter = new StatusReporter(
-        (status) => stream.writeSSE({ event: 'status', data: status }),
-        aborted.signal
-      );
 
       let view = watch.value;
 
@@ -446,7 +443,7 @@ const conversations = new Hono()
             data: JSON.stringify(call.ops),
           });
 
-          void reporter.report(view);
+          void status.report(view);
         }
       });
 
