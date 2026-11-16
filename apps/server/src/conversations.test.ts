@@ -19,7 +19,7 @@ test('created conversations are listed with their generated title', async () => 
   const id = await create(headers);
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, title: 'foo' }], next: null },
+    body: { conversations: [{ id, running: false, title: 'foo' }], next: null },
     status: 200,
   });
 });
@@ -117,8 +117,8 @@ test('conversations are listed by their latest message', async () => {
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
       conversations: [
-        { id: first, title: 'foo' },
-        { id: second, title: 'foo' },
+        { id: first, running: false, title: 'foo' },
+        { id: second, running: false, title: 'foo' },
       ],
       next: null,
     },
@@ -133,14 +133,20 @@ test('conversations are listed in pages', async () => {
   const second = await create(headers);
 
   expect(await call(headers, 'GET', '/conversations?limit=1')).toEqual({
-    body: { conversations: [{ id: second, title: 'foo' }], next: second },
+    body: {
+      conversations: [{ id: second, running: false, title: 'foo' }],
+      next: second,
+    },
     status: 200,
   });
 
   expect(
     await call(headers, 'GET', `/conversations?limit=1&cursor=${second}`)
   ).toEqual({
-    body: { conversations: [{ id: first, title: 'foo' }], next: null },
+    body: {
+      conversations: [{ id: first, running: false, title: 'foo' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -158,7 +164,10 @@ test('conversations can be listed by creation', async () => {
   expect(
     await call(headers, 'GET', '/conversations?sort=created&limit=1')
   ).toEqual({
-    body: { conversations: [{ id: second, title: 'foo' }], next: second },
+    body: {
+      conversations: [{ id: second, running: false, title: 'foo' }],
+      next: second,
+    },
     status: 200,
   });
 
@@ -169,7 +178,10 @@ test('conversations can be listed by creation', async () => {
       `/conversations?sort=created&limit=1&cursor=${second}`
     )
   ).toEqual({
-    body: { conversations: [{ id: first, title: 'foo' }], next: null },
+    body: {
+      conversations: [{ id: first, running: false, title: 'foo' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -209,7 +221,10 @@ test('conversations can be listed by title', async () => {
   expect(
     await call(headers, 'GET', '/conversations?sort=title&limit=1')
   ).toEqual({
-    body: { conversations: [{ id: first, title: 'bar' }], next: first },
+    body: {
+      conversations: [{ id: first, running: false, title: 'bar' }],
+      next: first,
+    },
     status: 200,
   });
 
@@ -220,7 +235,10 @@ test('conversations can be listed by title', async () => {
       `/conversations?sort=title&limit=1&cursor=${first}`
     )
   ).toEqual({
-    body: { conversations: [{ id: second, title: 'Foo' }], next: null },
+    body: {
+      conversations: [{ id: second, running: false, title: 'Foo' }],
+      next: null,
+    },
     status: 200,
   });
 });
@@ -235,7 +253,33 @@ test('conversations can be searched by title', async () => {
   await call(headers, 'PATCH', `/conversations/${second}`, { title: 'foobar' });
 
   expect(await call(headers, 'GET', '/conversations?search=foo%25')).toEqual({
-    body: { conversations: [{ id: first, title: 'Foo%' }], next: null },
+    body: {
+      conversations: [{ id: first, running: false, title: 'Foo%' }],
+      next: null,
+    },
+    status: 200,
+  });
+});
+
+test('running conversations are marked in the list', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const inspection = await harness.inspect(BACKGROUND_CONTEXT);
+
+  spyOn(harness, 'inspect').mockResolvedValueOnce({
+    ...inspection,
+    tasks: [
+      {
+        record: { background: false, conversationId: id },
+        state: { kind: 'running' },
+      } as (typeof inspection.tasks)[number],
+    ],
+  });
+
+  expect(await call(headers, 'GET', '/conversations')).toEqual({
+    body: { conversations: [{ id, running: true, title: 'foo' }], next: null },
     status: 200,
   });
 });
@@ -250,7 +294,7 @@ test('conversations can be renamed', async () => {
   ).toEqual({ body: null, status: 204 });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, title: 'bar' }], next: null },
+    body: { conversations: [{ id, running: false, title: 'bar' }], next: null },
     status: 200,
   });
 });

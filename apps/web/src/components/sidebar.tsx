@@ -303,7 +303,9 @@ function SidebarPanel({
   selected,
   user,
 }: {
-  conversations: { id: number; title: string | null }[] | undefined;
+  conversations:
+    | { id: number; running: boolean; title: string | null }[]
+    | undefined;
   error: boolean;
   onLoadMore: (() => void) | undefined;
   onNewChat: () => void;

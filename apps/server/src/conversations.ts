@@ -203,6 +203,16 @@ function after(id: number, user: User, sort: Sort) {
   return ascending ? sql`${row} > (${position})` : sql`${row} < (${position})`;
 }
 
+async function running() {
+  const { tasks } = await harness.inspect(BACKGROUND_CONTEXT);
+
+  return new Set<number>(
+    tasks
+      .filter(({ record }) => !record.background)
+      .map(({ record }) => record.conversationId)
+  );
+}
+
 async function load(id: number, user: User) {
   const [record] = await db
     .select({ id: schema.conversation.id })
@@ -260,7 +270,12 @@ const conversations = new Hono()
 
     const next = rows.length > limit ? page.at(-1)?.id : undefined;
 
-    return c.json({ conversations: page, next: next ?? null });
+    const busy = await running();
+
+    return c.json({
+      conversations: page.map((row) => ({ ...row, running: busy.has(row.id) })),
+      next: next ?? null,
+    });
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');
