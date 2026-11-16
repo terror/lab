@@ -29,7 +29,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       methods: ['api_key'],
       name: 'Groq',
-      stored: false,
     },
   });
 
@@ -47,7 +46,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       methods: ['api_key'],
       name: 'Groq',
-      stored: true,
     },
   });
 
@@ -70,7 +68,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       methods: ['api_key'],
       name: 'Groq',
-      stored: false,
     },
   });
 });
@@ -82,4 +79,33 @@ test('unknown providers are rejected', async () => {
       method: 'api_key',
     })
   ).toEqual({ body: { error: 'Provider not found' }, status: 404 });
+});
+
+test('environment variables do not configure providers', async () => {
+  const headers = await signIn();
+
+  process.env.GROQ_API_KEY = 'foo';
+
+  try {
+    const { body } = await call(headers, 'GET', '/providers');
+
+    const models = await call(headers, 'GET', '/models');
+
+    expect({
+      groq: body.providers.find(({ id }: { id: string }) => id === 'groq'),
+      models: models.body.models.some(
+        ({ provider }: { provider: string }) => provider === 'groq'
+      ),
+    }).toEqual({
+      groq: {
+        configured: false,
+        id: 'groq',
+        methods: ['api_key'],
+        name: 'Groq',
+      },
+      models: false,
+    });
+  } finally {
+    delete process.env.GROQ_API_KEY;
+  }
 });

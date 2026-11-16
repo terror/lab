@@ -228,21 +228,19 @@ function ConnectedProvider({
       <div className='flex min-w-0 flex-col'>
         <span className='truncate text-sm font-medium'>{provider.name}</span>
         <span className='truncate text-xs text-muted-foreground'>
-          {provider.stored ? methodLabels.api_key : 'Environment variable'}
+          {methodLabels.api_key}
         </span>
       </div>
       <div className='ml-auto flex shrink-0 items-center gap-1'>
-        {provider.stored && (
-          <Button
-            aria-label={`Remove ${provider.name}`}
-            disabled={remove.isPending}
-            onClick={() => remove.mutate()}
-            size='sm'
-            variant='ghost'
-          >
-            Remove
-          </Button>
-        )}
+        <Button
+          aria-label={`Remove ${provider.name}`}
+          disabled={remove.isPending}
+          onClick={() => remove.mutate()}
+          size='sm'
+          variant='ghost'
+        >
+          Remove
+        </Button>
         <Button
           aria-label={`Edit ${provider.name}`}
           onClick={onEdit}
