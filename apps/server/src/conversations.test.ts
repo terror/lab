@@ -223,6 +223,8 @@ test('conversations can be listed by title', async () => {
   await call(headers, 'PATCH', `/conversations/${first}`, { title: 'bar' });
   await call(headers, 'PATCH', `/conversations/${second}`, { title: 'Qux' });
 
+  await flushProjections();
+
   await db
     .update(schema.conversation)
     .set({ title: null })
