@@ -28,18 +28,14 @@ export type ExtensionDeps = {
   onHelperUsage: HelperUsage;
 };
 
-export function extensions({
-  history: chats,
-  library: access,
-  onHelperUsage,
-}: ExtensionDeps) {
+export function extensions(deps: ExtensionDeps) {
   return [
     assistant,
     codemode,
-    compaction(onHelperUsage),
-    history(chats),
-    library(access),
+    compaction(deps.onHelperUsage),
+    history(deps.history),
+    library(deps.library),
     memory,
-    title(onHelperUsage),
+    title(deps.onHelperUsage),
   ];
 }
