@@ -99,7 +99,7 @@ function DesktopWorkspace({
           className='overflow-hidden!'
           collapsedSize={56}
           collapsible
-          defaultSize={256}
+          defaultSize={300}
           groupResizeBehavior='preserve-pixel-size'
           id='sidebar'
           maxSize={480}
