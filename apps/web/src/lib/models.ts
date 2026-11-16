@@ -8,13 +8,8 @@ import { usePersistentState } from './storage';
 
 export const modelsQueryOptions = queryOptions({
   queryKey: ['models'],
-  queryFn: async ({ signal }) => {
-    const { models } = await call(
-      client.models.$get(undefined, { init: { signal } })
-    );
-
-    return models;
-  },
+  queryFn: ({ signal }) =>
+    call(client.models.$get(undefined, { init: { signal } })),
   staleTime: Infinity,
 });
 
