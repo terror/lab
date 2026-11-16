@@ -10,8 +10,6 @@ ENV NODE_ENV=production
 ENV LAB_HOST=0.0.0.0
 ENV LAB_STORAGE_PATH=/data/lab.sqlite
 
-VOLUME /data
-
 EXPOSE 3000
 
 CMD ["sh", "-c", "bun run db:migrate && bun run start"]
