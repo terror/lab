@@ -8,6 +8,10 @@ import {
   runEndTask,
 } from '@earendil-works/pi-durable';
 
+import { helperModel } from '../helper';
+
+const MESSAGE_LIMIT = 2_000;
+
 const PROMPT =
   'Write a title of at most six words for the conversation below. Reply with only the title, without quotes or punctuation at the end.';
 
@@ -55,14 +59,7 @@ const GenerateTitle = defineTask<
 
       const agent = await runtime.agent(context);
 
-      if (!agent.model) {
-        return finish('');
-      }
-
-      const model = runtime.models.getModel(
-        agent.model.provider,
-        agent.model.modelId
-      );
+      const model = helperModel(runtime.models, agent.model);
 
       if (!model) {
         return finish('');
@@ -78,7 +75,10 @@ const GenerateTitle = defineTask<
       const transcript = items
         .flatMap((entry) => entry.model ?? [])
         .filter(({ role }) => role === 'user' || role === 'assistant')
-        .map((message) => `${message.role}: ${text(message)}`)
+        .map(
+          (message) =>
+            `${message.role}: ${text(message).slice(0, MESSAGE_LIMIT)}`
+        )
         .join('\n\n');
 
       const answer = await runtime.models.completeSimple(
