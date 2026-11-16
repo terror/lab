@@ -46,7 +46,11 @@ export const providerCredential = pgTable('provider_credential', {
 export const usageEvent = pgTable(
   'usage_event',
   {
-    entryId: integer('entry_id').primaryKey(),
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    entryId: integer('entry_id').unique(),
+    kind: text('kind', { enum: ['response', 'status', 'title'] })
+      .default('response')
+      .notNull(),
     conversationId: integer('conversation_id').notNull(),
     ownerId: text('owner_id')
       .notNull()

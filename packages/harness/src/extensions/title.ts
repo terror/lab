@@ -8,7 +8,7 @@ import {
   runEndTask,
 } from '@earendil-works/pi-durable';
 
-import { helperModel } from '../helper';
+import { type HelperUsage, helperModel } from '../helper';
 
 const MESSAGE_LIMIT = 2_000;
 
@@ -35,90 +35,94 @@ function text(message: Message) {
     .join('');
 }
 
-const GenerateTitle = defineTask<
-  Record<string, never>,
-  { phase: 'generate' },
-  null
->({
-  name: 'lab.title.generate',
-  version: 1,
-  initial: () => ({ phase: 'generate' }),
-  phases: {
-    generate: async (_task, runtime, context) => {
-      const finish = (title: string) =>
-        runtime.commit(async (tx) => {
-          if (title) {
-            (await tx.doc(TitleDoc, runtime.conversationId)).title = title;
-          }
+function generateTitle(onHelperUsage: HelperUsage) {
+  return defineTask<Record<string, never>, { phase: 'generate' }, null>({
+    name: 'lab.title.generate',
+    version: 1,
+    initial: () => ({ phase: 'generate' }),
+    phases: {
+      generate: async (_task, runtime, context) => {
+        const finish = (title: string) =>
+          runtime.commit(async (tx) => {
+            if (title) {
+              (await tx.doc(TitleDoc, runtime.conversationId)).title = title;
+            }
 
-          return {
-            status: 'terminal',
-            outcome: { status: 'completed', result: null },
-          };
-        }, context);
+            return {
+              status: 'terminal',
+              outcome: { status: 'completed', result: null },
+            };
+          }, context);
 
-      const agent = await runtime.agent(context);
+        const agent = await runtime.agent(context);
 
-      const model = helperModel(runtime.models, agent.model);
+        const model = helperModel(runtime.models, agent.model);
 
-      if (!model) {
-        return finish('');
-      }
-
-      const { items } = await runtime.entries(
-        { order: 'ascending' },
-        8,
-        undefined,
-        context
-      );
-
-      const transcript = items
-        .flatMap((entry) => entry.model ?? [])
-        .filter(({ role }) => role === 'user' || role === 'assistant')
-        .map(
-          (message) =>
-            `${message.role}: ${text(message).slice(0, MESSAGE_LIMIT)}`
-        )
-        .join('\n\n');
-
-      const answer = await runtime.models.completeSimple(
-        model,
-        {
-          systemPrompt: PROMPT,
-          messages: [
-            { role: 'user', content: transcript, timestamp: runtime.now() },
-          ],
-        },
-        { maxTokens: 32, signal: runtime.signal }
-      );
-
-      runtime.signal.throwIfAborted();
-
-      return finish(text(answer).trim().replace(/^"|"$/g, ''));
-    },
-  },
-  abort: async (_task, runtime, context) => {
-    await runtime.commit(
-      () => ({ status: 'terminal', outcome: { status: 'aborted' } }),
-      context
-    );
-  },
-});
-
-export const title = defineExtension({
-  name: 'lab.title',
-  tasks: [GenerateTitle],
-  hooks: [
-    hook(GenerationTask, {
-      afterRun: async (_run, api, context) => {
-        const doc = await api.snapshot(TitleDoc, api.conversationId, context);
-
-        if (doc?.title) {
-          return undefined;
+        if (!model) {
+          return finish('');
         }
 
-        return { tasks: [runEndTask(GenerateTitle, {})] };
+        const { items } = await runtime.entries(
+          { order: 'ascending' },
+          8,
+          undefined,
+          context
+        );
+
+        const transcript = items
+          .flatMap((entry) => entry.model ?? [])
+          .filter(({ role }) => role === 'user' || role === 'assistant')
+          .map(
+            (message) =>
+              `${message.role}: ${text(message).slice(0, MESSAGE_LIMIT)}`
+          )
+          .join('\n\n');
+
+        const answer = await runtime.models.completeSimple(
+          model,
+          {
+            systemPrompt: PROMPT,
+            messages: [
+              { role: 'user', content: transcript, timestamp: runtime.now() },
+            ],
+          },
+          { maxTokens: 32, signal: runtime.signal }
+        );
+
+        runtime.signal.throwIfAborted();
+
+        onHelperUsage(runtime.conversationId, 'title', answer);
+
+        return finish(text(answer).trim().replace(/^"|"$/g, ''));
       },
-    }),
-  ],
-});
+    },
+    abort: async (_task, runtime, context) => {
+      await runtime.commit(
+        () => ({ status: 'terminal', outcome: { status: 'aborted' } }),
+        context
+      );
+    },
+  });
+}
+
+export function title(onHelperUsage: HelperUsage) {
+  const GenerateTitle = generateTitle(onHelperUsage);
+
+  return defineExtension({
+    name: 'lab.title',
+    tasks: [GenerateTitle],
+    hooks: [
+      hook(GenerationTask, {
+        afterRun: async (_run, api, context) => {
+          const doc = await api.snapshot(TitleDoc, api.conversationId, context);
+
+          if (doc?.title) {
+            return undefined;
+          }
+
+          return { tasks: [runEndTask(GenerateTitle, {})] };
+        },
+      }),
+    ],
+  });
+}

@@ -1,10 +1,11 @@
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create } from '../test/client';
 import { db } from './db';
+import { flushHelperUsage } from './helper-usage';
 import { backfillUsage, flushUsage } from './usage';
 
 test('usage is summarized from assistant responses', async () => {
@@ -13,10 +14,16 @@ test('usage is summarized from assistant responses', async () => {
   const id = await create(headers);
 
   await flushUsage();
+  await flushHelperUsage();
 
   await db
     .delete(schema.usageEvent)
-    .where(eq(schema.usageEvent.conversationId, id));
+    .where(
+      and(
+        eq(schema.usageEvent.conversationId, id),
+        eq(schema.usageEvent.kind, 'response')
+      )
+    );
 
   await backfillUsage();
 
@@ -40,13 +47,22 @@ test('usage is summarized from assistant responses', async () => {
         provider: 'vercel-ai-gateway',
         responses: 1,
       },
+      {
+        cost: 0,
+        input: 0,
+        model: 'anthropic/claude-haiku-5.5',
+        name: 'anthropic/claude-haiku-5.5',
+        output: 1,
+        provider: 'vercel-ai-gateway',
+        responses: 0,
+      },
     ],
     summary: {
       cacheRead: 0,
-      cacheWrite: 32,
+      cacheWrite: 64,
       cost: 0,
       input: 0,
-      output: 1,
+      output: 2,
       responses: 1,
     },
   });

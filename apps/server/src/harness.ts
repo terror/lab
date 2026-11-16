@@ -4,6 +4,7 @@ import { inArray } from 'drizzle-orm';
 
 import { db } from './db';
 import { env } from './env';
+import { recordHelperUsage } from './helper-usage';
 import { models } from './models';
 
 export async function purgeDeleted(path: string) {
@@ -29,6 +30,7 @@ await purgeDeleted(env.LAB_STORAGE_PATH);
 
 export const harness = await openHarness({
   models,
+  onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
 });
