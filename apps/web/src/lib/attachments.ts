@@ -100,20 +100,9 @@ export async function readLibraryItem(item: LibraryItem): Promise<Attachment> {
     throw new Error(`${item.name} could not be loaded`);
   }
 
-  if (item.kind === 'file') {
-    return { name: item.name, text: await response.text(), type: 'file' };
-  }
-
-  if (!isImageType(item.mimeType)) {
-    throw new Error(`${item.name} is not a supported image`);
-  }
-
-  return {
-    data: await encode(await response.blob()),
-    mimeType: item.mimeType,
-    name: item.name,
-    type: 'image',
-  };
+  return readAttachment(
+    new File([await response.blob()], item.name, { type: item.mimeType })
+  );
 }
 
 export function imageSource({

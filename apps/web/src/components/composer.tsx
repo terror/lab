@@ -25,7 +25,7 @@ import {
   ArrowUp,
   CornerDownRight,
   FileText,
-  Images,
+  LibraryBig,
   Paperclip,
   Plus,
   Square,
@@ -146,6 +146,7 @@ export function Composer({
   const input = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string>();
   const [picking, setPicking] = useState(false);
+  const openingPicker = useRef(false);
 
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
@@ -218,9 +219,16 @@ export function Composer({
     }
   };
 
-  const addFromLibrary = (items: LibraryItem[]) => {
+  const attached = new Set(attachments.map(({ name }) => name));
+
+  const openPicker = () => {
+    openingPicker.current = true;
+    setPicking(true);
+  };
+
+  const addFromLibrary = async (items: LibraryItem[]) => {
+    await attach(items, readLibraryItem);
     setPicking(false);
-    void attach(items, readLibraryItem);
   };
 
   const onFormSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -282,7 +290,17 @@ export function Composer({
                 <Plus aria-hidden='true' />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align='start' className='w-auto' side='top'>
+            <DropdownMenuContent
+              align='start'
+              className='w-auto'
+              onCloseAutoFocus={(event) => {
+                if (openingPicker.current) {
+                  openingPicker.current = false;
+                  event.preventDefault();
+                }
+              }}
+              side='top'
+            >
               <DropdownMenuItem onSelect={() => input.current?.click()}>
                 <Paperclip aria-hidden='true' />
                 Add photos & files
@@ -290,8 +308,8 @@ export function Composer({
                   Upload from computer
                 </span>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setPicking(true)}>
-                <Images aria-hidden='true' />
+              <DropdownMenuItem onSelect={openPicker}>
+                <LibraryBig aria-hidden='true' />
                 Add from library
                 <span className='text-muted-foreground'>
                   Browse and search your files
@@ -299,14 +317,13 @@ export function Composer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {picking && (
-            <LibraryPicker
-              limit={room}
-              onAdd={addFromLibrary}
-              onOpenChange={setPicking}
-              open
-            />
-          )}
+          <LibraryPicker
+            attached={attached}
+            limit={room}
+            onAdd={addFromLibrary}
+            onOpenChange={setPicking}
+            open={picking}
+          />
           <div className='ml-auto flex min-w-0 items-center gap-2'>
             <ModelPicker
               disabled={disabled}

@@ -124,10 +124,12 @@ function FileTile({ item }: { item: LibraryItem }) {
 }
 
 export function Tile({
+  disabled,
   item,
   onOpen,
   selected,
 }: {
+  disabled?: boolean;
   item: LibraryItem;
   onOpen: () => void;
   selected?: boolean;
@@ -137,9 +139,10 @@ export function Tile({
       aria-label={item.name}
       aria-pressed={selected}
       className={cn(
-        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-40',
         selected && 'ring-2 ring-foreground'
       )}
+      disabled={disabled}
       onClick={onOpen}
       type='button'
     >

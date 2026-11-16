@@ -18,19 +18,39 @@ import { type LibraryItem, useLibrary } from '@/lib/library';
 import { Search } from 'lucide-react';
 import { useDeferredValue, useState } from 'react';
 
-export function LibraryPicker({
-  limit,
-  onAdd,
-  onOpenChange,
-  open,
-}: {
+type PickerProps = {
+  attached: ReadonlySet<string>;
   limit: number;
-  onAdd: (items: LibraryItem[]) => void;
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
-}) {
+  onAdd: (items: LibraryItem[]) => Promise<void>;
+  onCancel: () => void;
+};
+
+function describe(limit: number, full: boolean) {
+  if (!full) {
+    return `Choose up to ${limit} images and files to attach.`;
+  }
+
+  return limit === 1
+    ? 'You can attach 1 more item.'
+    : `You can attach ${limit} more items.`;
+}
+
+function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<LibraryItem[]>([]);
+  const [adding, setAdding] = useState(false);
+
+  const full = selected.length >= limit;
+
+  const add = async () => {
+    setAdding(true);
+
+    try {
+      await onAdd(selected);
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const query = useDeferredValue(search.trim());
 
@@ -46,69 +66,81 @@ export function LibraryPicker({
   const toggle = (item: LibraryItem) => {
     const others = selected.filter(({ id }) => id !== item.id);
 
-    if (others.length < selected.length) {
-      setSelected(others);
-    } else if (selected.length < limit) {
-      setSelected([...selected, item]);
-    }
+    setSelected(others.length < selected.length ? others : [...selected, item]);
   };
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className='sm:max-w-2xl'>
-        <DialogHeader>
-          <DialogTitle>Add from library</DialogTitle>
-          <DialogDescription>
-            Choose up to {limit} images and files to attach.
-          </DialogDescription>
-        </DialogHeader>
-        <InputGroup>
-          <InputGroupAddon>
-            <Search aria-hidden='true' />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label='Search library'
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder='Search your files'
-            value={search}
-          />
-        </InputGroup>
-        <div className='-mx-1 max-h-112 min-h-48 overflow-y-auto p-1'>
-          {library.isError && (
-            <p role='alert' className='text-sm text-destructive'>
-              Unable to load your library.
-            </p>
-          )}
-          {library.isSuccess && items.length === 0 && (
-            <p className='py-16 text-center text-sm text-muted-foreground'>
-              {query
-                ? 'Nothing matches your search.'
-                : 'Your library is empty.'}
-            </p>
-          )}
-          <div className='grid grid-cols-3 gap-2 sm:grid-cols-4'>
-            {items.map((item) => (
+    <>
+      <DialogHeader>
+        <DialogTitle>Add from library</DialogTitle>
+        <DialogDescription>{describe(limit, full)}</DialogDescription>
+      </DialogHeader>
+      <InputGroup>
+        <InputGroupAddon>
+          <Search aria-hidden='true' />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label='Search library'
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder='Search your files'
+          value={search}
+        />
+      </InputGroup>
+      <div className='-mx-1 max-h-112 min-h-48 overflow-y-auto p-1'>
+        {library.isError && (
+          <p role='alert' className='text-sm text-destructive'>
+            Unable to load your library.
+          </p>
+        )}
+        {library.isSuccess && items.length === 0 && (
+          <p className='py-16 text-center text-sm text-muted-foreground'>
+            {query ? 'Nothing matches your search.' : 'Your library is empty.'}
+          </p>
+        )}
+        <div className='grid grid-cols-3 gap-2 sm:grid-cols-4'>
+          {items.map((item) => {
+            const chosen = selected.some(({ id }) => id === item.id);
+
+            return (
               <Tile
                 key={item.id}
+                disabled={attached.has(item.name) || (full && !chosen)}
                 item={item}
                 onOpen={() => toggle(item)}
-                selected={selected.some(({ id }) => id === item.id)}
+                selected={chosen}
               />
-            ))}
-          </div>
-          {loadMore && <LoadMore onLoadMore={loadMore} />}
+            );
+          })}
         </div>
-        <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} variant='ghost'>
-            Cancel
-          </Button>
-          <Button
-            disabled={selected.length === 0}
-            onClick={() => onAdd(selected)}
-          >
-            {selected.length > 0 ? `Add ${selected.length}` : 'Add'}
-          </Button>
-        </DialogFooter>
+        {loadMore && <LoadMore onLoadMore={loadMore} />}
+      </div>
+      <DialogFooter>
+        <Button onClick={onCancel} variant='ghost'>
+          Cancel
+        </Button>
+        <Button
+          disabled={selected.length === 0 || adding}
+          onClick={() => void add()}
+        >
+          {adding ? 'Adding…' : `Add ${selected.length || ''}`.trim()}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+export function LibraryPicker({
+  onOpenChange,
+  open,
+  ...props
+}: Omit<PickerProps, 'onCancel'> & {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className='sm:max-w-2xl'>
+        <PickerBody {...props} onCancel={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
