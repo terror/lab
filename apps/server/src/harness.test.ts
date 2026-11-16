@@ -59,6 +59,8 @@ test('deleted conversations are purged from storage', async () => {
 
   await first.close(BACKGROUND_CONTEXT);
 
+  await db.delete(schema.conversationDeletion);
+
   await db.insert(schema.conversationDeletion).values({ id: drop });
 
   expect(await purgeDeleted(path)).toEqual([drop]);
