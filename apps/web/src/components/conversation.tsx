@@ -300,6 +300,21 @@ function cachedRows(item: TranscriptItem) {
   return rows;
 }
 
+function mergeReplies(rows: readonly Row[]) {
+  return rows.reduce<Row[]>((merged, row) => {
+    const last = merged.at(-1);
+
+    if (row.kind !== 'assistant' || last?.kind !== 'assistant') {
+      return [...merged, row];
+    }
+
+    return [
+      ...merged.slice(0, -1),
+      { ...last, parts: [...last.parts, ...row.parts] },
+    ];
+  }, []);
+}
+
 function replyKeys(rows: readonly Row[]) {
   return rows.reduce<{ count: number; keys: string[]; user: string }>(
     (state, row) => {
@@ -453,7 +468,7 @@ function ConversationView({ id }: { id: number }) {
   const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
 
   const committed = useMemo(
-    () => (view?.items ?? []).flatMap(cachedRows),
+    () => mergeReplies((view?.items ?? []).flatMap(cachedRows)),
     [view?.items]
   );
 
@@ -467,6 +482,19 @@ function ConversationView({ id }: { id: number }) {
 
     if (!answering) {
       return base;
+    }
+
+    const last = base.at(-1);
+
+    if (last?.row.kind === 'assistant') {
+      const row: Row = {
+        key: last.key,
+        kind: 'assistant',
+        parts: [...last.row.parts, ...partial],
+        streaming: true,
+      };
+
+      return [...base.slice(0, -1), { key: last.key, row }];
     }
 
     const key = `reply-${keyed.user}-${keyed.count + 1}`;

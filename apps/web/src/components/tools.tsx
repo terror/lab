@@ -9,7 +9,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 export type ToolResult = {
   details?: unknown;
@@ -31,7 +31,7 @@ export type ToolView = {
 };
 
 type ToolRenderer = {
-  Body?: (view: ToolView) => ReactNode;
+  preview?: (view: ToolView) => ReactNode;
   icon: LucideIcon;
   summary?: (view: ToolView) => string | undefined;
   title: (view: ToolView) => string;
@@ -44,6 +44,29 @@ type NestedCall = {
   status: 'cancelled' | 'error' | 'ok' | 'running';
 };
 
+type LibraryEntry = {
+  chat: string | null;
+  createdAt: string;
+  id: number;
+  name: string;
+  size: number;
+};
+
+const PREVIEW_ITEMS = 5;
+
+const day = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+});
+
+const bytes = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 0,
+  notation: 'compact',
+  style: 'unit',
+  unit: 'byte',
+  unitDisplay: 'narrow',
+});
+
 function text(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
@@ -54,8 +77,12 @@ function field(value: unknown, key: string) {
     : undefined;
 }
 
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+function count(value: unknown) {
+  return typeof value === 'number' ? value : undefined;
+}
+
+function plural(amount: number, noun: string) {
+  return `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 }
 
 function quoted(value: unknown) {
@@ -76,10 +103,55 @@ function parse(args: string) {
   }
 }
 
+function Label({ children }: { children: string }) {
+  return <span className='text-xs text-muted-foreground'>{children}</span>;
+}
+
+function PreviewList({
+  items,
+}: {
+  items: readonly { key: string; label: string; meta?: string }[];
+}) {
+  const shown = items.slice(0, PREVIEW_ITEMS);
+
+  const rest = items.length - shown.length;
+
+  return (
+    <ul className='-mx-2.5 flex flex-col'>
+      {shown.map(({ key, label, meta }) => (
+        <li
+          key={key}
+          className='flex items-baseline justify-between gap-4 rounded-lg px-2.5 py-1 text-sm hover:bg-muted/40'
+        >
+          <span className='min-w-0 truncate text-foreground/90'>{label}</span>
+          {meta && (
+            <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
+              {meta}
+            </span>
+          )}
+        </li>
+      ))}
+      {rest > 0 && (
+        <li className='px-2.5 py-1 text-xs text-muted-foreground'>
+          {rest} more
+        </li>
+      )}
+    </ul>
+  );
+}
+
+function PreviewPassage({ children }: { children: string }) {
+  return (
+    <p className='line-clamp-6 text-sm/relaxed whitespace-pre-wrap text-foreground/80'>
+      {children}
+    </p>
+  );
+}
+
 function Block({ children, label }: { children: string; label: string }) {
   return (
     <div className='flex flex-col gap-1.5'>
-      <span className='text-xs text-muted-foreground'>{label}</span>
+      <Label>{label}</Label>
       <pre className='max-h-64 overflow-auto rounded-xl bg-muted/40 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
         {children}
       </pre>
@@ -87,7 +159,7 @@ function Block({ children, label }: { children: string; label: string }) {
   );
 }
 
-function DefaultBody({ args, output }: ToolView) {
+function Raw({ args, output }: ToolView) {
   const shown = Object.keys(args).length > 0;
 
   return (
@@ -95,7 +167,7 @@ function DefaultBody({ args, output }: ToolView) {
       {shown && (
         <Block label='Arguments'>{JSON.stringify(args, null, 2)}</Block>
       )}
-      <Block label='Result'>{output || 'No output'}</Block>
+      <Block label='Output'>{output || 'No output'}</Block>
     </>
   );
 }
@@ -107,38 +179,35 @@ const statusIcons = {
   running: LoaderCircle,
 };
 
-function ScriptBody({ args, details, output }: ToolView) {
+function Script({ args, details, output }: ToolView) {
   const calls = (field(details, 'calls') as NestedCall[] | undefined) ?? [];
 
   return (
     <>
       {calls.length > 0 && (
-        <div className='flex flex-col gap-1.5'>
-          <span className='text-xs text-muted-foreground'>Calls</span>
-          <ul className='flex flex-col gap-1 text-sm text-muted-foreground'>
-            {calls.map((call) => {
-              const Icon = statusIcons[call.status];
+        <ul className='flex flex-col gap-1 text-sm text-muted-foreground'>
+          {calls.map((call) => {
+            const Icon = statusIcons[call.status];
 
-              const view = {
-                active: call.status === 'running',
-                args: parse(call.args),
-                details: undefined,
-                output: '',
-              };
+            const view = {
+              active: call.status === 'running',
+              args: parse(call.args),
+              details: undefined,
+              output: '',
+            };
 
-              return (
-                <li key={call.id} className='flex items-center gap-2'>
-                  <Icon
-                    aria-hidden='true'
-                    className='size-3.5 shrink-0 motion-safe:data-[running=true]:animate-spin'
-                    data-running={call.status === 'running'}
-                  />
-                  {toolRenderer(call.name).title(view)}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+            return (
+              <li key={call.id} className='flex items-center gap-2'>
+                <Icon
+                  aria-hidden='true'
+                  className='size-3.5 shrink-0 motion-safe:data-[running=true]:animate-spin'
+                  data-running={call.status === 'running'}
+                />
+                {toolRenderer(call.name).title(view)}
+              </li>
+            );
+          })}
+        </ul>
       )}
       {text(args.code) && <Block label='Script'>{String(args.code)}</Block>}
       <Block label='Result'>{output || 'No output'}</Block>
@@ -146,9 +215,25 @@ function ScriptBody({ args, details, output }: ToolView) {
   );
 }
 
+function readRange(details: unknown) {
+  const start = count(field(details, 'start'));
+  const end = count(field(details, 'end'));
+  const total = count(field(details, 'total'));
+
+  if (start === undefined || end === undefined || total === undefined) {
+    return undefined;
+  }
+
+  if (start === 0 && end === total) {
+    return plural(total, 'character');
+  }
+
+  return `characters ${start}–${end} of ${total}`;
+}
+
 const renderers: Partial<Record<string, ToolRenderer>> = {
   codemode: {
-    Body: ScriptBody,
+    preview: Script,
     icon: Code,
     summary: ({ details }) => {
       const calls = field(details, 'calls');
@@ -166,34 +251,46 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
     title: ({ active }) => (active ? 'Forgetting a memory' : 'Forgot a memory'),
   },
   library_read: {
-    icon: FileText,
-    summary: ({ output }) => {
-      const range = /\[Showing characters (\d+)–(\d+) of (\d+)\./.exec(output);
+    preview: ({ details }) => {
+      const passage = text(field(details, 'passage'));
 
-      if (range) {
-        return `characters ${range[1]}–${range[2]} of ${range[3]}`;
-      }
-
-      const end = /\[End of file at character (\d+)\.\]$/.exec(output);
-
-      return end ? plural(Number(end[1]), 'character') : undefined;
+      return passage ? <PreviewPassage>{passage}</PreviewPassage> : undefined;
     },
-    title: ({ active, output }) => {
-      const name = text(output.split('\n')[0]);
+    icon: FileText,
+    summary: ({ details }) => readRange(details),
+    title: ({ active, details }) => {
+      const name = text(field(details, 'name'));
 
-      if (active || !name) {
-        return active ? 'Reading a file' : 'Read a file';
+      if (active) {
+        return 'Reading a file';
       }
 
-      return `Read ${name}`;
+      return name ? `Read ${name}` : 'Read a file';
     },
   },
   library_search: {
+    preview: ({ details }) => {
+      const entries = field(details, 'entries') as LibraryEntry[] | undefined;
+
+      if (!entries?.length) {
+        return undefined;
+      }
+
+      return (
+        <PreviewList
+          items={entries.map(({ createdAt, id, name, size }) => ({
+            key: String(id),
+            label: name,
+            meta: `${bytes.format(size)} · ${day.format(new Date(createdAt))}`,
+          }))}
+        />
+      );
+    },
     icon: Search,
     summary: ({ details }) => {
-      const count = field(details, 'count');
+      const found = count(field(details, 'count'));
 
-      return typeof count === 'number' ? plural(count, 'file') : undefined;
+      return found === undefined ? undefined : plural(found, 'file');
     },
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} your library${quoted(args.query)}`,
@@ -220,7 +317,25 @@ export function toolRenderer(name: string): ToolRenderer {
 }
 
 export function ToolBody(props: ToolView & { name: string }) {
-  const { Body = DefaultBody } = toolRenderer(props.name);
+  const [raw, setRaw] = useState(false);
 
-  return <Body {...props} />;
+  const preview = toolRenderer(props.name).preview?.(props);
+
+  if (preview === undefined || preview === null) {
+    return <Raw {...props} />;
+  }
+
+  return (
+    <>
+      {preview}
+      <button
+        className='self-start text-xs text-muted-foreground transition-colors hover:text-foreground'
+        onClick={() => setRaw(!raw)}
+        type='button'
+      >
+        {raw ? 'Hide raw output' : 'Show raw output'}
+      </button>
+      {raw && <Raw {...props} />}
+    </>
+  );
 }

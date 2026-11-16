@@ -40,6 +40,36 @@ type Part =
 
 export type { ToolProgress, ToolResult };
 
+type Segment =
+  | { calls: Extract<Part, { type: 'toolCall' }>[]; key: string; kind: 'tools' }
+  | { index: number; key: string; kind: 'text'; text: string };
+
+function segments(parts: readonly Part[]) {
+  return parts.reduce<Segment[]>((grouped, part, index) => {
+    const last = grouped.at(-1);
+
+    if (part.type === 'toolCall') {
+      if (last?.kind === 'tools') {
+        return [
+          ...grouped.slice(0, -1),
+          { ...last, calls: [...last.calls, part] },
+        ];
+      }
+
+      return [...grouped, { calls: [part], key: part.id, kind: 'tools' }];
+    }
+
+    if (part.type !== 'text' || !part.text) {
+      return grouped;
+    }
+
+    return [
+      ...grouped,
+      { index, key: `text-${index}`, kind: 'text', text: part.text },
+    ];
+  }, []);
+}
+
 const statuses: Record<string, 'error' | 'running' | undefined> = {
   'false-false': undefined,
   'false-true': 'running',
@@ -75,10 +105,10 @@ function ToolCall({
   const status = statuses[`${failed}-${active}`];
 
   return (
-    <Trace>
+    <Trace className='gap-0'>
       <TraceCollapsible>
         <TraceCollapsibleTrigger>
-          <TraceLine status={status}>
+          <TraceLine className='h-6.5' status={status}>
             <TraceIcon>
               <Icon aria-hidden='true' />
             </TraceIcon>
@@ -236,44 +266,41 @@ export function AssistantMessage({
   results: ReadonlyMap<string, ToolResult>;
   streaming: boolean;
 }) {
-  const text = parts
+  const final = parts.slice(
+    parts.findLastIndex(({ type }) => type === 'toolCall') + 1
+  );
+
+  const text = final
     .flatMap((part) => (part.type === 'text' && part.text ? [part.text] : []))
     .join('\n\n');
 
-  const answer =
-    !streaming &&
-    text.length > 0 &&
-    !parts.some(({ type }) => type === 'toolCall');
+  const answer = !streaming && text.length > 0;
 
   return (
     <Message>
       <MessageContent className='gap-3 text-base'>
-        {parts.map((part, index) => {
-          if (part.type === 'thinking') {
-            return null;
-          }
-
-          if (part.type === 'toolCall') {
+        {segments(parts).map((segment) => {
+          if (segment.kind === 'tools') {
             return (
-              <ToolCall
-                key={part.id}
-                call={part}
-                progress={progress.get(part.id)}
-                result={results.get(part.id)}
-              />
+              <div key={segment.key} className='flex flex-col'>
+                {segment.calls.map((call) => (
+                  <ToolCall
+                    key={call.id}
+                    call={call}
+                    progress={progress.get(call.id)}
+                    result={results.get(call.id)}
+                  />
+                ))}
+              </div>
             );
-          }
-
-          if (!part.text) {
-            return null;
           }
 
           return (
             <Markdown
-              key={index}
-              streaming={streaming && index === parts.length - 1}
+              key={segment.key}
+              streaming={streaming && segment.index === parts.length - 1}
             >
-              {part.text}
+              {segment.text}
             </Markdown>
           );
         })}
