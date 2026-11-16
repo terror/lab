@@ -15,7 +15,7 @@ export function Sidebar({
   selected: number | undefined;
   onNewChat: () => void;
   onSelect: (id: number) => void;
-  user: { email: string; image?: string | null; name: string };
+  user: { email: string; id: string; image?: string | null; name: string };
 }) {
   const conversations = useQuery(conversationsQueryOptions);
 
@@ -52,6 +52,7 @@ export function Sidebar({
             conversation={conversation}
             onSelect={onSelect}
             selected={conversation.id === selected}
+            userId={user.id}
           />
         ))}
       </nav>
