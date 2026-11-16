@@ -17,7 +17,7 @@ check:
   bun run check
 
 [group: 'dev']
-dev: services
+dev: services migrate
   bun run dev
 
 [group: 'format']
@@ -38,7 +38,7 @@ migrate:
 
 [group: 'setup']
 services:
-  docker compose up --no-recreate -d postgres
+  docker compose up --no-recreate --wait -d postgres
 
 [group: 'dev']
 start:
