@@ -90,6 +90,8 @@ export async function projectAll() {
     .from(schema.conversation);
 
   for (const { id } of rows) {
-    await project(id as ConversationId);
+    enqueue(id as ConversationId);
   }
+
+  await pending;
 }
