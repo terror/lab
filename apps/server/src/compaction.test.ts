@@ -5,10 +5,9 @@ import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
-import { call, create, idle } from '../test/client';
+import { call, create, idle, settle } from '../test/client';
 import { db } from './db';
 import { harness } from './harness';
-import { flushHelperUsage } from './helper-usage';
 
 test('a chat can be compacted with the helper model', async () => {
   const headers = await signIn();
@@ -33,8 +32,7 @@ test('a chat can be compacted with the helper model', async () => {
 
   const compacted = await call(headers, 'POST', `/conversations/${id}/compact`);
 
-  await idle(id);
-  await flushHelperUsage();
+  await settle(id);
 
   const { body } = await call(
     headers,

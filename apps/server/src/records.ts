@@ -7,8 +7,18 @@ import { db } from './db';
 export function serial() {
   let pending = Promise.resolve();
 
+  const flush = async (): Promise<void> => {
+    const current = pending;
+
+    await current;
+
+    if (current !== pending) {
+      await flush();
+    }
+  };
+
   return {
-    flush: () => pending,
+    flush,
     run: (task: () => Promise<void>) => {
       pending = pending.then(() => task().catch(console.error));
     },

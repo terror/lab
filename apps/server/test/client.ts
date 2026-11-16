@@ -3,6 +3,11 @@ import type { ConversationId } from '@earendil-works/pi-durable';
 
 import app from '../src/app';
 import { harness } from '../src/harness';
+import { flushHelperUsage } from '../src/helper-usage';
+import { flushHistory } from '../src/history';
+import { flushLibrary } from '../src/library';
+import { flushProjections } from '../src/projections';
+import { flushUsage } from '../src/usage';
 
 export async function call(
   headers: Headers,
@@ -41,4 +46,48 @@ export async function create(headers: Headers) {
   await idle(body.id);
 
   return body.id as number;
+}
+
+export async function settle(id?: number) {
+  if (id !== undefined) {
+    await idle(id);
+  }
+
+  await Promise.all([
+    flushProjections(),
+    flushUsage(),
+    flushLibrary(),
+    flushHelperUsage(),
+    flushHistory(),
+  ]);
+}
+
+export async function chat(headers: Headers, body: object) {
+  const { body: created } = await call(headers, 'POST', '/conversations', body);
+
+  await settle(created.id);
+
+  return created.id as number;
+}
+
+export function raw(headers: Headers, path: string) {
+  return app.request(`/api${path}`, { headers }, { timeout: () => undefined });
+}
+
+type ToolResultEntry = {
+  model?: { content: { text?: string }[]; role: string }[];
+};
+
+export async function toolOutputs(headers: Headers, id: number) {
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  return body.items.flatMap(({ model }: ToolResultEntry) =>
+    model?.[0]?.role === 'toolResult'
+      ? [model[0].content.map(({ text }) => text).join('')]
+      : []
+  );
 }

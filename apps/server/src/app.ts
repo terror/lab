@@ -27,7 +27,9 @@ const shell = await readFile(`${web}/index.html`, 'utf8').catch(() => '');
 
 const app = new Hono();
 
-app.use(logger());
+if (process.env.NODE_ENV !== 'test') {
+  app.use(logger());
+}
 app.use('/api/*', compress());
 app.use(
   secureHeaders({

@@ -1,11 +1,11 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { memory } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import { call, idle } from '../test/client';
-import { script } from '../test/models';
+import { script, toolCall } from '../test/models';
 
 test('memories and instructions can be managed', async () => {
   const headers = await signIn();
@@ -35,12 +35,7 @@ test('memories and instructions can be managed', async () => {
 test('the agent remembers facts', async () => {
   const headers = await signIn();
 
-  script(
-    fauxAssistantMessage(fauxToolCall('remember', { text: 'baz' }), {
-      stopReason: 'toolUse',
-    }),
-    fauxAssistantMessage('foo')
-  );
+  script(toolCall('remember', { text: 'baz' }), fauxAssistantMessage('foo'));
 
   const { body } = await call(headers, 'POST', '/conversations', {
     content: 'foo',

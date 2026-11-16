@@ -1,24 +1,14 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { expect, test, vi } from 'vitest';
-import { renderHook } from 'vitest-browser-react';
+import { renderHookWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { expect, test } from 'vitest';
 
 import { useLibrarySearch } from './library';
 
 test('library search waits for typing to settle', async () => {
-  const fetch = vi
-    .spyOn(window, 'fetch')
-    .mockImplementation(async () => Response.json({ items: [], next: null }));
+  const fetch = stubFetch(() => Response.json({ items: [], next: null }));
 
-  const client = new QueryClient();
-
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  const { act, result } = await renderHookWithQuery(() =>
+    useLibrarySearch('file')
   );
-
-  const { act, result } = await renderHook(() => useLibrarySearch('file'), {
-    wrapper,
-  });
 
   await act(() => result.current.setSearch('f'));
   await act(() => result.current.setSearch('fo'));
@@ -31,12 +21,8 @@ test('library search waits for typing to settle', async () => {
   await expect.poll(() => result.current.empty).toBe(true);
 
   const searches = fetch.mock.calls.map(([input]) =>
-    new URL(input instanceof Request ? input.url : input).searchParams.get(
-      'search'
-    )
+    requestUrl(input).searchParams.get('search')
   );
-
-  fetch.mockRestore();
 
   expect({ empty: result.current.empty, searches }).toEqual({
     empty: true,

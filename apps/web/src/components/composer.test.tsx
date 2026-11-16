@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, expect, test, vi } from 'vitest';
-import { render } from 'vitest-browser-react';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 import { Composer } from './composer';
 
 const matchMedia = window.matchMedia.bind(window);
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 async function enter(pointer: 'coarse' | 'fine') {
-  vi.spyOn(window, 'fetch').mockImplementation(async () =>
-    Response.json({ default: null, models: [] })
-  );
+  stubFetch(() => Response.json({ default: null, models: [] }));
 
   vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
     query === '(pointer: coarse)'
@@ -24,18 +17,16 @@ async function enter(pointer: 'coarse' | 'fine') {
 
   const onSubmit = vi.fn();
 
-  const screen = await render(
-    <QueryClientProvider client={new QueryClient()}>
-      <Composer
-        attachments={[]}
-        draft='foo'
-        model={undefined}
-        onAttachmentsChange={() => undefined}
-        onDraftChange={() => undefined}
-        onModelChange={() => undefined}
-        onSubmit={onSubmit}
-      />
-    </QueryClientProvider>
+  const { screen } = await renderWithQuery(
+    <Composer
+      attachments={[]}
+      draft='foo'
+      model={undefined}
+      onAttachmentsChange={() => undefined}
+      onDraftChange={() => undefined}
+      onModelChange={() => undefined}
+      onSubmit={onSubmit}
+    />
   );
 
   await screen.getByLabelText('Message').click();
@@ -55,25 +46,21 @@ test('enter sends on desktop and adds a line on touch screens', async () => {
 });
 
 test('slash commands run from the composer', async () => {
-  const fetch = vi
-    .spyOn(window, 'fetch')
-    .mockImplementation(async () => new Response(null, { status: 202 }));
+  const fetch = stubFetch(() => new Response(null, { status: 202 }));
 
   const onDraftChange = vi.fn();
 
-  const screen = await render(
-    <QueryClientProvider client={new QueryClient()}>
-      <Composer
-        attachments={[]}
-        commandContext={{ conversationId: 7 }}
-        draft='/'
-        model={undefined}
-        onAttachmentsChange={() => undefined}
-        onDraftChange={onDraftChange}
-        onModelChange={() => undefined}
-        onSubmit={() => undefined}
-      />
-    </QueryClientProvider>
+  const { screen } = await renderWithQuery(
+    <Composer
+      attachments={[]}
+      commandContext={{ conversationId: 7 }}
+      draft='/'
+      model={undefined}
+      onAttachmentsChange={() => undefined}
+      onDraftChange={onDraftChange}
+      onModelChange={() => undefined}
+      onSubmit={() => undefined}
+    />
   );
 
   const options = screen
@@ -86,7 +73,7 @@ test('slash commands run from the composer', async () => {
   await expect
     .poll(() =>
       fetch.mock.calls.map(([input, init]) => [
-        new URL(input instanceof Request ? input.url : input).pathname,
+        requestUrl(input).pathname,
         init?.method ?? (input instanceof Request ? input.method : 'GET'),
       ])
     )

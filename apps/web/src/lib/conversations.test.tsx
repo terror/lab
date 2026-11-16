@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 
 import { useConversation } from './conversations';
@@ -31,10 +31,6 @@ class FakeEventSource {
     });
   }
 }
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 test('the conversation follows its event stream', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);

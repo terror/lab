@@ -2,6 +2,7 @@ import {
   type AssistantMessage,
   type FauxResponseStep,
   fauxAssistantMessage,
+  fauxToolCall,
 } from '@earendil-works/pi-ai';
 
 const scripted: AssistantMessage[] = [];
@@ -17,3 +18,12 @@ export const respond: FauxResponseStep = (_context, options) => {
 
   return scripted.shift() ?? fauxAssistantMessage('foo');
 };
+
+export function toolCall(
+  name: string,
+  args: Parameters<typeof fauxToolCall>[1]
+) {
+  return fauxAssistantMessage(fauxToolCall(name, args), {
+    stopReason: 'toolUse',
+  });
+}

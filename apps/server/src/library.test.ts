@@ -3,11 +3,9 @@ import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
-import app from './app';
+import { call, idle, raw, settle } from '../test/client';
 import { db } from './db';
-import { backfillLibrary, flushLibrary } from './library';
-import { flushProjections } from './projections';
+import { backfillLibrary } from './library';
 
 type Item = Record<string, unknown> & { id: number; name: string };
 
@@ -36,8 +34,7 @@ test('attachments are collected into the library', async () => {
   });
 
   await idle(body.id);
-  await flushLibrary();
-  await flushProjections();
+  await settle();
 
   const recorded = await call(headers, 'GET', '/library');
 
@@ -103,9 +100,7 @@ test('attachments are collected into the library', async () => {
 
   const [image] = library.body.items;
 
-  const response = await app.request(`/api/library/${image.id}?download=1`, {
-    headers,
-  });
+  const response = await raw(headers, `/library/${image.id}?download=1`);
 
   expect({
     body: await response.text(),
@@ -127,15 +122,13 @@ test('text extracted from a PDF downloads as a text file', async () => {
   });
 
   await idle(body.id);
-  await flushLibrary();
+  await settle();
 
   const library = await call(headers, 'GET', '/library?search=foo.pdf');
 
   const [item] = library.body.items;
 
-  const response = await app.request(`/api/library/${item.id}?download=1`, {
-    headers,
-  });
+  const response = await raw(headers, `/library/${item.id}?download=1`);
 
   expect({
     body: await response.text(),
@@ -155,7 +148,7 @@ test('the library backfill resumes from its checkpoint', async () => {
   });
 
   await idle(body.id);
-  await flushLibrary();
+  await settle();
 
   const remove = () =>
     db

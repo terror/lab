@@ -3,8 +3,7 @@ import type { ConversationId } from '@earendil-works/pi-durable';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { create } from '../test/client';
-import app from './app';
+import { create, raw } from '../test/client';
 import { harness } from './harness';
 
 test('closing the event stream right away stops the watch', async () => {
@@ -38,11 +37,7 @@ test('closing the event stream right away stops the watch', async () => {
       target === conversation.id ? conversation : original(target, context)
   );
 
-  const response = await app.request(
-    `/api/conversations/${id}/events`,
-    { headers },
-    { timeout: () => undefined }
-  );
+  const response = await raw(headers, `/conversations/${id}/events`);
 
   await response.body?.cancel();
 

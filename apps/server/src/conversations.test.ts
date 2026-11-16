@@ -5,11 +5,9 @@ import { expect, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
-import { call, create, idle } from '../test/client';
-import app from './app';
+import { call, create, idle, raw, settle } from '../test/client';
 import { db } from './db';
 import { harness } from './harness';
-import { flushProjections } from './projections';
 
 test('conversations require a session', async () => {
   expect(await call(new Headers(), 'GET', '/conversations')).toEqual({
@@ -330,7 +328,7 @@ test('conversations can be listed by title', async () => {
   await call(headers, 'PATCH', `/conversations/${first}`, { title: 'bar' });
   await call(headers, 'PATCH', `/conversations/${second}`, { title: 'Qux' });
 
-  await flushProjections();
+  await settle();
 
   await db
     .update(schema.conversation)
@@ -429,7 +427,7 @@ test('messages can steer the running answer', async () => {
 
   const submit = spyOn(conversation, 'submit');
 
-  await flushProjections();
+  await settle();
 
   spyOn(harness, 'conversation').mockResolvedValueOnce(conversation);
 
@@ -651,14 +649,14 @@ test('images are served by url instead of inline', async () => {
     ({ kind }: { kind: string }) => kind === 'lab.message'
   );
 
-  const image = await app.request(
-    `/api/conversations/${body.id}/entries/${message.id}/images/0`,
-    { headers }
+  const image = await raw(
+    headers,
+    `/conversations/${body.id}/entries/${message.id}/images/0`
   );
 
-  const missing = await app.request(
-    `/api/conversations/${body.id}/entries/${message.id}/images/1`,
-    { headers }
+  const missing = await raw(
+    headers,
+    `/conversations/${body.id}/entries/${message.id}/images/1`
   );
 
   expect({
