@@ -13,6 +13,7 @@ import {
 import { queryOptions } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
 
@@ -29,11 +30,13 @@ export const conversationsQueryOptions = queryOptions({
 
 export async function createConversation(
   content: string,
+  attachments: Attachment[],
   model: ModelChoice | undefined
 ) {
   const { id } = await call(
     client.conversations.$post({
       json: {
+        attachments,
         content,
         model: model?.id,
         thinkingLevel: model?.thinkingLevel,
@@ -59,11 +62,15 @@ export async function deleteConversation(id: number) {
   );
 }
 
-export async function sendMessage(id: number, content: string) {
+export async function sendMessage(
+  id: number,
+  content: string,
+  attachments: Attachment[]
+) {
   await call(
     client.conversations[':id'].messages.$post({
       param: { id: String(id) },
-      json: { content },
+      json: { attachments, content },
     })
   );
 }

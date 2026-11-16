@@ -1,5 +1,6 @@
 import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
+import type { Attachment } from '@/lib/attachments';
 import {
   conversationsQueryOptions,
   createConversation,
@@ -34,6 +35,7 @@ export function NewChat({ user }: { user: { name: string } }) {
 
   const [draft, setDraft] = useState('');
   const [model, setModel] = useState<ModelChoice>();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const fallback = models.data?.[0];
 
@@ -41,7 +43,8 @@ export function NewChat({ user }: { user: { name: string } }) {
     model ?? (fallback === undefined ? undefined : { id: fallback.id });
 
   const create = useMutation({
-    mutationFn: (content: string) => createConversation(content, selectedModel),
+    mutationFn: (content: string) =>
+      createConversation(content, attachments, selectedModel),
     onSuccess: async (id) => {
       selectConversation(id);
       await queryClient.invalidateQueries(conversationsQueryOptions);
@@ -58,9 +61,11 @@ export function NewChat({ user }: { user: { name: string } }) {
           </h1>
         </div>
         <Composer
+          attachments={attachments}
           draft={draft}
           error={create.error?.message}
           model={selectedModel}
+          onAttachmentsChange={setAttachments}
           onDraftChange={setDraft}
           onModelChange={setModel}
           onSubmit={(content) => create.mutate(content)}

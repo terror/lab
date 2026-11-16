@@ -24,17 +24,43 @@ const params = validator(
   z.object({ id: z.coerce.number().int().positive() })
 );
 
-const content = z.string().trim().min(1);
+const attachmentSchema = z.discriminatedUnion('type', [
+  z.object({
+    data: z.base64().max(8_000_000),
+    mimeType: z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp']),
+    name: z.string().max(200),
+    type: z.literal('image'),
+  }),
+  z.object({
+    name: z.string().max(200),
+    text: z.string().max(200_000),
+    type: z.literal('file'),
+  }),
+]);
 
-const message = validator('json', z.object({ content }));
+type Attachment = z.infer<typeof attachmentSchema>;
+
+const draftSchema = z.object({
+  attachments: z.array(attachmentSchema).max(8).default([]),
+  content: z.string().trim(),
+});
+
+function nonEmpty(draft: { attachments: Attachment[]; content: string }) {
+  return draft.content.length > 0 || draft.attachments.length > 0;
+}
+
+const emptyMessage = { message: 'A message needs text or an attachment' };
+
+const message = validator('json', draftSchema.refine(nonEmpty, emptyMessage));
 
 const creation = validator(
   'json',
-  z.object({
-    content,
-    model: z.string().min(1).optional(),
-    thinkingLevel: thinkingLevelSchema.optional(),
-  })
+  draftSchema
+    .extend({
+      model: z.string().min(1).optional(),
+      thinkingLevel: thinkingLevelSchema.optional(),
+    })
+    .refine(nonEmpty, emptyMessage)
 );
 
 const entriesQuery = validator(
@@ -68,19 +94,47 @@ const sharing = validator(
   })
 );
 
+function prompt(
+  user: User,
+  { attachments, content }: { attachments: Attachment[]; content: string },
+  shared: boolean
+) {
+  const files = attachments
+    .filter((attachment) => attachment.type === 'file')
+    .map(({ name, text }) => `<file name="${name}">\n${text}\n</file>`);
+
+  const images = attachments
+    .filter((attachment) => attachment.type === 'image')
+    .map(({ data, mimeType }) => ({ data, mimeType, type: 'image' as const }));
+
+  const intro = content && shared ? `${user.name}: ${content}` : content;
+
+  const text = [intro, ...files].filter(Boolean).join('\n\n');
+
+  if (images.length === 0) {
+    return text;
+  }
+
+  return text ? [{ text, type: 'text' as const }, ...images] : images;
+}
+
 function submitMessage(
   conversation: Conversation,
   user: User,
-  text: string,
+  draft: { attachments: Attachment[]; content: string },
   shared: boolean
 ) {
   return conversation.submit(
     {
       type: 'input',
-      content: shared ? `${user.name}: ${text}` : text,
+      content: prompt(user, draft, shared),
       entry: {
         kind: 'lab.message',
-        data: { author: { id: user.id, name: user.name }, text },
+        data: {
+          author: { id: user.id, name: user.name },
+          files: draft.attachments.map(({ name, type }) => ({ name, type })),
+          text: draft.content,
+        },
       },
     },
     BACKGROUND_CONTEXT
@@ -184,7 +238,12 @@ const conversations = new Hono()
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');
-    const { content: text, model, thinkingLevel } = c.req.valid('json');
+    const {
+      attachments,
+      content: text,
+      model,
+      thinkingLevel,
+    } = c.req.valid('json');
 
     const change =
       model === undefined ? undefined : modelChange(model, thinkingLevel);
@@ -202,7 +261,12 @@ const conversations = new Hono()
       await conversation.configure(change, BACKGROUND_CONTEXT);
     }
 
-    await submitMessage(conversation, user, text, false);
+    await submitMessage(
+      conversation,
+      user,
+      { attachments, content: text },
+      false
+    );
 
     return c.json({ id: conversation.id }, 201);
   })
@@ -265,7 +329,7 @@ const conversations = new Hono()
     const submission = await submitMessage(
       conversation,
       user,
-      c.req.valid('json').content,
+      c.req.valid('json'),
       record.visibility !== 'private'
     );
 
