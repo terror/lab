@@ -14,6 +14,7 @@ import { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
   keepPreviousData,
+  skipToken,
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
@@ -75,6 +76,24 @@ export function useConversationSearch(search: string) {
 
       return conversations;
     },
+  });
+}
+
+function loadSummary(id: number, signal: AbortSignal) {
+  return call(
+    client.conversations[':id'].$get(
+      { param: { id: String(id) } },
+      { init: { signal } }
+    )
+  );
+}
+
+export function useConversationSummary(id: number | undefined) {
+  return useQuery({
+    queryKey: [...conversationsQueryKey, 'summary', id],
+    queryFn:
+      id === undefined ? skipToken : ({ signal }) => loadSummary(id, signal),
+    refetchInterval: ({ state }) => (state.data?.running ? 2_000 : false),
   });
 }
 
