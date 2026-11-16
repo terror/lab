@@ -97,7 +97,7 @@ function InviteForm({ onInvited }: { onInvited: () => Promise<void> }) {
   );
 }
 
-export function Members({ userId }: { userId: string }) {
+export function WorkspaceSettings({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const members = useQuery(membersQueryOptions);
 
@@ -112,7 +112,7 @@ export function Members({ userId }: { userId: string }) {
   return (
     <section className='space-y-8'>
       <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Members</h1>
+        <h1 className='text-2xl font-semibold tracking-tight'>Workspace</h1>
         <p className='text-sm text-muted-foreground'>
           Invite family members to Lab by the email they sign in with.
         </p>
