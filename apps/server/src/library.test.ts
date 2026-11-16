@@ -7,6 +7,7 @@ import { call, idle } from '../test/client';
 import app from './app';
 import { db } from './db';
 import { backfillLibrary, flushLibrary } from './library';
+import { flushProjections } from './projections';
 
 type Item = Record<string, unknown> & { id: number; name: string };
 
@@ -36,6 +37,7 @@ test('attachments are collected into the library', async () => {
 
   await idle(body.id);
   await flushLibrary();
+  await flushProjections();
 
   const recorded = await call(headers, 'GET', '/library');
 
