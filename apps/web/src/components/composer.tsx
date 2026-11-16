@@ -65,7 +65,7 @@ export function Composer({
           minRows={1}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
-          placeholder='Ask Lab anything'
+          placeholder='Ask anything...'
           value={draft}
         />
         <div className='flex items-center justify-end gap-2 px-3 pb-3'>
