@@ -14,9 +14,9 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
-import { type LibraryItem, useLibrary } from '@/lib/library';
+import { type LibraryItem, useLibrarySearch } from '@/lib/library';
 import { Search } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
+import { useState } from 'react';
 
 type PickerProps = {
   attached: ReadonlySet<string>;
@@ -36,7 +36,6 @@ function describe(limit: number, full: boolean) {
 }
 
 function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
-  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<LibraryItem[]>([]);
   const [adding, setAdding] = useState(false);
 
@@ -52,16 +51,8 @@ function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
     }
   };
 
-  const query = useDeferredValue(search.trim());
-
-  const library = useLibrary(undefined, query || undefined);
-
-  const items = library.data ?? [];
-
-  const loadMore =
-    library.hasNextPage && !library.isFetchingNextPage
-      ? () => void library.fetchNextPage()
-      : undefined;
+  const { empty, error, items, loadMore, query, search, setSearch } =
+    useLibrarySearch(undefined);
 
   const toggle = (item: LibraryItem) => {
     const others = selected.filter(({ id }) => id !== item.id);
@@ -87,12 +78,12 @@ function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
         />
       </InputGroup>
       <div className='-mx-1 max-h-112 min-h-48 overflow-y-auto p-1'>
-        {library.isError && (
+        {error && (
           <p role='alert' className='text-sm text-destructive'>
             Unable to load your library.
           </p>
         )}
-        {library.isSuccess && items.length === 0 && (
+        {empty && (
           <p className='py-16 text-center text-sm text-muted-foreground'>
             {query ? 'Nothing matches your search.' : 'Your library is empty.'}
           </p>
