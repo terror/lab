@@ -67,6 +67,7 @@ export const usageEvent = pgTable(
     cost: doublePrecision('cost').notNull(),
   },
   (table) => [
+    index('usage_event_conversationId_idx').on(table.conversationId),
     index('usage_event_ownerId_createdAt_idx').on(
       table.ownerId,
       table.createdAt
@@ -100,6 +101,7 @@ export const libraryItem = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.entryId, table.position] }),
+    index('library_item_conversationId_idx').on(table.conversationId),
     index('library_item_ownerId_createdAt_idx').on(
       table.ownerId,
       table.createdAt
@@ -123,3 +125,15 @@ export const spendBudget = pgTable('spend_budget', {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+export const backfillCheckpoint = pgTable(
+  'backfill_checkpoint',
+  {
+    pipeline: text('pipeline').notNull(),
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    entryId: integer('entry_id').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.pipeline, table.conversationId] })]
+);

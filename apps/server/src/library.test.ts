@@ -145,3 +145,38 @@ test('text extracted from a PDF downloads as a text file', async () => {
     disposition: "attachment; filename*=UTF-8''foo.pdf.txt",
   });
 });
+
+test('the library backfill resumes from its checkpoint', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    attachments: [{ name: 'foo.txt', text: 'bar', type: 'file' }],
+    content: 'baz',
+  });
+
+  await idle(body.id);
+  await flushLibrary();
+
+  const remove = () =>
+    db
+      .delete(schema.libraryItem)
+      .where(eq(schema.libraryItem.conversationId, body.id));
+
+  const count = async () =>
+    (
+      await db
+        .select({ id: schema.libraryItem.id })
+        .from(schema.libraryItem)
+        .where(eq(schema.libraryItem.conversationId, body.id))
+    ).length;
+
+  await remove();
+  await backfillLibrary();
+
+  const first = await count();
+
+  await remove();
+  await backfillLibrary();
+
+  expect([first, await count()]).toEqual([1, 0]);
+});
