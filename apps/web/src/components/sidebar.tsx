@@ -1,11 +1,10 @@
+import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
-import { Button } from '@/components/ui/button';
-import { authClient } from '@/lib/auth';
 import { conversationsQueryOptions } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, SquarePen } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { SquarePen } from 'lucide-react';
 
 export function Sidebar({
   selected,
@@ -16,14 +15,8 @@ export function Sidebar({
   selected: number | undefined;
   onNewChat: () => void;
   onSelect: (id: number) => void;
-  user: { name: string; email: string };
+  user: { email: string; image?: string | null; name: string };
 }) {
-  const queryClient = useQueryClient();
-
-  const signOut = useMutation({
-    mutationFn: () => authClient.signOut(),
-    onSuccess: () => queryClient.clear(),
-  });
   const conversations = useQuery(conversationsQueryOptions);
 
   return (
@@ -62,20 +55,8 @@ export function Sidebar({
           />
         ))}
       </nav>
-      <div className='mt-auto flex items-center gap-2 border-t pt-3'>
-        <div className='min-w-0 flex-1 px-1'>
-          <p className='truncate text-sm font-medium'>{user.name}</p>
-          <p className='truncate text-xs text-muted-foreground'>{user.email}</p>
-        </div>
-        <Button
-          aria-label='Sign out'
-          disabled={signOut.isPending}
-          onClick={() => signOut.mutate()}
-          size='icon'
-          variant='ghost'
-        >
-          <LogOut aria-hidden='true' />
-        </Button>
+      <div className='mt-auto'>
+        <AccountMenu user={user} />
       </div>
     </aside>
   );
