@@ -52,7 +52,6 @@ export function Sidebar({
             conversation={conversation}
             onSelect={onSelect}
             selected={conversation.id === selected}
-            userId={user.id}
           />
         ))}
       </nav>
