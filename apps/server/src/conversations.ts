@@ -8,6 +8,7 @@ import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
@@ -73,6 +74,14 @@ const entriesQuery = validator(
   })
 );
 
+const listQuery = validator(
+  'query',
+  z.object({
+    cursor: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+);
+
 const modelSelection = validator(
   'json',
   z.object({
@@ -134,6 +143,17 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
+function before(id: number, user: User) {
+  const cursor = alias(schema.conversation, 'cursor');
+
+  const position = db
+    .select({ lastMessageAt: cursor.lastMessageAt, id: cursor.id })
+    .from(cursor)
+    .where(and(eq(cursor.id, id), eq(cursor.ownerId, user.id)));
+
+  return sql`(${schema.conversation.lastMessageAt}, ${schema.conversation.id}) < (${position})`;
+}
+
 async function load(id: number, user: User) {
   const [record] = await db
     .select({ id: schema.conversation.id })
@@ -163,18 +183,32 @@ async function load(id: number, user: User) {
 
 const conversations = new Hono()
   .use(requireUser)
-  .get('/', async (c) => {
+  .get('/', listQuery, async (c) => {
     const user = c.get('user');
+
+    const { cursor, limit } = c.req.valid('query');
 
     const rows = await db
       .select({ id: schema.conversation.id })
       .from(schema.conversation)
-      .where(eq(schema.conversation.ownerId, user.id))
-      .orderBy(desc(schema.conversation.lastMessageAt))
-      .limit(50);
+      .where(
+        and(
+          eq(schema.conversation.ownerId, user.id),
+          cursor === undefined ? undefined : before(cursor, user)
+        )
+      )
+      .orderBy(
+        desc(schema.conversation.lastMessageAt),
+        desc(schema.conversation.id)
+      )
+      .limit(limit + 1);
+
+    const page = rows.slice(0, limit);
+
+    const next = rows.length > limit ? page.at(-1)?.id : undefined;
 
     const items = await Promise.all(
-      rows.map(async ({ id }) => {
+      page.map(async ({ id }) => {
         const doc = await harness.snapshot(
           TitleDoc,
           id as ConversationId,
@@ -185,7 +219,7 @@ const conversations = new Hono()
       })
     );
 
-    return c.json({ conversations: items });
+    return c.json({ conversations: items, next: next ?? null });
   })
   .post('/', creation, async (c) => {
     const user = c.get('user');

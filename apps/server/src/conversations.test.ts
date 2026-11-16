@@ -58,7 +58,7 @@ test('created conversations are listed with their generated title', async () => 
   const id = await create(headers);
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, title: 'foo' }] },
+    body: { conversations: [{ id, title: 'foo' }], next: null },
     status: 200,
   });
 });
@@ -117,7 +117,27 @@ test('conversations are listed by their latest message', async () => {
         { id: first, title: 'foo' },
         { id: second, title: 'foo' },
       ],
+      next: null,
     },
+    status: 200,
+  });
+});
+
+test('conversations are listed in pages', async () => {
+  const headers = await signIn();
+
+  const first = await create(headers);
+  const second = await create(headers);
+
+  expect(await call(headers, 'GET', '/conversations?limit=1')).toEqual({
+    body: { conversations: [{ id: second, title: 'foo' }], next: second },
+    status: 200,
+  });
+
+  expect(
+    await call(headers, 'GET', `/conversations?limit=1&cursor=${second}`)
+  ).toEqual({
+    body: { conversations: [{ id: first, title: 'foo' }], next: null },
     status: 200,
   });
 });
@@ -132,7 +152,7 @@ test('conversations can be renamed', async () => {
   ).toEqual({ body: null, status: 204 });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [{ id, title: 'bar' }] },
+    body: { conversations: [{ id, title: 'bar' }], next: null },
     status: 200,
   });
 });
@@ -148,7 +168,7 @@ test('conversations can be deleted', async () => {
   });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [] },
+    body: { conversations: [], next: null },
     status: 200,
   });
 });
@@ -159,7 +179,7 @@ test('conversations are hidden from other users', async () => {
   const headers = await signIn();
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [] },
+    body: { conversations: [], next: null },
     status: 200,
   });
 

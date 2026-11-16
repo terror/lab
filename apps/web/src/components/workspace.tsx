@@ -17,7 +17,7 @@ import { conversationsQueryOptions } from '@/lib/conversations';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, Search, SquarePen } from 'lucide-react';
 import { useState } from 'react';
@@ -138,7 +138,7 @@ function MobileWorkspace({
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
-  const conversations = useQuery(conversationsQueryOptions);
+  const conversations = useInfiniteQuery(conversationsQueryOptions);
 
   const title =
     selected === undefined
