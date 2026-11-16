@@ -12,15 +12,21 @@ test('models from configured providers are listed', async () => {
       provider: 'vercel-ai-gateway',
     },
     model: {
-      contextWindow: 128_000,
-      id: 'anthropic/claude-sonnet-5.5',
-      images: true,
-      maxTokens: 16_384,
-      name: 'anthropic/claude-sonnet-5.5',
+      id: 'alibaba/qwen3-coder',
+      name: 'alibaba/qwen3-coder',
       provider: 'vercel-ai-gateway',
       providerName: 'vercel-ai-gateway',
-      reasoning: false,
       thinkingLevels: ['off'],
     },
   });
+});
+
+test('models are sorted newest first within each provider', async () => {
+  const { body } = await call(await signIn(), 'GET', '/models');
+
+  expect(body.models.map(({ id }: { id: string }) => id)).toEqual([
+    'alibaba/qwen3-coder',
+    'anthropic/claude-sonnet-5.5',
+    'anthropic/claude-haiku-5.5',
+  ]);
 });

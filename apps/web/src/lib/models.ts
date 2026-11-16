@@ -42,3 +42,19 @@ export async function setConversationModel(id: number, model: ModelChoice) {
     })
   );
 }
+
+const modelKeysSchema = z.array(
+  z.object({ id: z.string(), provider: z.string() })
+);
+
+export type ModelKey = z.infer<typeof modelKeysSchema>[number];
+
+const noModels: ModelKey[] = [];
+
+export function useRecentModels() {
+  return usePersistentState('recent-models', modelKeysSchema, noModels);
+}
+
+export function useFavoriteModels() {
+  return usePersistentState('favorite-models', modelKeysSchema, noModels);
+}

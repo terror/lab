@@ -2,6 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
 import { Hono } from 'hono';
+import { compress } from 'hono/compress';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,7 @@ import usage from './usage';
 const app = new Hono();
 
 app.use(logger());
+app.use('/api/*', compress());
 
 const api = new Hono()
   .get('/health', async (c) => {

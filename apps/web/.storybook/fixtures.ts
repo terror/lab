@@ -22,17 +22,7 @@ function model(
   id: string,
   name: string
 ): Model {
-  return {
-    contextWindow: 1_000_000,
-    id,
-    images: true,
-    maxTokens: 128_000,
-    name,
-    provider,
-    providerName,
-    reasoning: true,
-    thinkingLevels: levels,
-  };
+  return { id, name, provider, providerName, thinkingLevels: levels };
 }
 
 export const catalog: Catalog = {

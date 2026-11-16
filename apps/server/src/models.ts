@@ -40,11 +40,28 @@ function providerName(id: string) {
   return models.getProvider(id)?.name ?? id;
 }
 
+const collator = new Intl.Collator('en', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+function owner(id: string) {
+  return id.includes('/') ? (id.split('/')[0] ?? '') : '';
+}
+
+function family(name: string) {
+  return name.replace(/\s*\(.*\)$/, '');
+}
+
 async function availableModels() {
   const available = await models.getAvailable();
 
-  return available.toSorted((a, b) =>
-    providerName(a.provider).localeCompare(providerName(b.provider))
+  return available.toSorted(
+    (a, b) =>
+      collator.compare(providerName(a.provider), providerName(b.provider)) ||
+      collator.compare(owner(a.id), owner(b.id)) ||
+      collator.compare(family(b.name), family(a.name)) ||
+      collator.compare(a.name, b.name)
   );
 }
 
@@ -60,14 +77,10 @@ export async function listModels() {
   const available = await availableModels();
 
   return available.map((model) => ({
-    contextWindow: model.contextWindow,
     id: model.id,
-    images: model.input.includes('image'),
-    maxTokens: model.maxTokens,
     name: model.name,
     provider: model.provider,
     providerName: providerName(model.provider),
-    reasoning: model.reasoning,
     thinkingLevels: getSupportedThinkingLevels(model),
   }));
 }
