@@ -1,18 +1,10 @@
-import { createModels } from '@earendil-works/pi-ai/models';
-import { vercelAIGatewayProvider } from '@earendil-works/pi-ai/providers/vercel-ai-gateway';
 import { openHarness } from '@lab/harness';
 
 import { env } from './env';
-
-const models = createModels();
-
-models.setProvider(vercelAIGatewayProvider());
+import { defaultModel, models } from './models';
 
 export const harness = await openHarness({
-  model: {
-    provider: 'vercel-ai-gateway',
-    modelId: 'anthropic/claude-sonnet-5.5',
-  },
+  model: { provider: defaultModel.provider, modelId: defaultModel.modelId },
   models,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,

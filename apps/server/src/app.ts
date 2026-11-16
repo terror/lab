@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import conversations from './conversations';
 import { db } from './db';
+import { chatModels } from './models';
 
 const app = new Hono();
 
@@ -18,6 +19,11 @@ const api = new Hono()
 
     return c.json({ status: 'ok' });
   })
+  .get('/models', (c) =>
+    c.json({
+      models: chatModels.map(({ modelId, name }) => ({ id: modelId, name })),
+    })
+  )
   .route('/conversations', conversations);
 
 export type AppType = typeof api;

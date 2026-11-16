@@ -7,6 +7,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
 import { harness } from './harness';
+import { chatModels } from './models';
 import { validator } from './validator';
 
 const params = validator(
@@ -18,6 +19,8 @@ const message = validator(
   'json',
   z.object({ content: z.string().trim().min(1) })
 );
+
+const modelChange = validator('json', z.object({ id: z.string().min(1) }));
 
 type BunServer = {
   timeout(request: Request, seconds: number): void;
@@ -93,6 +96,24 @@ const conversations = new Hono()
     );
 
     return c.json({ id: submission.id }, 202);
+  })
+  .put('/:id/model', params, modelChange, async (c) => {
+    const conversation = await load(c.req.valid('param').id);
+
+    const model = chatModels.find(
+      ({ modelId }) => modelId === c.req.valid('json').id
+    );
+
+    if (!model) {
+      throw new HTTPException(400, { message: 'Unknown model' });
+    }
+
+    await conversation.configure(
+      { model: { provider: model.provider, modelId: model.modelId } },
+      BACKGROUND_CONTEXT
+    );
+
+    return c.body(null, 204);
   })
   .post('/:id/abort', params, async (c) => {
     const conversation = await load(c.req.valid('param').id);
