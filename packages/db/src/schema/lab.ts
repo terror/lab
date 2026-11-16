@@ -109,6 +109,7 @@ export const libraryItem = pgTable(
 
 export const conversationDeletion = pgTable('conversation_deletion', {
   id: integer('id').primaryKey(),
+  ownerId: text('owner_id').references(() => user.id, { onDelete: 'cascade' }),
   deletedAt: timestamp('deleted_at').defaultNow().notNull(),
 });
 

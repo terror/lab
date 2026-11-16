@@ -44,8 +44,10 @@ function generateTitle(onHelperUsage: HelperUsage) {
       generate: async (_task, runtime, context) => {
         const finish = (value: string) =>
           runtime.commit(async (tx) => {
-            if (value) {
-              (await tx.doc(TitleDoc, runtime.conversationId)).title = value;
+            const doc = await tx.doc(TitleDoc, runtime.conversationId);
+
+            if (value && !doc.title) {
+              doc.title = value;
             }
 
             return {

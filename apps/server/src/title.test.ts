@@ -23,3 +23,35 @@ test('titles are written by the helper model from a short transcript', async () 
 
   complete.mockRestore();
 });
+
+test('a rename during title generation is kept', async () => {
+  const headers = await signIn();
+
+  const complete = models.completeSimple.bind(models);
+
+  const { promise: created, resolve } = Promise.withResolvers<number>();
+
+  const spy = spyOn(models, 'completeSimple').mockImplementationOnce(
+    async (...args) => {
+      await call(headers, 'PATCH', `/conversations/${await created}`, {
+        title: 'bar',
+      });
+
+      return complete(...args);
+    }
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  resolve(body.id);
+
+  await idle(body.id);
+
+  spy.mockRestore();
+
+  expect(
+    (await call(headers, 'GET', `/conversations/${body.id}`)).body.title
+  ).toBe('bar');
+});
