@@ -35,6 +35,11 @@ export const models = createModels();
 
 models.setProvider(vercelAIGatewayProvider());
 
+export const statusModel = models.getModel(
+  'vercel-ai-gateway',
+  'anthropic/claude-haiku-5.5'
+);
+
 function vendor(id: string) {
   const prefix = id.split('/')[0] ?? id;
 

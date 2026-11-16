@@ -25,7 +25,14 @@ export function Markdown({
 }) {
   return (
     <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
-      <Streamdown isAnimating={streaming}>{children}</Streamdown>
+      <Streamdown
+        animated={
+          streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
+        }
+        isAnimating={streaming}
+      >
+        {children}
+      </Streamdown>
     </Suspense>
   );
 }
