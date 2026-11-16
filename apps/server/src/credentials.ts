@@ -13,11 +13,19 @@ import { env } from './env';
 
 const table = schema.providerCredential;
 
-const key = createHash('sha256')
-  .update(`${env.BETTER_AUTH_SECRET}:provider-credentials`)
-  .digest();
+export function deriveKey(secret: string) {
+  return createHash('sha256').update(`${secret}:provider-credentials`).digest();
+}
 
-function seal(credential: Credential) {
+const keys = [
+  env.LAB_CREDENTIALS_KEY,
+  env.LAB_CREDENTIALS_KEY_PREVIOUS,
+  env.BETTER_AUTH_SECRET,
+].flatMap((secret) => (secret ? [deriveKey(secret)] : []));
+
+const current = keys[0] ?? deriveKey(env.BETTER_AUTH_SECRET);
+
+export function seal(credential: Credential, key: Buffer) {
   const iv = randomBytes(12);
 
   const cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -30,7 +38,7 @@ function seal(credential: Credential) {
   return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
 }
 
-function open(sealed: string) {
+function open(sealed: string, key: Buffer) {
   const bytes = Buffer.from(sealed, 'base64');
 
   const decipher = createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
@@ -45,13 +53,26 @@ function open(sealed: string) {
   return JSON.parse(json) as Credential;
 }
 
-function unseal(providerId: string, sealed: string) {
-  try {
-    return open(sealed);
-  } catch {
-    console.error(`Unable to decrypt the ${providerId} credential`);
-    return undefined;
+export function unsealWith(sealed: string, candidates: readonly Buffer[]) {
+  for (const [index, key] of candidates.entries()) {
+    try {
+      return { credential: open(sealed, key), stale: index > 0 };
+    } catch {
+      continue;
+    }
   }
+
+  return undefined;
+}
+
+function unseal(providerId: string, sealed: string) {
+  const opened = unsealWith(sealed, keys);
+
+  if (!opened) {
+    console.error(`Unable to decrypt the ${providerId} credential`);
+  }
+
+  return opened;
 }
 
 const cache = new Map<string, Credential | undefined>();
@@ -66,7 +87,16 @@ async function read(providerId: string) {
     .from(table)
     .where(eq(table.providerId, providerId));
 
-  const credential = row && unseal(providerId, row.credential);
+  const opened = row && unseal(providerId, row.credential);
+
+  const credential = opened?.credential;
+
+  if (opened?.stale && credential) {
+    await db
+      .update(table)
+      .set({ credential: seal(credential, current) })
+      .where(eq(table.providerId, providerId));
+  }
 
   cache.set(providerId, credential);
 
@@ -79,7 +109,7 @@ export const credentials: CredentialStore = {
     const rows = await db.select().from(table);
 
     return rows.flatMap(({ credential, providerId }) => {
-      const type = unseal(providerId, credential)?.type;
+      const type = unseal(providerId, credential)?.credential.type;
 
       return type ? [{ providerId, type }] : [];
     });
@@ -91,7 +121,7 @@ export const credentials: CredentialStore = {
       return read(providerId);
     }
 
-    const credential = seal(next);
+    const credential = seal(next, current);
 
     await db
       .insert(table)
