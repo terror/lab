@@ -44,11 +44,12 @@ test('thinking is summarized into a throttled status', async () => {
   complete.mockRestore();
 });
 
+function helper(provider: string, modelId: string) {
+  return helperModel(models, { modelId, provider })?.id;
+}
+
 test('helper models stay on the conversation provider', () => {
   const [groq] = models.getModels('groq');
-
-  const helper = (provider: string, modelId: string) =>
-    helperModel(models, { modelId, provider })?.id;
 
   expect([
     helper('vercel-ai-gateway', 'alibaba/qwen3-coder'),
