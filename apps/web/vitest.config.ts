@@ -5,22 +5,38 @@ import { defineConfig, mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config';
 
+function browser() {
+  return {
+    enabled: true,
+    headless: true,
+    instances: [{ browser: 'chromium' as const }],
+    provider: playwright(),
+  };
+}
+
 export default mergeConfig(
   viteConfig({ command: 'serve', mode: 'test' }),
   defineConfig({
-    plugins: [
-      storybookTest({
-        configDir: fileURLToPath(new URL('.storybook', import.meta.url)),
-      }),
-    ],
     test: {
-      browser: {
-        enabled: true,
-        headless: true,
-        instances: [{ browser: 'chromium' }],
-        provider: playwright(),
-      },
-      name: 'storybook',
+      projects: [
+        {
+          extends: true,
+          plugins: [
+            storybookTest({
+              configDir: fileURLToPath(new URL('.storybook', import.meta.url)),
+            }),
+          ],
+          test: { browser: browser(), name: 'storybook' },
+        },
+        {
+          extends: true,
+          test: {
+            browser: browser(),
+            include: ['src/**/*.test.{ts,tsx}'],
+            name: 'unit',
+          },
+        },
+      ],
     },
   })
 );
