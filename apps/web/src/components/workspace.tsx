@@ -14,15 +14,11 @@ import {
 } from '@/components/ui/sheet';
 import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
+import { usePath } from '@/lib/location';
 import { useMediaQuery } from '@/lib/media';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import {
-  Outlet,
-  useNavigate,
-  useParams,
-  useRouterState,
-} from '@tanstack/react-router';
+import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, Search, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
@@ -143,13 +139,12 @@ function MobileWorkspace({
   const [open, setOpen] = useState(false);
   const conversation = useConversationSummary(selected);
 
-  const library = useRouterState({
-    select: ({ location }) => location.pathname === '/library',
-  });
+  const path = usePath();
 
-  const title = library
-    ? 'Library'
-    : conversationTitle(conversation.data?.title);
+  const title =
+    path === '/library'
+      ? 'Library'
+      : conversationTitle(conversation.data?.title);
 
   return (
     <div className='flex h-svh flex-col'>

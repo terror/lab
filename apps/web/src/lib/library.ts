@@ -5,6 +5,7 @@ import {
   useInfiniteQuery,
 } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
+import { useEffect, useState } from 'react';
 
 import { call, client } from './client';
 
@@ -31,22 +32,59 @@ function libraryQueryOptions(
     queryFn: ({ pageParam, signal }) =>
       call(
         client.library.$get(
-          { query: { cursor: pageParam?.toString(), kind, search } },
+          { query: { cursor: pageParam, kind, search } },
           { init: { signal } }
         )
       ),
-    initialPageParam: undefined as number | undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: ({ next }) => next ?? undefined,
     placeholderData: keepPreviousData,
     select: ({ pages }) => pages.flatMap(({ items }) => items),
   });
 }
 
-export function useLibrary(
-  kind: LibraryKind | undefined,
-  search: string | undefined
-) {
-  return useInfiniteQuery(libraryQueryOptions(kind, search));
+const SEARCH_DELAY_MS = 200;
+
+function useDebounced(value: string) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), SEARCH_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [value]);
+
+  return debounced;
+}
+
+export function useLibrarySearch(kind: LibraryKind | undefined) {
+  const [search, setSearch] = useState('');
+
+  const query = useDebounced(search.trim());
+
+  const library = useInfiniteQuery(
+    libraryQueryOptions(kind, query || undefined)
+  );
+
+  const items = library.data ?? [];
+
+  const loadMore =
+    library.hasNextPage && !library.isFetchingNextPage
+      ? () => void library.fetchNextPage()
+      : undefined;
+
+  return {
+    empty:
+      library.isSuccess && !library.isPlaceholderData && items.length === 0,
+    error: library.isError,
+    fetchNextPage: library.fetchNextPage,
+    hasNextPage: library.hasNextPage,
+    items,
+    loadMore,
+    query,
+    search,
+    setSearch,
+  };
 }
 
 export function libraryTextQueryOptions(id: number) {

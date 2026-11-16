@@ -1,5 +1,5 @@
 {
-  "id": "ebe89f64-0164-4ac6-bde8-2b8ed0a40dcf",
+  "id": "3e857feb-3fc3-4147-9283-c66f29c86dab",
   "prevId": "f9ec04fe-2295-46a3-849c-cced3692924f",
   "version": "7",
   "dialect": "postgresql",
@@ -334,32 +334,6 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.backfill": {
-      "name": "backfill",
-      "schema": "",
-      "columns": {
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},

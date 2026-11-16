@@ -100,8 +100,3 @@ export const libraryItem = pgTable(
     ),
   ]
 );
-
-export const backfill = pgTable('backfill', {
-  name: text('name').primaryKey(),
-  completedAt: timestamp('completed_at').defaultNow().notNull(),
-});

@@ -5,6 +5,7 @@ import {
   type Conversation,
   type ConversationId,
   type EntryId,
+  type JsonObject,
   type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
@@ -28,7 +29,6 @@ import { z } from 'zod';
 
 import { type User, requireUser } from './auth';
 import { db } from './db';
-import { fileBlock } from './files';
 import { harness } from './harness';
 import {
   acceptsImages,
@@ -146,6 +146,14 @@ const rename = validator(
   z.object({ title: z.string().trim().min(1).max(200) })
 );
 
+function escape(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 function prompt({
   attachments,
   content,
@@ -155,7 +163,7 @@ function prompt({
 }) {
   const files = attachments
     .filter((attachment) => attachment.type === 'file')
-    .map(({ name, text }) => fileBlock(name, text));
+    .map(({ name, text }) => `<file name="${escape(name)}">\n${text}\n</file>`);
 
   const images = attachments
     .filter((attachment) => attachment.type === 'image')
@@ -182,6 +190,18 @@ function requireImageInput(
   }
 }
 
+function entryFile(attachment: Attachment): JsonObject {
+  if (attachment.type === 'file') {
+    return {
+      name: attachment.name,
+      text: attachment.text,
+      type: 'file',
+    };
+  }
+
+  return { name: attachment.name, type: 'image' };
+}
+
 function submitMessage(
   conversation: Conversation,
   draft: { attachments: Attachment[]; content: string },
@@ -195,7 +215,7 @@ function submitMessage(
       entry: {
         kind: 'lab.message',
         data: {
-          files: draft.attachments.map(({ name, type }) => ({ name, type })),
+          files: draft.attachments.map(entryFile),
           text: draft.content,
         },
       },

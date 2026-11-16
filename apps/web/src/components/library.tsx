@@ -1,3 +1,4 @@
+import { LoadMore } from '@/components/load-more';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
   type LibraryKind,
   libraryItemUrl,
   libraryTextQueryOptions,
-  useLibrary,
+  useLibrarySearch,
 } from '@/lib/library';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -30,13 +31,7 @@ import {
   LibraryBig,
   Search,
 } from 'lucide-react';
-import {
-  type KeyboardEvent,
-  useDeferredValue,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type KeyboardEvent, useState } from 'react';
 
 type Filter = 'all' | LibraryKind;
 
@@ -113,33 +108,6 @@ function extension(name: string) {
   return dot > 0 ? name.slice(dot + 1).toUpperCase() : 'TXT';
 }
 
-function LoadMore({ onLoadMore }: { onLoadMore: () => void }) {
-  const sentinel = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const element = sentinel.current;
-
-    if (!element) {
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: '400px' }
-    );
-
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [onLoadMore]);
-
-  return <div ref={sentinel} className='h-px' />;
-}
-
 function FileTile({ item }: { item: LibraryItem }) {
   return (
     <div className='flex size-full flex-col gap-2 p-3 text-left'>
@@ -193,26 +161,53 @@ function FilePreview({ id }: { id: number }) {
 }
 
 function Viewer({
-  index,
+  hasMore,
+  id,
   items,
-  onIndexChange,
   onClose,
+  onLoadMore,
+  onOpen,
 }: {
-  index: number;
+  hasMore: boolean;
+  id: number;
   items: LibraryItem[];
-  onIndexChange: (index: number) => void;
   onClose: () => void;
+  onLoadMore: () => Promise<LibraryItem[]>;
+  onOpen: (id: number) => void;
 }) {
+  const index = items.findIndex((candidate) => candidate.id === id);
+
   const item = items[index];
 
   if (!item) {
     return null;
   }
 
-  const previous = index > 0 ? () => onIndexChange(index - 1) : undefined;
+  const before = items[index - 1];
+  const after = items[index + 1];
 
-  const next =
-    index < items.length - 1 ? () => onIndexChange(index + 1) : undefined;
+  const previous = before ? () => onOpen(before.id) : undefined;
+
+  const advance = async () => {
+    const loaded = await onLoadMore();
+    const following = loaded[loaded.findIndex((other) => other.id === id) + 1];
+
+    if (following) {
+      onOpen(following.id);
+    }
+  };
+
+  const next = (() => {
+    if (after) {
+      return () => onOpen(after.id);
+    }
+
+    if (hasMore) {
+      return () => void advance();
+    }
+
+    return undefined;
+  })();
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'ArrowLeft') {
@@ -311,22 +306,11 @@ function Empty({ searching }: { searching: boolean }) {
 
 export function Library() {
   const [filter, setFilter] = useState<Filter>('all');
-  const [search, setSearch] = useState('');
   const [open, setOpen] = useState<number>();
 
-  const query = useDeferredValue(search.trim());
+  const library = useLibrarySearch(filter === 'all' ? undefined : filter);
 
-  const library = useLibrary(
-    filter === 'all' ? undefined : filter,
-    query || undefined
-  );
-
-  const items = library.data ?? [];
-
-  const loadMore =
-    library.hasNextPage && !library.isFetchingNextPage
-      ? () => void library.fetchNextPage()
-      : undefined;
+  const { items, loadMore, query, search, setSearch } = library;
 
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
@@ -362,12 +346,12 @@ export function Library() {
             </button>
           ))}
         </fieldset>
-        {library.isError && (
+        {library.error && (
           <p role='alert' className='text-sm text-destructive'>
             Unable to load your library.
           </p>
         )}
-        {library.isSuccess && items.length === 0 && (
+        {library.empty && (
           <Empty searching={query.length > 0 || filter !== 'all'} />
         )}
         {groupByPeriod(items).map(([title, group]) => (
@@ -380,7 +364,7 @@ export function Library() {
                 <Tile
                   key={item.id}
                   item={item}
-                  onOpen={() => setOpen(items.indexOf(item))}
+                  onOpen={() => setOpen(item.id)}
                 />
               ))}
             </div>
@@ -390,10 +374,12 @@ export function Library() {
       </div>
       {open !== undefined && (
         <Viewer
-          index={open}
+          hasMore={library.hasNextPage}
+          id={open}
           items={items}
           onClose={() => setOpen(undefined)}
-          onIndexChange={setOpen}
+          onLoadMore={async () => (await library.fetchNextPage()).data ?? items}
+          onOpen={setOpen}
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
+import { LoadMore } from '@/components/load-more';
 import { useSearch } from '@/components/search';
 import {
   DropdownMenu,
@@ -22,9 +23,9 @@ import {
   useConversationSort,
   useConversations,
 } from '@/lib/conversations';
+import { usePath } from '@/lib/location';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { useRouterState } from '@tanstack/react-router';
 import {
   ArrowDownUp,
   ChevronDown,
@@ -35,7 +36,7 @@ import {
   SquarePen,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import { z } from 'zod';
 
 type Side = 'bottom' | 'right';
@@ -205,34 +206,6 @@ function NavButton({
       {children}
     </button>
   );
-}
-
-function LoadMore({ onLoadMore }: { onLoadMore: () => void }) {
-  const sentinel = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const element = sentinel.current;
-
-    if (!element) {
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        onLoadMore();
-      }
-    });
-
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [onLoadMore]);
-
-  return <div ref={sentinel} className='h-px shrink-0' />;
-}
-
-function usePath() {
-  return useRouterState({ select: ({ location }) => location.pathname });
 }
 
 function SidebarRail({

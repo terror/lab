@@ -6,68 +6,60 @@ import type {
   EntryRecord,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
-import { fileTexts } from './files';
 import { harness } from './harness';
 import { validator } from './validator';
 
 const table = schema.libraryItem;
 
-const BACKFILL = 'library';
-
 const PREVIEW_LENGTH = 400;
 
 const dataSchema = z.object({
   files: z
-    .array(z.object({ name: z.string(), type: z.enum(['file', 'image']) }))
+    .array(
+      z.object({
+        name: z.string(),
+        text: z.string().optional(),
+        type: z.enum(['file', 'image']),
+      })
+    )
     .default([]),
-  text: z.string().default(''),
 });
 
 type Item = Omit<typeof table.$inferInsert, 'id'>;
 
-function blocks(text: string, content: string) {
-  if (!content) {
-    return text;
-  }
-
-  const prefix = `${content}\n\n`;
-
-  return text.startsWith(prefix) ? text.slice(prefix.length) : '';
-}
-
-function items(entry: EntryRecord, ownerId: string): Item[] {
-  const data = dataSchema.safeParse(entry.data).data;
-
-  const message = entry.model?.[0];
-
-  if (entry.kind !== 'lab.message' || !data || message?.role !== 'user') {
+function attachments(entry: EntryRecord) {
+  if (entry.kind !== 'lab.message') {
     return [];
   }
 
-  const parts =
+  return dataSchema.safeParse(entry.data).data?.files ?? [];
+}
+
+function items(entry: EntryRecord, ownerId: string): Item[] {
+  const message = entry.model?.[0];
+
+  if (message?.role !== 'user') {
+    return [];
+  }
+
+  const images =
     typeof message.content === 'string'
-      ? [{ text: message.content, type: 'text' as const }]
-      : message.content;
+      ? []
+      : message.content.flatMap((part) =>
+          part.type === 'image' ? [part] : []
+        );
 
-  const images = parts.flatMap((part) => (part.type === 'image' ? [part] : []));
-
-  const text = parts.find((part) => part.type === 'text')?.text ?? '';
-
-  const files = data.files.map((file, position) => ({ ...file, position }));
-
-  const named = files.filter(({ type }) => type === 'file');
-
-  const texts = fileTexts(
-    blocks(text, data.text),
-    named.map(({ name }) => name)
-  );
+  const files = attachments(entry).map((file, position) => ({
+    ...file,
+    position,
+  }));
 
   const base = {
     conversationId: entry.conversationId,
@@ -100,14 +92,12 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
       ];
     });
 
-  const fileItems = named.flatMap(({ name, position }, index) => {
-    const body = texts[index];
-
-    if (body === undefined) {
+  const fileItems = files.flatMap(({ name, position, text, type }) => {
+    if (type !== 'file' || text === undefined) {
       return [];
     }
 
-    const content = new TextEncoder().encode(body);
+    const content = new TextEncoder().encode(text);
 
     return [
       {
@@ -117,7 +107,7 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
         mimeType: 'text/plain',
         name,
         position,
-        preview: body.slice(0, PREVIEW_LENGTH),
+        preview: text.slice(0, PREVIEW_LENGTH),
         size: content.byteLength,
       },
     ];
@@ -126,26 +116,13 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
   return [...imageItems, ...fileItems];
 }
 
-async function record(entries: readonly EntryRecord[]) {
-  const ids = [...new Set(entries.map(({ conversationId }) => conversationId))];
+async function record(entry: EntryRecord) {
+  const [owner] = await db
+    .select({ ownerId: schema.conversation.ownerId })
+    .from(schema.conversation)
+    .where(eq(schema.conversation.id, entry.conversationId));
 
-  const owners = new Map(
-    (
-      await db
-        .select({
-          id: schema.conversation.id,
-          ownerId: schema.conversation.ownerId,
-        })
-        .from(schema.conversation)
-        .where(inArray(schema.conversation.id, ids))
-    ).map(({ id, ownerId }) => [id, ownerId])
-  );
-
-  const rows = entries.flatMap((entry) => {
-    const ownerId = owners.get(entry.conversationId);
-
-    return ownerId ? items(entry, ownerId) : [];
-  });
+  const rows = owner ? items(entry, owner.ownerId) : [];
 
   if (rows.length > 0) {
     await db.insert(table).values(rows).onConflictDoNothing();
@@ -158,10 +135,10 @@ harness.observeCommits({
   advance: ({ changes }) => {
     const entries = changes
       .flatMap((change) => (change.type === 'entry' ? [change.value] : []))
-      .filter((entry) => entry.kind === 'lab.message');
+      .filter((entry) => attachments(entry).length > 0);
 
-    if (entries.length > 0) {
-      pending = pending.then(() => record(entries).catch(console.error));
+    for (const entry of entries) {
+      pending = pending.then(() => record(entry).catch(console.error));
     }
   },
   end: () => undefined,
@@ -171,7 +148,11 @@ export function flushLibrary() {
   return pending;
 }
 
-async function recordHistory(conversation: Conversation, cursor?: Cursor) {
+async function recordHistory(
+  conversation: Conversation,
+  recorded: ReadonlySet<number>,
+  cursor?: Cursor
+) {
   const page = await conversation.entries(
     { order: 'ascending' },
     100,
@@ -179,23 +160,20 @@ async function recordHistory(conversation: Conversation, cursor?: Cursor) {
     BACKGROUND_CONTEXT
   );
 
-  await record(page.items.filter((entry) => entry.kind === 'lab.message'));
+  const missing = page.items.filter(
+    (entry) => attachments(entry).length > 0 && !recorded.has(entry.id)
+  );
+
+  for (const entry of missing) {
+    await record(entry);
+  }
 
   if (page.next !== undefined) {
-    await recordHistory(conversation, page.next);
+    await recordHistory(conversation, recorded, page.next);
   }
 }
 
 export async function backfillLibrary() {
-  const [done] = await db
-    .select()
-    .from(schema.backfill)
-    .where(eq(schema.backfill.name, BACKFILL));
-
-  if (done) {
-    return;
-  }
-
   const conversations = await db
     .select({ id: schema.conversation.id })
     .from(schema.conversation);
@@ -207,17 +185,26 @@ export async function backfillLibrary() {
     );
 
     if (conversation) {
-      await recordHistory(conversation);
+      const rows = await db
+        .selectDistinct({ entryId: table.entryId })
+        .from(table)
+        .where(eq(table.conversationId, id));
+
+      await recordHistory(
+        conversation,
+        new Set(rows.map(({ entryId }) => entryId))
+      );
     }
   }
-
-  await db.insert(schema.backfill).values({ name: BACKFILL });
 }
 
 const listing = validator(
   'query',
   z.object({
-    cursor: z.coerce.number().int().positive().optional(),
+    cursor: z
+      .string()
+      .regex(/^\d+\.\d+\.\d+$/)
+      .optional(),
     kind: z.enum(['file', 'image']).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(60),
     search: z.string().trim().min(1).max(200).optional(),
@@ -240,11 +227,20 @@ function matching(search: string) {
   return ilike(table.name, `%${pattern}%`);
 }
 
-function after(id: number, ownerId: string) {
-  return sql`(${table.createdAt}, ${table.entryId}, -${table.position}) < (
-    select created_at, entry_id, -position from ${table}
-    where id = ${id} and owner_id = ${ownerId}
-  )`;
+function after(cursor: string) {
+  const [time = 0, entryId = 0, position = 0] = cursor.split('.').map(Number);
+
+  const createdAt = new Date(time).toISOString();
+
+  return sql`(${table.createdAt}, ${table.entryId}, -${table.position}) < (${createdAt}::timestamp, ${entryId}, ${-position})`;
+}
+
+function cursorFor(row: {
+  createdAt: Date;
+  entryId: number;
+  position: number;
+}) {
+  return `${row.createdAt.getTime()}.${row.entryId}.${row.position}`;
 }
 
 const library = new Hono()
@@ -263,10 +259,12 @@ const library = new Hono()
           title: schema.conversation.title,
         },
         createdAt: table.createdAt,
+        entryId: table.entryId,
         id: table.id,
         kind: table.kind,
         mimeType: table.mimeType,
         name: table.name,
+        position: table.position,
         preview: table.preview,
         size: table.size,
       })
@@ -280,7 +278,7 @@ const library = new Hono()
           eq(table.ownerId, user.id),
           kind === undefined ? undefined : eq(table.kind, kind),
           search === undefined ? undefined : matching(search),
-          cursor === undefined ? undefined : after(cursor, user.id)
+          cursor === undefined ? undefined : after(cursor)
         )
       )
       .orderBy(desc(table.createdAt), desc(table.entryId), asc(table.position))
@@ -288,12 +286,20 @@ const library = new Hono()
 
     const page = rows.slice(0, limit);
 
+    const last = page.at(-1);
+
     return c.json({
       items: page.map((row) => ({
-        ...row,
+        conversation: row.conversation,
         createdAt: row.createdAt.toISOString(),
+        id: row.id,
+        kind: row.kind,
+        mimeType: row.mimeType,
+        name: row.name,
+        preview: row.preview,
+        size: row.size,
       })),
-      next: rows.length > limit ? (page.at(-1)?.id ?? null) : null,
+      next: last && rows.length > limit ? cursorFor(last) : null,
     });
   })
   .get('/:id', params, download, async (c) => {

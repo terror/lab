@@ -1,8 +1,3 @@
-CREATE TABLE "backfill" (
-	"name" text PRIMARY KEY NOT NULL,
-	"completed_at" timestamp DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "library_item" (
 	"id" integer GENERATED ALWAYS AS IDENTITY (sequence name "library_item_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"entry_id" integer NOT NULL,
