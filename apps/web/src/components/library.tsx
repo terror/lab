@@ -27,7 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Images,
+  LibraryBig,
   Search,
 } from 'lucide-react';
 import {
@@ -296,7 +296,7 @@ function Viewer({
 function Empty({ searching }: { searching: boolean }) {
   return (
     <div className='flex flex-col items-center gap-3 py-24 text-center'>
-      <Images aria-hidden='true' className='size-8 text-muted-foreground' />
+      <LibraryBig aria-hidden='true' className='size-8 text-muted-foreground' />
       <div className='space-y-1'>
         <p className='font-medium'>
           {searching ? 'Nothing matches your search' : 'Your library is empty'}

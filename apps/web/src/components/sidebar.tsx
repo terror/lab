@@ -28,7 +28,7 @@ import { useRouterState } from '@tanstack/react-router';
 import {
   ArrowDownUp,
   ChevronDown,
-  Images,
+  LibraryBig,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
@@ -268,7 +268,7 @@ function SidebarRail({
         onClick={onLibrary}
         side='right'
       >
-        <Images aria-hidden='true' className='size-4' />
+        <LibraryBig aria-hidden='true' className='size-4' />
       </RailButton>
       <div className='mt-auto'>
         <AccountMenu compact user={user} />
@@ -406,7 +406,7 @@ function SidebarPanel({
           New chat
         </NavButton>
         <NavButton active={path === '/library'} onClick={onLibrary}>
-          <Images aria-hidden='true' className='size-4' />
+          <LibraryBig aria-hidden='true' className='size-4' />
           Library
         </NavButton>
       </div>
