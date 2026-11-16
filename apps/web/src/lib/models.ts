@@ -1,6 +1,8 @@
 import { queryOptions } from '@tanstack/react-query';
+import { z } from 'zod';
 
 import { call, client } from './client';
+import { usePersistentState } from './storage';
 
 export const modelsQueryOptions = queryOptions({
   queryKey: ['models'],
@@ -14,16 +16,30 @@ export const modelsQueryOptions = queryOptions({
   staleTime: Infinity,
 });
 
-export type ThinkingLevel =
-  | 'off'
-  | 'minimal'
-  | 'low'
-  | 'medium'
-  | 'high'
-  | 'xhigh'
-  | 'max';
+const thinkingLevelSchema = z.enum([
+  'off',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+]);
 
-export type ModelChoice = { id: string; thinkingLevel?: ThinkingLevel };
+export type ThinkingLevel = z.infer<typeof thinkingLevelSchema>;
+
+const modelChoiceSchema = z.object({
+  id: z.string(),
+  thinkingLevel: thinkingLevelSchema.optional(),
+});
+
+export type ModelChoice = z.infer<typeof modelChoiceSchema>;
+
+const preferredModelSchema = modelChoiceSchema.optional();
+
+export function usePreferredModel() {
+  return usePersistentState('model', preferredModelSchema, undefined);
+}
 
 export async function setConversationModel(id: number, model: ModelChoice) {
   await call(

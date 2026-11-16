@@ -14,7 +14,11 @@ import {
   type Gap,
   useConversation,
 } from '@/lib/conversations';
-import { type ModelChoice, setConversationModel } from '@/lib/models';
+import {
+  type ModelChoice,
+  setConversationModel,
+  usePreferredModel,
+} from '@/lib/models';
 import { runFailureTitles } from '@/lib/run-failure';
 import { cn } from '@/lib/utils';
 import type {
@@ -248,8 +252,11 @@ export function Conversation({ id, userId }: { id: number; userId: string }) {
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
 
+  const [, setPreferredModel] = usePreferredModel();
+
   const changeModel = useMutation({
     mutationFn: (model: ModelChoice) => setConversationModel(id, model),
+    onSuccess: (_, model) => setPreferredModel(model),
   });
 
   const earlier = useMutation({ mutationFn: loadEarlier });
