@@ -1,9 +1,7 @@
 import { BudgetAlert } from '@/components/budget';
 import { Conversation } from '@/components/conversation';
 import { ErrorPage } from '@/components/error-page';
-import { Library } from '@/components/library';
 import { NewChat } from '@/components/new-chat';
-import { Settings } from '@/components/settings';
 import { SignIn } from '@/components/sign-in';
 import { Updates } from '@/components/updates';
 import { Workspace } from '@/components/workspace';
@@ -14,6 +12,7 @@ import {
   Outlet,
   createRootRoute,
   createRoute,
+  lazyRouteComponent,
   createRouter,
   notFound,
 } from '@tanstack/react-router';
@@ -68,7 +67,10 @@ const newChatRoute = createRoute({
 });
 
 const libraryRoute = createRoute({
-  component: Library,
+  component: lazyRouteComponent(
+    () => import('@/components/library'),
+    'Library'
+  ),
   getParentRoute: () => chatRoute,
   path: '/library',
 });
@@ -92,7 +94,10 @@ const conversationRoute = createRoute({
 });
 
 const settingsRoute = createRoute({
-  component: Settings,
+  component: lazyRouteComponent(
+    () => import('@/components/settings'),
+    'Settings'
+  ),
   getParentRoute: () => rootRoute,
   path: '/settings',
 });

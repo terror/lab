@@ -1,4 +1,4 @@
-import { Tile } from '@/components/library';
+import { Tile } from '@/components/library-tile';
 import { LoadMore } from '@/components/load-more';
 import { Button } from '@/components/ui/button';
 import {
