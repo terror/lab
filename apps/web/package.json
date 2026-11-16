@@ -16,6 +16,7 @@
     "@tanstack/react-router": "1.170.46",
     "better-auth": "1.7.25",
     "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.5.0",
     "hono": "^4.13.13",
     "lucide-react": "^1.61.0",

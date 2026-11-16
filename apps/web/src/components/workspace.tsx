@@ -1,3 +1,4 @@
+import { SearchProvider, useSearch } from '@/components/search';
 import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +19,7 @@ import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
-import { PanelLeft, SquarePen } from 'lucide-react';
+import { PanelLeft, Search, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { z } from 'zod';
@@ -134,6 +135,7 @@ function MobileWorkspace({
   user: User;
 }) {
   const { openNewChat, selectConversation } = useNavigation();
+  const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
   const conversations = useQuery(conversationsQueryOptions);
@@ -158,6 +160,14 @@ function MobileWorkspace({
         <span className='min-w-0 flex-1 truncate text-center text-sm font-medium'>
           {title}
         </span>
+        <Button
+          aria-label='Search'
+          onClick={openSearch}
+          size='icon'
+          variant='ghost'
+        >
+          <Search aria-hidden='true' />
+        </Button>
         <Button
           aria-label='New chat'
           onClick={openNewChat}
@@ -192,14 +202,30 @@ function MobileWorkspace({
   );
 }
 
-export function Workspace() {
-  const user = useUser();
-  const selected = useParams({ strict: false }).id;
-  const desktop = useMediaQuery('(min-width: 768px)');
-
+function WorkspaceLayout({
+  desktop,
+  selected,
+  user,
+}: {
+  desktop: boolean;
+  selected: number | undefined;
+  user: User;
+}) {
   if (desktop) {
     return <DesktopWorkspace selected={selected} user={user} />;
   }
 
   return <MobileWorkspace selected={selected} user={user} />;
+}
+
+export function Workspace() {
+  const user = useUser();
+  const selected = useParams({ strict: false }).id;
+  const desktop = useMediaQuery('(min-width: 768px)');
+
+  return (
+    <SearchProvider>
+      <WorkspaceLayout desktop={desktop} selected={selected} user={user} />
+    </SearchProvider>
+  );
 }

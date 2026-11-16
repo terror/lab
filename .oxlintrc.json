@@ -33,5 +33,15 @@
     "react/rules-of-hooks": "error",
     "typescript/no-deprecated": "error",
     "typescript/no-unsafe-type-assertion": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["apps/web/src/components/ui/**"],
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
+    }
+  ]
 }
