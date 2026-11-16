@@ -5,6 +5,8 @@ import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { auth, requireUser } from './auth';
@@ -16,12 +18,25 @@ import library from './library';
 import memory from './memory';
 import { defaultModel, listModels } from './models';
 import providers from './providers';
+import { contentSecurityPolicy } from './security';
 import usage from './usage';
+
+const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
+
+const shell = await readFile(`${web}/index.html`, 'utf8').catch(() => '');
 
 const app = new Hono();
 
 app.use(logger());
 app.use('/api/*', compress());
+app.use(
+  secureHeaders({
+    contentSecurityPolicy: contentSecurityPolicy(shell),
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+    xFrameOptions: 'DENY',
+  })
+);
 
 const api = new Hono()
   .get('/health', async (c) => {
@@ -58,7 +73,13 @@ export type AppType = typeof api;
 app.route('/api', api);
 app.all('/api/*', (c) => c.notFound());
 
-const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
+app.use('/assets/*', async (c, next) => {
+  await next();
+
+  if (c.res.ok) {
+    c.header('cache-control', 'public, max-age=31536000, immutable');
+  }
+});
 
 app.get('*', serveStatic({ root: web }));
 app.get('*', serveStatic({ root: web, path: 'index.html' }));
