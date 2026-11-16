@@ -45,6 +45,11 @@ const entriesQuery = validator(
 
 const modelChange = validator('json', z.object({ id: z.string().min(1) }));
 
+const rename = validator(
+  'json',
+  z.object({ title: z.string().trim().min(1).max(200) })
+);
+
 function findModel(id: string) {
   const model = chatModels.find(({ modelId }) => modelId === id);
 
@@ -225,6 +230,35 @@ const conversations = new Hono()
     const conversation = await load(c.req.valid('param').id, c.get('user').id);
 
     await conversation.abort(BACKGROUND_CONTEXT);
+
+    return c.body(null, 204);
+  })
+  .patch('/:id', params, rename, async (c) => {
+    const conversation = await load(c.req.valid('param').id, c.get('user').id);
+
+    const { title } = c.req.valid('json');
+
+    await conversation.commit(async (tx) => {
+      (await tx.doc(TitleDoc, conversation.id)).title = title;
+    }, BACKGROUND_CONTEXT);
+
+    return c.body(null, 204);
+  })
+  .delete('/:id', params, async (c) => {
+    const user = c.get('user');
+
+    const conversation = await load(c.req.valid('param').id, user.id);
+
+    await conversation.abort(BACKGROUND_CONTEXT);
+
+    await db
+      .delete(schema.conversation)
+      .where(
+        and(
+          eq(schema.conversation.id, conversation.id),
+          eq(schema.conversation.ownerId, user.id)
+        )
+      );
 
     return c.body(null, 204);
   });

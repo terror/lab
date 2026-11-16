@@ -34,6 +34,21 @@ export async function createConversation(content: string, model?: string) {
   return id;
 }
 
+export async function renameConversation(id: number, title: string) {
+  await call(
+    client.conversations[':id'].$patch({
+      param: { id: String(id) },
+      json: { title },
+    })
+  );
+}
+
+export async function deleteConversation(id: number) {
+  await call(
+    client.conversations[':id'].$delete({ param: { id: String(id) } })
+  );
+}
+
 export async function sendMessage(id: number, content: string) {
   await call(
     client.conversations[':id'].messages.$post({
