@@ -10,6 +10,7 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
+import { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
   keepPreviousData,
@@ -23,8 +24,6 @@ import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
 import { removeStored, usePersistentState } from './storage';
-
-const sortSchema = z.enum(['activity', 'created', 'title']);
 
 export type ConversationSort = z.infer<typeof sortSchema>;
 

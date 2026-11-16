@@ -2,7 +2,10 @@
   "name": "@lab/server",
   "private": true,
   "type": "module",
-  "exports": "./src/app.ts",
+  "exports": {
+    ".": "./src/app.ts",
+    "./schemas": "./src/schemas.ts"
+  },
   "scripts": {
     "build": "bun build src/server.ts --target=bun --outdir=dist",
     "check": "tsc --noEmit",

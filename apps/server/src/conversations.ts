@@ -27,8 +27,14 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
-import { modelChange, thinkingLevelSchema } from './models';
+import { modelChange } from './models';
 import { flushProjections } from './projections';
+import {
+  type Attachment,
+  attachmentSchema,
+  sortSchema,
+  thinkingLevelSchema,
+} from './schemas';
 import { validator } from './validator';
 
 const params = validator(
@@ -43,22 +49,6 @@ const submissionParams = validator(
     submissionId: z.coerce.number().int().positive(),
   })
 );
-
-const attachmentSchema = z.discriminatedUnion('type', [
-  z.object({
-    data: z.base64().max(8_000_000),
-    mimeType: z.enum(['image/gif', 'image/jpeg', 'image/png', 'image/webp']),
-    name: z.string().max(200),
-    type: z.literal('image'),
-  }),
-  z.object({
-    name: z.string().max(200),
-    text: z.string().max(200_000),
-    type: z.literal('file'),
-  }),
-]);
-
-type Attachment = z.infer<typeof attachmentSchema>;
 
 const draftSchema = z.object({
   attachments: z.array(attachmentSchema).max(8).default([]),
@@ -104,11 +94,11 @@ const listQuery = validator(
     cursor: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     search: z.string().trim().min(1).max(200).optional(),
-    sort: z.enum(['activity', 'created', 'title']).default('activity'),
+    sort: sortSchema.default('activity'),
   })
 );
 
-type Sort = 'activity' | 'created' | 'title';
+type Sort = z.infer<typeof sortSchema>;
 
 type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
 

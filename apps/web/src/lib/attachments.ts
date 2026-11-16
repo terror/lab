@@ -1,15 +1,8 @@
-const imageTypes = [
-  'image/gif',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-] as const;
+import { type Attachment, imageTypes } from '@lab/server/schemas';
+
+export type { Attachment };
 
 type ImageType = (typeof imageTypes)[number];
-
-export type Attachment =
-  | { data: string; mimeType: ImageType; name: string; type: 'image' }
-  | { name: string; text: string; type: 'file' };
 
 const MAX_DIMENSION = 2000;
 

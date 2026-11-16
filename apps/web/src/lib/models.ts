@@ -1,4 +1,6 @@
+import { thinkingLevelSchema } from '@lab/server/schemas';
 import { queryOptions } from '@tanstack/react-query';
+import type { InferResponseType } from 'hono/client';
 import { z } from 'zod';
 
 import { call, client } from './client';
@@ -16,15 +18,10 @@ export const modelsQueryOptions = queryOptions({
   staleTime: Infinity,
 });
 
-const thinkingLevelSchema = z.enum([
-  'off',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-]);
+export type Model = InferResponseType<
+  typeof client.models.$get,
+  200
+>['models'][number];
 
 export type ThinkingLevel = z.infer<typeof thinkingLevelSchema>;
 
