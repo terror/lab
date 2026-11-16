@@ -24,3 +24,12 @@ export const conversation = pgTable(
     ),
   ]
 );
+
+export const providerCredential = pgTable('provider_credential', {
+  providerId: text('provider_id').primaryKey(),
+  credential: text('credential').notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});

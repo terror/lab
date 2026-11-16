@@ -22,6 +22,7 @@ export type ThinkingLevel = z.infer<typeof thinkingLevelSchema>;
 
 const modelChoiceSchema = z.object({
   id: z.string(),
+  provider: z.string(),
   thinkingLevel: thinkingLevelSchema.optional(),
 });
 

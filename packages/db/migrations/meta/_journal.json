@@ -64,6 +64,13 @@
       "when": 1794845131803,
       "tag": "0008_conversation_title",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794856001104,
+      "tag": "0009_provider_credentials",
+      "breakpoints": true
     }
   ]
 }

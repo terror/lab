@@ -1,3 +1,4 @@
+import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -7,8 +8,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type Theme, useTheme } from '@/lib/theme';
+import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
-import { ArrowLeft, ChevronDown, Palette } from 'lucide-react';
+import { ArrowLeft, ChevronDown, KeyRound, Palette } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 
 const themes: { label: string; value: Theme }[] = [
   { label: 'Light', value: 'light' },
@@ -67,7 +70,20 @@ function Appearance() {
   );
 }
 
+const sections = [
+  { icon: Palette, id: 'appearance', label: 'Appearance' },
+  { icon: KeyRound, id: 'providers', label: 'Providers' },
+] as const;
+
+type Section = (typeof sections)[number]['id'];
+
+const panels: Record<Section, () => ReactNode> = {
+  appearance: () => <Appearance />,
+  providers: () => <Providers />,
+};
+
 export function Settings() {
+  const [section, setSection] = useState<Section>('appearance');
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
@@ -93,17 +109,24 @@ export function Settings() {
           aria-label='Settings'
           className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
         >
-          <button
-            aria-current='page'
-            className='flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-left text-sm font-medium text-accent-foreground'
-            type='button'
-          >
-            <Palette aria-hidden='true' className='size-4' />
-            Appearance
-          </button>
+          {sections.map(({ icon: Icon, id, label }) => (
+            <button
+              key={id}
+              aria-current={section === id ? 'page' : undefined}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                section === id && 'bg-accent font-medium text-accent-foreground'
+              )}
+              onClick={() => setSection(id)}
+              type='button'
+            >
+              <Icon aria-hidden='true' className='size-4' />
+              {label}
+            </button>
+          ))}
         </nav>
         <main className='max-w-3xl min-w-0 flex-1 px-2 pt-4 sm:px-0'>
-          <Appearance />
+          {panels[section]()}
         </main>
       </div>
     </div>

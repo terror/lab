@@ -17,9 +17,12 @@ await admin.close();
 url.pathname = '/lab_test';
 
 const models = [
-  'anthropic/claude-sonnet-5.5',
-  'anthropic/claude-haiku-5.5',
-  'alibaba/qwen3-coder',
+  { id: 'anthropic/claude-sonnet-5.5' },
+  {
+    id: 'anthropic/claude-haiku-5.5',
+    input: ['text' as const, 'image' as const],
+  },
+  { id: 'alibaba/qwen3-coder', input: ['text' as const] },
 ];
 
 Object.assign(process.env, {
@@ -41,7 +44,7 @@ await applyMigrations(db);
 await db.$client.close();
 
 const faux = fauxProvider({
-  models: models.map((id) => ({ id })),
+  models,
   provider: 'vercel-ai-gateway',
 });
 
