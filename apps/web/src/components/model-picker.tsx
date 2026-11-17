@@ -127,6 +127,10 @@ function same(a: ModelKey, b: ModelKey) {
   return a.id === b.id && a.provider === b.provider;
 }
 
+function focusOnMount(element: HTMLInputElement | null) {
+  element?.focus();
+}
+
 function FavoriteButton({
   favorite,
   name,
@@ -357,7 +361,7 @@ export function ModelPicker({
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={onSearchKeyDown}
             placeholder={`Search ${options.length} models`}
-            ref={(element) => element?.focus()}
+            ref={focusOnMount}
             value={search}
           />
         </div>

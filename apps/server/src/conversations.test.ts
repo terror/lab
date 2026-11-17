@@ -669,7 +669,7 @@ test('deleted conversations go to the trash until purged', async () => {
 
   const hidden = await call(headers, 'GET', `/conversations/${kept}`);
 
-  await call(headers, 'DELETE', '/trash');
+  const emptied = await call(headers, 'DELETE', '/trash');
 
   const tombstones = await db
     .select({ id: schema.conversationDeletion.id })
@@ -678,6 +678,7 @@ test('deleted conversations go to the trash until purged', async () => {
 
   expect({
     after: after.body.items.map(({ id }: { id: number }) => id),
+    emptied: emptied.body,
     hidden,
     again: (await call(headers, 'DELETE', `/trash/conversation/${purged}`))
       .status,
@@ -697,6 +698,7 @@ test('deleted conversations go to the trash until purged', async () => {
   }).toEqual({
     after: [kept],
     again: 404,
+    emptied: { chats: [kept] },
     hidden: { body: { error: 'Conversation not found' }, status: 404 },
     listed: [restored],
     purge: { body: { chats: [purged] }, status: 200 },
