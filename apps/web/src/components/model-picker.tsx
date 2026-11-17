@@ -161,10 +161,6 @@ function FavoriteButton({
   );
 }
 
-function maker({ id, provider }: Model) {
-  return id.includes('/') ? id : provider;
-}
-
 function ModelOption({
   current,
   favorite,
@@ -182,7 +178,7 @@ function ModelOption({
 }) {
   const label = (
     <>
-      <ProviderLogo id={maker(model)} name={model.name} size='sm' />
+      <ProviderLogo id={model.provider} name={model.providerName} size='sm' />
       <span className='min-w-0 flex-1 truncate'>{model.name}</span>
       {current && <Check aria-hidden='true' className='size-4' />}
       <FavoriteButton
