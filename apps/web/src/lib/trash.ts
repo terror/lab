@@ -13,7 +13,7 @@ export type TrashItem = InferResponseType<
 
 type TrashRef = Pick<TrashItem, 'id' | 'kind'>;
 
-const trashQueryKey = ['trash'];
+export const trashQueryKey = ['trash'];
 
 export const trashQueryOptions = queryOptions({
   queryKey: trashQueryKey,
