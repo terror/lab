@@ -38,6 +38,16 @@ export const auth = betterAuth({
 
 export type User = typeof auth.$Infer.Session.user;
 
+export const requireAdmin = createMiddleware<{ Variables: { user: User } }>(
+  async (c, next) => {
+    if (!isAdmin(c.get('user'))) {
+      throw new HTTPException(403, { message: 'Only the admin can do this' });
+    }
+
+    await next();
+  }
+);
+
 export const requireUser = createMiddleware<{ Variables: { user: User } }>(
   async (c, next) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });

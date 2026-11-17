@@ -1,3 +1,4 @@
+import { useAdmin } from '@/lib/profile';
 import { usePersistentState, writeStored } from '@/lib/storage';
 import {
   Brain,
@@ -41,6 +42,16 @@ export const settingsSectionInfo: Record<
   trash: { icon: Trash2, label: 'Trash' },
   usage: { icon: Gauge, label: 'Usage' },
 };
+
+const adminSections = new Set<SettingsSection>(['providers']);
+
+export function useSettingsSections() {
+  const admin = useAdmin();
+
+  return settingsSections.filter(
+    (section) => admin || !adminSections.has(section)
+  );
+}
 
 const KEY = 'settings-section';
 

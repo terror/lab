@@ -1,6 +1,19 @@
+import { queryOptions, useQuery } from '@tanstack/react-query';
+
 import { authClient } from './auth';
 import { call, client } from './client';
 import { useRefreshMutation } from './mutations';
+
+const profileQueryOptions = queryOptions({
+  queryKey: ['profile'],
+  queryFn: ({ signal }) =>
+    call(client.profile.$get(undefined, { init: { signal } })),
+  staleTime: Infinity,
+});
+
+export function useAdmin() {
+  return useQuery(profileQueryOptions).data?.admin === true;
+}
 
 export function usePictureUpdate<T>(
   mutationFn: (value: T) => Promise<unknown>
