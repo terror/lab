@@ -1,0 +1,28 @@
+export const toolNames = [
+  'ask_user',
+  'chat_read',
+  'chat_search',
+  'codemode',
+  'forget',
+  'library_read',
+  'library_search',
+  'remember',
+  'sandbox_exec',
+  'sandbox_list',
+  'sandbox_read',
+  'sandbox_save',
+  'sandbox_upload',
+  'sandbox_write',
+  'schedule_create',
+  'schedule_delete',
+  'schedule_list',
+  'schedule_update',
+  'skill_create',
+  'skill_delete',
+  'skill_read',
+  'skill_update',
+  'web_fetch',
+  'web_search',
+] as const;
+
+export type ToolName = (typeof toolNames)[number];

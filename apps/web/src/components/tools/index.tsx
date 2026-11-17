@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { FooterButton, Raw } from './previews';
+import { FooterButton, PreviewPassage, Raw } from './previews';
 import { toolRenderer } from './registry';
 import { type ToolView } from './types';
 
@@ -21,13 +21,10 @@ export function ToolBody(props: ToolView & { name: string }) {
 
   const preview = renderer.preview?.(props);
 
-  if (preview === undefined || preview === null) {
-    return <Raw {...props} />;
-  }
-
   return (
     <>
-      {preview}
+      {preview ??
+        (props.output && <PreviewPassage>{props.output}</PreviewPassage>)}
       <div className='flex items-center gap-4'>
         {renderer.actions}
         <FooterButton onClick={() => setRaw(!raw)}>

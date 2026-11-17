@@ -32,11 +32,19 @@ export type ToolView = {
   output: string;
 };
 
-export type ToolRenderer = {
+type Render = (view: ToolView) => ReactNode;
+
+type ToolLabel = {
   actions?: ReactNode;
-  inline?: (view: ToolView) => ReactNode;
-  preview?: (view: ToolView) => ReactNode;
   icon: LucideIcon;
   summary?: (view: ToolView) => string | undefined;
   title: (view: ToolView) => string;
+};
+
+export type ToolRenderer = ToolLabel &
+  ({ inline: Render; preview?: Render } | { inline?: Render; preview: Render });
+
+export type FallbackRenderer = ToolLabel & {
+  inline?: Render;
+  preview?: Render;
 };

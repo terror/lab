@@ -6,7 +6,7 @@ import { type ToolRenderer } from './types';
 
 type ChatMatch = { id: number; title: string | null; updatedAt: string };
 
-export const chatRenderers: Record<string, ToolRenderer> = {
+export const chatRenderers = {
   chat_read: {
     icon: MessageSquareText,
     preview: ({ details }) => {
@@ -53,4 +53,4 @@ export const chatRenderers: Record<string, ToolRenderer> = {
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} your chats${quoted(args.query)}`,
   },
-};
+} satisfies Record<string, ToolRenderer>;

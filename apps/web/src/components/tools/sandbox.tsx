@@ -18,7 +18,7 @@ import {
   seconds,
   text,
 } from './format';
-import { PreviewPassage } from './previews';
+import { PreviewCode, PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer, type ToolView } from './types';
 
 function Terminal({ active, args, output }: ToolView) {
@@ -87,7 +87,29 @@ function Listing({ output }: ToolView) {
   ) : undefined;
 }
 
-export const sandboxRenderers: Record<string, ToolRenderer> = {
+function filePreview({ details }: ToolView) {
+  const filePath = text(field(details, 'path'));
+
+  const size = count(field(details, 'size'));
+
+  if (!filePath) {
+    return undefined;
+  }
+
+  return (
+    <PreviewList
+      items={[
+        {
+          key: filePath,
+          label: filePath,
+          meta: size === undefined ? undefined : bytes.format(size),
+        },
+      ]}
+    />
+  );
+}
+
+export const sandboxRenderers = {
   sandbox_exec: {
     icon: SquareTerminal,
     preview: (view) => <Terminal {...view} />,
@@ -137,10 +159,16 @@ export const sandboxRenderers: Record<string, ToolRenderer> = {
   },
   sandbox_upload: {
     icon: Upload,
+    preview: filePreview,
     title: pathTitle('Copying a library file', 'Copied a library file to'),
   },
   sandbox_write: {
     icon: FilePen,
+    preview: (view) => {
+      const content = text(field(view.args, 'content'));
+
+      return content ? <PreviewCode>{content}</PreviewCode> : filePreview(view);
+    },
     summary: ({ details }) => {
       const size = count(field(details, 'size'));
 
@@ -148,4 +176,4 @@ export const sandboxRenderers: Record<string, ToolRenderer> = {
     },
     title: pathTitle('Writing a file', 'Wrote'),
   },
-};
+} satisfies Record<string, ToolRenderer>;

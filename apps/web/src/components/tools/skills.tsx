@@ -51,7 +51,7 @@ function skillTitle(running: string, done: string) {
   };
 }
 
-export const skillRenderers: Record<string, ToolRenderer> = {
+export const skillRenderers = {
   skill_create: {
     actions: manageSkills,
     icon: WandSparkles,
@@ -82,4 +82,4 @@ export const skillRenderers: Record<string, ToolRenderer> = {
     preview: ({ details }) => <SkillCard details={details} />,
     title: skillTitle('Updating a skill', 'Updated'),
   },
-};
+} satisfies Record<string, ToolRenderer>;

@@ -21,7 +21,7 @@ type LibraryEntry = {
   size: number;
 };
 
-export const libraryRenderers: Record<string, ToolRenderer> = {
+export const libraryRenderers = {
   library_read: {
     preview: ({ details }) => {
       const passage = text(field(details, 'passage'));
@@ -67,4 +67,4 @@ export const libraryRenderers: Record<string, ToolRenderer> = {
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} your library${quoted(args.query)}`,
   },
-};
+} satisfies Record<string, ToolRenderer>;
