@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { isAdmin, requireUser } from './auth';
 import { db } from './db';
+import { rateLimit } from './limits';
 import { imageTypes } from './schemas';
 import { validator } from './validator';
 
@@ -32,7 +33,7 @@ async function setImage(userId: string, image: string | null) {
 const profile = new Hono()
   .use(requireUser)
   .get('/', (c) => c.json({ admin: isAdmin(c.get('user')) }))
-  .put('/picture', picture, async (c) => {
+  .put('/picture', rateLimit('uploads'), picture, async (c) => {
     const user = c.get('user');
 
     const { picture: file } = c.req.valid('form');

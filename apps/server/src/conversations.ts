@@ -23,6 +23,7 @@ import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
+import { rateLimit } from './limits';
 import { listConversations, listSchema, listUnread, running } from './listing';
 import {
   draftSchema,
@@ -226,7 +227,7 @@ const conversations = new Hono()
     c.json(await listConversations(c.get('user'), c.req.valid('query')))
   )
   .get('/unread', async (c) => c.json(await listUnread(c.get('user'))))
-  .post('/', creation, async (c) => {
+  .post('/', rateLimit('messages'), creation, async (c) => {
     const user = c.get('user');
     const {
       attachments,
@@ -373,31 +374,38 @@ const conversations = new Hono()
       status.unsubscribe();
     });
   })
-  .post('/:id/messages', idParam, owned, message, async (c) => {
-    const { conversation } = c.var;
+  .post(
+    '/:id/messages',
+    rateLimit('messages'),
+    idParam,
+    owned,
+    message,
+    async (c) => {
+      const { conversation } = c.var;
 
-    const { steer, ...draft } = c.req.valid('json');
+      const { steer, ...draft } = c.req.valid('json');
 
-    const agent = await harness.snapshot(
-      AgentDoc,
-      conversation.id,
-      BACKGROUND_CONTEXT
-    );
+      const agent = await harness.snapshot(
+        AgentDoc,
+        conversation.id,
+        BACKGROUND_CONTEXT
+      );
 
-    checkAttachments(
-      agent?.model &&
-        models.getModel(agent.model.provider, agent.model.modelId),
-      draft.attachments
-    );
+      checkAttachments(
+        agent?.model &&
+          models.getModel(agent.model.provider, agent.model.modelId),
+        draft.attachments
+      );
 
-    const submission = await submitMessage(
-      conversation,
-      draft,
-      steer ? 'steer' : 'followUp'
-    );
+      const submission = await submitMessage(
+        conversation,
+        draft,
+        steer ? 'steer' : 'followUp'
+      );
 
-    return c.json({ id: submission.id }, 202);
-  })
+      return c.json({ id: submission.id }, 202);
+    }
+  )
   .delete(
     '/:id/submissions/:submissionId',
     submissionParams,
@@ -449,7 +457,7 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/compact', idParam, owned, async (c) => {
+  .post('/:id/compact', rateLimit('messages'), idParam, owned, async (c) => {
     const { conversation } = c.var;
 
     await conversation.compact(undefined, BACKGROUND_CONTEXT);

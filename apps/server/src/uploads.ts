@@ -7,6 +7,7 @@ import { requireUser } from './auth';
 import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
+import { rateLimit } from './limits';
 import { uuidParam, validator } from './validator';
 
 const MAX_DOCUMENT_BYTES = 20_000_000;
@@ -72,7 +73,7 @@ const uploads = new Hono()
 
     return c.body(new Uint8Array(thumbnail), 200, fileHeaders('image/png'));
   })
-  .post('/', form, async (c) => {
+  .post('/', rateLimit('uploads'), form, async (c) => {
     const { document, thumbnail } = c.req.valid('form');
 
     const [created] = await db

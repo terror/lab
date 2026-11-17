@@ -14,6 +14,7 @@ import {
 } from './connections';
 import { db } from './db';
 import { found } from './found';
+import { rateLimit } from './limits';
 import { idParam, validator } from './validator';
 
 const table = schema.connector;
@@ -168,7 +169,7 @@ export async function deleteConnector(owner: Owner, id: number) {
 const connectors = new Hono()
   .use(requireUser)
   .get('/', async (c) => c.json(await listConnectors(c.get('user').id)))
-  .post('/', creation, async (c) => {
+  .post('/', rateLimit('connectors'), creation, async (c) => {
     const user = c.get('user');
 
     await addConnector(user, c.req.valid('json'));
@@ -182,7 +183,7 @@ const connectors = new Hono()
 
     return c.json(await listConnectors(user.id));
   })
-  .post('/:id/reconnect', idParam, async (c) => {
+  .post('/:id/reconnect', rateLimit('connectors'), idParam, async (c) => {
     const user = c.get('user');
 
     await refreshConnector(

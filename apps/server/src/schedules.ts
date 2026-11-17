@@ -12,6 +12,7 @@ import { createChat } from './conversations';
 import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
+import { rateLimit } from './limits';
 import { submitMessage } from './messages';
 import { defaultModel, modelChange } from './models';
 import {
@@ -160,7 +161,7 @@ const schedules = new Hono()
       task: found(result.kind === 'updated' ? result.task : undefined, MISSING),
     });
   })
-  .post('/:id/run', idParam, async (c) => {
+  .post('/:id/run', rateLimit('messages'), idParam, async (c) => {
     const [row] = await db
       .select()
       .from(table)
