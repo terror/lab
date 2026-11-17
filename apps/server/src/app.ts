@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { auth, requireUser } from './auth';
 import changelog from './changelog';
 import computer from './computer';
+import connectors from './connectors';
 import conversations from './conversations';
 import { db } from './db';
 import { env } from './env';
@@ -106,6 +107,7 @@ const api = new Hono()
     });
   })
   .route('/computer', computer)
+  .route('/connectors', connectors)
   .route('/conversations', conversations)
   .route('/preferences', preferences)
   .route('/profile', profile)

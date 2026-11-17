@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 
 import app from './app';
+import { startConnectors } from './connections';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
@@ -21,6 +22,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 
 backfillAll();
 startScheduler();
+void startConnectors().catch(console.error);
 
 export default {
   hostname: env.LAB_HOST,

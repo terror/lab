@@ -1,4 +1,4 @@
-import { Wrench } from 'lucide-react';
+import { Cable, PackageSearch, Wrench } from 'lucide-react';
 
 import { artifactRenderers } from './artifacts';
 import { askRenderers } from './ask';
@@ -38,10 +38,31 @@ function isToolName(name: string): name is ToolName {
   return name in renderers;
 }
 
-const fallback = (name: string): FallbackRenderer => ({
-  icon: Wrench,
-  title: ({ active }) => `${active ? 'Running' : 'Ran'} ${name}`,
-});
+const connectorTool = /^mcp__(.+?)__(.+)$/;
+
+function fallback(name: string): FallbackRenderer {
+  if (name === 'tool_search') {
+    return {
+      icon: PackageSearch,
+      title: ({ active }) => (active ? 'Finding tools' : 'Found tools'),
+    };
+  }
+
+  const [, connector, tool] = connectorTool.exec(name) ?? [];
+
+  if (connector && tool) {
+    return {
+      icon: Cable,
+      title: ({ active }) =>
+        `${active ? 'Using' : 'Used'} ${tool} from ${connector}`,
+    };
+  }
+
+  return {
+    icon: Wrench,
+    title: ({ active }) => `${active ? 'Running' : 'Ran'} ${name}`,
+  };
+}
 
 export function toolRenderer(name: string): FallbackRenderer {
   return isToolName(name) ? renderers[name] : fallback(name);

@@ -1,6 +1,7 @@
 import { usePersistentState, writeStored } from '@/lib/storage';
 import {
   Brain,
+  Cable,
   Gauge,
   KeyRound,
   type LucideIcon,
@@ -18,6 +19,7 @@ export const settingsSections = [
   'computer',
   'memory',
   'skills',
+  'connectors',
   'providers',
   'usage',
   'trash',
@@ -31,6 +33,7 @@ export const settingsSectionInfo: Record<
 > = {
   appearance: { icon: Palette, label: 'Appearance' },
   computer: { icon: Monitor, label: 'Computer' },
+  connectors: { icon: Cable, label: 'Connectors' },
   memory: { icon: Brain, label: 'Memory' },
   profile: { icon: UserRound, label: 'Profile' },
   providers: { icon: KeyRound, label: 'Providers' },

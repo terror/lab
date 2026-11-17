@@ -1,6 +1,11 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { schema } from '@lab/db';
-import { ComputerDoc, openHarness, purgeConversations } from '@lab/harness';
+import {
+  ComputerDoc,
+  createRegistry,
+  openHarness,
+  purgeConversations,
+} from '@lab/harness';
 import { inArray } from 'drizzle-orm';
 
 import { chatsAccess } from './chat-access';
@@ -36,6 +41,8 @@ export async function purgeDeleted(path: string) {
 
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
+export const registry = createRegistry();
+
 export const harness = await openHarness({
   history: historyAccess,
   library: libraryAccess,
@@ -45,6 +52,7 @@ export const harness = await openHarness({
   path: env.LAB_STORAGE_PATH,
   chats: chatsAccess,
   project: projectAccess,
+  registry,
   schedule: scheduleAccess,
   sandbox: createSandboxAccess(
     async () =>
