@@ -5,6 +5,7 @@ import { compaction } from './compaction';
 import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
+import { skills } from './skills';
 import { title } from './title';
 
 export {
@@ -20,6 +21,19 @@ export {
   library,
 } from './library';
 export { MEMORY_LENGTH, MEMORY_LIMIT, MemoryDoc, memory } from './memory';
+export {
+  SKILL_DESCRIPTION_LENGTH,
+  SKILL_INSTRUCTIONS_LENGTH,
+  SKILL_LIMIT,
+  SKILL_NAME_LENGTH,
+  type Skill,
+  type SkillChange,
+  SkillsDoc,
+  createSkill,
+  deleteSkill,
+  skills,
+  updateSkill,
+} from './skills';
 export { TitleDoc } from './title';
 
 export type ExtensionDeps = {
@@ -36,6 +50,7 @@ export function extensions(deps: ExtensionDeps) {
     history(deps.history),
     library(deps.library),
     memory,
+    skills,
     title(deps.onHelperUsage),
   ];
 }

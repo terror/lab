@@ -1,4 +1,4 @@
-import { selectSettingsSection } from '@/lib/settings';
+import { type SettingsSection, selectSettingsSection } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   type LucideIcon,
   Search,
+  WandSparkles,
   Wrench,
   X,
 } from 'lucide-react';
@@ -191,19 +192,75 @@ function FooterButton({
   );
 }
 
-function ManageMemories() {
+function SettingsLink({
+  children,
+  section,
+}: {
+  children: string;
+  section: SettingsSection;
+}) {
   const navigate = useNavigate();
 
   return (
     <FooterButton
       onClick={() => {
-        selectSettingsSection('memory');
+        selectSettingsSection(section);
         void navigate({ to: '/settings' });
       }}
     >
-      Manage memories
+      {children}
     </FooterButton>
   );
+}
+
+const manageMemories = (
+  <SettingsLink section='memory'>Manage memories</SettingsLink>
+);
+
+const manageSkills = (
+  <SettingsLink section='skills'>Manage skills</SettingsLink>
+);
+
+function SkillCard({
+  deleted = false,
+  details,
+}: {
+  deleted?: boolean;
+  details: unknown;
+}) {
+  const name = text(field(details, 'name'));
+
+  const description = text(field(details, 'description'));
+
+  if (!name) {
+    return undefined;
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-0.5 rounded-xl bg-muted/40 px-3.5 py-3 text-sm',
+        deleted && 'text-muted-foreground line-through'
+      )}
+    >
+      <span className='font-medium'>{name}</span>
+      {description && (
+        <span className='text-muted-foreground'>{description}</span>
+      )}
+    </div>
+  );
+}
+
+function skillTitle(running: string, done: string) {
+  return ({ active, details }: ToolView) => {
+    const name = text(field(details, 'name'));
+
+    if (active) {
+      return running;
+    }
+
+    return name ? `${done} the “${name}” skill` : `${done} a skill`;
+  };
 }
 
 function Block({ children, label }: { children: string; label: string }) {
@@ -352,7 +409,7 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
     title: ({ active }) => (active ? 'Running a script' : 'Ran a script'),
   },
   forget: {
-    actions: <ManageMemories />,
+    actions: manageMemories,
     icon: Lightbulb,
     preview: ({ details }) => {
       const note = text(field(details, 'text'));
@@ -415,7 +472,7 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
       `${active ? 'Searching' : 'Searched'} your library${quoted(args.query)}`,
   },
   remember: {
-    actions: <ManageMemories />,
+    actions: manageMemories,
     icon: Lightbulb,
     preview: ({ args, details }) => {
       const note = text(field(details, 'text')) ?? text(args.text);
@@ -429,6 +486,36 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
 
       return memory ? `${verb} “${memory}”` : verb;
     },
+  },
+  skill_create: {
+    actions: manageSkills,
+    icon: WandSparkles,
+    preview: ({ details }) => <SkillCard details={details} />,
+    title: skillTitle('Creating a skill', 'Created'),
+  },
+  skill_delete: {
+    actions: manageSkills,
+    icon: WandSparkles,
+    preview: ({ details }) => <SkillCard deleted details={details} />,
+    title: skillTitle('Deleting a skill', 'Deleted'),
+  },
+  skill_read: {
+    actions: manageSkills,
+    icon: WandSparkles,
+    preview: ({ details }) => {
+      const instructions = text(field(details, 'instructions'));
+
+      return instructions ? (
+        <PreviewPassage>{instructions}</PreviewPassage>
+      ) : undefined;
+    },
+    title: skillTitle('Reading a skill', 'Read'),
+  },
+  skill_update: {
+    actions: manageSkills,
+    icon: WandSparkles,
+    preview: ({ details }) => <SkillCard details={details} />,
+    title: skillTitle('Updating a skill', 'Updated'),
   },
 };
 

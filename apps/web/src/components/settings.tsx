@@ -2,6 +2,7 @@ import { Archived } from '@/components/archived';
 import { Memory } from '@/components/memory';
 import { Personalization } from '@/components/personalization';
 import { Providers } from '@/components/providers';
+import { Skills } from '@/components/skills';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import {
   type LucideIcon,
   Palette,
   UserRound,
+  WandSparkles,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -115,6 +117,7 @@ const sections: Record<
     panel: Personalization,
   },
   providers: { icon: KeyRound, label: 'Providers', panel: Providers },
+  skills: { icon: WandSparkles, label: 'Skills', panel: Skills },
   usage: { icon: ChartColumn, label: 'Usage', panel: UsagePanel },
 };
 
