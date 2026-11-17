@@ -240,10 +240,24 @@ export type Row =
       key: string;
       kind: 'assistant';
       parts: Parameters<typeof AssistantMessage>[0]['parts'];
+      span?: Span;
       streaming?: boolean;
     }
   | { bubble: Bubble; key: string; kind: 'user' }
   | { key: string; kind: 'compaction' };
+
+export type Span = { end: number; start: number };
+
+function joined(first: Span | undefined, second: Span | undefined) {
+  if (!first || !second) {
+    return first ?? second;
+  }
+
+  return {
+    end: Math.max(first.end, second.end),
+    start: Math.min(first.start, second.start),
+  };
+}
 
 function visible(parts: Extract<Row, { kind: 'assistant' }>['parts']) {
   return parts.some(
@@ -265,8 +279,13 @@ function rowsFor(item: TranscriptItem): Row[] {
   const message = item.entry.model?.[0];
 
   if (message?.role === 'assistant') {
+    const span = {
+      end: message.timestamp + (message.durationMs ?? 0),
+      start: message.timestamp,
+    };
+
     return visible(message.content)
-      ? [{ key, kind: 'assistant', parts: message.content }]
+      ? [{ key, kind: 'assistant', parts: message.content, span }]
       : [];
   }
 
@@ -323,6 +342,7 @@ export function mergeReplies(rows: readonly Row[]) {
       merged[merged.length - 1] = {
         ...last,
         parts: [...last.parts, ...row.parts],
+        span: joined(last.span, row.span),
       };
     } else {
       merged.push(row);
@@ -364,6 +384,7 @@ const TranscriptRow = memo(function TranscriptRow({
   progress,
   results,
   row,
+  working,
 }: {
   activity: string | undefined;
   latest: boolean;
@@ -373,6 +394,7 @@ const TranscriptRow = memo(function TranscriptRow({
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   row: Row;
+  working: boolean;
 }) {
   if (row.kind === 'compaction') {
     return (
@@ -409,7 +431,9 @@ const TranscriptRow = memo(function TranscriptRow({
         parts={row.parts}
         progress={progress}
         results={results}
+        span={row.span}
         streaming={row.streaming ?? false}
+        working={working}
       />
     );
   }
@@ -552,6 +576,7 @@ function ConversationView({ id }: { id: number }) {
         key: last.key,
         kind: 'assistant',
         parts: [...last.row.parts, ...partial],
+        span: last.row.span,
         streaming: true,
       };
 
@@ -668,6 +693,7 @@ function ConversationView({ id }: { id: number }) {
                       progress={progress}
                       results={results}
                       row={row}
+                      working={running && row === last}
                     />
                   </MessageScrollerItem>
                 ))}

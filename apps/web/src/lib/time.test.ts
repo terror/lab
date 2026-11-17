@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { ago, untilRun } from './time';
+import { ago, clock, duration, untilRun } from './time';
 
 const now = new Date('2026-01-10T12:00:00Z').getTime();
 
@@ -37,4 +37,15 @@ test('next runs read as relative times', () => {
     'in 5 minutes',
     'this minute',
   ]);
+});
+
+test('work durations read as short labels', () => {
+  expect([
+    duration(200),
+    duration(42_000),
+    duration(151_000),
+    duration(3_840_000),
+    clock(42_900),
+    clock(151_000),
+  ]).toEqual(['1s', '42s', '2m 31s', '1h 4m', '0:42', '2:31']);
 });
