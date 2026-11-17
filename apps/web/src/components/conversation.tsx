@@ -238,7 +238,7 @@ function toolProgress(tools: LiveState['tools'] | undefined) {
   );
 }
 
-type Row =
+export type Row =
   | { key: string; kind: 'earlier' }
   | { gap: Gap; key: string; kind: 'gap' }
   | {
@@ -318,19 +318,23 @@ function cachedRows(item: TranscriptItem) {
   return rows;
 }
 
-function mergeReplies(rows: readonly Row[]) {
-  return rows.reduce<Row[]>((merged, row) => {
+export function mergeReplies(rows: readonly Row[]) {
+  const merged: Row[] = [];
+
+  for (const row of rows) {
     const last = merged.at(-1);
 
-    if (row.kind !== 'assistant' || last?.kind !== 'assistant') {
-      return [...merged, row];
+    if (row.kind === 'assistant' && last?.kind === 'assistant') {
+      merged[merged.length - 1] = {
+        ...last,
+        parts: [...last.parts, ...row.parts],
+      };
+    } else {
+      merged.push(row);
     }
+  }
 
-    return [
-      ...merged.slice(0, -1),
-      { ...last, parts: [...last.parts, ...row.parts] },
-    ];
-  }, []);
+  return merged;
 }
 
 function replyKeys(rows: readonly Row[]) {
