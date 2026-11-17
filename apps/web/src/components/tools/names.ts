@@ -1,5 +1,7 @@
 export const toolNames = [
   'artifact_create',
+  'artifact_read',
+  'artifact_update',
   'ask_user',
   'chat_delete',
   'chat_move',
