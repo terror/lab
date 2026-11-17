@@ -6,6 +6,7 @@ import { requireUser } from './auth';
 import { credentials } from './credentials';
 import { keyProviders } from './models';
 import { validator } from './validator';
+import { searchProviders } from './web-access';
 
 const params = validator('param', z.object({ id: z.string().min(1) }));
 
@@ -19,8 +20,23 @@ const connection = validator(
   ])
 );
 
+function allProviders() {
+  return [
+    ...keyProviders().map(({ id, name }) => ({
+      id,
+      kind: 'model' as const,
+      name,
+    })),
+    ...searchProviders.map(({ id, name }) => ({
+      id,
+      kind: 'search' as const,
+      name,
+    })),
+  ];
+}
+
 function provider(id: string) {
-  const match = keyProviders().find((candidate) => candidate.id === id);
+  const match = allProviders().find((candidate) => candidate.id === id);
 
   if (!match) {
     throw new HTTPException(404, { message: 'Provider not found' });
@@ -36,9 +52,10 @@ const providers = new Hono()
       (await credentials.list()).map(({ providerId }) => providerId)
     );
 
-    const list = keyProviders().map(({ id, name }) => ({
+    const list = allProviders().map(({ id, kind, name }) => ({
       configured: stored.has(id),
       id,
+      kind,
       methods: ['api_key' as const],
       name,
     }));

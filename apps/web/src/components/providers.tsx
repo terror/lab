@@ -20,7 +20,9 @@ import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -35,6 +37,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
+
+const kindGroups = [
+  { kind: 'model', label: 'Models' },
+  { kind: 'search', label: 'Web search' },
+] as const;
 
 const methodLabels: Record<Method, string> = {
   api_key: 'API key',
@@ -141,11 +148,18 @@ function ConnectDialog({
                   <SelectValue placeholder='Choose a provider' />
                 </SelectTrigger>
                 <SelectContent>
-                  {providers.map(({ id, name }) => (
-                    <SelectItem key={id} value={id}>
-                      <ProviderLogo id={id} name={name} size='sm' />
-                      {name}
-                    </SelectItem>
+                  {kindGroups.map(({ kind, label }) => (
+                    <SelectGroup key={kind}>
+                      <SelectLabel>{label}</SelectLabel>
+                      {providers
+                        .filter((candidate) => candidate.kind === kind)
+                        .map(({ id, name }) => (
+                          <SelectItem key={id} value={id}>
+                            <ProviderLogo id={id} name={name} size='sm' />
+                            {name}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
@@ -228,7 +242,9 @@ function ConnectedProvider({
       <div className='flex min-w-0 flex-col'>
         <span className='truncate text-sm font-medium'>{provider.name}</span>
         <span className='truncate text-xs text-muted-foreground'>
-          {methodLabels.api_key}
+          {provider.kind === 'search'
+            ? `Web search · ${methodLabels.api_key}`
+            : methodLabels.api_key}
         </span>
       </div>
       <div className='ml-auto flex shrink-0 items-center gap-1'>

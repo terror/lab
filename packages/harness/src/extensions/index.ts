@@ -7,6 +7,7 @@ import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { skills } from './skills';
 import { title } from './title';
+import { type WebAccess, web } from './web';
 
 export {
   type ChatMatch,
@@ -35,11 +36,21 @@ export {
   updateSkill,
 } from './skills';
 export { TitleDoc } from './title';
+export {
+  type WebAccess,
+  WebDoc,
+  type WebPage,
+  type WebRecency,
+  type WebResult,
+  type WebSearch,
+  normalizeUrl,
+} from './web';
 
 export type ExtensionDeps = {
   history: HistoryAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
+  web: WebAccess;
 };
 
 export function extensions(deps: ExtensionDeps) {
@@ -52,5 +63,6 @@ export function extensions(deps: ExtensionDeps) {
     memory,
     skills,
     title(deps.onHelperUsage),
+    web(deps.web),
   ];
 }

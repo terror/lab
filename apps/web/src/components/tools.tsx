@@ -5,6 +5,7 @@ import {
   Check,
   Code,
   FileText,
+  Globe,
   Lightbulb,
   LoaderCircle,
   MessageSquareText,
@@ -125,12 +126,16 @@ function Label({ children }: { children: string }) {
 
 type PreviewItem = {
   chatId?: number;
+  href?: string;
   key: string;
   label: string;
   meta?: string;
 };
 
-function PreviewRow({ chatId, label, meta }: PreviewItem) {
+const linkClass =
+  'group flex min-w-0 flex-1 items-baseline justify-between gap-4 outline-none focus-visible:underline';
+
+function PreviewRow({ chatId, href, label, meta }: PreviewItem) {
   const content = (
     <>
       <span className='min-w-0 truncate text-foreground/90 underline-offset-4 group-hover:underline'>
@@ -144,16 +149,20 @@ function PreviewRow({ chatId, label, meta }: PreviewItem) {
     </>
   );
 
+  if (href) {
+    return (
+      <a className={linkClass} href={href} rel='noreferrer' target='_blank'>
+        {content}
+      </a>
+    );
+  }
+
   if (chatId === undefined) {
     return content;
   }
 
   return (
-    <Link
-      className='group flex min-w-0 flex-1 items-baseline justify-between gap-4 outline-none focus-visible:underline'
-      params={{ id: chatId }}
-      to='/c/$id'
-    >
+    <Link className={linkClass} params={{ id: chatId }} to='/c/$id'>
       {content}
     </Link>
   );
@@ -401,6 +410,8 @@ function readRange(details: unknown) {
   return `characters ${start}–${end} of ${total}`;
 }
 
+type WebResult = { domain: string; title: string; url: string };
+
 type ChatMatch = { id: number; title: string | null; updatedAt: string };
 
 const renderers: Partial<Record<string, ToolRenderer>> = {
@@ -580,6 +591,52 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
     icon: WandSparkles,
     preview: ({ details }) => <SkillCard details={details} />,
     title: skillTitle('Updating a skill', 'Updated'),
+  },
+  web_fetch: {
+    icon: Globe,
+    preview: ({ details }) => {
+      const passage = text(field(details, 'passage'));
+
+      return passage ? <PreviewPassage>{passage}</PreviewPassage> : undefined;
+    },
+    summary: ({ details }) => text(field(details, 'domain')),
+    title: ({ active, details }) => {
+      const title = text(field(details, 'title'));
+
+      if (active) {
+        return 'Reading a page';
+      }
+
+      return title ? `Read “${title}”` : 'Read a page';
+    },
+  },
+  web_search: {
+    icon: Globe,
+    preview: ({ details }) => {
+      const results = field(details, 'results') as WebResult[] | undefined;
+
+      if (!results?.length) {
+        return undefined;
+      }
+
+      return (
+        <PreviewList
+          items={results.map(({ domain, title, url }) => ({
+            href: url,
+            key: url,
+            label: title,
+            meta: domain,
+          }))}
+        />
+      );
+    },
+    summary: ({ details }) => {
+      const found = count(field(details, 'count'));
+
+      return found === undefined ? undefined : plural(found, 'result');
+    },
+    title: ({ active, args }) =>
+      `${active ? 'Searching' : 'Searched'} the web${quoted(args.query)}`,
   },
 };
 
