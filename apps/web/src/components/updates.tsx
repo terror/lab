@@ -130,7 +130,6 @@ export function Updates() {
       action: { label: 'Refresh', onClick: () => window.location.reload() },
       duration: Infinity,
       id: 'update',
-      position: 'bottom-center',
     });
   }, [current, loaded]);
 

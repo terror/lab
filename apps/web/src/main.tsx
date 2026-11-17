@@ -43,7 +43,7 @@ createRoot(root).render(
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <RouterProvider router={router} />
-            <Toaster />
+            <Toaster position='bottom-center' />
           </TooltipProvider>
         </QueryClientProvider>
       </MotionConfig>
