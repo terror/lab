@@ -1,5 +1,7 @@
 ## lab
 
+[![build](https://img.shields.io/github/actions/workflow/status/terror/lab/ci.yaml?branch=master&style=flat&labelColor=1d1d1d&color=424242&logo=GitHub%20Actions&logoColor=white&label=build)](https://github.com/terror/lab/actions/workflows/ci.yaml)
+
 <img align="right" height="50" src="apps/web/public/favicon.svg">
 
 **lab** is a bespoke durable agent orchestrator built on top of
