@@ -1,5 +1,6 @@
 import { Wrench } from 'lucide-react';
 
+import { artifactRenderers } from './artifacts';
 import { askRenderers } from './ask';
 import { chatRenderers } from './chats';
 import { codemodeRenderers } from './codemode';
@@ -17,6 +18,7 @@ import type { FallbackRenderer, ToolRenderer } from './types';
 import { webRenderers } from './web';
 
 const renderers = {
+  ...artifactRenderers,
   ...askRenderers,
   ...chatRenderers,
   ...codemodeRenderers,

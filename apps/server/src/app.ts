@@ -18,6 +18,7 @@ import computer from './computer';
 import conversations from './conversations';
 import { db } from './db';
 import { env } from './env';
+import frame from './frame';
 import { harness } from './harness';
 import library from './library';
 import memory from './memory';
@@ -62,6 +63,10 @@ const docsHeaders = secureHeaders({
 });
 
 app.use(async (c, next) => {
+  if (c.req.path === '/frame') {
+    return next();
+  }
+
   const apply = c.req.path === '/api/docs' ? docsHeaders : appHeaders;
 
   let own: string | null = null;
@@ -132,7 +137,7 @@ app.get('/api/openapi.json', requireUser, async (c) =>
         defaultOptions: { ALL: { responses: errorResponses } },
         defaultValidationErrorResponse: errorResponse('Invalid request'),
         includeEmptyPaths: true,
-        exclude: ['/api/openapi.json', '/api/docs', /^\/api\/auth\//],
+        exclude: ['/api/openapi.json', '/api/docs', '/frame', /^\/api\/auth\//],
       })
     )
   )
@@ -151,6 +156,8 @@ app.get(
 );
 
 app.all('/api/*', (c) => c.notFound());
+
+app.route('/frame', frame);
 
 app.use('/assets/*', async (c, next) => {
   await next();
