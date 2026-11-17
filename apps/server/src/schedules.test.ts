@@ -111,3 +111,14 @@ test('scheduled tasks need approval and run once when due', async () => {
     remaining: [],
   });
 });
+
+test('the reported timezone must be a known one', async () => {
+  const headers = await signIn();
+
+  expect(
+    await call(headers, 'PUT', '/schedules/timezone', { timezone: 'Foo/Bar' })
+  ).toEqual({
+    body: { error: '✖ Unknown timezone\n  → at timezone' },
+    status: 400,
+  });
+});

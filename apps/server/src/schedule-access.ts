@@ -14,7 +14,7 @@ const table = schema.scheduledTask;
 
 type Row = typeof table.$inferSelect;
 
-function knownTimezone(timezone: string) {
+export function knownTimezone(timezone: string) {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format();
 

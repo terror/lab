@@ -91,6 +91,6 @@ export async function searchMessages(
     projectId: row.project_id === null ? null : Number(row.project_id),
     snippet: segments(row.snippet),
     title: row.title,
-    updatedAt: new Date(row.updated_at).toISOString(),
+    updatedAt: new Date(`${row.updated_at}+0000`).toISOString(),
   }));
 }

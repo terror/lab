@@ -16,6 +16,7 @@ import { submitMessage } from './messages';
 import { defaultModel, modelChange } from './models';
 import {
   deleteTask,
+  knownTimezone,
   listTasks,
   nextRun,
   toTask,
@@ -124,7 +125,13 @@ const change = validator('json', z.object({ enabled: z.boolean() }));
 
 const timezone = validator(
   'json',
-  z.object({ timezone: z.string().min(1).max(64) })
+  z.object({
+    timezone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(knownTimezone, 'Unknown timezone'),
+  })
 );
 
 const MISSING = 'Scheduled task not found';
