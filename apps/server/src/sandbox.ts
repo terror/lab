@@ -1,6 +1,10 @@
 import { schema } from '@lab/db';
-import { SANDBOX_OUTPUT_LENGTH, type SandboxAccess } from '@lab/harness';
-import { APIError, Sandbox } from '@vercel/sandbox';
+import {
+  type NetworkMode,
+  SANDBOX_OUTPUT_LENGTH,
+  type SandboxAccess,
+} from '@lab/harness';
+import { APIError, type NetworkPolicy, Sandbox } from '@vercel/sandbox';
 import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
 import { Writable } from 'node:stream';
@@ -26,6 +30,7 @@ export type SandboxProvider = {
   destroy(computer: string): Promise<void>;
   inspect(computer: string): Promise<ComputerState | undefined>;
   label: string;
+  network(computer: string, mode: NetworkMode): Promise<void>;
   read(computer: string, path: string): Promise<Uint8Array | undefined>;
   run(
     computer: string,
@@ -44,6 +49,31 @@ export type SandboxProvider = {
 
 const IDLE_TIMEOUT_MS = 10 * 60_000;
 
+const registries = [
+  '*.crates.io',
+  '*.github.com',
+  '*.githubusercontent.com',
+  '*.npmjs.org',
+  '*.pythonhosted.org',
+  '*.ubuntu.com',
+  'bun.sh',
+  'crates.io',
+  'files.pythonhosted.org',
+  'github.com',
+  'jsr.io',
+  'proxy.golang.org',
+  'pypi.org',
+  'registry.npmjs.org',
+  'registry.yarnpkg.com',
+  'sum.golang.org',
+];
+
+const policies = {
+  full: 'allow-all',
+  none: 'deny-all',
+  registries: { allow: registries },
+} satisfies Record<NetworkMode, NetworkPolicy>;
+
 function vercel(): SandboxProvider | undefined {
   const { VERCEL_PROJECT_ID, VERCEL_TEAM_ID, VERCEL_TOKEN } = env;
 
@@ -57,10 +87,13 @@ function vercel(): SandboxProvider | undefined {
     token: VERCEL_TOKEN,
   };
 
+  const desired = new Map<string, NetworkMode>();
+
   const open = (computer: string) =>
     Sandbox.getOrCreate({
       ...credentials,
       name: computer,
+      networkPolicy: policies[desired.get(computer) ?? 'full'],
       timeout: IDLE_TIMEOUT_MS,
     });
 
@@ -91,6 +124,11 @@ function vercel(): SandboxProvider | undefined {
       );
     },
     label: 'Vercel Sandbox',
+    network: async (computer, mode) => {
+      desired.set(computer, mode);
+
+      await (await find(computer))?.update({ networkPolicy: policies[mode] });
+    },
     read: async (computer, path) => {
       const content = await (await open(computer)).readFileToBuffer({ path });
 
@@ -143,8 +181,11 @@ const selected: { provider: SandboxProvider | undefined } = {
     : undefined,
 };
 
+const applied = new Map<string, NetworkMode>();
+
 export function useSandboxProvider(provider: SandboxProvider | undefined) {
   selected.provider = provider;
+  applied.clear();
 }
 
 function computerName(ownerId: string) {
@@ -182,7 +223,21 @@ type Computer = {
   provider: SandboxProvider;
 };
 
-async function computerFor(conversationId: number): Promise<Computer> {
+async function applyNetwork(
+  provider: SandboxProvider,
+  computer: string,
+  mode: NetworkMode
+) {
+  if (applied.get(computer) !== mode) {
+    await provider.network(computer, mode);
+    applied.set(computer, mode);
+  }
+}
+
+async function computerFor(
+  readNetwork: () => Promise<NetworkMode>,
+  conversationId: number
+): Promise<Computer> {
   const { provider } = selected;
 
   if (!provider) {
@@ -195,12 +250,11 @@ async function computerFor(conversationId: number): Promise<Computer> {
     throw new Error('This chat has no owner.');
   }
 
-  return {
-    chat: `chats/${conversationId}`,
-    name: computerName(ownerId),
-    ownerId,
-    provider,
-  };
+  const name = computerName(ownerId);
+
+  await applyNetwork(provider, name, await readNetwork());
+
+  return { chat: `chats/${conversationId}`, name, ownerId, provider };
 }
 
 function resolvePath({ chat }: Computer, path: string) {
@@ -255,147 +309,157 @@ async function run(
   return { exitCode, output: chunks.join('') };
 }
 
-export const sandboxAccess: SandboxAccess = {
-  available: () => selected.provider !== undefined,
-  exec: async (conversationId, { command, onOutput, signal, timeoutMs }) => {
-    const computer = await computerFor(conversationId);
+export function createSandboxAccess(
+  readNetwork: () => Promise<NetworkMode>
+): SandboxAccess {
+  const computerOf = (conversationId: number) =>
+    computerFor(readNetwork, conversationId);
 
-    const started = Date.now();
+  return {
+    available: () => selected.provider !== undefined,
+    exec: async (conversationId, { command, onOutput, signal, timeoutMs }) => {
+      const computer = await computerOf(conversationId);
 
-    const chunks: string[] = [];
+      const started = Date.now();
 
-    const { exitCode } = await computer.provider.run(computer.name, {
-      command,
-      cwd: computer.chat,
-      onOutput: (chunk) => {
-        chunks.push(chunk);
-        onOutput(chunk);
-      },
-      signal,
-      timeoutMs,
-    });
+      const chunks: string[] = [];
 
-    const output = chunks.join('');
+      const { exitCode } = await computer.provider.run(computer.name, {
+        command,
+        cwd: computer.chat,
+        onOutput: (chunk) => {
+          chunks.push(chunk);
+          onOutput(chunk);
+        },
+        signal,
+        timeoutMs,
+      });
 
-    return {
-      durationMs: Date.now() - started,
-      exitCode,
-      output: output.slice(-SANDBOX_OUTPUT_LENGTH),
-      truncated: output.length > SANDBOX_OUTPUT_LENGTH,
-    };
-  },
-  list: async (conversationId, path) => {
-    const computer = await computerFor(conversationId);
+      const output = chunks.join('');
 
-    const target = JSON.stringify(resolvePath(computer, path));
+      return {
+        durationMs: Date.now() - started,
+        exitCode,
+        output: output.slice(-SANDBOX_OUTPUT_LENGTH),
+        truncated: output.length > SANDBOX_OUTPUT_LENGTH,
+      };
+    },
+    list: async (conversationId, path) => {
+      const computer = await computerOf(conversationId);
 
-    const { exitCode, output } = await run(
-      computer,
-      `find ${target} -maxdepth 2 -not -path '*/.*' -printf '%y %s %P\\n' | sort -k3 | head -500`
-    );
+      const target = JSON.stringify(resolvePath(computer, path));
 
-    if (exitCode !== 0) {
-      throw new Error(`Unable to list ${path}.`);
-    }
+      const { exitCode, output } = await run(
+        computer,
+        `find ${target} -maxdepth 2 -not -path '*/.*' -printf '%y %s %P\\n' | sort -k3 | head -500`
+      );
 
-    return output
-      .split('\n')
-      .filter((line) => line.trim() && !line.endsWith(' '))
-      .map((line) => {
-        const [type, size, ...name] = line.split(' ');
+      if (exitCode !== 0) {
+        throw new Error(`Unable to list ${path}.`);
+      }
 
-        return type === 'd'
-          ? `${name.join(' ')}/`
-          : `${name.join(' ')} (${size} bytes)`;
-      })
-      .join('\n');
-  },
-  read: async (conversationId, path) => {
-    const computer = await computerFor(conversationId);
+      return output
+        .split('\n')
+        .filter((line) => line.trim() && !line.endsWith(' '))
+        .map((line) => {
+          const [type, size, ...name] = line.split(' ');
 
-    const content = await computer.provider.read(
-      computer.name,
-      resolvePath(computer, path)
-    );
+          return type === 'd'
+            ? `${name.join(' ')}/`
+            : `${name.join(' ')} (${size} bytes)`;
+        })
+        .join('\n');
+    },
+    read: async (conversationId, path) => {
+      const computer = await computerOf(conversationId);
 
-    if (!content) {
-      return undefined;
-    }
+      const content = await computer.provider.read(
+        computer.name,
+        resolvePath(computer, path)
+      );
 
-    const text =
-      content.byteLength <= MAX_READ_BYTES ? decodeText(content) : undefined;
+      if (!content) {
+        return undefined;
+      }
 
-    return {
-      binary: text === undefined,
-      size: content.byteLength,
-      text: text ?? '',
-    };
-  },
-  save: async (conversationId, path, name) => {
-    const computer = await computerFor(conversationId);
+      const text =
+        content.byteLength <= MAX_READ_BYTES ? decodeText(content) : undefined;
 
-    const content = await computer.provider.read(
-      computer.name,
-      resolvePath(computer, path)
-    );
+      return {
+        binary: text === undefined,
+        size: content.byteLength,
+        text: text ?? '',
+      };
+    },
+    save: async (conversationId, path, name) => {
+      const computer = await computerOf(conversationId);
 
-    if (!content) {
-      throw new Error(`No file at ${path}.`);
-    }
+      const content = await computer.provider.read(
+        computer.name,
+        resolvePath(computer, path)
+      );
 
-    const fileName = name ?? posix.basename(path);
+      if (!content) {
+        throw new Error(`No file at ${path}.`);
+      }
 
-    const type = mimeType(fileName);
+      const fileName = name ?? posix.basename(path);
 
-    const [created] = await db
-      .insert(schema.upload)
-      .values({ content, mimeType: type, ownerId: computer.ownerId })
-      .returning({ id: schema.upload.id });
+      const type = mimeType(fileName);
 
-    if (!created) {
-      throw new Error(`Unable to save ${fileName}.`);
-    }
+      const [created] = await db
+        .insert(schema.upload)
+        .values({ content, mimeType: type, ownerId: computer.ownerId })
+        .returning({ id: schema.upload.id });
 
-    return {
-      mimeType: type,
-      name: fileName,
-      size: content.byteLength,
-      uploadId: created.id,
-    };
-  },
-  upload: async (conversationId, libraryId, path) => {
-    const computer = await computerFor(conversationId);
+      if (!created) {
+        throw new Error(`Unable to save ${fileName}.`);
+      }
 
-    const file = await libraryFile(computer.ownerId, libraryId);
+      return {
+        mimeType: type,
+        name: fileName,
+        size: content.byteLength,
+        uploadId: created.id,
+      };
+    },
+    upload: async (conversationId, libraryId, path) => {
+      const computer = await computerOf(conversationId);
 
-    if (!file) {
-      throw new Error(`No library file has the id ${libraryId}.`);
-    }
+      const file = await libraryFile(computer.ownerId, libraryId);
 
-    const target = resolvePath(computer, path ?? file.name);
+      if (!file) {
+        throw new Error(`No library file has the id ${libraryId}.`);
+      }
 
-    await computer.provider.write(
-      computer.name,
-      target,
-      new Uint8Array(file.content)
-    );
+      const target = resolvePath(computer, path ?? file.name);
 
-    return { path: shownPath(computer, target), size: file.content.byteLength };
-  },
-  write: async (conversationId, path, content) => {
-    const computer = await computerFor(conversationId);
+      await computer.provider.write(
+        computer.name,
+        target,
+        new Uint8Array(file.content)
+      );
 
-    const target = resolvePath(computer, path);
+      return {
+        path: shownPath(computer, target),
+        size: file.content.byteLength,
+      };
+    },
+    write: async (conversationId, path, content) => {
+      const computer = await computerOf(conversationId);
 
-    const bytes = new TextEncoder().encode(content);
+      const target = resolvePath(computer, path);
 
-    await computer.provider.write(computer.name, target, bytes);
+      const bytes = new TextEncoder().encode(content);
 
-    return { path: shownPath(computer, target), size: bytes.byteLength };
-  },
-};
+      await computer.provider.write(computer.name, target, bytes);
 
-export async function computerStatus(ownerId: string) {
+      return { path: shownPath(computer, target), size: bytes.byteLength };
+    },
+  };
+}
+
+export async function inspectComputer(ownerId: string) {
   const { provider } = selected;
 
   return {
@@ -404,6 +468,14 @@ export async function computerStatus(ownerId: string) {
       : null,
     provider: provider?.label ?? null,
   };
+}
+
+export async function applyComputerNetwork(ownerId: string, mode: NetworkMode) {
+  const { provider } = selected;
+
+  if (provider) {
+    await applyNetwork(provider, computerName(ownerId), mode);
+  }
 }
 
 function requireProvider() {

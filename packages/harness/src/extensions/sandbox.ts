@@ -1,6 +1,7 @@
 import {
   type ConversationId,
   type ToolExecutionResult,
+  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -8,6 +9,25 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 export const SANDBOX_OUTPUT_LENGTH = 20_000;
+
+export const networkModes = ['full', 'registries', 'none'] as const;
+
+export type NetworkMode = (typeof networkModes)[number];
+
+export const ComputerDoc = defineDoc<{ network: NetworkMode }>({
+  kind: 'lab.computer',
+  version: 1,
+  scope: 'session',
+  initial: () => ({ network: 'full' }),
+  checkpointWhen: () => true,
+});
+
+const networkNotes: Record<NetworkMode, string> = {
+  full: 'It has full internet access.',
+  none: 'It has no internet access.',
+  registries:
+    'Its internet access is limited to package registries such as PyPI, npm, GitHub, and crates.io.',
+};
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 
@@ -309,9 +329,9 @@ export function sandbox(access: SandboxAccess) {
   return defineExtension({
     name: 'lab.sandbox',
     sections: [
-      section('sandbox', async () =>
+      section('sandbox', async ({ read }, context) =>
         access.available()
-          ? "You have a persistent Linux computer for this user. Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials."
+          ? `You have a persistent Linux computer for this user. ${networkNotes[(await read.snapshot(ComputerDoc, context))?.network ?? 'full']} Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials.`
           : undefined
       ),
     ],

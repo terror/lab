@@ -39,7 +39,10 @@ export {
 } from './skills';
 export { ANSWER_LENGTH, QuestionsDoc } from './ask';
 export {
+  ComputerDoc,
+  type NetworkMode,
   SANDBOX_OUTPUT_LENGTH,
+  networkModes,
   type SandboxAccess,
   type SandboxCommand,
   type SandboxFile,

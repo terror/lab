@@ -11,11 +11,20 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   type ComputerStatus,
   computerQueryOptions,
   useComputerAction,
+  useNetworkMode,
 } from '@/lib/computer';
 import { useQuery } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
 type State = NonNullable<ComputerStatus['computer']>['state'];
@@ -29,6 +38,66 @@ const states: Record<State, string> = {
   stopped: 'Stopped',
   stopping: 'Stopping',
 };
+
+const networks: {
+  description: string;
+  label: string;
+  value: ComputerStatus['network'];
+}[] = [
+  { description: 'Any website or service.', label: 'Full', value: 'full' },
+  {
+    description:
+      'Only package registries such as PyPI, npm, GitHub, and crates.io.',
+    label: 'Package registries',
+    value: 'registries',
+  },
+  { description: 'No outside connections.', label: 'None', value: 'none' },
+];
+
+function NetworkPicker({ value }: { value: ComputerStatus['network'] }) {
+  const update = useNetworkMode();
+
+  const current = networks.find((network) => network.value === value);
+
+  return (
+    <div className='flex items-start justify-between gap-6'>
+      <div className='space-y-1'>
+        <p className='text-sm font-medium'>Internet access</p>
+        <p className='text-sm text-muted-foreground'>{current?.description}</p>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className='flex shrink-0 items-center gap-1 text-sm text-muted-foreground outline-none'
+            disabled={update.isPending}
+            type='button'
+          >
+            {current?.label}
+            <ChevronDown aria-hidden='true' className='size-4' />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end'>
+          <DropdownMenuRadioGroup
+            onValueChange={(next) => {
+              const choice = networks.find((network) => network.value === next);
+
+              if (choice) {
+                update.mutate(choice.value);
+              }
+            }}
+            value={value}
+          >
+            {networks.map(({ label, value: option }) => (
+              <DropdownMenuRadioItem key={option} value={option}>
+                {label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 const created = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
@@ -64,6 +133,7 @@ function Details({ status }: { status: ComputerStatus }) {
 
   return (
     <div className='flex flex-col gap-6'>
+      <NetworkPicker value={status.network} />
       <div className='flex flex-col gap-3'>
         <Row label='Provider' value={provider} />
         <Row
