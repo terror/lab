@@ -1,5 +1,9 @@
 import { schema } from '@lab/db';
-import type { ScheduleAccess, ScheduledTask } from '@lab/harness';
+import type {
+  ScheduleAccess,
+  ScheduleUpdate,
+  ScheduledTask,
+} from '@lab/harness';
 import { Cron } from 'croner';
 import { and, asc, eq } from 'drizzle-orm';
 
@@ -10,7 +14,21 @@ const table = schema.scheduledTask;
 
 type Row = typeof table.$inferSelect;
 
+function knownTimezone(timezone: string) {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format();
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function cronError(cron: string, timezone: string) {
+  if (!knownTimezone(timezone)) {
+    return `Unknown timezone: ${timezone}`;
+  }
+
   try {
     return new Cron(cron, { paused: true, timezone }).nextRun()
       ? undefined
@@ -26,6 +44,7 @@ export function nextRun(cron: string, timezone: string, from: Date) {
 
 export function toTask(row: Row): ScheduledTask {
   return {
+    conversationId: row.conversationId,
     cron: row.cron,
     description: row.description,
     enabled: row.enabled,
@@ -52,17 +71,23 @@ export async function updateTask(
   ownerId: string,
   id: number,
   change: Parameters<ScheduleAccess['update']>[2]
-) {
+): Promise<ScheduleUpdate> {
   const [current] = await db
     .select()
     .from(table)
     .where(and(eq(table.id, id), eq(table.ownerId, ownerId)));
 
   if (!current) {
-    return undefined;
+    return { kind: 'missing' };
   }
 
   const next = { ...current, ...change };
+
+  const invalid = cronError(next.cron, next.timezone);
+
+  if (invalid) {
+    return { kind: 'invalid', message: invalid };
+  }
 
   const [row] = await db
     .update(table)
@@ -75,7 +100,7 @@ export async function updateTask(
     .where(eq(table.id, id))
     .returning();
 
-  return row && toTask(row);
+  return row ? { kind: 'updated', task: toTask(row) } : { kind: 'missing' };
 }
 
 export async function deleteTask(ownerId: string, id: number) {

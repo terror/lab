@@ -149,17 +149,21 @@ const schedules = new Hono()
 
     return c.body(null, 204);
   })
-  .patch('/:id', params, change, async (c) =>
-    c.json({
-      task: found(
-        await updateTask(
-          c.get('user').id,
-          c.req.valid('param').id,
-          c.req.valid('json')
-        )
-      ),
-    })
-  )
+  .patch('/:id', params, change, async (c) => {
+    const result = await updateTask(
+      c.get('user').id,
+      c.req.valid('param').id,
+      c.req.valid('json')
+    );
+
+    if (result.kind === 'invalid') {
+      throw new HTTPException(400, { message: result.message });
+    }
+
+    return c.json({
+      task: found(result.kind === 'updated' ? result.task : undefined),
+    });
+  })
   .post('/:id/run', params, async (c) => {
     const [row] = await db
       .select()

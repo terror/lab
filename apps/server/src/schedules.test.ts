@@ -52,8 +52,7 @@ test('scheduled tasks need approval and run once when due', async () => {
 
   const now = new Date('2026-01-01T00:00:30Z');
 
-  await runDueTasks(now);
-  await runDueTasks(now);
+  await Promise.all([runDueTasks(now), runDueTasks(now)]);
 
   const [ran] = await db
     .select()
@@ -65,6 +64,21 @@ test('scheduled tasks need approval and run once when due', async () => {
     .from(schema.conversation)
     .where(eq(schema.conversation.id, ran?.conversationId ?? 0));
 
+  const listed = await call(headers, 'GET', '/schedules');
+
+  script(
+    toolCall('schedule_update', { id: created.id, timezone: 'Foo/Bar' }),
+    fauxAssistantMessage('baz')
+  );
+
+  const updating = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await settle(updating.body.id);
+
+  const invalid = await toolOutputs(headers, updating.body.id);
+
   const paused = await call(headers, 'PATCH', `/schedules/${created.id}`, {
     enabled: false,
   });
@@ -74,7 +88,9 @@ test('scheduled tasks need approval and run once when due', async () => {
   expect({
     approved,
     chats: chats.length,
+    conversationId: listed.body.tasks[0].conversationId,
     denied,
+    invalid,
     lastRunAt: ran?.lastRunAt?.toISOString(),
     nextRunAt: ran?.nextRunAt?.toISOString(),
     paused: [paused.body.task.enabled, paused.body.task.nextRunAt],
@@ -84,7 +100,9 @@ test('scheduled tasks need approval and run once when due', async () => {
       `Scheduled [${created.id}] foo: Every day at 9am (0 9 * * *, UTC, next run ${created.nextRunAt}).`,
     ],
     chats: 1,
+    conversationId: ran?.conversationId,
     denied: ['The user declined to schedule this task.'],
+    invalid: ['Unknown timezone: Foo/Bar'],
     lastRunAt: '2026-01-01T00:00:30.000Z',
     nextRunAt: '2026-01-01T09:00:00.000Z',
     paused: [false, null],

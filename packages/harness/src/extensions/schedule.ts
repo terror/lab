@@ -11,6 +11,7 @@ import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 import { requestApproval } from './host-input';
 
 export type ScheduledTask = {
+  conversationId: number | null;
   cron: string;
   description: string;
   enabled: boolean;
@@ -29,6 +30,11 @@ export type ScheduleInput = Pick<
 
 export type ScheduleChange = Partial<ScheduleInput> & { enabled?: boolean };
 
+export type ScheduleUpdate =
+  | { kind: 'invalid'; message: string }
+  | { kind: 'missing' }
+  | { kind: 'updated'; task: ScheduledTask };
+
 export type ScheduleAccess = {
   create(
     conversationId: ConversationId,
@@ -44,7 +50,7 @@ export type ScheduleAccess = {
     conversationId: ConversationId,
     id: number,
     change: ScheduleChange
-  ): Promise<ScheduledTask | undefined>;
+  ): Promise<ScheduleUpdate>;
 };
 
 export const ProfileDoc = defineDoc<{ timezone: string }>({
@@ -105,6 +111,23 @@ const timezone = str({
 });
 
 const id = int({ description: 'The scheduled task id.', minimum: 1 });
+
+const missing = 'No scheduled task has that id.';
+
+function updateResult(result: ScheduleUpdate): ToolExecutionResult {
+  if (result.kind === 'invalid') {
+    return failure(result.message);
+  }
+
+  if (result.kind === 'missing') {
+    return failure(missing);
+  }
+
+  return {
+    details: { task: result.task },
+    output: text(`Updated ${line(result.task)}.`),
+  };
+}
 
 export function schedule(access: ScheduleAccess) {
   const scheduleCreate = defineTool({
@@ -194,20 +217,9 @@ export function schedule(access: ScheduleAccess) {
       { id: taskId, ...change },
       api
     ): Promise<ToolExecutionResult> => {
-      const invalid =
-        change.cron === undefined
-          ? undefined
-          : access.invalid(change.cron, change.timezone ?? 'UTC');
+      const result = await access.update(api.conversationId, taskId, change);
 
-      if (invalid) {
-        return failure(invalid);
-      }
-
-      const task = await access.update(api.conversationId, taskId, change);
-
-      return task
-        ? { details: { task }, output: text(`Updated ${line(task)}.`) }
-        : failure('No scheduled task has that id.');
+      return updateResult(result);
     },
   });
 
@@ -220,7 +232,7 @@ export function schedule(access: ScheduleAccess) {
 
       return task
         ? { details: { task }, output: text(`Deleted ${line(task)}.`) }
-        : failure('No scheduled task has that id.');
+        : failure(missing);
     },
   });
 

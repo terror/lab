@@ -63,6 +63,7 @@ export {
   type ScheduleAccess,
   type ScheduleChange,
   type ScheduleInput,
+  type ScheduleUpdate,
   type ScheduledTask,
 } from './schedule';
 export { TitleDoc } from './title';
