@@ -10,9 +10,11 @@ const Streamdown = lazy(async () => {
 
   const plugins = { code };
 
+  const linkSafety = { enabled: false };
+
   return {
     default: (props: StreamdownProps) => (
-      <Renderer plugins={plugins} {...props} />
+      <Renderer linkSafety={linkSafety} plugins={plugins} {...props} />
     ),
   };
 });
