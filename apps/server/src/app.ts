@@ -137,7 +137,12 @@ app.get('/api/openapi.json', requireUser, async (c) =>
         defaultOptions: { ALL: { responses: errorResponses } },
         defaultValidationErrorResponse: errorResponse('Invalid request'),
         includeEmptyPaths: true,
-        exclude: ['/api/openapi.json', '/api/docs', '/frame', /^\/api\/auth\//],
+        exclude: [
+          '/api/openapi.json',
+          '/api/docs',
+          /^\/frame/,
+          /^\/api\/auth\//,
+        ],
       })
     )
   )
