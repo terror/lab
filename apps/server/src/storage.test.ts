@@ -53,7 +53,9 @@ test('concurrent uploads cannot go over the storage limit together', async () =>
 
     const statuses = await Promise.all([upload(headers), upload(headers)]);
 
-    expect(statuses.map(({ status }) => status).toSorted()).toEqual([201, 413]);
+    expect(
+      statuses.map(({ status }) => status).toSorted((a, b) => a - b)
+    ).toEqual([201, 413]);
   } finally {
     env.LAB_STORAGE_LIMIT = undefined;
   }
