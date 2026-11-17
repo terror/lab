@@ -38,6 +38,7 @@ export const conversation = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
+    readAt: timestamp('read_at'),
     title: text('title'),
     pinnedAt: timestamp('pinned_at'),
     deletedAt: timestamp('deleted_at'),

@@ -17,7 +17,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
 import { type User, requireUser } from './auth';
-import { pinChat, renameChat } from './chat-actions';
+import { pinChat, readChat, renameChat } from './chat-actions';
 import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
@@ -454,6 +454,11 @@ const conversations = new Hono()
     await conversation.compact(undefined, BACKGROUND_CONTEXT);
 
     return c.body(null, 202);
+  })
+  .post('/:id/read', idParam, owned, async (c) => {
+    await readChat(c.get('user').id, c.var.conversation.id);
+
+    return c.body(null, 204);
   })
   .post('/:id/abort', idParam, owned, async (c) => {
     const { conversation } = c.var;

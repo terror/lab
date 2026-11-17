@@ -153,6 +153,7 @@ export async function listConversations(
       position,
       projectId: schema.conversation.projectId,
       title: schema.conversation.title,
+      unread: sql<boolean>`coalesce(${schema.conversation.readAt} < ${schema.conversation.lastMessageAt}, true)`,
     })
     .from(schema.conversation)
     .where(
@@ -184,12 +185,13 @@ export async function listConversations(
   const busy = await running();
 
   return {
-    conversations: page.map(({ id, pinnedAt, projectId, title }) => ({
+    conversations: page.map(({ id, pinnedAt, projectId, title, unread }) => ({
       id,
       pinned: pinnedAt !== null,
       projectId,
       running: busy.has(id),
       title,
+      unread: unread && !busy.has(id),
     })),
     next: next ?? null,
   };

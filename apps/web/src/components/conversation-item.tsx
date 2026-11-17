@@ -206,6 +206,7 @@ export function ConversationItem({
     projectId: number | null;
     running: boolean;
     title: string | null;
+    unread: boolean;
   };
   onSelect: (id: number) => void;
   selected: boolean;
@@ -218,6 +219,8 @@ export function ConversationItem({
   const renaming = useRef(false);
 
   const title = conversationTitle(conversation.title);
+
+  const unread = conversation.unread && !selected;
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -332,6 +335,7 @@ export function ConversationItem({
             >
               <span className='block truncate'>{title}</span>
               {conversation.running && <span className='sr-only'>Running</span>}
+              {unread && <span className='sr-only'>Unread</span>}
             </button>
             <div className='relative mr-1 flex'>
               <DropdownMenu onOpenChange={setMenu}>
@@ -360,6 +364,12 @@ export function ConversationItem({
                 <LoaderCircle
                   aria-hidden='true'
                   className='pointer-events-none absolute inset-0 m-auto size-3.5 text-muted-foreground group-hover:opacity-0 peer-focus-visible:opacity-0 peer-data-[state=open]:opacity-0 motion-safe:animate-spin'
+                />
+              )}
+              {unread && (
+                <span
+                  aria-hidden='true'
+                  className='pointer-events-none absolute inset-0 m-auto size-2 rounded-full bg-foreground group-hover:opacity-0 peer-focus-visible:opacity-0 peer-data-[state=open]:opacity-0'
                 />
               )}
             </div>
