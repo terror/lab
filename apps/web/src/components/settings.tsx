@@ -2,6 +2,7 @@ import { Computer } from '@/components/computer';
 import { Memory } from '@/components/memory';
 import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
+import { SettingsPage } from '@/components/settings-page';
 import { Skills } from '@/components/skills';
 import { Trash } from '@/components/trash';
 import { Button } from '@/components/ui/button';
@@ -51,13 +52,7 @@ function Appearance() {
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
   return (
-    <section className='space-y-8'>
-      <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Appearance</h1>
-        <p className='text-sm text-muted-foreground'>
-          Choose how Lab looks to you.
-        </p>
-      </div>
+    <SettingsPage description='Choose how Lab looks to you.' title='Appearance'>
       <div className='flex items-center justify-between gap-4'>
         <span className='text-sm'>Theme</span>
         <DropdownMenu>
@@ -102,7 +97,7 @@ function Appearance() {
           onCheckedChange={setLineNumbers}
         />
       </div>
-    </section>
+    </SettingsPage>
   );
 }
 

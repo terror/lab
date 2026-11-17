@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -198,20 +199,18 @@ export function Skills() {
   const [editing, setEditing] = useState<Editing>();
 
   return (
-    <section className='space-y-8'>
-      <div className='flex items-start justify-between gap-4'>
-        <div className='space-y-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Skills</h1>
-          <p className='text-sm text-muted-foreground'>
-            Reusable instructions Lab follows when a request calls for them. Ask
-            Lab to create or change a skill, or edit them here.
-          </p>
-        </div>
+    <SettingsPage
+      action={
         <Button onClick={() => setEditing({ kind: 'new' })} size='sm'>
           <Plus aria-hidden='true' />
           New skill
         </Button>
-      </div>
+      }
+      description={
+        'Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
+      }
+      title='Skills'
+    >
       {skills.isError && <LoadError subject='skills' />}
       {skills.data?.skills.length === 0 && (
         <p className='text-sm text-muted-foreground'>No skills yet.</p>
@@ -228,6 +227,6 @@ export function Skills() {
         </ul>
       )}
       <SkillDialog editing={editing} onClose={() => setEditing(undefined)} />
-    </section>
+    </SettingsPage>
   );
 }
