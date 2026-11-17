@@ -160,6 +160,7 @@ function CollapseButton({
 function SectionHeader({
   children,
   collapsed,
+  collapsible = true,
   controls,
   onToggle,
   subject,
@@ -167,6 +168,7 @@ function SectionHeader({
 }: {
   children?: ReactNode;
   collapsed: boolean;
+  collapsible?: boolean;
   controls: string;
   onToggle: () => void;
   subject: string;
@@ -175,12 +177,14 @@ function SectionHeader({
   return (
     <div className='flex items-center gap-1 px-2'>
       <h2 className='text-xs font-medium text-muted-foreground'>{title}</h2>
-      <CollapseButton
-        collapsed={collapsed}
-        controls={controls}
-        onToggle={onToggle}
-        subject={subject}
-      />
+      {collapsible && (
+        <CollapseButton
+          collapsed={collapsed}
+          controls={controls}
+          onToggle={onToggle}
+          subject={subject}
+        />
+      )}
       {children}
     </div>
   );
@@ -347,6 +351,7 @@ function ProjectsSection({
     <div className='flex flex-col gap-1'>
       <SectionHeader
         collapsed={collapsed}
+        collapsible={all.length > 0}
         controls={list}
         onToggle={() => setCollapsed(!collapsed)}
         subject='projects'

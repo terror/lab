@@ -126,6 +126,10 @@ function MoveItems({
   const targets =
     projects.data?.projects.filter((project) => project.id !== projectId) ?? [];
 
+  if (targets.length === 0 && projectId === null) {
+    return null;
+  }
+
   return (
     <Sub>
       <SubTrigger>
