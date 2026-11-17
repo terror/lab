@@ -155,6 +155,13 @@
       "when": 1794885429423,
       "tag": "0021_scheduled_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794886739052,
+      "tag": "0022_projects",
+      "breakpoints": true
     }
   ]
 }

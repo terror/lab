@@ -25,6 +25,7 @@ export const listSchema = z.object({
   cursor: z.string().min(1).max(2_000).optional(),
   filter: z.enum(['all', 'pinned', 'recent']).default('all'),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  project: z.coerce.number().int().positive().optional(),
   search: z.string().trim().min(1).max(200).optional(),
   sort: sortSchema.default('activity'),
 });
@@ -87,6 +88,7 @@ const filters = {
   recent: () =>
     and(
       isNull(schema.conversation.pinnedAt),
+      isNull(schema.conversation.projectId),
       isNull(schema.conversation.deletedAt)
     ),
 };
@@ -131,7 +133,7 @@ export async function running() {
 
 export async function listConversations(
   user: User,
-  { cursor, filter, limit, search, sort }: z.infer<typeof listSchema>
+  { cursor, filter, limit, project, search, sort }: z.infer<typeof listSchema>
 ) {
   await flushProjections();
 
@@ -149,6 +151,7 @@ export async function listConversations(
       id: schema.conversation.id,
       pinnedAt: schema.conversation.pinnedAt,
       position,
+      projectId: schema.conversation.projectId,
       title: schema.conversation.title,
     })
     .from(schema.conversation)
@@ -156,6 +159,9 @@ export async function listConversations(
       and(
         eq(schema.conversation.ownerId, user.id),
         filters[filter](),
+        project === undefined
+          ? undefined
+          : eq(schema.conversation.projectId, project),
         cursor === undefined ? undefined : after(cursor, sort),
         search === undefined
           ? undefined
@@ -178,9 +184,10 @@ export async function listConversations(
   const busy = await running();
 
   return {
-    conversations: page.map(({ id, pinnedAt, title }) => ({
+    conversations: page.map(({ id, pinnedAt, projectId, title }) => ({
       id,
       pinned: pinnedAt !== null,
+      projectId,
       running: busy.has(id),
       title,
     })),

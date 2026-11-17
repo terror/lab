@@ -23,7 +23,9 @@ test('created conversations are listed with their generated title', async () => 
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
-      conversations: [{ id, pinned: false, running: false, title: 'foo' }],
+      conversations: [
+        { id, pinned: false, projectId: null, running: false, title: 'foo' },
+      ],
       next: null,
     },
     status: 200,
@@ -181,8 +183,20 @@ test('conversations are listed by their latest message', async () => {
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'foo' },
-        { id: second, pinned: false, running: false, title: 'foo' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
+        {
+          id: second,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: null,
     },
@@ -201,7 +215,13 @@ test('conversations are listed in pages', async () => {
   expect(page).toEqual({
     body: {
       conversations: [
-        { id: second, pinned: false, running: false, title: 'foo' },
+        {
+          id: second,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: expect.any(String),
     },
@@ -217,7 +237,13 @@ test('conversations are listed in pages', async () => {
   ).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'foo' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: null,
     },
@@ -244,7 +270,13 @@ test('paging continues after the cursor chat is deleted', async () => {
   ).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'foo' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: null,
     },
@@ -271,7 +303,13 @@ test('conversations can be listed by creation', async () => {
   expect(page).toEqual({
     body: {
       conversations: [
-        { id: second, pinned: false, running: false, title: 'foo' },
+        {
+          id: second,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: expect.any(String),
     },
@@ -287,7 +325,13 @@ test('conversations can be listed by creation', async () => {
   ).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'foo' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'foo',
+        },
       ],
       next: null,
     },
@@ -340,8 +384,20 @@ test('conversations can be listed by title', async () => {
   expect(page).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'bar' },
-        { id: second, pinned: false, running: false, title: 'Qux' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'bar',
+        },
+        {
+          id: second,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'Qux',
+        },
       ],
       next: expect.any(String),
     },
@@ -357,7 +413,13 @@ test('conversations can be listed by title', async () => {
   ).toEqual({
     body: {
       conversations: [
-        { id: third, pinned: false, running: false, title: null },
+        {
+          id: third,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: null,
+        },
       ],
       next: null,
     },
@@ -377,7 +439,13 @@ test('conversations can be searched by title', async () => {
   expect(await call(headers, 'GET', '/conversations?search=foo%25')).toEqual({
     body: {
       conversations: [
-        { id: first, pinned: false, running: false, title: 'Foo%' },
+        {
+          id: first,
+          pinned: false,
+          projectId: null,
+          running: false,
+          title: 'Foo%',
+        },
       ],
       next: null,
     },
@@ -404,7 +472,9 @@ test('running conversations are marked in the list', async () => {
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
-      conversations: [{ id, pinned: false, running: true, title: 'foo' }],
+      conversations: [
+        { id, pinned: false, projectId: null, running: true, title: 'foo' },
+      ],
       next: null,
     },
     status: 200,
@@ -504,7 +574,9 @@ test('conversations can be renamed', async () => {
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
-      conversations: [{ id, pinned: false, running: false, title: 'bar' }],
+      conversations: [
+        { id, pinned: false, projectId: null, running: false, title: 'bar' },
+      ],
       next: null,
     },
     status: 200,

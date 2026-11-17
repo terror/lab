@@ -14,6 +14,19 @@ import {
 
 import { user } from './auth';
 
+export const project = pgTable(
+  'project',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('project_ownerId_idx').on(table.ownerId)]
+);
+
 export const conversation = pgTable(
   'conversation',
   {
@@ -26,8 +39,13 @@ export const conversation = pgTable(
     title: text('title'),
     pinnedAt: timestamp('pinned_at'),
     deletedAt: timestamp('deleted_at'),
+    projectId: integer('project_id').references(() => project.id),
   },
   (table) => [
+    index('conversation_projectId_lastMessageAt_idx').on(
+      table.projectId,
+      table.lastMessageAt
+    ),
     index('conversation_ownerId_createdAt_idx').on(
       table.ownerId,
       table.createdAt

@@ -46,6 +46,12 @@ function useNavigation() {
     navigateTo: (to: NavPath) => {
       void navigate({ to });
     },
+    openProject: (id: number) => {
+      void navigate({
+        params: { projectId: String(id) },
+        to: '/projects/$projectId',
+      });
+    },
     selectConversation: (id: number) => {
       void navigate({ params: { id }, to: '/c/$id' });
     },
@@ -59,7 +65,7 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { navigateTo, selectConversation } = useNavigation();
+  const { navigateTo, openProject, selectConversation } = useNavigation();
   const panel = usePanelRef();
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -109,6 +115,7 @@ function DesktopWorkspace({
             collapsed={collapsed}
             selected={selected}
             onNavigate={navigateTo}
+            onProject={openProject}
             onSelect={selectConversation}
             onToggle={toggle}
             user={user}
@@ -130,7 +137,7 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { navigateTo, selectConversation } = useNavigation();
+  const { navigateTo, openProject, selectConversation } = useNavigation();
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
@@ -185,6 +192,10 @@ function MobileWorkspace({
             onNavigate={(to) => {
               setOpen(false);
               navigateTo(to);
+            }}
+            onProject={(id) => {
+              setOpen(false);
+              openProject(id);
             }}
             onSelect={(id) => {
               setOpen(false);

@@ -29,6 +29,7 @@ import {
   submitMessage,
 } from './messages';
 import { defaultModel, findModel, modelChange, models } from './models';
+import { moveChat } from './project-access';
 import { thinkingLevelSchema } from './schemas';
 import { subscribeStatus } from './status';
 import { validator } from './validator';
@@ -69,6 +70,7 @@ const creation = validator(
       model: z
         .object({ id: z.string().min(1), provider: z.string().min(1) })
         .optional(),
+      projectId: z.number().int().positive().optional(),
       thinkingLevel: thinkingLevelSchema.optional(),
     })
     .refine(nonEmpty, emptyMessage)
@@ -123,10 +125,12 @@ export async function createChat(
   {
     change,
     draft,
+    projectId,
     title,
   }: {
     change: ReturnType<typeof modelChange>;
     draft: Parameters<typeof submitMessage>[1];
+    projectId?: number;
     title?: string;
   }
 ) {
@@ -138,6 +142,13 @@ export async function createChat(
   await db.insert(schema.conversation).values({ id: conversation.id, ownerId });
 
   try {
+    if (
+      projectId !== undefined &&
+      !(await moveChat(ownerId, conversation.id, projectId))
+    ) {
+      throw new HTTPException(404, { message: 'Project not found' });
+    }
+
     if (title) {
       await conversation.commit(async (tx) => {
         (await tx.doc(TitleDoc, conversation.id)).title = title;
@@ -212,6 +223,7 @@ const conversations = new Hono()
       attachments,
       content: text,
       model,
+      projectId,
       thinkingLevel,
     } = c.req.valid('json');
 
@@ -230,6 +242,7 @@ const conversations = new Hono()
     const id = await createChat(user.id, {
       change: modelChange(chosen, thinkingLevel),
       draft: { attachments, content: text },
+      projectId,
     });
 
     return c.json({ id }, 201);

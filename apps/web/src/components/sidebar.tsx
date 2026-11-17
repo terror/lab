@@ -3,6 +3,10 @@ import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
+import {
+  type ProjectEditing,
+  ProjectDialog,
+} from '@/components/project-dialog';
 import { useSearch } from '@/components/search';
 import {
   DropdownMenu,
@@ -26,20 +30,23 @@ import {
   usePinnedConversations,
 } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
+import { useProjects } from '@/lib/projects';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import {
   ArrowDownUp,
   ChevronDown,
   Clock,
+  Folder,
   LibraryBig,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
   SquarePen,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { z } from 'zod';
 
 type Side = 'bottom' | 'right';
@@ -219,6 +226,51 @@ export const navPages = [
 
 export type NavPath = (typeof navPages)[number]['to'];
 
+function ProjectsSection({ onProject }: { onProject: (id: number) => void }) {
+  const path = usePath();
+  const projects = useProjects();
+
+  const [editing, setEditing] = useState<ProjectEditing>();
+
+  return (
+    <div className='flex flex-col gap-1'>
+      <div className='flex items-center px-2'>
+        <h2 className='text-xs font-medium text-muted-foreground'>Projects</h2>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label='New project'
+              className={cn(headerButton, 'ml-auto')}
+              onClick={() => setEditing({ kind: 'new' })}
+              type='button'
+            >
+              <Plus aria-hidden='true' className='size-3.5' />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>New project</TooltipContent>
+        </Tooltip>
+      </div>
+      <nav aria-label='Projects' className='flex flex-col gap-0.5'>
+        {projects.data?.projects.map((project) => (
+          <NavButton
+            key={project.id}
+            active={path === `/projects/${project.id}`}
+            onClick={() => onProject(project.id)}
+          >
+            <Folder aria-hidden='true' className='size-4 shrink-0' />
+            <span className='truncate'>{project.name}</span>
+          </NavButton>
+        ))}
+      </nav>
+      <ProjectDialog
+        editing={editing}
+        onClose={() => setEditing(undefined)}
+        onCreated={(project) => onProject(project.id)}
+      />
+    </div>
+  );
+}
+
 function SidebarRail({
   onNavigate,
   onToggle,
@@ -258,6 +310,7 @@ export function Sidebar({
   collapsed = false,
   selected,
   onNavigate,
+  onProject,
   onSelect,
   onToggle,
   user,
@@ -265,6 +318,7 @@ export function Sidebar({
   collapsed?: boolean;
   selected: number | undefined;
   onNavigate: (to: NavPath) => void;
+  onProject: (id: number) => void;
   onSelect: (id: number) => void;
   onToggle?: () => void;
   user: User;
@@ -293,6 +347,7 @@ export function Sidebar({
           error={conversations.isError}
           onLoadMore={loadMore}
           onNavigate={onNavigate}
+          onProject={onProject}
           onSelect={onSelect}
           onToggle={onToggle}
           rail={rail}
@@ -326,6 +381,7 @@ function SidebarPanel({
   error,
   onLoadMore,
   onNavigate,
+  onProject,
   onSelect,
   onToggle,
   selected,
@@ -337,6 +393,7 @@ function SidebarPanel({
   error: boolean;
   onLoadMore: (() => void) | undefined;
   onNavigate: (to: NavPath) => void;
+  onProject: (id: number) => void;
   onSelect: (id: number) => void;
   onToggle: (() => void) | undefined;
   selected: number | undefined;
@@ -384,6 +441,7 @@ function SidebarPanel({
           </NavButton>
         ))}
       </div>
+      <ProjectsSection onProject={onProject} />
       {(pinned.data?.length ?? 0) > 0 && (
         <div className='flex flex-col gap-1'>
           <h2 className='px-2 text-xs font-medium text-muted-foreground'>

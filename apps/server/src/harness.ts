@@ -9,6 +9,7 @@ import { recordHelperUsage } from './helper-usage';
 import { historyAccess } from './history-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
+import { projectAccess } from './project-access';
 import { createSandboxAccess } from './sandbox';
 import { scheduleAccess } from './schedule-access';
 import { webAccess } from './web-access';
@@ -41,6 +42,7 @@ export const harness = await openHarness({
   onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
+  project: projectAccess,
   schedule: scheduleAccess,
   sandbox: createSandboxAccess(
     async () =>

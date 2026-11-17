@@ -10,6 +10,7 @@ import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { limitOutput, output } from './output';
 import { preferences } from './preferences';
+import { type ProjectAccess, project } from './project';
 import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
@@ -63,6 +64,11 @@ export {
   type SavedFile,
 } from './sandbox';
 export {
+  PROJECT_NAME_LENGTH,
+  type ProjectAccess,
+  type ProjectSummary,
+} from './project';
+export {
   ProfileDoc,
   type ScheduleAccess,
   type ScheduleChange,
@@ -84,6 +90,7 @@ export type ExtensionDeps = {
   history: HistoryAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
+  project: ProjectAccess;
   sandbox: SandboxAccess;
   schedule: ScheduleAccess;
   web: WebAccess;
@@ -117,6 +124,7 @@ export function extensions(deps: ExtensionDeps) {
     history(deps.history),
     library(deps.library),
     memory,
+    project(deps.project),
     sandbox(deps.sandbox),
     schedule(deps.schedule),
     skills,
