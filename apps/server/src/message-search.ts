@@ -34,7 +34,12 @@ function segments(headline: string): Segment[] {
         { match: false, text: rest },
       ];
     })
+    .map(({ match, text }) => ({ match, text: plain(text) }))
     .filter(({ text }) => text.length > 0);
+}
+
+function plain(text: string) {
+  return text.replace(/\*\*|__|`+|^#+\s+/gm, '');
 }
 
 export function markedSnippet(snippet: readonly Segment[]) {
