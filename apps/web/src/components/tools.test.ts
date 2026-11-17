@@ -39,6 +39,8 @@ test('tools describe themselves while running and when done', () => {
     line('skill_create', true),
     line('skill_read', false, { id: 'bar' }, { name: 'foo' }),
     line('skill_delete', false, { id: 'bar' }),
+    line('web_search', false, { query: 'foo' }, { count: 2 }),
+    line('web_fetch', false, {}, { domain: 'bar.com', title: 'foo' }),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -55,6 +57,8 @@ test('tools describe themselves while running and when done', () => {
     ['Creating a skill', undefined],
     ['Read the “foo” skill', undefined],
     ['Deleted a skill', undefined],
+    ['Searched the web for “foo”', '2 results'],
+    ['Read “foo”', 'bar.com'],
     ['Ran foo', undefined],
   ]);
 });

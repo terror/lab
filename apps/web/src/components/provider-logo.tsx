@@ -3,6 +3,7 @@ import anthropic from '@lobehub/icons-static-svg/icons/anthropic.svg';
 import baseten from '@lobehub/icons-static-svg/icons/baseten.svg';
 import cerebras from '@lobehub/icons-static-svg/icons/cerebras.svg';
 import deepseek from '@lobehub/icons-static-svg/icons/deepseek.svg';
+import exa from '@lobehub/icons-static-svg/icons/exa.svg';
 import fireworks from '@lobehub/icons-static-svg/icons/fireworks.svg';
 import githubcopilot from '@lobehub/icons-static-svg/icons/githubcopilot.svg';
 import google from '@lobehub/icons-static-svg/icons/google.svg';
@@ -29,6 +30,7 @@ const logos: [string, string][] = [
   ['baseten', baseten],
   ['cerebras', cerebras],
   ['deepseek', deepseek],
+  ['exa', exa],
   ['fireworks', fireworks],
   ['github-copilot', githubcopilot],
   ['google', google],
