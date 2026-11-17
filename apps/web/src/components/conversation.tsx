@@ -6,6 +6,7 @@ import {
   type ToolResult,
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
+import { DocumentCard } from '@/components/document-card';
 import { ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
@@ -52,8 +53,10 @@ import { FileText, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
+type BubbleFile = { name: string; uploadId?: string };
+
 type Bubble = {
-  files?: string[];
+  files?: BubbleFile[];
   id: string;
   images?: string[];
   text: string;
@@ -69,7 +72,13 @@ const imagePartSchema = z.object({
 
 const messageDataSchema = z.object({
   files: z
-    .array(z.object({ name: z.string(), type: z.enum(['file', 'image']) }))
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.enum(['file', 'image']),
+        uploadId: z.string().optional(),
+      })
+    )
     .optional(),
   text: z.string().optional(),
 });
@@ -92,15 +101,19 @@ function UserMessage({ bubble }: { bubble: Bubble }) {
         )}
         {(bubble.files?.length ?? 0) > 0 && (
           <div className='flex flex-wrap justify-end gap-2'>
-            {bubble.files?.map((name, index) => (
-              <span
-                key={index}
-                className='flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm'
-              >
-                <FileText aria-hidden='true' className='size-4' />
-                {name}
-              </span>
-            ))}
+            {bubble.files?.map(({ name, uploadId }, index) =>
+              uploadId ? (
+                <DocumentCard key={index} name={name} uploadId={uploadId} />
+              ) : (
+                <span
+                  key={index}
+                  className='flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm'
+                >
+                  <FileText aria-hidden='true' className='size-4' />
+                  {name}
+                </span>
+              )
+            )}
           </div>
         )}
         {bubble.text && (
@@ -269,7 +282,7 @@ function rowsFor(item: TranscriptItem): Row[] {
 
   const files = (data?.files ?? [])
     .filter(({ type }) => type === 'file')
-    .map(({ name }) => name);
+    .map(({ name, uploadId }) => ({ name, uploadId }));
 
   if (!text && images.length === 0 && files.length === 0) {
     return [];

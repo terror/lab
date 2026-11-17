@@ -239,6 +239,11 @@ test('uploaded pdfs keep their original and thumbnail', async () => {
       (await raw(headers, `/library/${second?.id}/original`)).status,
     ],
     upload: first?.upload,
+    uploaded: [
+      await read(`/uploads/${mine.body.id}`),
+      await read(`/uploads/${mine.body.id}/thumbnail`),
+      (await raw(headers, `/uploads/${theirs.body.id}`)).status,
+    ],
   }).toEqual({
     download: [200, 'application/pdf', 'foobar'],
     original: [200, 'application/pdf', 'foobar'],
@@ -249,6 +254,11 @@ test('uploaded pdfs keep their original and thumbnail', async () => {
     },
     thumbnail: [200, 'image/png', 'bar'],
     unlinked: [null, 404],
+    uploaded: [
+      [200, 'application/pdf', 'foobar'],
+      [200, 'image/png', 'bar'],
+      404,
+    ],
     upload: { id: mine.body.id, thumbnail: true },
   });
 });
