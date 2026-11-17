@@ -140,8 +140,7 @@ export function web(access: WebAccess) {
 
   const webFetch = defineTool({
     name: 'web_fetch',
-    description:
-      'Read a web page as text.',
+    description: 'Read a web page as text.',
     parameters: obj({
       offset: opt(
         int({
