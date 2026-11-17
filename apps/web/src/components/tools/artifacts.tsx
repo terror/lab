@@ -1,6 +1,6 @@
 import { SandboxFrame } from '@/components/sandbox-frame';
 import { Code, Download, Eye, LayoutTemplate } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { count, field, text } from './format';
 import { PreviewCode, PreviewList } from './previews';
@@ -55,14 +55,52 @@ function latestVersion(history: ToolView['history'], id: string) {
   );
 }
 
+const PREVIEW_HEIGHT = 360;
+
+const PREVIEW_INTERVAL = 400;
+
+function useThrottled(value: string) {
+  const [throttled, setThrottled] = useState(value);
+  const latest = useRef(value);
+
+  useEffect(() => {
+    latest.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    const timer = setInterval(
+      () => setThrottled(latest.current),
+      PREVIEW_INTERVAL
+    );
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return throttled;
+}
+
 function Building({ html, title }: { html: string; title: string }) {
+  const partial = useThrottled(html);
+
   return (
-    <div className='flex items-center gap-2 rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground'>
-      <LayoutTemplate aria-hidden='true' className='size-4' />
-      <span className='truncate'>Building {title}</span>
-      <span className='ml-auto tabular-nums'>
-        {html.length.toLocaleString()} characters
-      </span>
+    <div className='flex flex-col overflow-hidden rounded-xl bg-muted/40'>
+      <div className='flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground'>
+        <LayoutTemplate aria-hidden='true' className='size-4' />
+        <span className='truncate'>Building {title}</span>
+        <span className='ml-auto tabular-nums'>
+          {html.length.toLocaleString()} characters
+        </span>
+      </div>
+      {partial.length > 0 && (
+        <div className='px-4 pb-4'>
+          <SandboxFrame
+            height={PREVIEW_HEIGHT}
+            html={partial}
+            scripts={false}
+            title={`${title} preview`}
+          />
+        </div>
+      )}
     </div>
   );
 }
