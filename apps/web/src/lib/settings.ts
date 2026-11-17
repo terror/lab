@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const settingsSections = [
   'appearance',
-  'personalization',
+  'profile',
   'computer',
   'memory',
   'skills',
