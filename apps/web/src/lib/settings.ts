@@ -4,9 +4,9 @@ import { z } from 'zod';
 export const settingsSections = [
   'appearance',
   'personalization',
+  'computer',
   'memory',
   'skills',
-  'computer',
   'providers',
   'usage',
   'trash',
