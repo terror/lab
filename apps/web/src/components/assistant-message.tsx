@@ -351,6 +351,7 @@ export function Activity({ status: label }: { status: string }) {
         <m.span
           key={label}
           animate={{ opacity: 1, y: 0 }}
+          className='min-w-0'
           exit={{ opacity: 0, y: -4 }}
           initial={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.2 }}
