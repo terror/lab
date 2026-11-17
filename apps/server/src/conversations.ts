@@ -118,6 +118,51 @@ const update = validator(
     )
 );
 
+export async function createChat(
+  ownerId: string,
+  {
+    change,
+    draft,
+    title,
+  }: {
+    change: ReturnType<typeof modelChange>;
+    draft: Parameters<typeof submitMessage>[1];
+    title?: string;
+  }
+) {
+  const conversation = await harness.createConversation(
+    { agent: change, ownership: { kind: 'ownerless' } },
+    BACKGROUND_CONTEXT
+  );
+
+  await db.insert(schema.conversation).values({ id: conversation.id, ownerId });
+
+  try {
+    if (title) {
+      await conversation.commit(async (tx) => {
+        (await tx.doc(TitleDoc, conversation.id)).title = title;
+      }, BACKGROUND_CONTEXT);
+    }
+
+    await submitMessage(conversation, draft);
+  } catch (error) {
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(schema.conversation)
+        .where(eq(schema.conversation.id, conversation.id));
+
+      await tx
+        .insert(schema.conversationDeletion)
+        .values({ id: conversation.id })
+        .onConflictDoNothing();
+    });
+
+    throw error;
+  }
+
+  return conversation.id;
+}
+
 type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
@@ -180,37 +225,14 @@ const conversations = new Hono()
       });
     }
 
-    const change = modelChange(chosen, thinkingLevel);
-
     checkAttachments(chosen, attachments);
 
-    const conversation = await harness.createConversation(
-      { agent: change, ownership: { kind: 'ownerless' } },
-      BACKGROUND_CONTEXT
-    );
+    const id = await createChat(user.id, {
+      change: modelChange(chosen, thinkingLevel),
+      draft: { attachments, content: text },
+    });
 
-    await db
-      .insert(schema.conversation)
-      .values({ id: conversation.id, ownerId: user.id });
-
-    try {
-      await submitMessage(conversation, { attachments, content: text });
-    } catch (error) {
-      await db.transaction(async (tx) => {
-        await tx
-          .delete(schema.conversation)
-          .where(eq(schema.conversation.id, conversation.id));
-
-        await tx
-          .insert(schema.conversationDeletion)
-          .values({ id: conversation.id })
-          .onConflictDoNothing();
-      });
-
-      throw error;
-    }
-
-    return c.json({ id: conversation.id }, 201);
+    return c.json({ id }, 201);
   })
   .get('/:id', params, owned, async (c) => {
     const { conversation } = c.var;

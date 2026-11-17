@@ -6,6 +6,7 @@ import { codemodeRenderers } from './codemode';
 import { libraryRenderers } from './library';
 import { memoryRenderers } from './memory';
 import { sandboxRenderers } from './sandbox';
+import { scheduleRenderers } from './schedule';
 import { skillRenderers } from './skills';
 import type { ToolRenderer } from './types';
 import { webRenderers } from './web';
@@ -17,6 +18,7 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
   ...libraryRenderers,
   ...memoryRenderers,
   ...sandboxRenderers,
+  ...scheduleRenderers,
   ...skillRenderers,
   ...webRenderers,
 };

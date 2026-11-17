@@ -1,6 +1,7 @@
 import type { ExtensionDeps } from '@lab/harness';
 
 import { createSandboxAccess } from '../src/sandbox';
+import { scheduleAccess } from '../src/schedule-access';
 
 export function emptyDeps(): ExtensionDeps {
   return {
@@ -8,6 +9,7 @@ export function emptyDeps(): ExtensionDeps {
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
     sandbox: createSandboxAccess(async () => 'full'),
+    schedule: scheduleAccess,
     web: {
       available: async () => false,
       fetch: async () => {

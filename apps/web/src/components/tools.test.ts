@@ -50,6 +50,7 @@ test('tools describe themselves while running and when done', () => {
     ),
     line('sandbox_write', false, { path: 'bar.txt' }, { size: 3 }),
     line('sandbox_save', false, {}, { name: 'bar.csv' }),
+    line('schedule_create', false, {}, { task: { title: 'foo' } }),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -72,6 +73,7 @@ test('tools describe themselves while running and when done', () => {
     ['Ran ls', 'exit 0 · 1.5s'],
     ['Wrote bar.txt', '3B'],
     ['Saved bar.csv to your library', undefined],
+    ['Scheduled “foo”', undefined],
     ['Ran foo', undefined],
   ]);
 });

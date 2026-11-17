@@ -6,6 +6,7 @@ import { env } from './env';
 import { harness } from './harness';
 import { initSentry } from './instrument';
 import { backfillAll } from './pipelines';
+import { startScheduler } from './schedules';
 
 initSentry();
 
@@ -19,6 +20,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 }
 
 backfillAll();
+startScheduler();
 
 export default {
   hostname: env.LAB_HOST,

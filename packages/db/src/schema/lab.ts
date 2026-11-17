@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   customType,
   doublePrecision,
   index,
@@ -181,5 +182,32 @@ export const messageText = pgTable(
       table.conversationId,
       table.entryId
     ),
+  ]
+);
+
+export const scheduledTask = pgTable(
+  'scheduled_task',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    conversationId: integer('conversation_id').references(
+      () => conversation.id,
+      { onDelete: 'set null' }
+    ),
+    title: text('title').notNull(),
+    prompt: text('prompt').notNull(),
+    cron: text('cron').notNull(),
+    timezone: text('timezone').notNull(),
+    description: text('description').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    nextRunAt: timestamp('next_run_at'),
+    lastRunAt: timestamp('last_run_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('scheduled_task_ownerId_idx').on(table.ownerId),
+    index('scheduled_task_nextRunAt_idx').on(table.nextRunAt),
   ]
 );

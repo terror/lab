@@ -11,6 +11,7 @@ import { historyAccess } from './history-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
 import { createSandboxAccess } from './sandbox';
+import { scheduleAccess } from './schedule-access';
 import { webAccess } from './web-access';
 
 export async function purgeDeleted(path: string) {
@@ -43,6 +44,7 @@ export const harness = await openHarness({
   onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
+  schedule: scheduleAccess,
   sandbox: createSandboxAccess(
     async () =>
       (await harness.snapshot(ComputerDoc, BACKGROUND_CONTEXT))?.network ??
