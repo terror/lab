@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { conversationTitle } from '@/lib/conversations';
 import { usePersistentState } from '@/lib/storage';
 import { type Usage, usageQueryOptions } from '@/lib/usage';
 import { useQuery } from '@tanstack/react-query';
@@ -160,7 +161,7 @@ function Chats({ conversations }: { conversations: Usage['conversations'] }) {
               params={{ id }}
               to='/c/$id'
             >
-              <span className='truncate'>{title ?? 'Deleted chat'}</span>
+              <span className='truncate'>{conversationTitle(title)}</span>
               <span className='shrink-0 text-muted-foreground tabular-nums'>
                 {spend(cost)}
               </span>

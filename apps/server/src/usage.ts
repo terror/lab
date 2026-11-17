@@ -1,6 +1,6 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, desc, eq, gte, notExists, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, notExists, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -212,9 +212,12 @@ const usage = new Hono()
         title: schema.conversation.title,
       })
       .from(table)
-      .leftJoin(
+      .innerJoin(
         schema.conversation,
-        eq(schema.conversation.id, table.conversationId)
+        and(
+          eq(schema.conversation.id, table.conversationId),
+          isNull(schema.conversation.deletedAt)
+        )
       )
       .where(scope)
       .groupBy(table.conversationId, schema.conversation.title)
