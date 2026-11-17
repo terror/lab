@@ -9,7 +9,7 @@ import { isAdmin, requireUser } from './auth';
 import { db } from './db';
 import { rateLimit } from './limits';
 import { imageTypes } from './schemas';
-import { storeUpload } from './storage';
+import { pruneUploads, storeUpload } from './storage';
 import { validator } from './validator';
 
 const PICTURE_BYTES = 5 * 1024 * 1024;
@@ -30,6 +30,8 @@ const picture = validator(
 
 async function setImage(userId: string, image: string | null) {
   await db.update(schema.user).set({ image }).where(eq(schema.user.id, userId));
+
+  void pruneUploads(userId).catch(console.error);
 }
 
 const profile = new Hono()
