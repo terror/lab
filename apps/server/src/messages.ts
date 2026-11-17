@@ -3,8 +3,10 @@ import type { Conversation } from '@earendil-works/pi-durable';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
+import { selectConnectors } from './connections';
 import { MESSAGE_KIND, type MessageData } from './message-entry';
 import { acceptsImages } from './models';
+import { requireOwner } from './records';
 import {
   type Attachment,
   attachmentSchema,
@@ -96,11 +98,13 @@ function entryFile(attachment: Attachment): MessageData['files'][number] {
   return { name: attachment.name, type: 'image' };
 }
 
-export function submitMessage(
+export async function submitMessage(
   conversation: Conversation,
   draft: { attachments: Attachment[]; content: string },
   whenBusy: 'followUp' | 'steer' = 'followUp'
 ) {
+  await selectConnectors(conversation, await requireOwner(conversation.id));
+
   return conversation.submit(
     {
       type: 'input',

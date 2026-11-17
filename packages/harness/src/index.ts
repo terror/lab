@@ -23,7 +23,6 @@ export {
 export { adoptGlobalDocs } from './adopt';
 export { purgeConversations } from './purge';
 export { createRegistry } from '@earendil-works/pi-durable';
-export { createToolSearchExtension } from '@earendil-works/pi-durable/tool-search';
 
 export type HarnessOptions = ExtensionDeps & {
   models: Models;
@@ -42,7 +41,9 @@ export async function openHarness(
   }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
-  for (const extension of extensions(deps)) {
+  const builtins = extensions(deps);
+
+  for (const extension of builtins) {
     registry.install(extension);
   }
 
@@ -55,6 +56,7 @@ export async function openHarness(
         models,
         onReport,
         registry,
+        settings: { extensions: builtins },
       },
       context
     );

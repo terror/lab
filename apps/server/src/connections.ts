@@ -1,16 +1,20 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { AgentDoc } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import {
-  type ConnectorResult,
+  type Connector,
   type ConnectorTool,
-  connector,
-  createToolSearchExtension,
+  connectorsExtension,
 } from '@lab/harness';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { eq } from 'drizzle-orm';
 
+import { publicFetch } from './addresses';
+import { isAdmin } from './auth';
 import { db } from './db';
-import { registry } from './harness';
+import { harness, registry } from './harness';
 
 type Row = typeof schema.connector.$inferSelect;
 
@@ -20,13 +24,16 @@ export type ConnectorState =
   | { kind: 'error'; message: string }
   | { kind: 'off' };
 
-type Entry = { client?: Client; extension?: string; state: ConnectorState };
+type Entry = {
+  client?: Client;
+  connector?: Connector;
+  ownerId: string;
+  state: ConnectorState;
+};
 
 const TIMEOUT = 15_000;
 
 const entries = new Map<number, Entry>();
-
-const toolSearch = createToolSearchExtension();
 
 let queue = Promise.resolve();
 
@@ -98,15 +105,21 @@ async function listTools(
     : [...page, ...(await listTools(client, nextCursor))];
 }
 
-function syncToolSearch() {
-  const connected = [...entries.values()].some(
-    ({ extension }) => extension !== undefined
+export function connectorsExtensionName(ownerId: string) {
+  return `connectors-${ownerId}`;
+}
+
+function syncOwner(ownerId: string) {
+  const connected = [...entries.values()].flatMap((entry) =>
+    entry.ownerId === ownerId && entry.connector ? [entry.connector] : []
   );
 
-  if (connected) {
-    registry.install(toolSearch);
+  const name = connectorsExtensionName(ownerId);
+
+  if (connected.length > 0) {
+    registry.install(connectorsExtension(name, connected));
   } else {
-    registry.uninstall(toolSearch);
+    registry.uninstall({ name });
   }
 }
 
@@ -115,44 +128,44 @@ async function disconnect(id: number) {
 
   entries.delete(id);
 
-  if (entry?.extension) {
-    registry.uninstall({ name: entry.extension });
-  }
-
   await entry?.client?.close().catch(() => undefined);
+
+  return entry?.ownerId;
 }
 
-async function connect({ name, url }: Row): Promise<Entry> {
+async function connect({ name, ownerId, url }: Row, local: boolean) {
   const client = new Client({ name: 'Lab', version: '1.0.0' });
 
   try {
-    await client.connect(new StreamableHTTPClientTransport(new URL(url)), {
-      timeout: TIMEOUT,
+    const transport = new StreamableHTTPClientTransport(new URL(url), {
+      fetch: local ? fetch : publicFetch,
     });
+
+    await client.connect(transport, { timeout: TIMEOUT });
 
     const tools = await listTools(client);
 
-    const extension = connector({
-      call: async (tool, args): Promise<ConnectorResult> => {
-        const result = (await client.callTool({
-          arguments: args,
-          name: tool,
-        })) as CallToolResult;
-
-        return { isError: result.isError === true, text: resultText(result) };
-      },
-      name,
-      slug: connectorSlug(name),
-      tools,
-    });
-
-    registry.install(extension);
-
     return {
       client,
-      extension: extension.name,
+      connector: {
+        call: async (tool: string, args: Record<string, unknown>) => {
+          const result = (await client.callTool({
+            arguments: args,
+            name: tool,
+          })) as CallToolResult;
+
+          return {
+            isError: result.isError === true,
+            text: resultText(result),
+          };
+        },
+        name,
+        slug: connectorSlug(name),
+        tools,
+      },
+      ownerId,
       state: {
-        kind: 'connected',
+        kind: 'connected' as const,
         tools: tools.map(({ description, name: tool }) => ({
           description,
           name: tool,
@@ -162,28 +175,39 @@ async function connect({ name, url }: Row): Promise<Entry> {
   } catch (error) {
     await client.close().catch(() => undefined);
 
-    return { state: { kind: 'error', message: message(error) } };
+    return {
+      ownerId,
+      state: { kind: 'error' as const, message: message(error) },
+    };
   }
 }
 
-export function refreshConnector(row: Row) {
+export function refreshConnector(row: Row, local: boolean) {
   return locked(async () => {
-    await disconnect(row.id);
+    const previous = await disconnect(row.id);
 
     entries.set(
       row.id,
-      row.enabled ? await connect(row) : { state: { kind: 'off' } }
+      row.enabled
+        ? await connect(row, local)
+        : { ownerId: row.ownerId, state: { kind: 'off' } }
     );
 
-    syncToolSearch();
+    if (previous && previous !== row.ownerId) {
+      syncOwner(previous);
+    }
+
+    syncOwner(row.ownerId);
   });
 }
 
 export function removeConnector(id: number) {
   return locked(async () => {
-    await disconnect(id);
+    const ownerId = await disconnect(id);
 
-    syncToolSearch();
+    if (ownerId) {
+      syncOwner(ownerId);
+    }
   });
 }
 
@@ -192,7 +216,43 @@ export function connectorState(id: number): ConnectorState {
 }
 
 export async function startConnectors() {
-  const rows = await db.select().from(schema.connector);
+  const rows = await db
+    .select({ connector: schema.connector, email: schema.user.email })
+    .from(schema.connector)
+    .innerJoin(schema.user, eq(schema.user.id, schema.connector.ownerId));
 
-  await Promise.all(rows.map(refreshConnector));
+  await Promise.all(
+    rows.map(({ connector, email }) =>
+      refreshConnector(connector, isAdmin({ email }))
+    )
+  );
+}
+
+type Conversation = NonNullable<
+  Awaited<ReturnType<typeof harness.conversation>>
+>;
+
+export async function selectConnectors(
+  conversation: Conversation,
+  ownerId: string
+) {
+  const name = connectorsExtensionName(ownerId);
+
+  const stored = (
+    await harness.snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
+  )?.extensions;
+
+  if (Array.isArray(stored) || stored?.add?.includes(name)) {
+    return;
+  }
+
+  await conversation.configure(
+    {
+      extensions: {
+        add: [...(stored?.add ?? []), name].map((added) => ({ name: added })),
+        remove: (stored?.remove ?? []).map((removed) => ({ name: removed })),
+      },
+    },
+    BACKGROUND_CONTEXT
+  );
 }
