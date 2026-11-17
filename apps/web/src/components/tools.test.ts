@@ -42,6 +42,12 @@ test('tools describe themselves while running and when done', () => {
     line('web_search', false, { query: 'foo' }, { count: 2 }),
     line('web_fetch', false, {}, { domain: 'bar.com', title: 'foo' }),
     line('ask_user', true),
+    line(
+      'sandbox_exec',
+      false,
+      { command: 'ls\npwd' },
+      { durationMs: 1500, exitCode: 0 }
+    ),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -61,6 +67,7 @@ test('tools describe themselves while running and when done', () => {
     ['Searched the web for “foo”', '2 results'],
     ['Read “foo”', 'bar.com'],
     ['Asking you a question', undefined],
+    ['Ran ls', 'exit 0 · 1.5s'],
     ['Ran foo', undefined],
   ]);
 });

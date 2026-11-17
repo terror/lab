@@ -13,12 +13,16 @@ const schema = z.object({
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
   LAB_ORIGIN: z.url(),
   LAB_REPOSITORY: z.string().min(1).default('terror/lab'),
+  LAB_SANDBOX_PROVIDER: z.enum(['vercel']).optional(),
   LAB_STORAGE_PATH: z
     .string()
     .min(1)
     .default(fileURLToPath(new URL('../../../lab.sqlite', import.meta.url))),
   RAILWAY_GIT_COMMIT_SHA: z.string().min(1).default('development'),
   SENTRY_DSN: z.url().optional(),
+  VERCEL_PROJECT_ID: z.string().min(1).optional(),
+  VERCEL_TEAM_ID: z.string().min(1).optional(),
+  VERCEL_TOKEN: z.string().min(1).optional(),
 });
 
 const result = schema.safeParse(process.env);

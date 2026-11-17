@@ -10,6 +10,7 @@ import { recordHelperUsage } from './helper-usage';
 import { historyAccess } from './history-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
+import { sandboxAccess } from './sandbox';
 import { webAccess } from './web-access';
 
 export async function purgeDeleted(path: string) {
@@ -42,6 +43,7 @@ export const harness = await openHarness({
   onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
+  sandbox: sandboxAccess,
   web: webAccess(async (id) => {
     const conversation = await harness.conversation(
       id as ConversationId,

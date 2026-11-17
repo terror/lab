@@ -21,7 +21,13 @@
     {
       "automerge": true,
       "matchUpdateTypes": ["patch"]
+    },
+    {
+      "allowedVersions": "<4",
+      "matchPackageNames": ["@vercel/sandbox"]
     }
   ],
-  "lockFileMaintenance": { "enabled": true }
+  "lockFileMaintenance": {
+    "enabled": true
+  }
 }

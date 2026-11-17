@@ -14,6 +14,7 @@ import {
   MessagesSquare,
   type LucideIcon,
   Search,
+  SquareTerminal,
   WandSparkles,
   Wrench,
   X,
@@ -224,6 +225,26 @@ function AskUser({ args, callId, details }: ToolView) {
       question={question}
     />
   );
+}
+
+function Terminal({ active, args, output }: ToolView) {
+  const command = text(args.command) ?? '';
+
+  const body = active ? output : output.replace(/^Exit code[^\n]*\n*/, '');
+
+  return (
+    <pre className='max-h-80 overflow-auto rounded-xl bg-muted/40 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
+      <span className='text-muted-foreground'>$ </span>
+      {command}
+      {body && `\n${body.trimEnd()}`}
+    </pre>
+  );
+}
+
+function seconds(value: unknown) {
+  const ms = count(value);
+
+  return ms === undefined ? undefined : `${(ms / 1_000).toFixed(1)}s`;
 }
 
 function MemoryNote({
@@ -595,6 +616,24 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
       const verb = active ? 'Remembering' : 'Remembered';
 
       return memory ? `${verb} “${memory}”` : verb;
+    },
+  },
+  sandbox_exec: {
+    icon: SquareTerminal,
+    preview: (view) => <Terminal {...view} />,
+    summary: ({ details }) => {
+      const code = count(field(details, 'exitCode'));
+
+      const time = seconds(field(details, 'durationMs'));
+
+      return code === undefined
+        ? undefined
+        : `exit ${code}${time ? ` · ${time}` : ''}`;
+    },
+    title: ({ active, args }) => {
+      const command = text(args.command)?.split('\n')[0] ?? 'a command';
+
+      return `${active ? 'Running' : 'Ran'} ${command}`;
     },
   },
   skill_create: {

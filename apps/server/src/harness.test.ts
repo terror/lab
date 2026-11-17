@@ -57,6 +57,12 @@ test('deleted conversations are purged from storage', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
+    sandbox: {
+      available: () => false,
+      exec: async () => {
+        throw new Error('foo');
+      },
+    },
     web: {
       available: async () => false,
       fetch: async () => {
@@ -86,6 +92,12 @@ test('deleted conversations are purged from storage', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
+    sandbox: {
+      available: () => false,
+      exec: async () => {
+        throw new Error('foo');
+      },
+    },
     web: {
       available: async () => false,
       fetch: async () => {
@@ -113,6 +125,12 @@ test('fork parents and missing stores are handled by the purge', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
+    sandbox: {
+      available: () => false,
+      exec: async () => {
+        throw new Error('foo');
+      },
+    },
     web: {
       available: async () => false,
       fetch: async () => {
