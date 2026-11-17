@@ -1,5 +1,6 @@
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, chat, settle } from '../test/client';
@@ -57,4 +58,38 @@ test('workspace search finds chats, projects, and scheduled tasks', async () => 
     projects: [{ chats: 0, id: body.project.id, name: 'Lisbon qux' }],
     schedules: ['Lisbon weather'],
   });
+});
+
+test('message matches report when they were sent in any server timezone', async () => {
+  const zone = process.env.TZ;
+
+  process.env.TZ = 'America/New_York';
+
+  try {
+    const headers = await signIn();
+
+    const id = await chat(headers, { content: 'foo qux' });
+
+    const [message] = await db
+      .select({ createdAt: schema.messageText.createdAt })
+      .from(schema.messageText)
+      .where(eq(schema.messageText.conversationId, id));
+
+    const { body } = await call(headers, 'GET', '/search?q=qux');
+
+    expect(
+      body.chats.map(
+        ({ id: chatId, updatedAt }: { id: number; updatedAt: string }) => [
+          chatId,
+          updatedAt,
+        ]
+      )
+    ).toEqual([[id, message?.createdAt.toISOString()]]);
+  } finally {
+    if (zone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = zone;
+    }
+  }
 });
