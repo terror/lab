@@ -264,18 +264,19 @@ test('the computer can be stopped, reset, and cleaned up from the trash', async 
   });
 });
 
+async function computerProvider(headers: Headers) {
+  return (await call(headers, 'GET', '/computer')).body.provider;
+}
+
 test('only the admin gets a computer unless everyone is allowed', async () => {
   useSandboxProvider(memoryProvider());
 
   env.LAB_COMPUTER_USERS = 'admin';
 
   try {
-    const computer = async (headers: Headers) =>
-      (await call(headers, 'GET', '/computer')).body.provider;
-
     expect({
-      admin: await computer(await signInAdmin()),
-      user: await computer(await signIn()),
+      admin: await computerProvider(await signInAdmin()),
+      user: await computerProvider(await signIn()),
     }).toEqual({ admin: 'Foo', user: null });
   } finally {
     env.LAB_COMPUTER_USERS = 'everyone';
