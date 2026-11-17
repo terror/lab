@@ -43,6 +43,7 @@ import {
   usePreferredModel,
 } from '@/lib/models';
 import { runFailureTitles } from '@/lib/run-failure';
+import { runPhase } from '@/lib/run-phase';
 import { cn } from '@/lib/utils';
 import {
   CompactionEntry,
@@ -530,8 +531,6 @@ function ConversationView({ id }: { id: number }) {
 
   const answering = visible(partial);
 
-  const retry = live?.generation?.retry;
-
   const results = useMemo(() => toolResults(view?.items ?? []), [view?.items]);
 
   const committed = useMemo(
@@ -636,10 +635,6 @@ function ConversationView({ id }: { id: number }) {
 
   const progress = useMemo(() => toolProgress(live?.tools), [live?.tools]);
 
-  const toolsRunning = (live?.tools ?? []).some(
-    ({ status }) => status !== 'done'
-  );
-
   const queued = (inbox?.items ?? []).flatMap((item) => {
     if (item.mode === 'write') {
       return [];
@@ -650,8 +645,9 @@ function ConversationView({ id }: { id: number }) {
     return [{ bubble, submission: Number(item.id) }];
   });
 
-  const running = live?.run !== undefined;
-  const finishing = live?.run?.afterRun !== undefined;
+  const phase = runPhase(live, answering);
+
+  const running = phase.kind !== 'idle';
 
   useEffect(() => {
     if (!running) {
@@ -673,9 +669,7 @@ function ConversationView({ id }: { id: number }) {
   }, [markRead, running]);
 
   const thinking =
-    running && !retry && !answering && !toolsRunning && !finishing
-      ? (activity ?? 'Thinking')
-      : undefined;
+    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
 
   const last = rows.at(-1)?.row;
 
@@ -713,7 +707,9 @@ function ConversationView({ id }: { id: number }) {
                     />
                   </MessageScrollerItem>
                 ))}
-                {retry && <RetryStatus retry={retry} />}
+                {phase.kind === 'retrying' && (
+                  <RetryStatus retry={phase.retry} />
+                )}
                 {thinking !== undefined && inline === undefined && (
                   <Activity status={thinking} />
                 )}
