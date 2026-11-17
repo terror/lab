@@ -11,7 +11,7 @@ import {
 import { asc, eq } from 'drizzle-orm';
 
 import { removeConnector } from './connections';
-import { listConnectors } from './connectors';
+import { listConnectors } from './connector-service';
 import { db } from './db';
 import { harness } from './harness';
 import { flushHistory } from './history';

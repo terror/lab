@@ -1,5 +1,3 @@
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { AgentDoc } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import {
   type Connector,
@@ -13,8 +11,8 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { connectorAuth } from './connector-auth';
 import { db } from './db';
-import { harness, registry } from './harness';
 import { policy } from './policy';
+import { registry } from './registry';
 
 type Row = typeof schema.connector.$inferSelect;
 
@@ -25,28 +23,33 @@ export type ConnectorState =
   | { kind: 'off' }
   | { kind: 'unauthorized' };
 
-type Entry = {
-  client?: Client;
-  connector?: Connector;
-  ownerId: string;
-  state: ConnectorState;
-};
+type Entry = { ownerId: string } & (
+  | { client: Client; connector: Connector; kind: 'connected' }
+  | { kind: 'error'; message: string }
+  | { kind: 'off' }
+  | { kind: 'unauthorized' }
+);
 
 const TIMEOUT = 15_000;
 
 const entries = new Map<number, Entry>();
 
-let queue = Promise.resolve();
+const queues = new Map<number, Promise<void>>();
 
-function locked<T>(task: () => Promise<T>) {
-  const next = queue.then(task);
+async function locked(id: number, task: () => Promise<void>) {
+  const next = (queues.get(id) ?? Promise.resolve()).then(task);
 
-  queue = next.then(
-    () => undefined,
-    () => undefined
-  );
+  const settled = next.catch(() => undefined);
 
-  return next;
+  queues.set(id, settled);
+
+  try {
+    await next;
+  } finally {
+    if (queues.get(id) === settled) {
+      queues.delete(id);
+    }
+  }
 }
 
 export function connectorSlug(name: string) {
@@ -112,7 +115,9 @@ export function connectorsExtensionName(ownerId: string) {
 
 function syncOwner(ownerId: string) {
   const connected = [...entries.values()].flatMap((entry) =>
-    entry.ownerId === ownerId && entry.connector ? [entry.connector] : []
+    entry.ownerId === ownerId && entry.kind === 'connected'
+      ? [entry.connector]
+      : []
   );
 
   const name = connectorsExtensionName(ownerId);
@@ -129,12 +134,14 @@ async function disconnect(id: number) {
 
   entries.delete(id);
 
-  await entry?.client?.close().catch(() => undefined);
+  if (entry?.kind === 'connected') {
+    await entry.client.close().catch(() => undefined);
+  }
 
   return entry?.ownerId;
 }
 
-async function connect({ id, name, ownerId, url }: Row) {
+async function connect({ id, name, ownerId, url }: Row): Promise<Entry> {
   const client = new Client({ name: 'Lab', version: '1.0.0' });
 
   try {
@@ -165,52 +172,37 @@ async function connect({ id, name, ownerId, url }: Row) {
         slug: connectorSlug(name),
         tools,
       },
+      kind: 'connected',
       ownerId,
-      state: {
-        kind: 'connected' as const,
-        tools: tools.map(({ description, name: tool }) => ({
-          description,
-          name: tool,
-        })),
-      },
     };
   } catch (error) {
     await client.close().catch(() => undefined);
 
     if (error instanceof UnauthorizedError) {
-      return { ownerId, state: { kind: 'unauthorized' as const } };
+      return { kind: 'unauthorized', ownerId };
     }
 
-    return {
-      ownerId,
-      state: { kind: 'error' as const, message: message(error) },
-    };
+    return { kind: 'error', message: message(error), ownerId };
   }
 }
 
 export function refreshConnector(row: Row) {
-  return locked(async () => {
-    const previous = await disconnect(row.id);
+  return locked(row.id, async () => {
+    await disconnect(row.id);
 
     const active = row.enabled && (await policy(row.ownerId)).active;
 
     entries.set(
       row.id,
-      active
-        ? await connect(row)
-        : { ownerId: row.ownerId, state: { kind: 'off' } }
+      active ? await connect(row) : { kind: 'off', ownerId: row.ownerId }
     );
-
-    if (previous && previous !== row.ownerId) {
-      syncOwner(previous);
-    }
 
     syncOwner(row.ownerId);
   });
 }
 
 export function removeConnector(id: number) {
-  return locked(async () => {
+  return locked(id, async () => {
     const ownerId = await disconnect(id);
 
     if (ownerId) {
@@ -220,40 +212,31 @@ export function removeConnector(id: number) {
 }
 
 export function connectorState(id: number): ConnectorState {
-  return entries.get(id)?.state ?? { kind: 'connecting' };
+  const entry = entries.get(id);
+
+  if (entry === undefined) {
+    return { kind: 'connecting' };
+  }
+
+  if (entry.kind === 'connected') {
+    return {
+      kind: 'connected',
+      tools: entry.connector.tools.map(({ description, name }) => ({
+        description,
+        name,
+      })),
+    };
+  }
+
+  if (entry.kind === 'error') {
+    return { kind: 'error', message: entry.message };
+  }
+
+  return { kind: entry.kind };
 }
 
 export async function startConnectors() {
   const rows = await db.select().from(schema.connector);
 
   await Promise.all(rows.map(refreshConnector));
-}
-
-type Conversation = NonNullable<
-  Awaited<ReturnType<typeof harness.conversation>>
->;
-
-export async function selectConnectors(
-  conversation: Conversation,
-  ownerId: string
-) {
-  const name = connectorsExtensionName(ownerId);
-
-  const stored = (
-    await harness.snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
-  )?.extensions;
-
-  if (Array.isArray(stored) || stored?.add?.includes(name)) {
-    return;
-  }
-
-  await conversation.configure(
-    {
-      extensions: {
-        add: [...(stored?.add ?? []), name].map((added) => ({ name: added })),
-        remove: (stored?.remove ?? []).map((removed) => ({ name: removed })),
-      },
-    },
-    BACKGROUND_CONTEXT
-  );
 }

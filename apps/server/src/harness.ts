@@ -3,7 +3,6 @@ import { schema } from '@lab/db';
 import {
   ComputerDoc,
   adoptGlobalDocs,
-  createRegistry,
   openHarness,
   purgeConversations,
 } from '@lab/harness';
@@ -19,6 +18,7 @@ import { libraryAccess } from './library-access';
 import { models } from './models';
 import { projectAccess } from './project-access';
 import { requireOwner } from './records';
+import { registry } from './registry';
 import { createSandboxAccess } from './sandbox';
 import { scheduleAccess } from './schedule-access';
 import { webAccess } from './web-access';
@@ -43,8 +43,6 @@ export async function purgeDeleted(path: string) {
 }
 
 await purgeDeleted(env.LAB_STORAGE_PATH);
-
-export const registry = createRegistry();
 
 const owners = new Map<number, Promise<string>>();
 
