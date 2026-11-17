@@ -33,7 +33,9 @@ export async function signInAdmin() {
 
   const user =
     existing ??
-    (await test.saveUser(test.createUser({ email: env.LAB_ADMIN_EMAIL })));
+    (await test.saveUser(
+      test.createUser({ email: env.LAB_ADMIN_EMAIL, emailVerified: true })
+    ));
 
   return test.getAuthHeaders({ userId: user.id });
 }

@@ -22,7 +22,8 @@ for (const [network, prefix] of [
 }
 
 for (const [network, prefix] of [
-  ['::', 127],
+  ['::', 96],
+  ['2002::', 16],
   ['64:ff9b::', 96],
   ['fc00::', 7],
   ['fe80::', 10],

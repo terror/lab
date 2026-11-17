@@ -7,6 +7,7 @@ import { signIn } from '../test/auth';
 import { call, pendingToolCall, settle, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 import { db } from './db';
+import { env } from './env';
 import { runDueTasks } from './schedules';
 
 const task = {
@@ -173,5 +174,57 @@ test('tasks skip runs while their chat is in the trash', async () => {
       searched: null,
       stored: id,
     },
+  });
+});
+
+test('changing what a task does asks first, and removed users’ tasks stop', async () => {
+  const headers = await signIn();
+
+  await ask(headers, 'approved');
+
+  const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+  script(
+    toolCall('schedule_update', { id: created.id, prompt: 'qux' }, 'qux'),
+    fauxAssistantMessage('baz')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'denied',
+    callId: 'qux',
+  });
+
+  await settle(body.id);
+
+  const declined = await toolOutputs(headers, body.id);
+
+  await db
+    .update(schema.scheduledTask)
+    .set({ nextRunAt: new Date('2026-01-01T00:00:00Z') })
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  env.LAB_ALLOWED_EMAILS = [];
+
+  try {
+    await runDueTasks(new Date('2026-01-01T00:00:30Z'));
+  } finally {
+    env.LAB_ALLOWED_EMAILS = ['*'];
+  }
+
+  const [stored] = await db
+    .select({
+      lastRunAt: schema.scheduledTask.lastRunAt,
+      prompt: schema.scheduledTask.prompt,
+    })
+    .from(schema.scheduledTask)
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  expect({ declined, stored }).toEqual({
+    declined: ['The user declined to change this task.'],
+    stored: { lastRunAt: null, prompt: 'bar' },
   });
 });

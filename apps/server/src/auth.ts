@@ -23,12 +23,15 @@ export function emailAllowed(email: string, patterns: readonly string[]) {
   );
 }
 
-function allowed(user: { email?: string | null; emailVerified?: boolean }) {
+export function allowed(user: {
+  email?: string | null;
+  emailVerified?: boolean;
+}) {
   return (
-    isAdmin(user) ||
-    (user.emailVerified === true &&
-      typeof user.email === 'string' &&
-      emailAllowed(user.email, env.LAB_ALLOWED_EMAILS))
+    user.emailVerified === true &&
+    (isAdmin(user) ||
+      (typeof user.email === 'string' &&
+        emailAllowed(user.email, env.LAB_ALLOWED_EMAILS)))
   );
 }
 

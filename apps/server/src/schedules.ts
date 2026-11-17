@@ -15,6 +15,7 @@ import { harness } from './harness';
 import { rateLimit } from './limits';
 import { submitMessage } from './messages';
 import { defaultModel, modelChange } from './models';
+import { policy } from './policy';
 import {
   deleteTask,
   knownTimezone,
@@ -102,6 +103,10 @@ export async function runDueTasks(now = new Date()) {
     .where(and(eq(table.enabled, true), lte(table.nextRunAt, now)));
 
   for (const row of due) {
+    if (!(await policy(row.ownerId)).active) {
+      continue;
+    }
+
     const claimed = await claim(row, now);
 
     if (claimed) {
