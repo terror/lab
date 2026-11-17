@@ -9,6 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
 import { Writable } from 'node:stream';
 
+import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
 import { owners } from './records';
@@ -74,24 +75,14 @@ const policies = {
   registries: { allow: registries },
 } satisfies Record<NetworkMode, NetworkPolicy>;
 
-function vercel(): SandboxProvider | undefined {
-  const { VERCEL_PROJECT_ID, VERCEL_TEAM_ID, VERCEL_TOKEN } = env;
+type VercelCredentials = { projectId: string; teamId: string; token: string };
 
-  if (!VERCEL_PROJECT_ID || !VERCEL_TEAM_ID || !VERCEL_TOKEN) {
-    return undefined;
-  }
+const desired = new Map<string, NetworkMode>();
 
-  const credentials = {
-    projectId: VERCEL_PROJECT_ID,
-    teamId: VERCEL_TEAM_ID,
-    token: VERCEL_TOKEN,
-  };
-
-  const desired = new Map<string, NetworkMode>();
-
+function vercel(auth: VercelCredentials): SandboxProvider {
   const open = (computer: string) =>
     Sandbox.getOrCreate({
-      ...credentials,
+      ...auth,
       name: computer,
       networkPolicy: policies[desired.get(computer) ?? 'full'],
       timeout: IDLE_TIMEOUT_MS,
@@ -99,7 +90,7 @@ function vercel(): SandboxProvider | undefined {
 
   const find = async (computer: string) => {
     try {
-      return await Sandbox.get({ ...credentials, name: computer });
+      return await Sandbox.get({ ...auth, name: computer });
     } catch (error) {
       if (error instanceof APIError && error.response.status === 404) {
         return undefined;
@@ -170,21 +161,53 @@ function vercel(): SandboxProvider | undefined {
   };
 }
 
-const providers = { vercel } satisfies Record<
-  string,
-  () => SandboxProvider | undefined
->;
+export const sandboxProviders = [
+  {
+    fields: [
+      { id: 'apiKey', label: 'Access token', secret: true },
+      { id: 'teamId', label: 'Team ID', secret: false },
+      { id: 'projectId', label: 'Project ID', secret: false },
+    ],
+    id: 'vercel-sandbox',
+    name: 'Vercel Sandbox',
+  },
+];
 
-const selected: { provider: SandboxProvider | undefined } = {
-  provider: env.LAB_SANDBOX_PROVIDER
-    ? providers[env.LAB_SANDBOX_PROVIDER]()
-    : undefined,
+async function configuredVercel() {
+  const credential = await credentials.read('vercel-sandbox');
+
+  const token =
+    credential?.type === 'api_key' ? credential.key : env.VERCEL_TOKEN;
+
+  const settings = credential?.type === 'api_key' ? credential.env : undefined;
+
+  const teamId = settings?.teamId ?? env.VERCEL_TEAM_ID;
+
+  const projectId = settings?.projectId ?? env.VERCEL_PROJECT_ID;
+
+  if (!credential && env.LAB_SANDBOX_PROVIDER !== 'vercel') {
+    return undefined;
+  }
+
+  return token && teamId && projectId
+    ? vercel({ projectId, teamId, token })
+    : undefined;
+}
+
+const override: { provider: SandboxProvider | undefined; set: boolean } = {
+  provider: undefined,
+  set: false,
 };
+
+async function activeProvider() {
+  return override.set ? override.provider : configuredVercel();
+}
 
 const applied = new Map<string, NetworkMode>();
 
 export function useSandboxProvider(provider: SandboxProvider | undefined) {
-  selected.provider = provider;
+  override.provider = provider;
+  override.set = provider !== undefined;
   applied.clear();
 }
 
@@ -238,7 +261,7 @@ async function computerFor(
   readNetwork: () => Promise<NetworkMode>,
   conversationId: number
 ): Promise<Computer> {
-  const { provider } = selected;
+  const provider = await activeProvider();
 
   if (!provider) {
     throw new Error("The user's computer isn't set up.");
@@ -316,7 +339,7 @@ export function createSandboxAccess(
     computerFor(readNetwork, conversationId);
 
   return {
-    available: () => selected.provider !== undefined,
+    available: async () => (await activeProvider()) !== undefined,
     exec: async (conversationId, { command, onOutput, signal, timeoutMs }) => {
       const computer = await computerOf(conversationId);
 
@@ -460,7 +483,7 @@ export function createSandboxAccess(
 }
 
 export async function inspectComputer(ownerId: string) {
-  const { provider } = selected;
+  const provider = await activeProvider();
 
   return {
     computer: provider
@@ -471,15 +494,15 @@ export async function inspectComputer(ownerId: string) {
 }
 
 export async function applyComputerNetwork(ownerId: string, mode: NetworkMode) {
-  const { provider } = selected;
+  const provider = await activeProvider();
 
   if (provider) {
     await applyNetwork(provider, computerName(ownerId), mode);
   }
 }
 
-function requireProvider() {
-  const { provider } = selected;
+async function requireProvider() {
+  const provider = await activeProvider();
 
   if (!provider) {
     throw new Error("The user's computer isn't set up.");
@@ -489,19 +512,18 @@ function requireProvider() {
 }
 
 export async function stopComputer(ownerId: string) {
-  await requireProvider().stop(computerName(ownerId));
+  await (await requireProvider()).stop(computerName(ownerId));
 }
 
 export async function resetComputer(ownerId: string) {
-  await requireProvider().destroy(computerName(ownerId));
+  await (await requireProvider()).destroy(computerName(ownerId));
 }
 
 export async function removeChatFolder(
   ownerId: string,
   conversationId: number
 ) {
-  await selected.provider?.remove(
-    computerName(ownerId),
-    `chats/${conversationId}`
-  );
+  await (
+    await activeProvider()
+  )?.remove(computerName(ownerId), `chats/${conversationId}`);
 }

@@ -41,6 +41,7 @@ import { type SubmitEvent, useState } from 'react';
 const kindGroups = [
   { kind: 'model', label: 'Models' },
   { kind: 'search', label: 'Web search' },
+  { kind: 'computer', label: 'Computer' },
 ] as const;
 
 const methodLabels: Record<Method, string> = {
@@ -60,30 +61,39 @@ function useRefresh() {
   };
 }
 
-function ApiKeyFields({
+function ProviderFields({
   onChange,
   provider,
-  value,
+  values,
 }: {
-  onChange: (value: string) => void;
+  onChange: (id: string, value: string) => void;
   provider: Provider;
-  value: string;
+  values: Record<string, string>;
 }) {
   return (
-    <Field>
-      <FieldLabel htmlFor='api-key'>API key</FieldLabel>
-      <Input
-        autoComplete='off'
-        id='api-key'
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={`Paste your ${provider.name} API key`}
-        type='password'
-        value={value}
-      />
+    <>
+      {provider.fields.map(({ id, label, secret }) => (
+        <Field key={id}>
+          <FieldLabel htmlFor={`field-${id}`}>{label}</FieldLabel>
+          <Input
+            autoComplete='off'
+            data-1p-ignore={!secret}
+            id={`field-${id}`}
+            onChange={(event) => onChange(id, event.target.value)}
+            placeholder={
+              secret
+                ? `Paste your ${provider.name} ${label.toLowerCase()}`
+                : undefined
+            }
+            type={secret ? 'password' : 'text'}
+            value={values[id] ?? ''}
+          />
+        </Field>
+      ))}
       <FieldDescription>
         Stored encrypted and only used by this server.
       </FieldDescription>
-    </Field>
+    </>
   );
 }
 
@@ -101,15 +111,22 @@ function ConnectDialog({
   const refresh = useRefresh();
   const [selected, setSelected] = useState(initial);
   const [method, setMethod] = useState<Method>('api_key');
-  const [apiKey, setApiKey] = useState('');
+  const [values, setValues] = useState<Record<string, string>>({});
 
   const provider = providers.find(({ id }) => id === selected);
   const methods = provider?.methods ?? [];
 
   const connect = useMutation({
     meta: { inlineError: true },
-    mutationFn: () =>
-      connectProvider(provider?.id ?? '', { apiKey, method: 'api_key' }),
+    mutationFn: () => {
+      const { apiKey = '', ...settings } = values;
+
+      return connectProvider(provider?.id ?? '', {
+        apiKey,
+        method: 'api_key',
+        ...(Object.keys(settings).length > 0 && { settings }),
+      });
+    },
     onSuccess: async () => {
       onOpenChange(false);
       await refresh();
@@ -130,7 +147,8 @@ function ConnectDialog({
               {initial ? `Edit ${provider?.name}` : 'Connect a provider'}
             </DialogTitle>
             <DialogDescription>
-              Lab lists every model from the providers you connect.
+              Lab uses the providers you connect for models, web search, and its
+              computer.
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
@@ -140,7 +158,7 @@ function ConnectDialog({
                 disabled={initial !== undefined}
                 onValueChange={(value) => {
                   setSelected(value);
-                  setApiKey('');
+                  setValues({});
                 }}
                 value={selected}
               >
@@ -193,10 +211,12 @@ function ConnectDialog({
               </Field>
             )}
             {provider && method === 'api_key' && (
-              <ApiKeyFields
-                onChange={setApiKey}
+              <ProviderFields
+                onChange={(id, value) =>
+                  setValues((current) => ({ ...current, [id]: value }))
+                }
                 provider={provider}
-                value={apiKey}
+                values={values}
               />
             )}
             {connect.error && <FieldError>{connect.error.message}</FieldError>}
@@ -210,7 +230,11 @@ function ConnectDialog({
               Cancel
             </Button>
             <Button
-              disabled={!provider || !apiKey.trim() || connect.isPending}
+              disabled={
+                !provider ||
+                provider.fields.some(({ id }) => !values[id]?.trim()) ||
+                connect.isPending
+              }
               type='submit'
             >
               {initial ? 'Save' : 'Connect'}

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { credentials } from './credentials';
 import { keyProviders } from './models';
+import { sandboxProviders } from './sandbox';
 import { validator } from './validator';
 import { searchProviders } from './web-access';
 
@@ -16,20 +17,31 @@ const connection = validator(
     z.object({
       apiKey: z.string().trim().min(1),
       method: z.literal('api_key'),
+      settings: z.record(z.string(), z.string().trim().min(1)).optional(),
     }),
   ])
 );
 
+const keyField = { id: 'apiKey', label: 'API key', secret: true };
+
 function allProviders() {
   return [
     ...keyProviders().map(({ id, name }) => ({
+      fields: [keyField],
       id,
       kind: 'model' as const,
       name,
     })),
     ...searchProviders.map(({ id, name }) => ({
+      fields: [keyField],
       id,
       kind: 'search' as const,
+      name,
+    })),
+    ...sandboxProviders.map(({ fields, id, name }) => ({
+      fields,
+      id,
+      kind: 'computer' as const,
       name,
     })),
   ];
@@ -52,8 +64,9 @@ const providers = new Hono()
       (await credentials.list()).map(({ providerId }) => providerId)
     );
 
-    const list = allProviders().map(({ id, kind, name }) => ({
+    const list = allProviders().map(({ fields, id, kind, name }) => ({
       configured: stored.has(id),
+      fields,
       id,
       kind,
       methods: ['api_key' as const],
@@ -63,13 +76,30 @@ const providers = new Hono()
     return c.json({ providers: list });
   })
   .put('/:id', params, connection, async (c) => {
-    const { id } = provider(c.req.valid('param').id);
+    const { fields, id } = provider(c.req.valid('param').id);
 
-    const { apiKey } = c.req.valid('json');
+    const { apiKey, settings } = c.req.valid('json');
+
+    const missing = fields.find(
+      (field) => field.id !== 'apiKey' && !settings?.[field.id]
+    );
+
+    if (missing) {
+      throw new HTTPException(400, { message: `${missing.label} is required` });
+    }
+
+    const env = Object.fromEntries(
+      fields.flatMap(({ id: field }) =>
+        field !== 'apiKey' && settings?.[field]
+          ? [[field, settings[field]]]
+          : []
+      )
+    );
 
     await credentials.modify(id, async () => ({
       key: apiKey,
       type: 'api_key',
+      ...(Object.keys(env).length > 0 && { env }),
     }));
 
     return c.body(null, 204);
