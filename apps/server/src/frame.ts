@@ -5,6 +5,7 @@ import { env } from './env';
 const bridge = `<script>
 (() => {
   const send = (message) => parent.postMessage(message, '*');
+  window.lab = { send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }) };
   const size = () => send({ type: 'size', height: Math.ceil(document.documentElement.getBoundingClientRect().height) });
   new ResizeObserver(size).observe(document.documentElement);
   addEventListener('load', size);
@@ -39,6 +40,9 @@ const runner = `(() => {
     }
     if (data.type === 'error' && typeof data.message === 'string') {
       port.postMessage({ type: 'error', message: data.message.slice(0, 500) });
+    }
+    if (data.type === 'send' && typeof data.text === 'string') {
+      port.postMessage({ type: 'send', text: data.text.slice(0, 2000) });
     }
   });
 })();`;

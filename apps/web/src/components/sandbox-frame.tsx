@@ -9,6 +9,7 @@ const messageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready') }),
   z.object({ height: z.number(), type: z.literal('size') }),
   z.object({ message: z.string().max(500), type: z.literal('error') }),
+  z.object({ text: z.string().max(2_000), type: z.literal('send') }),
 ]);
 
 const FRAME_SANDBOX = 'allow-scripts allow-forms';
@@ -41,12 +42,14 @@ export function SandboxFrame({
   height: fixed,
   html,
   onError,
+  onSend,
   scripts = true,
   title,
 }: {
   height?: number;
   html: string;
   onError?: (message: string) => void;
+  onSend?: (text: string) => void;
   scripts?: boolean;
   title: string;
 }) {
@@ -54,13 +57,15 @@ export function SandboxFrame({
   const port = useRef<MessagePort>(undefined);
   const latest = useRef(html);
   const report = useRef(onError);
+  const sendText = useRef(onSend);
 
   const [height, setHeight] = useState(MIN_HEIGHT);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
     report.current = onError;
-  }, [onError]);
+    sendText.current = onSend;
+  }, [onError, onSend]);
 
   useEffect(() => {
     latest.current = html;
@@ -101,6 +106,10 @@ export function SandboxFrame({
 
       if (message?.type === 'error') {
         report.current?.(message.message);
+      }
+
+      if (message?.type === 'send' && navigator.userActivation.isActive) {
+        sendText.current?.(message.text);
       }
     });
 

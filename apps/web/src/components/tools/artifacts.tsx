@@ -1,10 +1,25 @@
 import { SandboxFrame } from '@/components/sandbox-frame';
-import { Code, Download, Eye, LayoutTemplate } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useDraft } from '@/lib/conversations';
+import {
+  Code,
+  Download,
+  Eye,
+  LayoutTemplate,
+  Maximize2,
+  TriangleAlert,
+} from 'lucide-react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { count, field, text } from './format';
 import { PreviewCode, PreviewList } from './previews';
-import type { ToolRenderer, ToolView } from './types';
+import { type ToolRenderer, type ToolView, ToolConversation } from './types';
 
 function download(title: string, html: string) {
   const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
@@ -129,8 +144,94 @@ function Superseded({ artifact }: { artifact: Shown }) {
   );
 }
 
+function FullScreen({
+  artifact,
+  onClose,
+}: {
+  artifact: Shown;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent
+        className='flex flex-col gap-3'
+        style={{ height: '90dvh', maxWidth: 'min(72rem, calc(100vw - 2rem))' }}
+      >
+        <DialogHeader>
+          <DialogTitle>{artifact.title}</DialogTitle>
+          <DialogDescription className='sr-only'>
+            Full screen view of the artifact
+          </DialogDescription>
+        </DialogHeader>
+        <div className='min-h-0 flex-1 overflow-y-auto'>
+          <SandboxFrame html={artifact.html} title={artifact.title} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const ERROR_LIMIT = 5;
+
+function fixRequest(title: string, errors: readonly string[]) {
+  return [
+    `The artifact "${title}" reported ${errors.length === 1 ? 'an error' : 'errors'}:`,
+    ...errors.map((error) => `- ${error}`),
+    'Please fix it.',
+  ].join('\n');
+}
+
+function Errors({
+  errors,
+  onFix,
+}: {
+  errors: readonly string[];
+  onFix: () => void;
+}) {
+  return (
+    <div className='flex flex-col gap-2 border-t px-4 py-3 text-sm'>
+      <div className='flex items-center gap-2'>
+        <TriangleAlert
+          aria-hidden='true'
+          className='size-4 text-muted-foreground'
+        />
+        <span>
+          {errors.length === 1 ? '1 error' : `${errors.length} errors`}
+        </span>
+        <button
+          className='ml-auto rounded-md px-2 py-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground'
+          onClick={onFix}
+          type='button'
+        >
+          Fix with Lab
+        </button>
+      </div>
+      <ul className='flex flex-col gap-1 font-mono text-xs text-muted-foreground'>
+        {errors.map((error) => (
+          <li key={error} className='truncate'>
+            {error}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Live({ artifact }: { artifact: Shown }) {
   const [showCode, setShowCode] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const conversationId = useContext(ToolConversation);
+  const [, setDraft] = useDraft(conversationId ?? 'new');
+
+  const onError = useCallback((message: string) => {
+    setErrors((current) =>
+      current.includes(message) || current.length >= ERROR_LIMIT
+        ? current
+        : [...current, message]
+    );
+  }, []);
 
   const { html, title, version } = artifact;
 
@@ -169,14 +270,36 @@ function Live({ artifact }: { artifact: Shown }) {
           >
             <Download aria-hidden='true' className='size-4' />
           </button>
+          <button
+            aria-label='Full screen'
+            className={action}
+            onClick={() => setFullScreen(true)}
+            type='button'
+          >
+            <Maximize2 aria-hidden='true' className='size-4' />
+          </button>
         </div>
       </header>
       <div className='px-4 pb-4'>
         {showCode && <PreviewCode>{html}</PreviewCode>}
         <div hidden={showCode}>
-          <SandboxFrame html={html} title={title} />
+          <SandboxFrame
+            html={html}
+            onError={onError}
+            onSend={setDraft}
+            title={title}
+          />
         </div>
       </div>
+      {errors.length > 0 && (
+        <Errors
+          errors={errors}
+          onFix={() => setDraft(fixRequest(title, errors))}
+        />
+      )}
+      {fullScreen && (
+        <FullScreen artifact={artifact} onClose={() => setFullScreen(false)} />
+      )}
     </section>
   );
 }
