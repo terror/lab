@@ -170,15 +170,6 @@ function ToolCards({ call, progress, result }: CallProps) {
   );
 }
 
-function ToolCall(props: CallProps) {
-  return (
-    <Trace className='gap-0'>
-      <ToolStep {...props} />
-      <ToolCards {...props} />
-    </Trace>
-  );
-}
-
 function CurrentStep({ call, progress, result }: CallProps) {
   const view = useToolView(call, progress, result);
 
@@ -381,53 +372,37 @@ export function replyText(parts: readonly Part[]) {
 }
 
 function Segments({
-  folded = false,
   parts,
   progress,
   results,
   segments: list,
   streaming,
 }: {
-  folded?: boolean;
   parts: readonly Part[];
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   segments: readonly Segment[];
   streaming: boolean;
 }) {
-  const Call = folded ? ToolStep : ToolCall;
-
   return list.map((segment) => {
     if (segment.kind === 'tools') {
-      return (
-        <div key={segment.key} className='flex flex-col'>
-          {segment.calls.map((call) => (
-            <Call
-              key={call.id}
-              call={call}
-              progress={progress.get(call.id)}
-              result={results.get(call.id)}
-            />
-          ))}
-        </div>
-      );
+      return segment.calls.map((call) => (
+        <ToolCards
+          key={call.id}
+          call={call}
+          progress={progress.get(call.id)}
+          result={results.get(call.id)}
+        />
+      ));
     }
 
-    const markdown = (
+    return (
       <Markdown
         key={segment.key}
         streaming={streaming && segment.index === parts.length - 1}
       >
         {segment.text}
       </Markdown>
-    );
-
-    return folded ? (
-      <div key={segment.key} className='py-1 text-sm'>
-        {markdown}
-      </div>
-    ) : (
-      markdown
     );
   });
 }
@@ -463,56 +438,44 @@ export function AssistantMessage({
     .slice(0, split)
     .flatMap((segment) => (segment.kind === 'tools' ? segment.calls : []));
 
-  const folded = calls.length > 0;
-
-  const rest = folded ? all.slice(split) : all;
-
-  const replying = rest.some(({ kind }) => kind === 'text');
+  const replying = all.slice(split).some(({ kind }) => kind === 'text');
 
   const last = calls.at(-1);
 
-  const status =
-    working &&
-    !replying &&
-    last &&
-    (activity === undefined ? (
-      <CurrentStep
-        call={last}
-        progress={progress.get(last.id)}
-        result={results.get(last.id)}
-      />
-    ) : (
-      <Activity status={activity} />
-    ));
+  const inSlot = last !== undefined && !replying;
 
   const shared = { parts, progress, results, streaming };
 
   return (
     <Message>
       <MessageContent className='gap-3 text-base'>
-        {status}
-        {folded && (!working || replying) && (
+        <Segments segments={all.slice(0, split)} {...shared} />
+        {last && working && !replying && activity === undefined && (
+          <CurrentStep
+            call={last}
+            progress={progress.get(last.id)}
+            result={results.get(last.id)}
+          />
+        )}
+        {activity !== undefined && inSlot && <Activity status={activity} />}
+        {last && (!working || replying) && (
           <Worked
             failed={calls.filter(({ id }) => results.get(id)?.isError).length}
             span={span}
             steps={calls.length}
           >
-            <Segments folded segments={all.slice(0, split)} {...shared} />
+            {calls.map((call) => (
+              <ToolStep
+                key={call.id}
+                call={call}
+                progress={progress.get(call.id)}
+                result={results.get(call.id)}
+              />
+            ))}
           </Worked>
         )}
-        {folded &&
-          calls.map((call) => (
-            <ToolCards
-              key={call.id}
-              call={call}
-              progress={progress.get(call.id)}
-              result={results.get(call.id)}
-            />
-          ))}
-        <Segments segments={rest} {...shared} />
-        {activity !== undefined && !(folded && working) && (
-          <Activity status={activity} />
-        )}
+        <Segments segments={all.slice(split)} {...shared} />
+        {activity !== undefined && !inSlot && <Activity status={activity} />}
         {answer && <MessageActions latest={latest} text={text} />}
       </MessageContent>
     </Message>

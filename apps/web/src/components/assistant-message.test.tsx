@@ -26,7 +26,7 @@ const results = new Map([
   ['b', { isError: true, output: 'bar' }],
 ]);
 
-test('a finished turn folds its steps behind how long it worked', async () => {
+test('a finished turn folds only its steps behind how long it worked', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -50,15 +50,16 @@ test('a finished turn folds its steps behind how long it worked', async () => {
   });
 
   await expect.element(fold).toHaveAttribute('aria-expanded', 'false');
+  await expect.element(screen.getByText('bar')).toBeVisible();
   await expect.element(screen.getByText('baz')).toBeVisible();
-  await expect.element(screen.getByText('bar')).not.toBeInTheDocument();
+  await expect.element(screen.getByText('Read a page')).not.toBeInTheDocument();
 
   await fold.click();
 
-  await expect.element(screen.getByText('bar')).toBeVisible();
+  await expect.element(screen.getByText('Read a page')).toBeVisible();
 });
 
-test('a running turn shows only its current step on one line', async () => {
+test('a running turn keeps its text and shows only its current step', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -79,7 +80,7 @@ test('a running turn shows only its current step on one line', async () => {
     .element(screen.getByRole('status'))
     .toHaveTextContent('Reading a page');
   await expect.element(screen.getByRole('button')).not.toBeInTheDocument();
-  await expect.element(screen.getByText('bar')).not.toBeInTheDocument();
+  await expect.element(screen.getByText('bar')).toBeVisible();
 });
 
 test('a turn shows how long it worked as soon as its reply starts', async () => {
