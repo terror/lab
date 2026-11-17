@@ -7,6 +7,7 @@ import {
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
 import { DocumentCard } from '@/components/document-card';
+import { LoadMore } from '@/components/load-more';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { FileText, X } from 'lucide-react';
+import { FileText, LoaderCircle, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
@@ -378,6 +379,7 @@ function replyKeys(rows: readonly Row[]) {
 
 const TranscriptRow = memo(function TranscriptRow({
   activity,
+  failed,
   latest,
   loading,
   onEarlier,
@@ -388,6 +390,7 @@ const TranscriptRow = memo(function TranscriptRow({
   working,
 }: {
   activity: string | undefined;
+  failed: boolean;
   latest: boolean;
   loading: boolean;
   onEarlier: () => void;
@@ -408,18 +411,30 @@ const TranscriptRow = memo(function TranscriptRow({
   }
 
   if (row.kind === 'earlier' || row.kind === 'gap') {
+    const load = () => (row.kind === 'gap' ? onGap(row.gap) : onEarlier());
+
+    if (failed) {
+      return (
+        <div className='flex justify-center'>
+          <Button disabled={loading} onClick={load} size='sm' variant='ghost'>
+            {row.kind === 'gap'
+              ? 'Load missing messages'
+              : 'Load earlier messages'}
+          </Button>
+        </div>
+      );
+    }
+
     return (
-      <div className='flex justify-center'>
-        <Button
-          disabled={loading}
-          onClick={() => (row.kind === 'gap' ? onGap(row.gap) : onEarlier())}
-          size='sm'
-          variant='ghost'
-        >
-          {row.kind === 'gap'
-            ? 'Load missing messages'
-            : 'Load earlier messages'}
-        </Button>
+      <div className='flex h-8 items-center justify-center'>
+        {loading ? (
+          <LoaderCircle
+            aria-label='Loading messages'
+            className='size-4 text-muted-foreground motion-safe:animate-spin'
+          />
+        ) : (
+          <LoadMore onLoadMore={load} />
+        )}
       </div>
     );
   }
@@ -701,6 +716,7 @@ function ConversationView({ id }: { id: number }) {
                     <TranscriptRow
                       activity={row === inline ? thinking : undefined}
                       latest={row === latest && !running}
+                      failed={earlier.isError || gap.isError}
                       loading={earlier.isPending || gap.isPending}
                       onEarlier={onEarlier}
                       onGap={onGap}
