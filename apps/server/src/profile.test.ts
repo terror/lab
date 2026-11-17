@@ -15,7 +15,10 @@ async function setPicture(headers: Headers, picture: File) {
     method: 'PUT',
   });
 
-  return { body: await response.json(), status: response.status };
+  return {
+    body: (await response.json()) as { error?: string; image?: string },
+    status: response.status,
+  };
 }
 
 async function image(headers: Headers) {
