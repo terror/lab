@@ -83,11 +83,7 @@ export function Changelog({
           ))}
         </ul>
         <DialogFooter>
-          <Button
-            className='focus-visible:border-transparent focus-visible:ring-0'
-            onClick={onClose}
-            ref={done}
-          >
+          <Button onClick={onClose} ref={done}>
             Done
           </Button>
         </DialogFooter>

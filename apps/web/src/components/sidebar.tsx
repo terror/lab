@@ -46,7 +46,7 @@ type Side = 'bottom' | 'right';
 const collapsedSchema = z.boolean();
 
 const headerButton =
-  'flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50';
+  'flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground';
 
 const sorts: { label: string; value: ConversationSort }[] = [
   { label: 'Recent activity', value: 'activity' },
@@ -76,7 +76,7 @@ function RailButton({
           aria-keyshortcuts={shortcut?.keys}
           aria-label={label}
           className={cn(
-            'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+            'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent',
             active && 'bg-sidebar-accent text-sidebar-accent-foreground'
           )}
           onClick={onClick}
@@ -199,7 +199,7 @@ function NavButton({
     <button
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50',
+        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent',
         active && 'bg-sidebar-accent text-sidebar-accent-foreground'
       )}
       onClick={onClick}
@@ -361,7 +361,7 @@ function SidebarPanel({
       <div className='flex items-center justify-between px-1'>
         <button
           aria-label='New chat'
-          className='flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+          className='flex rounded-md outline-none'
           onClick={onNewChat}
           type='button'
         >
