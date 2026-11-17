@@ -1,10 +1,11 @@
 import { schema } from '@lab/db';
+import { auth } from '@modelcontextprotocol/sdk/client/auth.js';
 import { and, asc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { PRIVATE_ADDRESS, checkPublicUrl } from './addresses';
+import { PRIVATE_ADDRESS, checkPublicUrl, publicFetch } from './addresses';
 import { isAdmin, requireUser } from './auth';
 import {
   connectorSlug,
@@ -12,6 +13,13 @@ import {
   refreshConnector,
   removeConnector,
 } from './connections';
+import {
+  checkState,
+  connectorAuth,
+  connectorIssuer,
+  finishAuthorization,
+  stateConnector,
+} from './connector-auth';
 import { db } from './db';
 import { found } from './found';
 import { rateLimit } from './limits';
@@ -25,6 +33,16 @@ const fields = z.object({
 });
 
 const creation = validator('json', fields);
+
+const callback = validator(
+  'query',
+  z.object({
+    code: z.string().min(1).optional(),
+    error: z.string().optional(),
+    iss: z.string().optional(),
+    state: z.string().min(1),
+  })
+);
 
 export async function listConnectors(ownerId: string) {
   const rows = await db
@@ -182,6 +200,71 @@ const connectors = new Hono()
     await updateConnector(user, c.req.valid('param').id, c.req.valid('json'));
 
     return c.json(await listConnectors(user.id));
+  })
+  .get('/:id/authorize', idParam, async (c) => {
+    const user = c.get('user');
+
+    const row = await existing(user.id, c.req.valid('param').id);
+
+    const redirects = new Array<URL>();
+
+    const result = await auth(
+      connectorAuth(row.id, (url) => {
+        redirects.push(url);
+      }),
+      { fetchFn: isAdmin(user) ? undefined : publicFetch, serverUrl: row.url }
+    );
+
+    const [target] = redirects;
+
+    if (result === 'REDIRECT' && target) {
+      return c.redirect(target.href);
+    }
+
+    await refreshConnector(row, isAdmin(user));
+
+    return c.redirect('/settings');
+  })
+  .get('/callback', callback, async (c) => {
+    const user = c.get('user');
+
+    const { code, error, iss, state } = c.req.valid('query');
+
+    const id = found(stateConnector(state), 'Connector not found');
+
+    const row = await existing(user.id, id);
+
+    if (!(await checkState(id, state))) {
+      throw new HTTPException(400, {
+        message: 'This sign-in expired. Sign in to the connector again.',
+      });
+    }
+
+    if (error || !code) {
+      await finishAuthorization(id);
+
+      return c.redirect('/settings');
+    }
+
+    const issuer = await connectorIssuer(id);
+
+    if (iss && issuer && iss !== issuer) {
+      throw new HTTPException(400, {
+        message: 'The sign-in came back from an unexpected server.',
+      });
+    }
+
+    await auth(connectorAuth(id), {
+      authorizationCode: code,
+      fetchFn: isAdmin(user) ? undefined : publicFetch,
+      serverUrl: row.url,
+    });
+
+    await finishAuthorization(id);
+
+    await refreshConnector(row, isAdmin(user));
+
+    return c.redirect('/settings');
   })
   .post('/:id/reconnect', rateLimit('connectors'), idParam, async (c) => {
     const user = c.get('user');

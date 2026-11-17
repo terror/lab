@@ -6,6 +6,7 @@ import {
   type ConnectorTool,
   connectorsExtension,
 } from '@lab/harness';
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -13,6 +14,7 @@ import { eq } from 'drizzle-orm';
 
 import { publicFetch } from './addresses';
 import { isAdmin } from './auth';
+import { connectorAuth } from './connector-auth';
 import { db } from './db';
 import { harness, registry } from './harness';
 
@@ -22,7 +24,8 @@ export type ConnectorState =
   | { kind: 'connected'; tools: { description: string; name: string }[] }
   | { kind: 'connecting' }
   | { kind: 'error'; message: string }
-  | { kind: 'off' };
+  | { kind: 'off' }
+  | { kind: 'unauthorized' };
 
 type Entry = {
   client?: Client;
@@ -133,11 +136,12 @@ async function disconnect(id: number) {
   return entry?.ownerId;
 }
 
-async function connect({ name, ownerId, url }: Row, local: boolean) {
+async function connect({ id, name, ownerId, url }: Row, local: boolean) {
   const client = new Client({ name: 'Lab', version: '1.0.0' });
 
   try {
     const transport = new StreamableHTTPClientTransport(new URL(url), {
+      authProvider: connectorAuth(id),
       fetch: local ? fetch : publicFetch,
     });
 
@@ -174,6 +178,10 @@ async function connect({ name, ownerId, url }: Row, local: boolean) {
     };
   } catch (error) {
     await client.close().catch(() => undefined);
+
+    if (error instanceof UnauthorizedError) {
+      return { ownerId, state: { kind: 'unauthorized' as const } };
+    }
 
     return {
       ownerId,

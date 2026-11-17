@@ -53,3 +53,17 @@ test('a connector that cannot connect says why', async () => {
 
   await expect.element(screen.getByText('bar')).toBeVisible();
 });
+
+test('a connector that needs sign-in links to signing in', async () => {
+  stubFetch(() =>
+    Response.json({
+      connectors: [{ ...connector, status: 'unauthorized', tools: [] }],
+    })
+  );
+
+  const { screen } = await renderWithQuery(<Connectors />);
+
+  await expect
+    .element(screen.getByRole('link', { name: 'Sign in' }))
+    .toHaveAttribute('href', '/api/connectors/1/authorize');
+});

@@ -64,8 +64,8 @@ function AddConnector({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Add connector</DialogTitle>
         <DialogDescription>
-          Connect a remote MCP server by its URL. Servers that need you to sign
-          in aren't supported yet.
+          Connect a remote MCP server by its URL. If it needs you to sign in,
+          Lab will ask after you add it.
         </DialogDescription>
       </DialogHeader>
       <FieldGroup>
@@ -118,6 +118,7 @@ const statuses: Record<Connector['status'], (connector: Connector) => string> =
     connecting: () => 'Connecting…',
     error: ({ error }) => error ?? "Couldn't connect",
     off: () => 'Off',
+    unauthorized: () => 'Sign in to use this connector',
   };
 
 function Status({ connector }: { connector: Connector }) {
@@ -158,6 +159,11 @@ function ConnectorRow({ connector }: { connector: Connector }) {
             </p>
             <Status connector={connector} />
           </div>
+          {connector.status === 'unauthorized' && (
+            <Button asChild size='sm' variant='secondary'>
+              <a href={`/api/connectors/${connector.id}/authorize`}>Sign in</a>
+            </Button>
+          )}
           <Switch
             aria-label={`Use ${connector.name}`}
             checked={connector.enabled}

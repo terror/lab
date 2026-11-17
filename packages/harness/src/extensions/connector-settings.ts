@@ -40,6 +40,7 @@ const states: Record<string, (connector: ConnectorSummary) => string> = {
   connecting: () => 'connecting',
   error: ({ error }) => `failed to connect: ${error ?? 'unknown error'}`,
   off: () => 'turned off',
+  unauthorized: () => 'needs the user to sign in from Settings → Connectors',
 };
 
 function line(connector: ConnectorSummary) {
