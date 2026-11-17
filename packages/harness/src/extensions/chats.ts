@@ -19,7 +19,9 @@ import { failure, once, text } from './results';
 
 export type ChatSummary = { id: number; pinned: boolean; title: string | null };
 
-export type TrashKind = 'conversation' | 'project';
+export const trashKinds = ['conversation', 'project'] as const;
+
+export type TrashKind = (typeof trashKinds)[number];
 
 export type TrashEntry = {
   deletedAt: string;
@@ -67,9 +69,12 @@ const chatId = int({
   minimum: 1,
 });
 
-const kind = union([lit('conversation'), lit('project')], {
-  description: 'Whether the item is a chat or a project.',
-});
+const kind = union(
+  trashKinds.map((value) => lit(value)),
+  {
+    description: 'Whether the item is a chat or a project.',
+  }
+);
 
 const trashId = int({ description: 'The id from trash_list.', minimum: 1 });
 

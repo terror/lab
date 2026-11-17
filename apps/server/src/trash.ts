@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
+import { type TrashKind, trashKinds } from '@lab/harness';
 import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -169,14 +170,10 @@ const projects: Trashable = {
   restore: restoreProject,
 };
 
-const kinds = ['conversation', 'project'] as const;
-
-const trashables: Record<(typeof kinds)[number], Trashable> = {
+const trashables: Record<TrashKind, Trashable> = {
   conversation: conversations,
   project: projects,
 };
-
-export type TrashKind = (typeof kinds)[number];
 
 export async function moveToTrash(
   kind: TrashKind,
@@ -212,13 +209,13 @@ const params = validator(
   'param',
   z.object({
     id: positiveId,
-    kind: z.enum(kinds),
+    kind: z.enum(trashKinds),
   })
 );
 
 export async function listTrash(ownerId: string) {
   const lists = await Promise.all(
-    kinds.map(async (kind) =>
+    trashKinds.map(async (kind) =>
       (await trashables[kind].list(ownerId)).map((item) => ({ ...item, kind }))
     )
   );

@@ -1,14 +1,19 @@
+import type { Preferences } from '@/lib/preferences';
 import { SlidersHorizontal } from 'lucide-react';
 
 import { field, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer } from './types';
 
-const labels: Record<string, (value: unknown) => [string, string]> = {
+const labels = {
   chatSort: (value) => ['Sort chats by', text(value) ?? ''],
   lineNumbers: (value) => ['Code line numbers', value ? 'On' : 'Off'],
   theme: (value) => ['Theme', text(value) ?? ''],
-};
+} satisfies Record<keyof Preferences, (value: unknown) => [string, string]>;
+
+function isPreference(key: string): key is keyof Preferences {
+  return key in labels;
+}
 
 export const preferencesRenderers = {
   preferences_update: {
@@ -23,13 +28,11 @@ export const preferencesRenderers = {
       return (
         <PreviewList
           items={Object.entries(change).flatMap(([key, value]) => {
-            const label = labels[key];
-
-            if (!label) {
+            if (!isPreference(key)) {
               return [];
             }
 
-            const [name, shown] = label(value);
+            const [name, shown] = labels[key](value);
 
             return [{ key, label: name, meta: shown }];
           })}

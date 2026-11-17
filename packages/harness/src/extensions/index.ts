@@ -85,6 +85,7 @@ export {
   type ChatsAccess,
   type TrashEntry,
   type TrashKind,
+  trashKinds,
 } from './chats';
 export { PreferencesDoc } from './preferences';
 export { TitleDoc, plainTitle } from './title';
