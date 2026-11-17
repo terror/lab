@@ -191,10 +191,11 @@ test('deleting a project trashes its chats and restores only those', async () =>
 
   await call(headers, 'DELETE', `/projects/${project}`);
 
-  await call(headers, 'DELETE', `/trash/project/${project}`);
+  const purge = await call(headers, 'DELETE', `/trash/project/${project}`);
 
-  expect({ deleted, purged: await trash(), restored }).toEqual({
+  expect({ deleted, purge, purged: await trash(), restored }).toEqual({
     deleted: { projects: [], trash: [['project', project]] },
+    purge: { body: { chats: [kept, earlier] }, status: 200 },
     purged: [],
     restored: { chats: [kept], trash: [['conversation', earlier]] },
   });
