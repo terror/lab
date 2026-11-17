@@ -58,7 +58,7 @@ test('a finished turn folds its steps behind how long it worked', async () => {
   await expect.element(screen.getByText('bar')).toBeVisible();
 });
 
-test('a running turn shows only its current step under a clock', async () => {
+test('a running turn shows only its current step on one line', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -70,17 +70,40 @@ test('a running turn shows only its current step under a clock', async () => {
       parts={parts.slice(0, 3)}
       progress={new Map()}
       results={new Map([['a', { isError: false, output: 'foo' }]])}
-      span={{ end: Date.now(), start: Date.now() }}
       streaming
       working
     />
   );
 
   await expect
-    .element(screen.getByRole('button', { name: 'Working · 0:00 · 2 steps' }))
-    .toBeVisible();
-  await expect.element(screen.getByText('Reading a page')).toBeVisible();
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('Reading a page');
+  await expect.element(screen.getByRole('button')).not.toBeInTheDocument();
+  await expect.element(screen.getByText('bar')).not.toBeInTheDocument();
+});
+
+test('a turn shows how long it worked as soon as its reply starts', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <AssistantMessage
+      parts={parts}
+      progress={new Map()}
+      results={results}
+      span={{ end: 5_000, start: 0 }}
+      streaming
+      working
+    />
+  );
+
   await expect
-    .element(screen.getByText('Searched the web'))
-    .not.toBeInTheDocument();
+    .element(
+      screen.getByRole('button', { name: 'Worked for 5s · 2 steps · 1 failed' })
+    )
+    .toBeVisible();
+  await expect.element(screen.getByRole('status')).not.toBeInTheDocument();
 });

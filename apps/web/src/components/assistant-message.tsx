@@ -28,7 +28,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
-import { clock, duration } from '@/lib/time';
+import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
@@ -179,73 +179,51 @@ function ToolCall(props: CallProps) {
   );
 }
 
-const FOLD_STEPS = 2;
+function CurrentStep({ call, progress, result }: CallProps) {
+  const view = useToolView(call, progress, result);
 
-function useNow(ticking: boolean) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!ticking) {
-      return undefined;
-    }
-
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
-
-    return () => window.clearInterval(timer);
-  }, [ticking]);
-
-  return now;
+  return <Activity status={toolRenderer(call.name).title(view)} />;
 }
 
-function workTitle(working: boolean, span: Span | undefined) {
-  if (working) {
-    return 'Working';
-  }
-
-  return span ? `Worked for ${duration(span.end - span.start)}` : 'Worked';
+function plural(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 export function Worked({
   children,
-  current,
   failed,
   span,
   steps,
-  working,
 }: {
   children: ReactNode;
-  current: ReactNode;
   failed: number;
   span: Span | undefined;
   steps: number;
-  working: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-
-  const now = useNow(working);
-
   const details = [
-    working && span ? clock(now - span.start) : undefined,
-    `${steps} steps`,
+    plural(steps, 'step'),
     failed > 0 ? `${failed} failed` : undefined,
   ].filter((detail) => detail !== undefined);
 
   return (
     <Trace className='gap-0'>
-      <TraceCollapsible onOpenChange={setOpen} open={open}>
+      <TraceCollapsible>
         <TraceCollapsibleTrigger>
-          <TraceLine className='h-6.5' status={working ? 'running' : undefined}>
-            <TraceTitle>{workTitle(working, span)}</TraceTitle>
-            <TraceDescription>{` · ${details.join(' · ')}`}</TraceDescription>
+          <TraceLine className='h-6.5'>
+            <TraceTitle>
+              {span
+                ? `Worked for ${duration(span.end - span.start)}`
+                : 'Worked'}
+            </TraceTitle>
+            <TraceDescription className='text-muted-foreground'>
+              {` · ${details.join(' · ')}`}
+            </TraceDescription>
           </TraceLine>
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent className='flex flex-col gap-1'>
           {children}
         </TraceCollapsibleContent>
       </TraceCollapsible>
-      {working && !open && current && (
-        <div className='mt-1 ml-2 border-l pl-4'>{current}</div>
-      )}
     </Trace>
   );
 }
@@ -485,39 +463,39 @@ export function AssistantMessage({
     .slice(0, split)
     .flatMap((segment) => (segment.kind === 'tools' ? segment.calls : []));
 
-  const folded = calls.length >= FOLD_STEPS;
+  const folded = calls.length > 0;
 
   const rest = folded ? all.slice(split) : all;
 
   const replying = rest.some(({ kind }) => kind === 'text');
 
-  const live = folded && working && !replying;
-
   const last = calls.at(-1);
 
-  const current =
-    activity === undefined && last ? (
-      <ToolStep
+  const status =
+    working &&
+    !replying &&
+    last &&
+    (activity === undefined ? (
+      <CurrentStep
         call={last}
         progress={progress.get(last.id)}
         result={results.get(last.id)}
       />
     ) : (
-      <Activity status={activity ?? ''} />
-    );
+      <Activity status={activity} />
+    ));
 
   const shared = { parts, progress, results, streaming };
 
   return (
     <Message>
       <MessageContent className='gap-3 text-base'>
-        {folded && (
+        {status}
+        {folded && (!working || replying) && (
           <Worked
-            current={live ? current : undefined}
             failed={calls.filter(({ id }) => results.get(id)?.isError).length}
             span={span}
             steps={calls.length}
-            working={working}
           >
             <Segments folded segments={all.slice(0, split)} {...shared} />
           </Worked>
@@ -532,7 +510,9 @@ export function AssistantMessage({
             />
           ))}
         <Segments segments={rest} {...shared} />
-        {activity !== undefined && !live && <Activity status={activity} />}
+        {activity !== undefined && !(folded && working) && (
+          <Activity status={activity} />
+        )}
         {answer && <MessageActions latest={latest} text={text} />}
       </MessageContent>
     </Message>
