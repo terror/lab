@@ -148,6 +148,13 @@
       "when": 1794880981334,
       "tag": "0020_trash",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794885429423,
+      "tag": "0021_scheduled_tasks",
+      "breakpoints": true
     }
   ]
 }

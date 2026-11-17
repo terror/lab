@@ -7,6 +7,7 @@ import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { type SandboxAccess, sandbox } from './sandbox';
+import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
 import { title } from './title';
 import { type WebAccess, web } from './web';
@@ -57,6 +58,14 @@ export {
   type SandboxWrite,
   type SavedFile,
 } from './sandbox';
+export {
+  ProfileDoc,
+  type ScheduleAccess,
+  type ScheduleChange,
+  type ScheduleInput,
+  type ScheduleUpdate,
+  type ScheduledTask,
+} from './schedule';
 export { TitleDoc } from './title';
 export {
   type WebAccess,
@@ -73,6 +82,7 @@ export type ExtensionDeps = {
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
   sandbox: SandboxAccess;
+  schedule: ScheduleAccess;
   web: WebAccess;
 };
 
@@ -86,6 +96,7 @@ export function extensions(deps: ExtensionDeps) {
     library(deps.library),
     memory,
     sandbox(deps.sandbox),
+    schedule(deps.schedule),
     skills,
     title(deps.onHelperUsage),
     web(deps.web),

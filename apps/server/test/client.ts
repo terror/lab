@@ -93,3 +93,29 @@ export async function toolOutputs(headers: Headers, id: number) {
 export async function toolDetails(headers: Headers, id: number) {
   return (await toolResults(headers, id)).map(({ details }) => details);
 }
+
+type ToolCallEntry = {
+  model?: { content: { id?: string; type: string }[]; role: string }[];
+};
+
+export async function pendingToolCall(headers: Headers, id: number) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const { body } = await call(
+      headers,
+      'GET',
+      `/conversations/${id}/entries?order=ascending`
+    );
+
+    const found = (body.items as ToolCallEntry[])
+      .flatMap(({ model }) => model?.[0]?.content ?? [])
+      .find(({ type }) => type === 'toolCall')?.id;
+
+    if (found) {
+      return found;
+    }
+
+    await Bun.sleep(20);
+  }
+
+  throw new Error('No tool call');
+}
