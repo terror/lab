@@ -242,9 +242,7 @@ function ConnectedProvider({
       <div className='flex min-w-0 flex-col'>
         <span className='truncate text-sm font-medium'>{provider.name}</span>
         <span className='truncate text-xs text-muted-foreground'>
-          {provider.kind === 'search'
-            ? `Web search · ${methodLabels.api_key}`
-            : methodLabels.api_key}
+          {methodLabels.api_key}
         </span>
       </div>
       <div className='ml-auto flex shrink-0 items-center gap-1'>
