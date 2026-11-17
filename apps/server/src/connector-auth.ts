@@ -87,8 +87,10 @@ export async function finishAuthorization(connectorId: number) {
 
 export function connectorAuth(
   connectorId: number,
-  onRedirect: (url: URL) => void = () => undefined
+  onRedirect?: (url: URL) => void
 ): OAuthClientProvider {
+  const interactive = onRedirect !== undefined;
+
   return {
     clientInformation: async () => client((await load(connectorId)).client),
     clientMetadata,
@@ -118,16 +120,22 @@ export function connectorAuth(
 
       await save(connectorId, cleared[scope]);
     },
-    redirectToAuthorization: onRedirect,
+    redirectToAuthorization: onRedirect ?? (() => undefined),
     redirectUrl,
     saveClientInformation: (information) =>
       save(connectorId, { client: information }),
-    saveCodeVerifier: (verifier) => save(connectorId, { verifier }),
+    saveCodeVerifier: async (verifier) => {
+      if (interactive) {
+        await save(connectorId, { verifier });
+      }
+    },
     saveTokens: (tokens) => save(connectorId, { tokens }),
     state: async () => {
       const nonce = randomUUID();
 
-      await save(connectorId, { nonce });
+      if (interactive) {
+        await save(connectorId, { nonce });
+      }
 
       return `${connectorId}.${nonce}`;
     },

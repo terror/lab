@@ -2,8 +2,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { z } from 'zod';
 
-async function handleMcp(request: Request) {
+async function handleMcp(request: Request, extra: readonly string[] = []) {
   const mcp = new McpServer({ name: 'foo', version: '1.0.0' });
+
+  for (const name of extra) {
+    mcp.registerTool(
+      name,
+      { annotations: { readOnlyHint: true }, description: 'baz' },
+      async () => ({ content: [{ text: 'qux', type: 'text' }] })
+    );
+  }
 
   mcp.registerTool(
     'read',
@@ -35,9 +43,9 @@ async function handleMcp(request: Request) {
   return transport.handleRequest(request);
 }
 
-export function serveMcp() {
+export function serveMcp(tools: readonly string[] = []) {
   const server = Bun.serve({
-    fetch: handleMcp,
+    fetch: (request) => handleMcp(request, tools),
     hostname: '127.0.0.1',
     port: 0,
   });

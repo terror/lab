@@ -135,6 +135,11 @@ export async function deleteAccount(ownerId: string) {
   }, BACKGROUND_CONTEXT);
 
   await db.transaction(async (tx) => {
+    await tx
+      .update(schema.conversationDeletion)
+      .set({ ownerId: null })
+      .where(eq(schema.conversationDeletion.ownerId, ownerId));
+
     if (conversations.length > 0) {
       await tx
         .insert(schema.conversationDeletion)
