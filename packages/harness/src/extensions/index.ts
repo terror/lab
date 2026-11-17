@@ -9,6 +9,7 @@ import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { limitOutput, output } from './output';
+import { preferences } from './preferences';
 import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
@@ -69,6 +70,7 @@ export {
   type ScheduleUpdate,
   type ScheduledTask,
 } from './schedule';
+export { PreferencesDoc } from './preferences';
 export { TitleDoc, plainTitle } from './title';
 export {
   type WebAccess,
@@ -110,6 +112,7 @@ export function extensions(deps: ExtensionDeps) {
     assistant,
     codemode,
     output,
+    preferences,
     compaction(deps.onHelperUsage),
     history(deps.history),
     library(deps.library),

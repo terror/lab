@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
-import { useLineNumbers } from '@/lib/preferences';
+import { usePreference } from '@/lib/preferences';
 import {
   type SettingsSection,
   settingsSections,
@@ -47,7 +47,7 @@ const themes: { label: string; value: Theme }[] = [
 
 function Appearance() {
   const [theme, setTheme] = useTheme();
-  const [lineNumbers, setLineNumbers] = useLineNumbers();
+  const [lineNumbers, setLineNumbers] = usePreference('lineNumbers');
 
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 

@@ -6,6 +6,7 @@ export const toolNames = [
   'forget',
   'library_read',
   'library_search',
+  'preferences_update',
   'remember',
   'sandbox_exec',
   'sandbox_list',

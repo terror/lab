@@ -20,6 +20,7 @@ import {
   MessageScrollerViewport,
   useMessageScroller,
 } from '@/components/ui/message-scroller';
+import { refreshAgentWrites } from '@/lib/agent-writes';
 import { type Attachment, imageSource } from '@/lib/attachments';
 import { client } from '@/lib/client';
 import {
@@ -625,7 +626,7 @@ function ConversationView({ id }: { id: number }) {
 
   useEffect(() => {
     if (!running) {
-      void queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+      void refreshAgentWrites(queryClient);
     }
   }, [queryClient, running]);
 

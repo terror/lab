@@ -1,4 +1,7 @@
 import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
+import { CHAT_SORTS, THEMES } from '@lab/harness/preferences';
+
+export { defaultPreferences } from '@lab/harness/preferences';
 import { z } from 'zod';
 
 export const imageTypes = [
@@ -46,6 +49,12 @@ export const attachmentSchema = z.discriminatedUnion('type', [
 
 export type Attachment = z.infer<typeof attachmentSchema>;
 
-export const sortSchema = z.enum(['activity', 'created', 'title']);
+export const sortSchema = z.enum(CHAT_SORTS);
+
+export const preferencesSchema = z.object({
+  chatSort: sortSchema,
+  lineNumbers: z.boolean(),
+  theme: z.enum(THEMES),
+});
 
 export const thinkingLevelSchema = z.enum(MODEL_THINKING_LEVELS);

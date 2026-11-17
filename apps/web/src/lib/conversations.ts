@@ -11,7 +11,7 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
-import { sortSchema } from '@lab/server/schemas';
+import type { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
   queryOptions,
@@ -26,6 +26,7 @@ import { z } from 'zod';
 import type { Attachment } from './attachments';
 import { call, client } from './client';
 import type { ModelChoice } from './models';
+import { usePreference } from './preferences';
 import { removeStored, usePersistentState } from './storage';
 
 export type ConversationSort = z.infer<typeof sortSchema>;
@@ -35,7 +36,7 @@ export function conversationTitle(title: string | null | undefined) {
 }
 
 export function useConversationSort() {
-  return usePersistentState('sort', sortSchema, 'activity');
+  return usePreference('chatSort');
 }
 
 export const conversationsQueryKey = ['conversations'];
