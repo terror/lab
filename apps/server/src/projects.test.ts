@@ -220,3 +220,36 @@ test('the agent can delete projects', async () => {
     projects: [],
   });
 });
+
+test('concurrent creates and restores stay within the project limit', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/projects', { name: 'foo' });
+
+  await call(headers, 'DELETE', `/projects/${body.project.id}`);
+
+  const statuses = await Promise.all(
+    Array.from(
+      { length: 110 },
+      async () =>
+        (await call(headers, 'POST', '/projects', { name: 'bar' })).status
+    )
+  );
+
+  expect({
+    created: statuses.filter((status) => status === 201).length,
+    listed: (await call(headers, 'GET', '/projects')).body.projects.length,
+    restored: await call(
+      headers,
+      'POST',
+      `/trash/project/${body.project.id}/restore`
+    ),
+  }).toEqual({
+    created: 100,
+    listed: 100,
+    restored: {
+      body: { error: 'You can have up to 100 projects' },
+      status: 400,
+    },
+  });
+});

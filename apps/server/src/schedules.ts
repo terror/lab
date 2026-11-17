@@ -2,7 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { ProfileDoc } from '@lab/harness';
-import { and, eq, isNull, lte } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -30,34 +30,30 @@ type Row = typeof table.$inferSelect;
 
 const POLL_MS = 30_000;
 
-async function chatFor(row: Row) {
-  if (!row.conversationId) {
-    return undefined;
-  }
-
-  const [live] = await db
-    .select({ id: schema.conversation.id })
-    .from(schema.conversation)
-    .where(
-      and(
-        eq(schema.conversation.id, row.conversationId),
-        isNull(schema.conversation.deletedAt)
-      )
-    );
-
-  return live
-    ? harness.conversation(live.id as ConversationId, BACKGROUND_CONTEXT)
-    : undefined;
-}
-
 async function run(row: Row) {
   const draft = { attachments: [], content: row.prompt };
 
-  const conversation = await chatFor(row);
+  const [chat] = row.conversationId
+    ? await db
+        .select({
+          deletedAt: schema.conversation.deletedAt,
+          id: schema.conversation.id,
+        })
+        .from(schema.conversation)
+        .where(eq(schema.conversation.id, row.conversationId))
+    : [];
+
+  if (chat?.deletedAt) {
+    return false;
+  }
+
+  const conversation =
+    chat &&
+    (await harness.conversation(chat.id as ConversationId, BACKGROUND_CONTEXT));
 
   if (conversation) {
     await submitMessage(conversation, draft);
-    return;
+    return true;
   }
 
   const model = await defaultModel();
@@ -76,6 +72,8 @@ async function run(row: Row) {
     .update(table)
     .set({ conversationId: id })
     .where(eq(table.id, row.id));
+
+  return true;
 }
 
 async function claim(row: Row, now: Date) {
@@ -172,7 +170,11 @@ const schedules = new Hono()
         )
       );
 
-    await run(found(row, MISSING));
+    if (!(await run(found(row, MISSING)))) {
+      throw new HTTPException(409, {
+        message: 'This task’s chat is in the Trash',
+      });
+    }
 
     const [updated] = await db
       .update(table)
