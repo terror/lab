@@ -14,6 +14,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
+import { isMessage } from './message-entry';
 import { observe } from './pipeline';
 import { serial } from './records';
 
@@ -49,7 +50,7 @@ async function latestMessage(
 ): Promise<EntryRecord | undefined> {
   const page = await conversation.entries({}, 50, cursor, BACKGROUND_CONTEXT);
 
-  const entry = page.items.find(({ kind }) => kind === 'lab.message');
+  const entry = page.items.find(isMessage);
 
   if (entry || page.next === undefined) {
     return entry;
@@ -71,7 +72,7 @@ const lastMessage: Projection = {
       : { lastMessageAt: new Date(timestamp) };
   },
   source: (change) =>
-    change.type === 'entry' && change.value.kind === 'lab.message'
+    change.type === 'entry' && isMessage(change.value)
       ? change.value.conversationId
       : undefined,
 };

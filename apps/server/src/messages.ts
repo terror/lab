@@ -1,8 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { Conversation, JsonObject } from '@earendil-works/pi-durable';
+import type { Conversation } from '@earendil-works/pi-durable';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
+import { MESSAGE_KIND, type MessageData } from './message-entry';
 import { acceptsImages } from './models';
 import {
   type Attachment,
@@ -82,7 +83,7 @@ export function checkAttachments(
   }
 }
 
-function entryFile(attachment: Attachment): JsonObject {
+function entryFile(attachment: Attachment): MessageData['files'][number] {
   if (attachment.type === 'file') {
     return {
       name: attachment.name,
@@ -105,11 +106,11 @@ export function submitMessage(
       whenBusy,
       content: prompt(draft),
       entry: {
-        kind: 'lab.message',
+        kind: MESSAGE_KIND,
         data: {
           files: draft.attachments.map(entryFile),
           text: draft.content,
-        },
+        } satisfies MessageData,
       },
     },
     BACKGROUND_CONTEXT
