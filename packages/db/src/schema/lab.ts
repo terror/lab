@@ -75,6 +75,17 @@ export const connector = pgTable(
   (table) => [index('connector_ownerId_idx').on(table.ownerId)]
 );
 
+export const connectorAuth = pgTable('connector_auth', {
+  connectorId: integer('connector_id')
+    .primaryKey()
+    .references(() => connector.id, { onDelete: 'cascade' }),
+  state: text('state').notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 export const providerCredential = pgTable('provider_credential', {
   providerId: text('provider_id').primaryKey(),
   credential: text('credential').notNull(),

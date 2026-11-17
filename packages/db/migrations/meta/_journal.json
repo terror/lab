@@ -197,6 +197,13 @@
       "when": 1794928630838,
       "tag": "0027_connector_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794935912155,
+      "tag": "0028_connector_auth",
+      "breakpoints": true
     }
   ]
 }

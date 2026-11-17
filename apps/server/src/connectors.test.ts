@@ -2,8 +2,15 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { afterEach, expect, test } from 'bun:test';
 
 import { signIn, signInAdmin } from '../test/auth';
-import { call, chat, settle, toolDetails, toolOutputs } from '../test/client';
-import { serveMcp } from '../test/mcp';
+import {
+  call,
+  chat,
+  raw,
+  settle,
+  toolDetails,
+  toolOutputs,
+} from '../test/client';
+import { serveMcp, serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
 
 const servers: { stop: () => void }[] = [];
@@ -262,5 +269,71 @@ test('the agent manages connectors with the user’s approval', async () => {
       `Updated the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
       `Removed the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
     ],
+  });
+});
+
+test('connectors that need sign-in connect after the user authorizes them', async () => {
+  const headers = await signInAdmin();
+
+  const server = serveProtectedMcp();
+
+  servers.push(server);
+
+  const { body } = await call(headers, 'POST', '/connectors', {
+    name: 'Foo',
+    url: server.url,
+  });
+
+  const [connector] = body.connectors;
+
+  const authorize = await raw(headers, `/connectors/${connector.id}/authorize`);
+
+  const location = new URL(authorize.headers.get('location') ?? '');
+
+  const state = location.searchParams.get('state') ?? '';
+
+  const expired = await raw(
+    headers,
+    `/connectors/callback?code=baz&state=${connector.id}.qux`
+  );
+
+  const finished = await raw(
+    headers,
+    `/connectors/callback?code=baz&state=${encodeURIComponent(state)}`
+  );
+
+  const [after] = (await call(headers, 'GET', '/connectors')).body.connectors;
+
+  expect({
+    after: [after.status, after.tools.length],
+    authorize: [authorize.status, location.pathname],
+    before: connector.status,
+    expired: [expired.status, await expired.json()],
+    finished: [finished.status, finished.headers.get('location')],
+  }).toEqual({
+    after: ['connected', 2],
+    authorize: [302, '/authorize'],
+    before: 'unauthorized',
+    expired: [
+      400,
+      { error: 'This sign-in expired. Sign in to the connector again.' },
+    ],
+    finished: [302, '/settings'],
+  });
+});
+
+test('authorization servers can read Lab’s client metadata without signing in', async () => {
+  expect(
+    await call(new Headers(), 'GET', '/connectors/client-metadata.json')
+  ).toEqual({
+    body: {
+      client_id: 'http://localhost:3000/api/connectors/client-metadata.json',
+      client_name: 'Lab',
+      grant_types: ['authorization_code', 'refresh_token'],
+      redirect_uris: ['http://localhost:3000/api/connectors/callback'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+    },
+    status: 200,
   });
 });

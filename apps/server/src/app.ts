@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { auth, requireUser } from './auth';
 import changelog from './changelog';
 import computer from './computer';
+import { clientMetadata, clientMetadataUrl } from './connector-auth';
 import connectors from './connectors';
 import conversations from './conversations';
 import { db } from './db';
@@ -107,6 +108,9 @@ const api = new Hono()
     });
   })
   .route('/computer', computer)
+  .get('/connectors/client-metadata.json', (c) =>
+    c.json({ ...clientMetadata, client_id: clientMetadataUrl })
+  )
   .route('/connectors', connectors)
   .route('/conversations', conversations)
   .route('/preferences', preferences)

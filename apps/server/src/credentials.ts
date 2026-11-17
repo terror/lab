@@ -25,32 +25,51 @@ const keys = [
 
 const current = keys[0] ?? deriveKey(env.BETTER_AUTH_SECRET);
 
-export function seal(credential: Credential, key: Buffer) {
+function encrypt(text: string, key: Buffer) {
   const iv = randomBytes(12);
 
   const cipher = createCipheriv('aes-256-gcm', key, iv);
 
-  const data = Buffer.concat([
-    cipher.update(JSON.stringify(credential), 'utf8'),
-    cipher.final(),
-  ]);
+  const data = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
 
   return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
 }
 
-function open(sealed: string, key: Buffer) {
+function decrypt(sealed: string, key: Buffer) {
   const bytes = Buffer.from(sealed, 'base64');
 
   const decipher = createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
 
   decipher.setAuthTag(bytes.subarray(12, 28));
 
-  const json = Buffer.concat([
+  return Buffer.concat([
     decipher.update(bytes.subarray(28)),
     decipher.final(),
   ]).toString('utf8');
+}
 
-  return JSON.parse(json) as Credential;
+export function seal(credential: Credential, key: Buffer) {
+  return encrypt(JSON.stringify(credential), key);
+}
+
+function open(sealed: string, key: Buffer) {
+  return JSON.parse(decrypt(sealed, key)) as Credential;
+}
+
+export function sealSecret(value: unknown) {
+  return encrypt(JSON.stringify(value), current);
+}
+
+export function openSecret(sealed: string): unknown {
+  for (const key of keys) {
+    try {
+      return JSON.parse(decrypt(sealed, key));
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
 }
 
 export function unsealWith(sealed: string, candidates: readonly Buffer[]) {
