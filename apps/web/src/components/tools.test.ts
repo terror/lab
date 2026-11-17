@@ -1,16 +1,17 @@
 import { expect, test } from 'vitest';
 
-import { toolRenderer } from './tools';
+import { type ToolRecord, toolRenderer } from './tools';
 
 function line(
   name: string,
   active: boolean,
   args: Record<string, unknown> = {},
-  details?: unknown
+  details?: unknown,
+  history: readonly ToolRecord[] = []
 ) {
   const renderer = toolRenderer(name);
 
-  const view = { active, args, details, output: '' };
+  const view = { active, args, details, history, output: '' };
 
   return [renderer.title(view), renderer.summary?.(view)];
 }
@@ -31,6 +32,10 @@ test('tools describe themselves while running and when done', () => {
     line('remember', false, { text: 'foo' }),
     line('forget', true),
     line('forget', false, { id: 'bar' }, { id: 'bar', text: 'foo' }),
+    line('forget', false, { id: 'bar' }, { id: 'bar' }, [
+      { args: { text: 'foo' }, details: { id: 'bar' }, name: 'remember' },
+    ]),
+    line('forget', false, { id: 'bar' }, { id: 'bar' }),
     line('skill_create', true),
     line('skill_read', false, { id: 'bar' }, { name: 'foo' }),
     line('skill_delete', false, { id: 'bar' }),
@@ -45,6 +50,8 @@ test('tools describe themselves while running and when done', () => {
     ['Remembered “foo”', undefined],
     ['Forgetting a memory', undefined],
     ['Forgot “foo”', undefined],
+    ['Forgot “foo”', undefined],
+    ['Forgot a memory', undefined],
     ['Creating a skill', undefined],
     ['Read the “foo” skill', undefined],
     ['Deleted a skill', undefined],

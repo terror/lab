@@ -1,9 +1,10 @@
 import { Markdown } from '@/components/markdown';
 import {
-  type ToolProgress,
-  type ToolResult,
   ToolBody,
+  ToolHistory,
+  type ToolProgress,
   toolRenderer,
+  type ToolResult,
 } from '@/components/tools';
 import {
   Message,
@@ -27,7 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 
 type Part =
   | { type: 'text'; text: string }
@@ -90,10 +91,13 @@ function ToolCall({
   const active = result === undefined;
   const failed = result?.isError ?? false;
 
+  const history = useContext(ToolHistory);
+
   const view = {
     active,
     args: call.arguments,
     details: result?.details ?? progress?.details,
+    history,
     output: result?.output ?? progress?.output ?? '',
   };
 
