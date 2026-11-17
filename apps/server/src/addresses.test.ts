@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { isPrivateAddress } from './addresses';
+import { guardedFetch, isPrivateAddress } from './addresses';
 
 test('private network addresses are recognized', () => {
   const addresses = [
@@ -38,4 +38,46 @@ test('private network addresses are recognized', () => {
     'fd00::1': true,
     'fe80::1': true,
   });
+});
+
+function refused(url: string) {
+  return guardedFetch(url, undefined, isPrivateAddress).then(
+    () => 'fetched',
+    (error: Error) => error.message
+  );
+}
+
+test('guarded requests reach only addresses the check allows', async () => {
+  const server = Bun.serve({
+    fetch: async (request) =>
+      new Response(`${request.method} ${await request.text()}`, {
+        headers: { 'x-foo': 'bar' },
+      }),
+    hostname: '127.0.0.1',
+    port: 0,
+  });
+
+  try {
+    const allowed = await guardedFetch(
+      `http://localhost:${server.port}`,
+      { body: 'baz', method: 'POST' },
+      () => false
+    );
+
+    expect({
+      allowed: [
+        allowed.status,
+        allowed.headers.get('x-foo'),
+        await allowed.text(),
+      ],
+      hostname: await refused(`http://localhost:${server.port}`),
+      literal: await refused(`http://127.0.0.1:${server.port}`),
+    }).toEqual({
+      allowed: [200, 'bar', 'POST baz'],
+      hostname: 'Connectors can only reach public internet addresses',
+      literal: 'Connectors can only reach public internet addresses',
+    });
+  } finally {
+    await server.stop(true);
+  }
 });
