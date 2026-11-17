@@ -16,7 +16,7 @@ test('commands run on the user computer in the chat directory', async () => {
   const runs: [string, string, string][] = [];
 
   const provider: SandboxProvider = {
-    read: async () => undefined,
+    ...memoryProvider(),
     run: async (computer, { command, cwd, onOutput }) => {
       runs.push([computer.slice(0, 4), cwd.split('/')[0] ?? '', command]);
 
@@ -25,7 +25,6 @@ test('commands run on the user computer in the chat directory', async () => {
 
       return { exitCode: command === 'false' ? 1 : 0 };
     },
-    write: async () => undefined,
   };
 
   script(
@@ -65,12 +64,40 @@ test('commands run on the user computer in the chat directory', async () => {
   });
 });
 
-function memoryProvider(): SandboxProvider {
+function memoryProvider(): SandboxProvider & {
+  computers: Map<string, string>;
+  files: Map<string, Uint8Array>;
+} {
   const files = new Map<string, Uint8Array>();
 
+  const computers = new Map<string, string>();
+
   return {
+    computers,
+    destroy: async (computer) => {
+      computers.delete(computer);
+      files.clear();
+    },
+    files,
+    inspect: async (computer) => {
+      const state = computers.get(computer);
+
+      return state === 'running' || state === 'stopped'
+        ? { createdAt: '2026-01-01T00:00:00.000Z', state }
+        : undefined;
+    },
+    label: 'Foo',
     read: async (_computer, path) => files.get(path),
-    run: async (_computer, { command, onOutput }) => {
+    remove: async (_computer, path) => {
+      for (const key of files.keys()) {
+        if (key.startsWith(`${path}/`)) {
+          files.delete(key);
+        }
+      }
+    },
+    run: async (computer, { command, onOutput }) => {
+      computers.set(computer, 'running');
+
       if (command.startsWith('find ')) {
         onOutput(
           [...files]
@@ -84,7 +111,11 @@ function memoryProvider(): SandboxProvider {
 
       return { exitCode: 0 };
     },
-    write: async (_computer, path, content) => {
+    stop: async (computer) => {
+      computers.set(computer, 'stopped');
+    },
+    write: async (computer, path, content) => {
+      computers.set(computer, 'running');
       files.set(path, content);
     },
   };
@@ -133,5 +164,49 @@ test('files move between the computer and the library', async () => {
       'bar.txt (3 bytes)',
       'Saved bar.txt (3 bytes) to the library.',
     ],
+  });
+});
+
+test('the computer can be stopped, reset, and cleaned up from the trash', async () => {
+  const headers = await signIn();
+
+  const provider = memoryProvider();
+
+  useSandboxProvider(provider);
+
+  script(
+    toolCall('sandbox_write', { content: 'foo', path: 'bar.txt' }),
+    fauxAssistantMessage('baz')
+  );
+
+  const id = await chat(headers, { content: 'foo' });
+
+  const running = (await call(headers, 'GET', '/computer')).body;
+
+  await call(headers, 'POST', '/computer/stop');
+
+  const stopped = (await call(headers, 'GET', '/computer')).body.computer.state;
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+  await call(headers, 'DELETE', `/trash/conversation/${id}`);
+  await Bun.sleep(10);
+
+  const files = [...provider.files.keys()];
+
+  await call(headers, 'DELETE', '/computer');
+
+  expect({
+    files,
+    reset: (await call(headers, 'GET', '/computer')).body,
+    running,
+    stopped,
+  }).toEqual({
+    files: [],
+    reset: { computer: null, provider: 'Foo' },
+    running: {
+      computer: { createdAt: '2026-01-01T00:00:00.000Z', state: 'running' },
+      provider: 'Foo',
+    },
+    stopped: 'stopped',
   });
 });
