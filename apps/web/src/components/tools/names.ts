@@ -1,4 +1,5 @@
 export const toolNames = [
+  'artifact_create',
   'ask_user',
   'chat_delete',
   'chat_move',

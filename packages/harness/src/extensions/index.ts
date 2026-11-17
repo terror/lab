@@ -1,6 +1,7 @@
 import type { Extension } from '@earendil-works/pi-durable';
 
 import type { HelperUsage } from '../helper';
+import { artifacts } from './artifacts';
 import { ask } from './ask';
 import { assistant } from './assistant';
 import { type ChatsAccess, chats } from './chats';
@@ -125,6 +126,7 @@ function ownLimits(extension: Extension): Extension {
 
 export function extensions(deps: ExtensionDeps) {
   return [
+    artifacts,
     ask,
     assistant,
     chats(deps.chats),

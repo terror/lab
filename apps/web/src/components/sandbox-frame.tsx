@@ -13,6 +13,30 @@ const messageSchema = z.discriminatedUnion('type', [
 
 const FRAME_SANDBOX = 'allow-scripts allow-forms';
 
+const THEME_VARIABLES = [
+  '--background',
+  '--border',
+  '--foreground',
+  '--muted',
+  '--muted-foreground',
+  '--primary',
+  '--primary-foreground',
+];
+
+function dark() {
+  return document.documentElement.classList.contains('dark');
+}
+
+function themed(html: string) {
+  const style = getComputedStyle(document.documentElement);
+
+  const variables = THEME_VARIABLES.map(
+    (name) => `${name}:${style.getPropertyValue(name).trim()}`
+  ).join(';');
+
+  return `<style>:root{${variables};color-scheme:${dark() ? 'dark' : 'light'}}body{margin:0;background:transparent;color:var(--foreground);font-family:system-ui,sans-serif}</style>${html}`;
+}
+
 export function SandboxFrame({
   html,
   onError,
@@ -36,7 +60,7 @@ export function SandboxFrame({
 
   useEffect(() => {
     latest.current = html;
-    port.current?.postMessage({ html, type: 'render' });
+    port.current?.postMessage({ html: themed(html), type: 'render' });
   }, [html]);
 
   useEffect(() => () => port.current?.close(), []);
@@ -60,7 +84,10 @@ export function SandboxFrame({
       const message = messageSchema.safeParse(data).data;
 
       if (message?.type === 'ready') {
-        channel.port1.postMessage({ html: latest.current, type: 'render' });
+        channel.port1.postMessage({
+          html: themed(latest.current),
+          type: 'render',
+        });
       }
 
       if (message?.type === 'size') {
@@ -96,7 +123,7 @@ export function SandboxFrame({
       referrerPolicy='no-referrer'
       sandbox={FRAME_SANDBOX}
       src='/frame'
-      style={{ height }}
+      style={{ colorScheme: dark() ? 'dark' : 'light', height }}
       title={title}
     />
   );
