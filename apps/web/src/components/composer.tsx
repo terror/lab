@@ -127,7 +127,7 @@ function SubmitButton({
         size='icon'
         type='button'
       >
-        <Square aria-hidden='true' className='fill-current' />
+        <Square aria-hidden='true' className='size-3 fill-current' />
       </Button>
     );
   }
