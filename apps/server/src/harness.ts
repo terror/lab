@@ -44,18 +44,6 @@ export async function purgeDeleted(path: string) {
 
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
-const owners = new Map<number, Promise<string>>();
-
-function owner(conversationId: number) {
-  const known = owners.get(conversationId) ?? requireOwner(conversationId);
-
-  owners.set(conversationId, known);
-
-  known.catch(() => owners.delete(conversationId));
-
-  return known;
-}
-
 export const harness = await openHarness({
   history: historyAccess,
   library: libraryAccess,
@@ -65,7 +53,7 @@ export const harness = await openHarness({
   path: env.LAB_STORAGE_PATH,
   chats: chatsAccess,
   connectors: connectorAccess,
-  owner,
+  owner: requireOwner,
   project: projectAccess,
   registry,
   schedule: scheduleAccess,
