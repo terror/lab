@@ -1,12 +1,19 @@
 import { BudgetAlert } from '@/components/budget';
 import { Conversation } from '@/components/conversation';
 import { ErrorPage } from '@/components/error-page';
+import { loadMarkdown } from '@/components/markdown';
 import { NewChat } from '@/components/new-chat';
 import { SignIn } from '@/components/sign-in';
 import { Updates } from '@/components/updates';
 import { Workspace } from '@/components/workspace';
 import { authClient, useUser } from '@/lib/auth';
+import { prefetchSidebar } from '@/lib/conversations';
+import { modelsQueryOptions } from '@/lib/models';
+import { preferencesQueryOptions } from '@/lib/preferences';
+import { projectsQueryOptions } from '@/lib/projects';
+import { queryClient } from '@/lib/query-client';
 import { useThemeClass } from '@/lib/theme';
+import { defaultPreferences } from '@lab/server/schemas';
 import {
   Navigate,
   Outlet,
@@ -58,6 +65,20 @@ const chatRoute = createRoute({
   component: Workspace,
   getParentRoute: () => rootRoute,
   id: 'chat',
+  loader: async () => {
+    const [, preferences] = await Promise.allSettled([
+      queryClient.query({ ...modelsQueryOptions, staleTime: 'static' }),
+      queryClient.query({ ...preferencesQueryOptions, staleTime: 'static' }),
+      queryClient.query(projectsQueryOptions),
+    ]);
+
+    await prefetchSidebar(
+      queryClient,
+      preferences.status === 'fulfilled'
+        ? preferences.value.chatSort
+        : defaultPreferences.chatSort
+    );
+  },
 });
 
 const newChatRoute = createRoute({
@@ -96,6 +117,7 @@ const projectRoute = createRoute({
 const conversationRoute = createRoute({
   component: ConversationPage,
   getParentRoute: () => chatRoute,
+  loader: () => loadMarkdown().catch(() => undefined),
   params: {
     parse: ({ id }) => {
       const value = Number(id);

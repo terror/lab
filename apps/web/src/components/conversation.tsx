@@ -446,6 +446,8 @@ export function Conversation({ id }: { id: number }) {
   );
 }
 
+const EAGER_ROWS = 6;
+
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
   const { view, status: activity, loadEarlier, fillGap } = useConversation(id);
@@ -650,12 +652,10 @@ function ConversationView({ id }: { id: number }) {
           >
             <ToolConversation value={id}>
               <ToolHistory value={history}>
-                {view === undefined && (
-                  <p className='text-sm text-muted-foreground'>Connecting…</p>
-                )}
-                {rows.map(({ key, row }) => (
+                {rows.map(({ key, row }, index) => (
                   <MessageScrollerItem
                     key={key}
+                    eager={index >= rows.length - EAGER_ROWS}
                     messageId={key}
                     scrollAnchor={row === anchor}
                   >
