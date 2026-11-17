@@ -24,27 +24,26 @@ const connection = validator(
 
 const keyField = { id: 'apiKey', label: 'API key', secret: true };
 
+const providerKinds = [
+  {
+    id: 'model',
+    label: 'Models',
+    providers: () =>
+      keyProviders().map(({ id, name }) => ({ fields: [keyField], id, name })),
+  },
+  {
+    id: 'search',
+    label: 'Web search',
+    providers: () =>
+      searchProviders.map(({ id, name }) => ({ fields: [keyField], id, name })),
+  },
+  { id: 'computer', label: 'Computer', providers: () => sandboxProviders },
+] as const;
+
 function allProviders() {
-  return [
-    ...keyProviders().map(({ id, name }) => ({
-      fields: [keyField],
-      id,
-      kind: 'model' as const,
-      name,
-    })),
-    ...searchProviders.map(({ id, name }) => ({
-      fields: [keyField],
-      id,
-      kind: 'search' as const,
-      name,
-    })),
-    ...sandboxProviders.map(({ fields, id, name }) => ({
-      fields,
-      id,
-      kind: 'computer' as const,
-      name,
-    })),
-  ];
+  return providerKinds.flatMap(({ id: kind, label, providers: list }) =>
+    list().map((entry) => ({ ...entry, kind, kindLabel: label }))
+  );
 }
 
 function provider(id: string) {
@@ -64,14 +63,17 @@ const providers = new Hono()
       (await credentials.list()).map(({ providerId }) => providerId)
     );
 
-    const list = allProviders().map(({ fields, id, kind, name }) => ({
-      configured: stored.has(id),
-      fields,
-      id,
-      kind,
-      methods: ['api_key' as const],
-      name,
-    }));
+    const list = allProviders().map(
+      ({ fields, id, kind, kindLabel, name }) => ({
+        configured: stored.has(id),
+        fields,
+        id,
+        kind,
+        kindLabel,
+        methods: ['api_key' as const],
+        name,
+      })
+    );
 
     return c.json({ providers: list });
   })
