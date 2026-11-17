@@ -1,5 +1,5 @@
 import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
-import { CHAT_SORTS, THEMES } from '@lab/harness/preferences';
+import { CHAT_SORTS, type Preferences, THEMES } from '@lab/harness/preferences';
 
 export { defaultPreferences } from '@lab/harness/preferences';
 import { z } from 'zod';
@@ -55,6 +55,6 @@ export const preferencesSchema = z.object({
   chatSort: sortSchema,
   lineNumbers: z.boolean(),
   theme: z.enum(THEMES),
-});
+}) satisfies z.ZodType<Preferences>;
 
 export const thinkingLevelSchema = z.enum(MODEL_THINKING_LEVELS);
