@@ -120,7 +120,7 @@ function ToolCall({
             )}
           </TraceLine>
         </TraceCollapsibleTrigger>
-        <TraceCollapsibleContent className='mt-1.5 mb-2 ml-0 flex flex-col gap-3 border-l-0 pl-6'>
+        <TraceCollapsibleContent className='mt-1.5 mb-2 ml-0 flex flex-col gap-3 border-l-0 pl-0'>
           <ToolBody {...view} name={call.name} />
         </TraceCollapsibleContent>
       </TraceCollapsible>
