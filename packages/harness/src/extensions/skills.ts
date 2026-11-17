@@ -1,5 +1,4 @@
 import {
-  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -8,6 +7,7 @@ import { obj, opt, str } from '@earendil-works/pi-schema';
 import { randomUUID } from 'node:crypto';
 
 import { failure, text } from './results';
+import { type Owner, userDoc } from './users';
 
 export const SKILL_LIMIT = 50;
 
@@ -36,13 +36,9 @@ export type SkillChange =
   | { kind: 'missing' }
   | { kind: 'saved'; skill: Skill };
 
-export const SkillsDoc = defineDoc<SkillsState>({
-  kind: 'lab.skills',
-  version: 1,
-  scope: 'session',
-  initial: () => ({ skills: [] }),
-  checkpointWhen: () => true,
-});
+export const SkillsDoc = userDoc<SkillsState>('lab.user.skills', () => ({
+  skills: [],
+}));
 
 function taken(state: SkillsState, name: string, except?: string) {
   const key = name.trim().toLowerCase();
@@ -137,15 +133,15 @@ function result(change: SkillChange, verb: keyof typeof notes) {
   };
 }
 
-function render(skills: readonly Skill[]) {
+function render(saved: readonly Skill[]) {
   const lines = [
     'Skills are reusable instructions the user has saved. When a request matches a skill, read it with skill_read and follow its instructions. Create, update, or delete skills with skill_create, skill_update, and skill_delete when the user asks.',
   ];
 
-  if (skills.length > 0) {
+  if (saved.length > 0) {
     lines.push(
       'Saved skills, with their ids:',
-      ...skills.map(
+      ...saved.map(
         ({ description, id, name }) => `- [${id}] ${name}: ${description}`
       )
     );
@@ -174,99 +170,119 @@ const instructions = str({
 
 const id = str({ description: 'The id of the skill.' });
 
-const skillRead = defineTool({
-  name: 'skill_read',
-  description:
-    "Read a saved skill's full instructions. Read a skill before following it.",
-  parameters: obj({ id }),
-  execute: async (args, api, context) => {
-    const doc = await api.snapshot(SkillsDoc, context);
+export function skills(owner: Owner) {
+  const skillRead = defineTool({
+    name: 'skill_read',
+    description:
+      "Read a saved skill's full instructions. Read a skill before following it.",
+    parameters: obj({ id }),
+    execute: async (args, api, context) => {
+      const doc = await api.snapshot(
+        SkillsDoc,
+        await owner(api.conversationId),
+        context
+      );
 
-    const skill = doc?.skills.find((entry) => entry.id === args.id);
+      const skill = doc?.skills.find((entry) => entry.id === args.id);
 
-    if (!skill) {
-      return failure(failures.missing);
-    }
+      if (!skill) {
+        return failure(failures.missing);
+      }
 
-    return {
-      details: skill,
-      output: text(`# ${skill.name}\n\n${skill.instructions}`),
-    };
-  },
-});
+      return {
+        details: skill,
+        output: text(`# ${skill.name}\n\n${skill.instructions}`),
+      };
+    },
+  });
 
-const skillCreate = defineTool({
-  name: 'skill_create',
-  description:
-    'Save a new skill: reusable instructions to follow whenever a matching request comes up. Use it when the user asks you to create or save a skill.',
-  parameters: obj({ description, instructions, name }),
-  execute: async (fields, api, context) => {
-    const skillId = await api.memo('id', randomUUID().slice(0, 8), context);
+  const skillCreate = defineTool({
+    name: 'skill_create',
+    description:
+      'Save a new skill: reusable instructions to follow whenever a matching request comes up. Use it when the user asks you to create or save a skill.',
+    parameters: obj({ description, instructions, name }),
+    execute: async (fields, api, context) => {
+      const skillId = await api.memo('id', randomUUID().slice(0, 8), context);
 
-    const change = await api.commit(
-      async (tx) =>
-        createSkill(await tx.doc(SkillsDoc), {
-          ...fields,
-          id: skillId,
-          now: api.now(),
-        }),
-      context
-    );
+      const key = await owner(api.conversationId);
 
-    return result(change, 'Created');
-  },
-});
+      const change = await api.commit(
+        async (tx) =>
+          createSkill(await tx.doc(SkillsDoc, key, null), {
+            ...fields,
+            id: skillId,
+            now: api.now(),
+          }),
+        context
+      );
 
-const skillUpdate = defineTool({
-  name: 'skill_update',
-  description:
-    "Change a saved skill's name, description, or instructions. Only the fields you pass change.",
-  parameters: obj({
-    description: opt(description),
-    id,
-    instructions: opt(instructions),
-    name: opt(name),
-  }),
-  execute: async (fields, api, context) => {
-    const change = await api.commit(
-      async (tx) =>
-        updateSkill(await tx.doc(SkillsDoc), { ...fields, now: api.now() }),
-      context
-    );
+      return result(change, 'Created');
+    },
+  });
 
-    return result(change, 'Updated');
-  },
-});
-
-const skillDelete = defineTool({
-  name: 'skill_delete',
-  description: 'Delete a saved skill. Use it when the user asks to remove one.',
-  parameters: obj({ id }),
-  execute: async (args, api, context) => {
-    const removed = await api.commit(
-      async (tx) => deleteSkill(await tx.doc(SkillsDoc), args.id),
-      context
-    );
-
-    if (!removed) {
-      return failure(failures.missing);
-    }
-
-    return {
-      details: removed,
-      output: text(`Deleted the skill [${removed.id}] ${removed.name}.`),
-    };
-  },
-});
-
-export const skills = defineExtension({
-  name: 'lab.skills',
-  sections: [
-    section('skills', async ({ read }, context) => {
-      const doc = await read.snapshot(SkillsDoc, context);
-
-      return render(doc?.skills ?? []);
+  const skillUpdate = defineTool({
+    name: 'skill_update',
+    description:
+      "Change a saved skill's name, description, or instructions. Only the fields you pass change.",
+    parameters: obj({
+      description: opt(description),
+      id,
+      instructions: opt(instructions),
+      name: opt(name),
     }),
-  ],
-  tools: [skillCreate, skillDelete, skillRead, skillUpdate],
-});
+    execute: async (fields, api, context) => {
+      const key = await owner(api.conversationId);
+
+      const change = await api.commit(
+        async (tx) =>
+          updateSkill(await tx.doc(SkillsDoc, key, null), {
+            ...fields,
+            now: api.now(),
+          }),
+        context
+      );
+
+      return result(change, 'Updated');
+    },
+  });
+
+  const skillDelete = defineTool({
+    name: 'skill_delete',
+    description:
+      'Delete a saved skill. Use it when the user asks to remove one.',
+    parameters: obj({ id }),
+    execute: async (args, api, context) => {
+      const key = await owner(api.conversationId);
+
+      const removed = await api.commit(
+        async (tx) => deleteSkill(await tx.doc(SkillsDoc, key, null), args.id),
+        context
+      );
+
+      if (!removed) {
+        return failure(failures.missing);
+      }
+
+      return {
+        details: removed,
+        output: text(`Deleted the skill [${removed.id}] ${removed.name}.`),
+      };
+    },
+  });
+
+  return defineExtension({
+    name: 'lab.skills',
+    sections: [
+      section('skills', async ({ conversationId, read }, context) => {
+        const doc = await read.snapshot(
+          SkillsDoc,
+          await owner(conversationId),
+          context
+        );
+
+        return render(doc?.skills ?? []);
+      }),
+    ],
+    tools: [skillCreate, skillDelete, skillRead, skillUpdate],
+  });
+}

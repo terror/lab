@@ -15,14 +15,18 @@ import { validator } from './validator';
 
 const settings = validator('json', z.object({ network: z.enum(networkModes) }));
 
-async function networkMode() {
+async function networkMode(ownerId: string) {
   return (
-    (await harness.snapshot(ComputerDoc, BACKGROUND_CONTEXT))?.network ?? 'full'
+    (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
+      ?.network ?? 'full'
   );
 }
 
 async function status(ownerId: string) {
-  return { ...(await inspectComputer(ownerId)), network: await networkMode() };
+  return {
+    ...(await inspectComputer(ownerId)),
+    network: await networkMode(ownerId),
+  };
 }
 
 const computer = new Hono()
@@ -32,7 +36,7 @@ const computer = new Hono()
     const { network } = c.req.valid('json');
 
     await harness.commit(async (tx) => {
-      (await tx.doc(ComputerDoc)).network = network;
+      (await tx.doc(ComputerDoc, c.get('user').id, null)).network = network;
     }, BACKGROUND_CONTEXT);
 
     await applyComputerNetwork(c.get('user').id, network);

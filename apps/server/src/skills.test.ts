@@ -119,7 +119,7 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
 });
 
 test('saved skills are listed in the prompt', async () => {
-  const [section] = extension.sections ?? [];
+  const [section] = extension(async () => 'foo').sections ?? [];
 
   const render = (skills: unknown[]) =>
     section?.render(

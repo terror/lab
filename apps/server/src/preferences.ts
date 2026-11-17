@@ -18,22 +18,27 @@ const change = validator(
     )
 );
 
-async function current() {
+async function current(ownerId: string) {
   return (
-    (await harness.snapshot(PreferencesDoc, BACKGROUND_CONTEXT)) ??
+    (await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)) ??
     defaultPreferences
   );
 }
 
 const preferences = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json({ preferences: await current() }))
+  .get('/', async (c) =>
+    c.json({ preferences: await current(c.get('user').id) })
+  )
   .patch('/', change, async (c) => {
     await harness.commit(async (tx) => {
-      Object.assign(await tx.doc(PreferencesDoc), c.req.valid('json'));
+      Object.assign(
+        await tx.doc(PreferencesDoc, c.get('user').id, null),
+        c.req.valid('json')
+      );
     }, BACKGROUND_CONTEXT);
 
-    return c.json({ preferences: await current() });
+    return c.json({ preferences: await current(c.get('user').id) });
   });
 
 export default preferences;

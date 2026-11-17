@@ -1,7 +1,6 @@
 import {
   type ConversationId,
   type ToolExecutionResult,
-  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -10,6 +9,7 @@ import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
 import { failure, once, text } from './results';
+import { type Owner, userDoc } from './users';
 
 export type ScheduledTask = {
   conversationId: number | null;
@@ -54,13 +54,10 @@ export type ScheduleAccess = {
   ): Promise<ScheduleUpdate>;
 };
 
-export const ProfileDoc = defineDoc<{ timezone: string }>({
-  kind: 'lab.profile',
-  version: 1,
-  scope: 'session',
-  initial: () => ({ timezone: 'UTC' }),
-  checkpointWhen: () => true,
-});
+export const ProfileDoc = userDoc<{ timezone: string }>(
+  'lab.user.profile',
+  () => ({ timezone: 'UTC' })
+);
 
 function line(task: ScheduledTask) {
   const state = task.enabled
@@ -122,7 +119,7 @@ function updateResult(result: ScheduleUpdate): ToolExecutionResult {
   };
 }
 
-export function schedule(access: ScheduleAccess) {
+export function schedule(access: ScheduleAccess, owner: Owner) {
   const scheduleCreate = defineTool({
     name: 'schedule_create',
     description:
@@ -139,7 +136,13 @@ export function schedule(access: ScheduleAccess) {
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
       const zone =
         args.timezone ??
-        (await api.snapshot(ProfileDoc, context))?.timezone ??
+        (
+          await api.snapshot(
+            ProfileDoc,
+            await owner(api.conversationId),
+            context
+          )
+        )?.timezone ??
         'UTC';
 
       const invalid = access.invalid(args.cron, zone);
@@ -228,9 +231,15 @@ export function schedule(access: ScheduleAccess) {
   return defineExtension({
     name: 'lab.schedule',
     sections: [
-      section('schedule', async ({ read }, context) => {
+      section('schedule', async ({ conversationId, read }, context) => {
         const zone =
-          (await read.snapshot(ProfileDoc, context))?.timezone ?? 'UTC';
+          (
+            await read.snapshot(
+              ProfileDoc,
+              await owner(conversationId),
+              context
+            )
+          )?.timezone ?? 'UTC';
 
         const now = new Intl.DateTimeFormat('en-US', {
           dateStyle: 'full',

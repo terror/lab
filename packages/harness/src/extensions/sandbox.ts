@@ -1,7 +1,6 @@
 import {
   type ConversationId,
   type ToolExecutionResult,
-  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -9,6 +8,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { errorMessage, failure, once, text } from './results';
+import { type Owner, userDoc } from './users';
 
 export const SANDBOX_OUTPUT_LENGTH = 100_000;
 
@@ -16,13 +16,10 @@ export const networkModes = ['full', 'registries', 'none'] as const;
 
 export type NetworkMode = (typeof networkModes)[number];
 
-export const ComputerDoc = defineDoc<{ network: NetworkMode }>({
-  kind: 'lab.computer',
-  version: 1,
-  scope: 'session',
-  initial: () => ({ network: 'full' }),
-  checkpointWhen: () => true,
-});
+export const ComputerDoc = userDoc<{ network: NetworkMode }>(
+  'lab.user.computer',
+  () => ({ network: 'full' })
+);
 
 const networkNotes: Record<NetworkMode, string> = {
   full: 'It has full internet access.',
@@ -103,7 +100,7 @@ const path = str({
   minLength: 1,
 });
 
-export function sandbox(access: SandboxAccess) {
+export function sandbox(access: SandboxAccess, owner: Owner) {
   const sandboxExec = defineTool({
     name: 'sandbox_exec',
     description:
@@ -311,9 +308,9 @@ export function sandbox(access: SandboxAccess) {
   return defineExtension({
     name: 'lab.sandbox',
     sections: [
-      section('sandbox', async ({ read }, context) =>
+      section('sandbox', async ({ conversationId, read }, context) =>
         (await access.available())
-          ? `You have a persistent Linux computer for this user. ${networkNotes[(await read.snapshot(ComputerDoc, context))?.network ?? 'full']} Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials.`
+          ? `You have a persistent Linux computer for this user. ${networkNotes[(await read.snapshot(ComputerDoc, await owner(conversationId), context))?.network ?? 'full']} Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials.`
           : undefined
       ),
     ],

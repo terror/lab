@@ -2,6 +2,7 @@ import type { ExtensionDeps } from '@lab/harness';
 
 import { chatsAccess } from '../src/chat-access';
 import { projectAccess } from '../src/project-access';
+import { requireOwner } from '../src/records';
 import { createSandboxAccess } from '../src/sandbox';
 import { scheduleAccess } from '../src/schedule-access';
 
@@ -12,6 +13,7 @@ export function emptyDeps(): ExtensionDeps {
     onHelperUsage: () => undefined,
     sandbox: createSandboxAccess(async () => 'full'),
     chats: chatsAccess,
+    owner: requireOwner,
     project: projectAccess,
     schedule: scheduleAccess,
     web: {

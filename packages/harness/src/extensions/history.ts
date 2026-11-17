@@ -10,6 +10,7 @@ import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { MemoryDoc } from './memory';
 import { failure, text } from './results';
+import type { Owner } from './users';
 
 export const HISTORY_READ_LENGTH = 100_000;
 
@@ -33,15 +34,18 @@ export type HistoryAccess = {
 const DISABLED =
   'Referencing other chats is turned off. The user can turn it on in Settings → Memory.';
 
-async function enabled(api: ToolExecutionApi, context: Context) {
-  return (await api.snapshot(MemoryDoc, context))?.referenceChats === true;
+async function enabled(api: ToolExecutionApi, owner: Owner, context: Context) {
+  return (
+    (await api.snapshot(MemoryDoc, await owner(api.conversationId), context))
+      ?.referenceChats === true
+  );
 }
 
 function name(title: string | null) {
   return title ?? 'Untitled chat';
 }
 
-export function history(access: HistoryAccess) {
+export function history(access: HistoryAccess, owner: Owner) {
   const search = defineTool({
     name: 'chat_search',
     description:
@@ -54,7 +58,7 @@ export function history(access: HistoryAccess) {
       }),
     }),
     execute: async ({ query }, api, context): Promise<ToolExecutionResult> => {
-      if (!(await enabled(api, context))) {
+      if (!(await enabled(api, owner, context))) {
         return failure(DISABLED);
       }
 
@@ -89,7 +93,7 @@ export function history(access: HistoryAccess) {
       api,
       context
     ): Promise<ToolExecutionResult> => {
-      if (!(await enabled(api, context))) {
+      if (!(await enabled(api, owner, context))) {
         return failure(DISABLED);
       }
 

@@ -2,11 +2,12 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { schema } from '@lab/db';
 import {
   ComputerDoc,
+  adoptGlobalDocs,
   createRegistry,
   openHarness,
   purgeConversations,
 } from '@lab/harness';
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 
 import { chatsAccess } from './chat-access';
 import { db } from './db';
@@ -16,6 +17,7 @@ import { historyAccess } from './history-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
 import { projectAccess } from './project-access';
+import { requireOwner } from './records';
 import { createSandboxAccess } from './sandbox';
 import { scheduleAccess } from './schedule-access';
 import { webAccess } from './web-access';
@@ -51,13 +53,23 @@ export const harness = await openHarness({
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
   chats: chatsAccess,
+  owner: requireOwner,
   project: projectAccess,
   registry,
   schedule: scheduleAccess,
   sandbox: createSandboxAccess(
-    async () =>
-      (await harness.snapshot(ComputerDoc, BACKGROUND_CONTEXT))?.network ??
-      'full'
+    async (ownerId) =>
+      (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
+        ?.network ?? 'full'
   ),
   web: webAccess(),
 });
+
+const [admin] = await db
+  .select({ id: schema.user.id })
+  .from(schema.user)
+  .where(sql`lower(${schema.user.email}) = lower(${env.LAB_ADMIN_EMAIL})`);
+
+if (admin) {
+  await adoptGlobalDocs(harness, admin.id, BACKGROUND_CONTEXT);
+}
