@@ -71,7 +71,7 @@ export async function conversationOwner(conversationId: number) {
   return (await owners([conversationId])).get(conversationId);
 }
 
-export async function requireOwner(conversationId: number) {
+async function lookupOwner(conversationId: number) {
   const ownerId = await conversationOwner(conversationId);
 
   if (!ownerId) {
@@ -79,4 +79,16 @@ export async function requireOwner(conversationId: number) {
   }
 
   return ownerId;
+}
+
+const knownOwners = new Map<number, Promise<string>>();
+
+export function requireOwner(conversationId: number) {
+  const known = knownOwners.get(conversationId) ?? lookupOwner(conversationId);
+
+  knownOwners.set(conversationId, known);
+
+  known.catch(() => knownOwners.delete(conversationId));
+
+  return known;
 }
