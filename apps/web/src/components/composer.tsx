@@ -31,7 +31,6 @@ import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { useAdmin } from '@/lib/profile';
-import { selectSettingsSection } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -131,7 +130,7 @@ function NoModels() {
       Add a model provider in{' '}
       <Link
         className='font-medium text-foreground underline-offset-4 hover:underline'
-        onClick={() => selectSettingsSection('providers')}
+        search={{ section: 'providers' }}
         to='/settings'
       >
         Settings → Providers

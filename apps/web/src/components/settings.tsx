@@ -20,12 +20,18 @@ import { usePreference } from '@/lib/preferences';
 import {
   type SettingsSection,
   settingsSectionInfo,
-  useSettingsSection,
+  settingsSearchSchema,
   useSettingsSections,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
-import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
+import {
+  Link,
+  useCanGoBack,
+  useNavigate,
+  useRouter,
+  useSearch,
+} from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -104,10 +110,14 @@ const panels: Record<SettingsSection, ComponentType> = {
 };
 
 export function Settings() {
-  const [stored, setSection] = useSettingsSection();
+  const requested = settingsSearchSchema.parse(
+    useSearch({ strict: false })
+  ).section;
+
   const sections = useSettingsSections();
 
-  const section = sections.includes(stored) ? stored : 'appearance';
+  const section =
+    requested && sections.includes(requested) ? requested : 'appearance';
 
   const Panel = panels[section];
   const router = useRouter();
@@ -139,7 +149,7 @@ export function Settings() {
             const { icon: Icon, label } = settingsSectionInfo[id];
 
             return (
-              <button
+              <Link
                 key={id}
                 aria-current={section === id ? 'page' : undefined}
                 className={cn(
@@ -147,12 +157,13 @@ export function Settings() {
                   section === id &&
                     'bg-accent font-medium text-accent-foreground'
                 )}
-                onClick={() => setSection(id)}
-                type='button'
+                replace
+                search={{ section: id }}
+                to='/settings'
               >
                 <Icon aria-hidden='true' className='size-4' />
                 {label}
-              </button>
+              </Link>
             );
           })}
         </nav>

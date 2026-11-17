@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { selectSettingsSection } from '@/lib/settings';
 import { usePersistentState } from '@/lib/storage';
 import {
   type Budget,
@@ -177,8 +176,7 @@ export function BudgetAlert() {
       action: {
         label: 'View usage',
         onClick: () => {
-          selectSettingsSection('usage');
-          void navigate({ to: '/settings' });
+          void navigate({ search: { section: 'usage' }, to: '/settings' });
         },
       },
       duration: 10_000,

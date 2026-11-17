@@ -12,6 +12,7 @@ import { modelsQueryOptions } from '@/lib/models';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { projectsQueryOptions } from '@/lib/projects';
 import { queryClient } from '@/lib/query-client';
+import { settingsSearchSchema } from '@/lib/settings';
 import { useThemeClass } from '@/lib/theme';
 import { defaultPreferences } from '@lab/server/schemas';
 import {
@@ -140,6 +141,7 @@ const settingsRoute = createRoute({
   ),
   getParentRoute: () => rootRoute,
   path: '/settings',
+  validateSearch: (search) => settingsSearchSchema.parse(search),
 });
 
 const routeTree = rootRoute.addChildren([

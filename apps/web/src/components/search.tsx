@@ -20,7 +20,6 @@ import { useProjects } from '@/lib/projects';
 import { type Segment, useWorkspaceSearch } from '@/lib/search';
 import {
   type SettingsSection,
-  selectSettingsSection,
   settingsSectionInfo,
   useSettingsSections,
 } from '@/lib/settings';
@@ -182,9 +181,8 @@ function useGo(onDone: () => void) {
         void navigate({ to });
       },
       settings: (section: SettingsSection) => {
-        selectSettingsSection(section);
         onDone();
-        void navigate({ to: '/settings' });
+        void navigate({ search: { section }, to: '/settings' });
       },
     }),
     [navigate, onDone]
