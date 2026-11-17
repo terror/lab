@@ -45,6 +45,18 @@ await purgeDeleted(env.LAB_STORAGE_PATH);
 
 export const registry = createRegistry();
 
+const owners = new Map<number, Promise<string>>();
+
+function owner(conversationId: number) {
+  const known = owners.get(conversationId) ?? requireOwner(conversationId);
+
+  owners.set(conversationId, known);
+
+  known.catch(() => owners.delete(conversationId));
+
+  return known;
+}
+
 export const harness = await openHarness({
   history: historyAccess,
   library: libraryAccess,
@@ -53,7 +65,7 @@ export const harness = await openHarness({
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
   chats: chatsAccess,
-  owner: requireOwner,
+  owner,
   project: projectAccess,
   registry,
   schedule: scheduleAccess,
