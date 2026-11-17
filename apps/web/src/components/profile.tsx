@@ -52,20 +52,18 @@ function Instructions({ initial }: { initial: string }) {
   );
 }
 
-export function Personalization() {
+export function Profile() {
   const memory = useQuery(memoryQueryOptions);
 
   return (
     <section className='space-y-8'>
       <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>
-          Personalization
-        </h1>
+        <h1 className='text-2xl font-semibold tracking-tight'>Profile</h1>
         <p className='text-sm text-muted-foreground'>
           How Lab should respond in every chat.
         </p>
       </div>
-      {memory.isError && <LoadError subject='personalization' />}
+      {memory.isError && <LoadError subject='your profile' />}
       {memory.data && (
         <Instructions
           key={memory.data.instructions}

@@ -1,6 +1,6 @@
 import { Computer } from '@/components/computer';
 import { Memory } from '@/components/memory';
-import { Personalization } from '@/components/personalization';
+import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
 import { Skills } from '@/components/skills';
 import { Trash } from '@/components/trash';
@@ -113,11 +113,7 @@ const sections: Record<
   appearance: { icon: Palette, label: 'Appearance', panel: Appearance },
   computer: { icon: Monitor, label: 'Computer', panel: Computer },
   memory: { icon: Brain, label: 'Memory', panel: Memory },
-  personalization: {
-    icon: UserRound,
-    label: 'Personalization',
-    panel: Personalization,
-  },
+  profile: { icon: UserRound, label: 'Profile', panel: Profile },
   providers: { icon: KeyRound, label: 'Providers', panel: Providers },
   skills: { icon: WandSparkles, label: 'Skills', panel: Skills },
   trash: { icon: Trash2, label: 'Trash', panel: Trash },
