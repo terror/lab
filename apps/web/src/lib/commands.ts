@@ -1,8 +1,12 @@
-import { type LucideIcon, Shrink } from 'lucide-react';
+import { Copy, type LucideIcon, Shrink, SquarePen } from 'lucide-react';
 
 import { compactConversation } from './conversations';
 
-export type CommandContext = { conversationId: number | undefined };
+export type CommandContext = {
+  conversationId: number | undefined;
+  lastReply: string | undefined;
+  newChat: (() => void) | undefined;
+};
 
 export type SlashCommand = {
   available: (context: CommandContext) => boolean;
@@ -26,6 +30,32 @@ export const commands: readonly SlashCommand[] = [
       await compactConversation(conversationId);
 
       return 'Compacting this chat.';
+    },
+  },
+  {
+    available: ({ lastReply }) => lastReply !== undefined,
+    description: 'Copy the last reply',
+    icon: Copy,
+    name: 'copy',
+    run: async ({ lastReply }) => {
+      if (lastReply === undefined) {
+        return undefined;
+      }
+
+      await navigator.clipboard.writeText(lastReply);
+
+      return 'Copied the last reply.';
+    },
+  },
+  {
+    available: ({ newChat }) => newChat !== undefined,
+    description: 'Start a new chat',
+    icon: SquarePen,
+    name: 'new',
+    run: async ({ newChat }) => {
+      newChat?.();
+
+      return undefined;
     },
   },
 ];

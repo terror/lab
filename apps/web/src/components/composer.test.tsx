@@ -53,7 +53,11 @@ test('slash commands run from the composer', async () => {
   const { screen } = await renderWithQuery(
     <Composer
       attachments={[]}
-      commandContext={{ conversationId: 7 }}
+      commandContext={{
+        conversationId: 7,
+        lastReply: undefined,
+        newChat: undefined,
+      }}
       draft='/'
       model={undefined}
       onAttachmentsChange={() => undefined}
