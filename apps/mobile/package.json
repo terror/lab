@@ -1,0 +1,34 @@
+{
+  "name": "@lab/mobile",
+  "private": true,
+  "type": "module",
+  "main": "expo-router/entry",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "start": "expo start",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@better-auth/expo": "1.7.25",
+    "@tanstack/react-query": "^5.104.5",
+    "better-auth": "1.7.25",
+    "expo": "58.0.26",
+    "expo-constants": "58.0.16",
+    "expo-linking": "58.0.17",
+    "expo-network": "58.0.5",
+    "expo-router": "58.0.32",
+    "expo-secure-store": "58.0.3",
+    "expo-system-ui": "58.0.7",
+    "expo-web-browser": "58.1.0",
+    "hono": "^4.13.13",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "5.11.1",
+    "react-native-screens": "4.30.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@lab/server": "workspace:*",
+    "@types/react": "^19.3.0"
+  }
+}

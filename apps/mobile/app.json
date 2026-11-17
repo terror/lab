@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Lab",
+    "slug": "lab",
+    "scheme": "lab",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"]
+  }
+}

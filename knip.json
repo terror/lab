@@ -6,6 +6,9 @@
     "apps/web/src/components/ui/**": ["exports"]
   },
   "workspaces": {
+    "apps/mobile": {
+      "ignoreDependencies": ["expo-updates"]
+    },
     "apps/server": {
       "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"]
     }
