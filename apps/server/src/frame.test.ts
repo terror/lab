@@ -39,3 +39,15 @@ test('the frame serves its libraries to sandboxed content', async () => {
     type: 'text/javascript; charset=utf-8',
   });
 });
+
+test('other paths under the frame keep Lab’s own security headers', async () => {
+  const paths = ['/frame/', '/frame/foo', '/frame/vendor/chart.js/foo'];
+
+  const options = await Promise.all(
+    paths.map(async (path) =>
+      (await app.request(path)).headers.get('x-frame-options')
+    )
+  );
+
+  expect(options).toEqual(['DENY', 'DENY', 'DENY']);
+});
