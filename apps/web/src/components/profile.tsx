@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -56,13 +57,10 @@ export function Profile() {
   const memory = useQuery(memoryQueryOptions);
 
   return (
-    <section className='space-y-8'>
-      <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Profile</h1>
-        <p className='text-sm text-muted-foreground'>
-          How Lab should respond in every chat.
-        </p>
-      </div>
+    <SettingsPage
+      description='How Lab should respond in every chat.'
+      title='Profile'
+    >
       {memory.isError && <LoadError subject='your profile' />}
       {memory.data && (
         <Instructions
@@ -70,6 +68,6 @@ export function Profile() {
           initial={memory.data.instructions}
         />
       )}
-    </section>
+    </SettingsPage>
   );
 }

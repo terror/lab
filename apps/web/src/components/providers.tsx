@@ -1,5 +1,6 @@
 import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
+import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -302,19 +303,16 @@ export function Providers() {
   const open = (initial?: string) => setDialog({ initial, key: Date.now() });
 
   return (
-    <section className='space-y-8'>
-      <div className='flex items-start justify-between gap-4'>
-        <div className='space-y-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Providers</h1>
-          <p className='text-sm text-muted-foreground'>
-            Connect a provider to use its models.
-          </p>
-        </div>
+    <SettingsPage
+      action={
         <Button onClick={() => open()} size='sm'>
           <Plus aria-hidden='true' />
           Add provider
         </Button>
-      </div>
+      }
+      description='Connect a provider to use its models.'
+      title='Providers'
+    >
       {providers.isError && <LoadError subject='providers' />}
       {providers.isSuccess && connected.length === 0 && (
         <p className='text-sm text-muted-foreground'>
@@ -343,6 +341,6 @@ export function Providers() {
           providers={all}
         />
       )}
-    </section>
+    </SettingsPage>
   );
 }

@@ -1,5 +1,6 @@
 import { BudgetPanel } from '@/components/budget';
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import {
   Select,
   SelectContent,
@@ -177,14 +178,8 @@ export function UsagePanel() {
   const usage = useQuery(usageQueryOptions(days));
 
   return (
-    <section className='space-y-8'>
-      <div className='flex items-start justify-between gap-4'>
-        <div className='space-y-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Usage</h1>
-          <p className='text-sm text-muted-foreground'>
-            Spend and tokens across your chats, from provider prices.
-          </p>
-        </div>
+    <SettingsPage
+      action={
         <Select
           onValueChange={(value) => setDays(Number(value))}
           value={String(days)}
@@ -204,7 +199,10 @@ export function UsagePanel() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      }
+      description='Spend and tokens across your chats, from provider prices.'
+      title='Usage'
+    >
       <BudgetPanel />
       {usage.isError && <LoadError subject='usage' />}
       {usage.data && (
@@ -233,6 +231,6 @@ export function UsagePanel() {
           )}
         </>
       )}
-    </section>
+    </SettingsPage>
   );
 }

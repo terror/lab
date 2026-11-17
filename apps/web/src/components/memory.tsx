@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -164,19 +165,16 @@ export function Memory() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <section className='space-y-8'>
-      <div className='flex items-start justify-between gap-4'>
-        <div className='space-y-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Memory</h1>
-          <p className='text-sm text-muted-foreground'>
-            What Lab remembers about you across chats.
-          </p>
-        </div>
+    <SettingsPage
+      action={
         <Button onClick={() => setAdding(true)} size='sm'>
           <Plus aria-hidden='true' />
           Add memory
         </Button>
-      </div>
+      }
+      description='What Lab remembers about you across chats.'
+      title='Memory'
+    >
       {memory.isError && <LoadError subject='memory' />}
       {memory.data && (
         <>
@@ -185,6 +183,6 @@ export function Memory() {
         </>
       )}
       <AddMemoryDialog onOpenChange={setAdding} open={adding} />
-    </section>
+    </SettingsPage>
   );
 }

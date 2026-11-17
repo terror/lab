@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,16 +194,14 @@ export function Computer() {
   const status = useQuery(computerQueryOptions);
 
   return (
-    <section className='space-y-8'>
-      <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Computer</h1>
-        <p className='text-sm text-muted-foreground'>
-          A persistent Linux computer Lab uses to run code and work with files.
-          Each chat gets its own folder, and it stops on its own when idle.
-        </p>
-      </div>
+    <SettingsPage
+      description={
+        'A persistent Linux computer Lab uses to run code and work with files. Each chat gets its own folder, and it stops on its own when idle.'
+      }
+      title='Computer'
+    >
       {status.isError && <LoadError subject='the computer' />}
       {status.data && <Details status={status.data} />}
-    </section>
+    </SettingsPage>
   );
 }

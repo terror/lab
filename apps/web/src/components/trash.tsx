@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingsPage } from '@/components/settings-page';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,15 +120,8 @@ export function Trash() {
   const count = trash.data?.length ?? 0;
 
   return (
-    <section className='space-y-8'>
-      <div className='flex items-start justify-between gap-4'>
-        <div className='space-y-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Trash</h1>
-          <p className='text-sm text-muted-foreground'>
-            Deleted chats stay here until you restore them or delete them
-            forever.
-          </p>
-        </div>
+    <SettingsPage
+      action={
         <Button
           disabled={count === 0 || empty.isPending}
           onClick={() => setConfirming(true)}
@@ -136,7 +130,12 @@ export function Trash() {
         >
           Empty trash
         </Button>
-      </div>
+      }
+      description={
+        'Deleted chats stay here until you restore them or delete them forever.'
+      }
+      title='Trash'
+    >
       {trash.isError && <LoadError subject='the trash' />}
       {trash.isSuccess && count === 0 && (
         <p className='text-sm text-muted-foreground'>The trash is empty.</p>
@@ -155,6 +154,6 @@ export function Trash() {
         open={confirming}
         title='Empty the trash?'
       />
-    </section>
+    </SettingsPage>
   );
 }
