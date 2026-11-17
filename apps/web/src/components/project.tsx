@@ -6,6 +6,7 @@ import {
   type ProjectEditing,
   ProjectDialog,
 } from '@/components/project-dialog';
+import { ProjectInstructions } from '@/components/project-instructions';
 import {
   Tooltip,
   TooltipContent,
@@ -146,6 +147,7 @@ export function Project() {
           </Tooltip>
         </div>
         <ProjectComposer id={id} name={current.name} />
+        <ProjectInstructions project={current} />
         <section className='flex flex-col gap-2'>
           <h2 className='px-2 text-sm font-medium text-muted-foreground'>
             Chats

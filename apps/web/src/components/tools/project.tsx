@@ -93,9 +93,9 @@ export const projectRenderers = {
     },
     title: ({ active }) => (active ? 'Listing projects' : 'Listed projects'),
   },
-  project_rename: {
+  project_update: {
     icon: Folder,
     preview: projectPreview,
-    title: projectTitle('Renaming a project', 'Renamed to'),
+    title: projectTitle('Updating a project', 'Updated'),
   },
 } satisfies Record<string, ToolRenderer>;

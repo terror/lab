@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import {
   type Project,
   createProject,
-  renameProject,
+  updateProject,
   useProjectSave,
 } from '@/lib/projects';
 import { type SubmitEvent, useState } from 'react';
@@ -45,7 +45,7 @@ function ProjectForm({
   );
 
   const create = useProjectSave(createProject);
-  const rename = useProjectSave(renameProject);
+  const rename = useProjectSave(updateProject);
 
   const save = editing.kind === 'rename' ? rename : create;
 
@@ -53,7 +53,7 @@ function ProjectForm({
     event.preventDefault();
 
     if (editing.kind === 'rename') {
-      rename.mutate({ ...editing.project, name }, { onSuccess: onClose });
+      rename.mutate({ id: editing.project.id, name }, { onSuccess: onClose });
     } else {
       create.mutate(name, {
         onSuccess: (project) => {

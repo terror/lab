@@ -9,9 +9,15 @@ export const PROJECT_LIMIT = 100;
 
 const table = schema.project;
 
-const fields = { id: table.id, name: table.name };
+const fields = {
+  id: table.id,
+  instructions: table.instructions,
+  name: table.name,
+};
 
-export type Project = { id: number; name: string };
+export type Project = { id: number; instructions: string; name: string };
+
+export type ProjectChange = { instructions?: string; name?: string };
 
 function owned(ownerId: string, id: number) {
   return and(eq(table.id, id), eq(table.ownerId, ownerId));
@@ -46,14 +52,14 @@ export async function createProject(
   return row;
 }
 
-export async function renameProject(
+export async function updateProject(
   ownerId: string,
   id: number,
-  name: string
+  change: ProjectChange
 ): Promise<Project | undefined> {
   const [row] = await db
     .update(table)
-    .set({ name })
+    .set(change)
     .where(owned(ownerId, id))
     .returning(fields);
 
@@ -125,6 +131,6 @@ export const projectAccess: ProjectAccess = {
 
     return chat && { chat, project };
   },
-  rename: async (conversationId, id, name) =>
-    renameProject(await owner(conversationId), id, name),
+  update: async (conversationId, id, change) =>
+    updateProject(await owner(conversationId), id, change),
 };
