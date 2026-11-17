@@ -11,6 +11,7 @@ import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
@@ -122,32 +123,38 @@ type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-async function load(id: number, user: User) {
+type Conversation = NonNullable<
+  Awaited<ReturnType<typeof harness.conversation>>
+>;
+
+const owned = createMiddleware<{
+  Variables: { conversation: Conversation; user: User };
+}>(async (c, next) => {
   const [record] = await db
     .select({ id: schema.conversation.id })
     .from(schema.conversation)
     .where(
       and(
-        eq(schema.conversation.id, id),
-        eq(schema.conversation.ownerId, user.id)
+        eq(schema.conversation.id, Number(c.req.param('id'))),
+        eq(schema.conversation.ownerId, c.get('user').id)
       )
     );
 
-  if (!record) {
-    throw new HTTPException(404, { message: 'Conversation not found' });
-  }
-
-  const conversation = await harness.conversation(
-    record.id as ConversationId,
-    BACKGROUND_CONTEXT
-  );
+  const conversation =
+    record &&
+    (await harness.conversation(
+      record.id as ConversationId,
+      BACKGROUND_CONTEXT
+    ));
 
   if (!conversation) {
     throw new HTTPException(404, { message: 'Conversation not found' });
   }
 
-  return conversation;
-}
+  c.set('conversation', conversation);
+
+  await next();
+});
 
 const conversations = new Hono()
   .use(requireUser)
@@ -205,8 +212,8 @@ const conversations = new Hono()
 
     return c.json({ id: conversation.id }, 201);
   })
-  .get('/:id', params, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .get('/:id', params, owned, async (c) => {
+    const { conversation } = c.var;
 
     const doc = await harness.snapshot(
       TitleDoc,
@@ -222,8 +229,8 @@ const conversations = new Hono()
       title: doc?.title ?? null,
     });
   })
-  .get('/:id/entries', params, entriesQuery, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .get('/:id/entries', params, owned, entriesQuery, async (c) => {
+    const { conversation } = c.var;
 
     const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
 
@@ -240,10 +247,10 @@ const conversations = new Hono()
 
     return c.json({ items: page.items.map(stripImages) });
   })
-  .get('/:id/entries/:entryId/images/:index', imageParams, async (c) => {
-    const { entryId, id, index } = c.req.valid('param');
+  .get('/:id/entries/:entryId/images/:index', imageParams, owned, async (c) => {
+    const { entryId, index } = c.req.valid('param');
 
-    const conversation = await load(id, c.get('user'));
+    const { conversation } = c.var;
 
     const { items } = await conversation.entries(
       {
@@ -267,8 +274,8 @@ const conversations = new Hono()
       'x-content-type-options': 'nosniff',
     });
   })
-  .get('/:id/events', params, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .get('/:id/events', params, owned, async (c) => {
+    const { conversation } = c.var;
 
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
 
@@ -325,8 +332,8 @@ const conversations = new Hono()
       status.unsubscribe();
     });
   })
-  .post('/:id/messages', params, message, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .post('/:id/messages', params, owned, message, async (c) => {
+    const { conversation } = c.var;
 
     const { steer, ...draft } = c.req.valid('json');
 
@@ -350,29 +357,34 @@ const conversations = new Hono()
 
     return c.json({ id: submission.id }, 202);
   })
-  .delete('/:id/submissions/:submissionId', submissionParams, async (c) => {
-    const { id, submissionId } = c.req.valid('param');
+  .delete(
+    '/:id/submissions/:submissionId',
+    submissionParams,
+    owned,
+    async (c) => {
+      const { submissionId } = c.req.valid('param');
 
-    const conversation = await load(id, c.get('user'));
+      const { conversation } = c.var;
 
-    const result = await harness.abortSubmission(
-      submissionId as SubmissionId,
-      BACKGROUND_CONTEXT,
-      conversation.id
-    );
+      const result = await harness.abortSubmission(
+        submissionId as SubmissionId,
+        BACKGROUND_CONTEXT,
+        conversation.id
+      );
 
-    if (result === 'not_found') {
-      throw new HTTPException(404, { message: 'Message not found' });
+      if (result === 'not_found') {
+        throw new HTTPException(404, { message: 'Message not found' });
+      }
+
+      if (result !== 'aborted') {
+        throw new HTTPException(409, { message: 'Message was already sent' });
+      }
+
+      return c.body(null, 204);
     }
-
-    if (result !== 'aborted') {
-      throw new HTTPException(409, { message: 'Message was already sent' });
-    }
-
-    return c.body(null, 204);
-  })
-  .put('/:id/model', params, modelSelection, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  )
+  .put('/:id/model', params, owned, modelSelection, async (c) => {
+    const { conversation } = c.var;
 
     const { id, provider, thinkingLevel } = c.req.valid('json');
 
@@ -383,22 +395,22 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/compact', params, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .post('/:id/compact', params, owned, async (c) => {
+    const { conversation } = c.var;
 
     await conversation.compact(undefined, BACKGROUND_CONTEXT);
 
     return c.body(null, 202);
   })
-  .post('/:id/abort', params, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .post('/:id/abort', params, owned, async (c) => {
+    const { conversation } = c.var;
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })
-  .patch('/:id', params, update, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .patch('/:id', params, owned, update, async (c) => {
+    const { conversation } = c.var;
 
     const { archived, pinned, title } = c.req.valid('json');
 
@@ -417,8 +429,8 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .delete('/:id', params, async (c) => {
-    const conversation = await load(c.req.valid('param').id, c.get('user'));
+  .delete('/:id', params, owned, async (c) => {
+    const { conversation } = c.var;
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
