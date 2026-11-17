@@ -1,3 +1,4 @@
+import { plainTitle } from '@lab/harness';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
@@ -54,4 +55,16 @@ test('a rename during title generation is kept', async () => {
   expect(
     (await call(headers, 'GET', `/conversations/${body.id}`)).body.title
   ).toBe('bar');
+});
+
+function plain(value: string, expected: string) {
+  expect(plainTitle(value)).toBe(expected);
+}
+
+test('generated titles are plain text', () => {
+  plain('**Foo Bar**', 'Foo Bar');
+  plain('"Foo Bar."', 'Foo Bar');
+  plain('# Foo `bar`', 'Foo bar');
+  plain('Foo\nBar', 'Foo');
+  plain('foo_bar __baz__', 'foo_bar baz');
 });

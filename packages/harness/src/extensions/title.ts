@@ -15,6 +15,17 @@ const MESSAGE_LIMIT = 2_000;
 const PROMPT =
   'Write a title of at most six words for the conversation below. Reply with only the title, without quotes or punctuation at the end.';
 
+export function plainTitle(value: string) {
+  const [line = ''] = value.trim().split('\n');
+
+  return line
+    .replace(/^\s*(?:#+|>)\s*/, '')
+    .replace(/\*+|`+|__/g, '')
+    .replace(/^["'“‘]+|["'”’.!?:]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export const TitleDoc = defineDoc<{ title: string | null }>({
   kind: 'lab.title',
   version: 1,
@@ -91,7 +102,7 @@ function generateTitle(onHelperUsage: HelperUsage) {
 
         onHelperUsage(runtime.conversationId, 'title', answer.message);
 
-        return finish(answer.text.replace(/^"|"$/g, ''));
+        return finish(plainTitle(answer.text));
       },
     },
     abort: async (_task, runtime, context) => {
