@@ -1,5 +1,7 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
+import { schema } from '@lab/db';
 import { afterEach, expect, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 
 import { signIn, signInAdmin } from '../test/auth';
 import {
@@ -12,6 +14,9 @@ import {
 } from '../test/client';
 import { serveMcp, serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
+import { db } from './db';
+import { env } from './env';
+import { registry } from './harness';
 
 const servers: { stop: () => void }[] = [];
 
@@ -336,4 +341,66 @@ test('authorization servers can read Lab’s client metadata without signing in'
     },
     status: 200,
   });
+});
+
+test('reconnecting while someone signs in does not expire their sign-in', async () => {
+  const headers = await signInAdmin();
+
+  const server = serveProtectedMcp();
+
+  servers.push(server);
+
+  const { body } = await call(headers, 'POST', '/connectors', {
+    name: 'Foo',
+    url: server.url,
+  });
+
+  const [connector] = body.connectors;
+
+  const authorize = await raw(headers, `/connectors/${connector.id}/authorize`);
+
+  const state =
+    new URL(authorize.headers.get('location') ?? '').searchParams.get(
+      'state'
+    ) ?? '';
+
+  await call(headers, 'POST', `/connectors/${connector.id}/reconnect`);
+
+  const finished = await raw(
+    headers,
+    `/connectors/callback?code=baz&state=${encodeURIComponent(state)}`
+  );
+
+  expect([finished.status, finished.headers.get('location')]).toEqual([
+    302,
+    '/settings',
+  ]);
+});
+
+test('tools whose names collide are all registered', async () => {
+  const headers = await signInAdmin();
+
+  const server = serveMcp(['foo.bar', 'foo_bar']);
+
+  servers.push(server);
+
+  await call(headers, 'POST', '/connectors', { name: 'Foo', url: server.url });
+
+  const [owner] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.email, env.LAB_ADMIN_EMAIL));
+
+  expect(
+    registry
+      .snapshot()
+      .extension(`connectors-${owner?.id}`)
+      ?.tools?.map(({ name }) => name)
+  ).toEqual([
+    'tool_search',
+    'mcp__foo__foo_bar',
+    'mcp__foo__foo_bar_2',
+    'mcp__foo__read',
+    'mcp__foo__write',
+  ]);
 });

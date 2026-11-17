@@ -60,6 +60,8 @@ test('scheduled tasks need approval and run once when due', async () => {
     .from(schema.scheduledTask)
     .where(eq(schema.scheduledTask.id, created.id));
 
+  await settle(ran?.conversationId ?? undefined);
+
   const chats = await db
     .select({ title: schema.conversation.title })
     .from(schema.conversation)

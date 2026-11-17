@@ -92,3 +92,20 @@ test('the admin account cannot be deleted', async () => {
     status: 403,
   });
 });
+
+test('chats purged before deleting an account are still purged from storage', async () => {
+  const headers = await signIn();
+
+  const id = await chat(headers, { content: 'foo' });
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+  await call(headers, 'DELETE', `/trash/conversation/${id}`);
+  await call(headers, 'DELETE', '/profile');
+
+  expect(
+    await db
+      .select({ id: schema.conversationDeletion.id })
+      .from(schema.conversationDeletion)
+      .where(eq(schema.conversationDeletion.id, id))
+  ).toEqual([{ id }]);
+});
