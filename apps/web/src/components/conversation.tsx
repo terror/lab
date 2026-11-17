@@ -21,6 +21,7 @@ import {
   MessageScrollerViewport,
   useMessageScroller,
 } from '@/components/ui/message-scroller';
+import { Unavailable } from '@/components/unavailable';
 import { refreshAgentWrites } from '@/lib/agent-writes';
 import { type Attachment, imageSource } from '@/lib/attachments';
 import { client } from '@/lib/client';
@@ -52,7 +53,7 @@ import {
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { FileText, LoaderCircle, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -457,26 +458,11 @@ const TranscriptRow = memo(function TranscriptRow({
   return <UserMessage bubble={row.bubble} />;
 });
 
-function Missing() {
-  return (
-    <div className='flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center'>
-      <p className='text-sm font-medium'>This chat isn't available</p>
-      <p className='max-w-sm text-sm text-muted-foreground'>
-        It may have been deleted. Deleted chats can be restored from the Trash
-        in Settings.
-      </p>
-      <Button asChild size='sm' variant='secondary'>
-        <Link to='/'>New chat</Link>
-      </Button>
-    </div>
-  );
-}
-
 export function Conversation({ id }: { id: number }) {
   const summary = useConversationSummary(id);
 
   if (summary.isError) {
-    return <Missing />;
+    return <Unavailable subject='chat' />;
   }
 
   return (

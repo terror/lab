@@ -41,6 +41,7 @@ import {
   Moon,
   Plus,
   Search,
+  Settings,
   Sun,
 } from 'lucide-react';
 import {
@@ -303,7 +304,7 @@ function EmptyQuery({
     {
       icon: Plus,
       key: 'new-chat',
-      keys: ['⌘', 'O'],
+      keys: ['⌘', '⇧', 'O'],
       onSelect: () => go.route('/'),
       title: 'New chat',
     },
@@ -323,7 +324,7 @@ function EmptyQuery({
       title: dark ? 'Switch to light theme' : 'Switch to dark theme',
     },
     {
-      icon: settingsSectionInfo.appearance.icon,
+      icon: Settings,
       key: 'settings',
       keys: ['⌘', ','],
       onSelect: () => go.route('/settings'),
@@ -570,17 +571,33 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
+    const shortcuts: Record<string, () => void> = {
+      Comma: () => {
+        setOpen(false);
+        void navigate({ to: '/settings' });
+      },
+      KeyK: () => setOpen((current) => !current),
+      'shift+KeyO': () => {
+        setOpen(false);
+        void navigate({ to: '/' });
+      },
+    };
+
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+      const run =
+        (event.metaKey || event.ctrlKey) &&
+        shortcuts[`${event.shiftKey ? 'shift+' : ''}${event.code}`];
+
+      if (run) {
         event.preventDefault();
-        setOpen((current) => !current);
+        run();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
 
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [navigate]);
 
   const value = useMemo(() => ({ openSearch }), [openSearch]);
 

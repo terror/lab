@@ -123,17 +123,19 @@ export function Trash() {
   return (
     <SettingsPage
       action={
-        <Button
-          disabled={count === 0 || empty.isPending}
-          onClick={() => setConfirming(true)}
-          size='sm'
-          variant='secondary'
-        >
-          Empty trash
-        </Button>
+        count > 0 && (
+          <Button
+            disabled={empty.isPending}
+            onClick={() => setConfirming(true)}
+            size='sm'
+            variant='secondary'
+          >
+            Empty trash
+          </Button>
+        )
       }
       description={
-        'Deleted chats stay here until you restore them or delete them forever.'
+        'Deleted chats and projects stay here until you restore them or delete them forever.'
       }
       title='Trash'
     >

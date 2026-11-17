@@ -73,7 +73,7 @@ test('tools describe themselves while running and when done', () => {
     ['Read “foo”', 'bar.com'],
     ['Asking you a question', undefined],
     ['Ran ls', 'exit 0 · 1.5s'],
-    ['Wrote bar.txt', '3B'],
+    ['Wrote bar.txt', '3 B'],
     ['Saved bar.csv to your library', undefined],
     ['Scheduled “foo”', undefined],
     ['Ran foo', undefined],
