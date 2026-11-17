@@ -183,10 +183,17 @@ type Conversation = NonNullable<
 >;
 
 const owned = createMiddleware<{
-  Variables: { conversation: Conversation; user: User };
+  Variables: {
+    conversation: Conversation;
+    projectId: number | null;
+    user: User;
+  };
 }>(async (c, next) => {
   const [record] = await db
-    .select({ id: schema.conversation.id })
+    .select({
+      id: schema.conversation.id,
+      projectId: schema.conversation.projectId,
+    })
     .from(schema.conversation)
     .where(
       and(
@@ -208,6 +215,7 @@ const owned = createMiddleware<{
   }
 
   c.set('conversation', conversation);
+  c.set('projectId', record.projectId);
 
   await next();
 });
@@ -260,6 +268,7 @@ const conversations = new Hono()
 
     return c.json({
       id: conversation.id,
+      projectId: c.var.projectId,
       running: busy.has(conversation.id),
       title: doc?.title ?? null,
     });

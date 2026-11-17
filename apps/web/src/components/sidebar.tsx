@@ -26,6 +26,7 @@ import type { User } from '@/lib/auth';
 import {
   type ConversationSort,
   useConversationSort,
+  useConversationSummary,
   useConversations,
   usePinnedConversations,
 } from '@/lib/conversations';
@@ -38,6 +39,7 @@ import {
   ChevronDown,
   Clock,
   Folder,
+  FolderOpen,
   LibraryBig,
   PanelLeftClose,
   PanelLeftOpen,
@@ -120,12 +122,14 @@ function CollapseButton({
   collapsed,
   controls,
   onToggle,
+  subject,
 }: {
   collapsed: boolean;
   controls: string;
   onToggle: () => void;
+  subject: string;
 }) {
-  const label = collapsed ? 'Show chats' : 'Hide chats';
+  const label = collapsed ? `Show ${subject}` : `Hide ${subject}`;
 
   return (
     <Tooltip>
@@ -226,16 +230,99 @@ export const navPages = [
 
 export type NavPath = (typeof navPages)[number]['to'];
 
-function ProjectsSection({ onProject }: { onProject: (id: number) => void }) {
+const PREVIEW = 5;
+
+function openProject(path: string, chatProject: number | null | undefined) {
+  const match = /^\/projects\/(\d+)$/.exec(path);
+
+  return match ? Number(match[1]) : (chatProject ?? undefined);
+}
+
+function ShowMore({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className='w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground'
+      onClick={onClick}
+      type='button'
+    >
+      Show more
+    </button>
+  );
+}
+
+function ProjectChats({
+  id,
+  onProject,
+  onSelect,
+  selected,
+}: {
+  id: number;
+  onProject: (id: number) => void;
+  onSelect: (id: number) => void;
+  selected: number | undefined;
+}) {
+  const chats = useConversations({ project: id });
+
+  const all = chats.data ?? [];
+
+  return (
+    <div className='flex flex-col gap-0.5 pl-7'>
+      {all.slice(0, PREVIEW).map((conversation) => (
+        <ConversationItem
+          key={conversation.id}
+          conversation={conversation}
+          onSelect={onSelect}
+          selected={conversation.id === selected}
+        />
+      ))}
+      {(all.length > PREVIEW || chats.hasNextPage) && (
+        <ShowMore onClick={() => onProject(id)} />
+      )}
+    </div>
+  );
+}
+
+function ProjectsSection({
+  onProject,
+  onSelect,
+  selected,
+}: {
+  onProject: (id: number) => void;
+  onSelect: (id: number) => void;
+  selected: number | undefined;
+}) {
+  const list = useId();
   const path = usePath();
   const projects = useProjects();
+  const summary = useConversationSummary(selected);
 
+  const [collapsed, setCollapsed] = usePersistentState(
+    'projects-collapsed',
+    collapsedSchema,
+    false
+  );
+
+  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
+
+  const open = openProject(path, summary.data?.projectId);
+
+  const all = projects.data?.projects ?? [];
+
+  const shown = expanded
+    ? all
+    : all.filter((project, index) => index < PREVIEW || project.id === open);
 
   return (
     <div className='flex flex-col gap-1'>
-      <div className='flex items-center px-2'>
+      <div className='flex items-center gap-1 px-2'>
         <h2 className='text-xs font-medium text-muted-foreground'>Projects</h2>
+        <CollapseButton
+          collapsed={collapsed}
+          controls={list}
+          onToggle={() => setCollapsed(!collapsed)}
+          subject='projects'
+        />
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -250,17 +337,38 @@ function ProjectsSection({ onProject }: { onProject: (id: number) => void }) {
           <TooltipContent>New project</TooltipContent>
         </Tooltip>
       </div>
-      <nav aria-label='Projects' className='flex flex-col gap-0.5'>
-        {projects.data?.projects.map((project) => (
-          <NavButton
-            key={project.id}
-            active={path === `/projects/${project.id}`}
-            onClick={() => onProject(project.id)}
-          >
-            <Folder aria-hidden='true' className='size-4 shrink-0' />
-            <span className='truncate'>{project.name}</span>
-          </NavButton>
-        ))}
+      <nav
+        aria-label='Projects'
+        className='flex flex-col gap-0.5'
+        hidden={collapsed}
+        id={list}
+      >
+        {shown.map((project) => {
+          const Icon = project.id === open ? FolderOpen : Folder;
+
+          return (
+            <div key={project.id} className='flex flex-col gap-0.5'>
+              <NavButton
+                active={path === `/projects/${project.id}`}
+                onClick={() => onProject(project.id)}
+              >
+                <Icon aria-hidden='true' className='size-4 shrink-0' />
+                <span className='truncate'>{project.name}</span>
+              </NavButton>
+              {project.id === open && (
+                <ProjectChats
+                  id={project.id}
+                  onProject={onProject}
+                  onSelect={onSelect}
+                  selected={selected}
+                />
+              )}
+            </div>
+          );
+        })}
+        {!expanded && all.length > shown.length && (
+          <ShowMore onClick={() => setExpanded(true)} />
+        )}
       </nav>
       <ProjectDialog
         editing={editing}
@@ -441,7 +549,11 @@ function SidebarPanel({
           </NavButton>
         ))}
       </div>
-      <ProjectsSection onProject={onProject} />
+      <ProjectsSection
+        onProject={onProject}
+        onSelect={onSelect}
+        selected={selected}
+      />
       {(pinned.data?.length ?? 0) > 0 && (
         <div className='flex flex-col gap-1'>
           <h2 className='px-2 text-xs font-medium text-muted-foreground'>
@@ -469,6 +581,7 @@ function SidebarPanel({
               collapsed={collapsed}
               controls={list}
               onToggle={() => setCollapsed(!collapsed)}
+              subject='chats'
             />
             <SortMenu />
           </div>

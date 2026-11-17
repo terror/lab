@@ -558,7 +558,7 @@ test('conversations can be fetched', async () => {
   const id = await create(headers);
 
   expect(await call(headers, 'GET', `/conversations/${id}`)).toEqual({
-    body: { id, running: false, title: 'foo' },
+    body: { id, projectId: null, running: false, title: 'foo' },
     status: 200,
   });
 });
