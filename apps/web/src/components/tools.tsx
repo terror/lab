@@ -1,6 +1,6 @@
 import { type SettingsSection, selectSettingsSection } from '@/lib/settings';
 import { cn } from '@/lib/utils';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   Check,
   Code,
@@ -123,28 +123,55 @@ function Label({ children }: { children: string }) {
   return <span className='text-xs text-muted-foreground'>{children}</span>;
 }
 
-function PreviewList({
-  items,
-}: {
-  items: readonly { key: string; label: string; meta?: string }[];
-}) {
+type PreviewItem = {
+  chatId?: number;
+  key: string;
+  label: string;
+  meta?: string;
+};
+
+function PreviewRow({ chatId, label, meta }: PreviewItem) {
+  const content = (
+    <>
+      <span className='min-w-0 truncate text-foreground/90 underline-offset-4 group-hover:underline'>
+        {label}
+      </span>
+      {meta && (
+        <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
+          {meta}
+        </span>
+      )}
+    </>
+  );
+
+  if (chatId === undefined) {
+    return content;
+  }
+
+  return (
+    <Link
+      className='group flex min-w-0 flex-1 items-baseline justify-between gap-4 outline-none focus-visible:underline'
+      params={{ id: chatId }}
+      to='/c/$id'
+    >
+      {content}
+    </Link>
+  );
+}
+
+function PreviewList({ items }: { items: readonly PreviewItem[] }) {
   const shown = items.slice(0, PREVIEW_ITEMS);
 
   const rest = items.length - shown.length;
 
   return (
     <ul className='flex flex-col'>
-      {shown.map(({ key, label, meta }) => (
+      {shown.map((item) => (
         <li
-          key={key}
+          key={item.key}
           className='flex items-baseline justify-between gap-4 py-1 text-sm'
         >
-          <span className='min-w-0 truncate text-foreground/90'>{label}</span>
-          {meta && (
-            <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
-              {meta}
-            </span>
-          )}
+          <PreviewRow {...item} />
         </li>
       ))}
       {rest > 0 && (
@@ -407,6 +434,7 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
       return (
         <PreviewList
           items={matches.map(({ id, title, updatedAt }) => ({
+            chatId: id,
             key: String(id),
             label: title ?? 'Untitled chat',
             meta: day.format(new Date(updatedAt)),
