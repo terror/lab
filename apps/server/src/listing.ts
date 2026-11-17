@@ -7,6 +7,8 @@ import {
   asc,
   desc,
   eq,
+  gt,
+  inArray,
   isNotNull,
   isNull,
   sql,
@@ -17,6 +19,8 @@ import { z } from 'zod';
 import type { User } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { flushHistory } from './history';
+import { plain } from './message-search';
 import { flushProjections } from './projections';
 import { contains } from './records';
 import { sortSchema } from './schemas';
@@ -77,6 +81,8 @@ function decode(cursor: string) {
     throw new HTTPException(400, { message: 'Invalid cursor' });
   }
 }
+
+const unreadColumn = sql<boolean>`coalesce(${schema.conversation.readAt} < ${schema.conversation.lastMessageAt}, true)`;
 
 const filters = {
   all: () => isNull(schema.conversation.deletedAt),
@@ -153,7 +159,7 @@ export async function listConversations(
       position,
       projectId: schema.conversation.projectId,
       title: schema.conversation.title,
-      unread: sql<boolean>`coalesce(${schema.conversation.readAt} < ${schema.conversation.lastMessageAt}, true)`,
+      unread: unreadColumn,
     })
     .from(schema.conversation)
     .where(
@@ -194,5 +200,78 @@ export async function listConversations(
       unread: unread && !busy.has(id),
     })),
     next: next ?? null,
+  };
+}
+
+const PREVIEW_LENGTH = 280;
+
+export async function listUnread(user: User) {
+  await Promise.all([flushProjections(), flushHistory()]);
+
+  const table = schema.conversation;
+
+  const owned = and(eq(table.ownerId, user.id), isNull(table.deletedAt));
+
+  const [rows, active] = await Promise.all([
+    db
+      .select({
+        finishedAt: table.lastMessageAt,
+        id: table.id,
+        title: table.title,
+      })
+      .from(table)
+      .where(
+        and(
+          owned,
+          unreadColumn,
+          gt(table.lastMessageAt, sql`now() - interval '24 hours'`)
+        )
+      )
+      .orderBy(desc(table.lastMessageAt), desc(table.id))
+      .limit(50),
+    db
+      .select({ id: table.id })
+      .from(table)
+      .where(and(owned, inArray(table.id, [...(await running())]))),
+  ]);
+
+  const busy = new Set(active.map(({ id }) => id));
+
+  const finished = rows.filter(({ id }) => !busy.has(id));
+
+  const ids = finished.map(({ id }) => id);
+
+  const text = schema.messageText;
+
+  const task = schema.scheduledTask;
+
+  const [previews, scheduled] = await Promise.all([
+    db
+      .selectDistinctOn([text.conversationId], {
+        id: text.conversationId,
+        preview: sql<string>`left(${text.text}, ${PREVIEW_LENGTH})`,
+      })
+      .from(text)
+      .where(and(inArray(text.conversationId, ids), eq(text.role, 'assistant')))
+      .orderBy(text.conversationId, desc(text.entryId)),
+    db
+      .select({ id: task.conversationId })
+      .from(task)
+      .where(inArray(task.conversationId, ids)),
+  ]);
+
+  const texts = new Map(previews.map(({ id, preview }) => [id, preview]));
+
+  const tasks = new Set(scheduled.map(({ id }) => id));
+
+  return {
+    chats: finished.map(({ finishedAt, id, title }) => ({
+      finishedAt: finishedAt.toISOString(),
+      id,
+      preview: plain(texts.get(id) ?? ''),
+      scheduled: tasks.has(id),
+      title,
+    })),
+    running: busy.size,
   };
 }

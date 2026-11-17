@@ -8,6 +8,7 @@ import { signIn } from '../test/auth';
 import { call, create, idle, raw, settle } from '../test/client';
 import { db } from './db';
 import { harness } from './harness';
+import { conversationOwner } from './records';
 
 test('conversations require a session', async () => {
   expect(await call(new Headers(), 'GET', '/conversations')).toEqual({
@@ -839,5 +840,77 @@ test('images are served by url instead of inline', async () => {
     ],
     image: ['image/png', 'foo'],
     missing: 404,
+  });
+});
+
+test('unread conversations from the last day are listed with a preview', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const old = await create(headers);
+
+  await settle();
+
+  await db
+    .update(schema.conversation)
+    .set({ lastMessageAt: new Date(0) })
+    .where(eq(schema.conversation.id, old));
+
+  const ownerId = (await conversationOwner(id)) ?? '';
+
+  await db.insert(schema.scheduledTask).values({
+    conversationId: id,
+    cron: '0 9 * * *',
+    description: 'foo',
+    ownerId,
+    prompt: 'foo',
+    timezone: 'UTC',
+    title: 'foo',
+  });
+
+  const { body } = await call(headers, 'GET', '/conversations/unread');
+
+  expect(body).toEqual({
+    chats: [
+      {
+        finishedAt: body.chats[0].finishedAt,
+        id,
+        preview: 'foo',
+        scheduled: true,
+        title: 'foo',
+      },
+    ],
+    running: 0,
+  });
+
+  await call(headers, 'POST', `/conversations/${id}/read`);
+
+  expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
+    body: { chats: [], running: 0 },
+    status: 200,
+  });
+});
+
+test('running conversations are counted instead of listed as unread', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const inspection = await harness.inspect(BACKGROUND_CONTEXT);
+
+  spyOn(harness, 'inspect').mockResolvedValueOnce({
+    ...inspection,
+    tasks: [
+      {
+        record: { background: false, conversationId: id },
+        state: { kind: 'running' },
+      } as (typeof inspection.tasks)[number],
+    ],
+  });
+
+  expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
+    body: { chats: [], running: 1 },
+    status: 200,
   });
 });
