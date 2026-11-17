@@ -312,7 +312,7 @@ export function Providers() {
           Add provider
         </Button>
       }
-      description='Connect a provider to use its models.'
+      description='Connect the services Lab uses for models, web search, and its computer.'
       title='Providers'
     >
       {providers.isError && <LoadError subject='providers' />}
