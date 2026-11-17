@@ -7,7 +7,7 @@
   },
   "workspaces": {
     "apps/server": {
-      "ignoreDependencies": ["@earendil-works/pi-codemode"]
+      "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"]
     }
   }
 }
