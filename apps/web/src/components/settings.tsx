@@ -1,4 +1,5 @@
 import { Computer } from '@/components/computer';
+import { Connectors } from '@/components/connectors';
 import { Memory } from '@/components/memory';
 import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
@@ -93,6 +94,7 @@ function Appearance() {
 const panels: Record<SettingsSection, ComponentType> = {
   appearance: Appearance,
   computer: Computer,
+  connectors: Connectors,
   memory: Memory,
   profile: Profile,
   providers: Providers,

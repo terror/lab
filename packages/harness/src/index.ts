@@ -5,6 +5,7 @@ import {
 import type { Models } from '@earendil-works/pi-ai';
 import {
   Harness,
+  type Registry,
   type Report,
   createRegistry,
 } from '@earendil-works/pi-durable';
@@ -20,19 +21,26 @@ export {
   helperModel,
 } from './helper';
 export { purgeConversations } from './purge';
+export { createRegistry } from '@earendil-works/pi-durable';
+export { createToolSearchExtension } from '@earendil-works/pi-durable/tool-search';
 
 export type HarnessOptions = ExtensionDeps & {
   models: Models;
   onReport?: (report: Report) => void;
   path: string;
+  registry?: Registry;
 };
 
 export async function openHarness(
-  { models, onReport, path, ...deps }: HarnessOptions,
+  {
+    models,
+    onReport,
+    path,
+    registry = createRegistry(),
+    ...deps
+  }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
-  const registry = createRegistry();
-
   for (const extension of extensions(deps)) {
     registry.install(extension);
   }

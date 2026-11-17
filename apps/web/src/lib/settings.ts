@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Monitor,
   Palette,
+  Plug,
   Trash2,
   UserRound,
   WandSparkles,
@@ -16,6 +17,7 @@ export const settingsSections = [
   'appearance',
   'profile',
   'computer',
+  'connectors',
   'memory',
   'skills',
   'providers',
@@ -31,6 +33,7 @@ export const settingsSectionInfo: Record<
 > = {
   appearance: { icon: Palette, label: 'Appearance' },
   computer: { icon: Monitor, label: 'Computer' },
+  connectors: { icon: Plug, label: 'Connectors' },
   memory: { icon: Brain, label: 'Memory' },
   profile: { icon: UserRound, label: 'Profile' },
   providers: { icon: KeyRound, label: 'Providers' },

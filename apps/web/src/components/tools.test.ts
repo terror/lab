@@ -52,6 +52,8 @@ test('tools describe themselves while running and when done', () => {
     line('sandbox_save', false, {}, { name: 'bar.csv' }),
     line('schedule_create', false, {}, { task: { title: 'foo' } }),
     line('foo', false),
+    line('tool_search', true),
+    line('mcp__foo__bar', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
     ['Searched your chats for “foo”', '2 chats'],
@@ -75,5 +77,7 @@ test('tools describe themselves while running and when done', () => {
     ['Saved bar.csv to your library', undefined],
     ['Scheduled “foo”', undefined],
     ['Ran foo', undefined],
+    ['Finding tools', undefined],
+    ['Used bar from foo', undefined],
   ]);
 });

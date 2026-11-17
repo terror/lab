@@ -20,6 +20,13 @@ import { title } from './title';
 import { type WebAccess, web } from './web';
 
 export {
+  type Connector,
+  type ConnectorResult,
+  type ConnectorTool,
+  connector,
+  connectorToolName,
+} from './connector';
+export {
   type ChatMatch,
   type ChatTranscript,
   type HistoryAccess,

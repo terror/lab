@@ -60,6 +60,14 @@ export const conversation = pgTable(
   ]
 );
 
+export const connector = pgTable('connector', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const providerCredential = pgTable('provider_credential', {
   providerId: text('provider_id').primaryKey(),
   credential: text('credential').notNull(),
