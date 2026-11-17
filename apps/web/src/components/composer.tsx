@@ -1,4 +1,5 @@
 import { DocumentThumbnail } from '@/components/document-card';
+import { ErrorMessage } from '@/components/error-message';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -504,9 +505,9 @@ export function Composer({
         </div>
       </div>
       {(attachError ?? error) && (
-        <p role='alert' className='mt-2 px-4 text-sm text-destructive'>
+        <ErrorMessage className='mt-2 px-4'>
           {attachError ?? error}
-        </p>
+        </ErrorMessage>
       )}
     </form>
   );

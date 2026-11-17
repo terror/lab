@@ -1,11 +1,8 @@
-import {
-  queryOptions,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
+import { useRefreshMutation } from './mutations';
 
 type SkillsState = InferResponseType<typeof client.skills.$get, 200>;
 
@@ -34,12 +31,8 @@ export function deleteSkill(id: string) {
 export function useSkillsUpdate<T>(
   mutationFn: (value: T) => Promise<SkillsState>
 ) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    meta: { inlineError: true },
-    mutationFn,
-    onSuccess: (state) =>
-      queryClient.setQueryData(skillsQueryOptions.queryKey, state),
+  return useRefreshMutation(mutationFn, {
+    inlineError: true,
+    set: skillsQueryOptions.queryKey,
   });
 }

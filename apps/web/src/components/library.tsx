@@ -25,6 +25,7 @@ import {
   libraryTextQueryOptions,
   useLibrarySearch,
 } from '@/lib/library';
+import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -45,15 +46,6 @@ const filters: { label: string; value: Filter }[] = [
   { label: 'Files', value: 'file' },
 ];
 
-const DAY = 86_400_000;
-
-const month = new Intl.DateTimeFormat('en-US', { month: 'long' });
-
-const monthYear = new Intl.DateTimeFormat('en-US', {
-  month: 'long',
-  year: 'numeric',
-});
-
 const fullDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 
 const bytes = new Intl.NumberFormat('en-US', {
@@ -63,34 +55,6 @@ const bytes = new Intl.NumberFormat('en-US', {
   unit: 'byte',
   unitDisplay: 'narrow',
 });
-
-function period(value: string, now: Date) {
-  const date = new Date(value);
-
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const days = Math.ceil((today.getTime() - date.getTime()) / DAY);
-
-  if (days <= 0) {
-    return 'Today';
-  }
-
-  if (days === 1) {
-    return 'Yesterday';
-  }
-
-  if (days <= 7) {
-    return 'Previous 7 days';
-  }
-
-  if (days <= 30) {
-    return 'Previous 30 days';
-  }
-
-  return date.getFullYear() === now.getFullYear()
-    ? month.format(date)
-    : monthYear.format(date);
-}
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();

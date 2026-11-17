@@ -1,3 +1,4 @@
+import { ErrorMessage } from '@/components/error-message';
 import { renderPage, openPdf } from '@/lib/pdf';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -81,9 +82,7 @@ export function PdfPages({
         <p className='text-sm text-muted-foreground'>Loading PDF…</p>
       )}
       {status === 'error' && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load this PDF.
-        </p>
+        <ErrorMessage>Unable to load this PDF.</ErrorMessage>
       )}
       <div ref={pages} className='flex flex-col gap-3' />
     </div>

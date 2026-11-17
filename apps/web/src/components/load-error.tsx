@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { ErrorMessage } from '@/components/error-message';
 
 export function LoadError({
   className,
@@ -8,8 +8,6 @@ export function LoadError({
   subject: string;
 }) {
   return (
-    <p role='alert' className={cn('text-sm text-destructive', className)}>
-      Unable to load {subject}.
-    </p>
+    <ErrorMessage className={className}>Unable to load {subject}.</ErrorMessage>
   );
 }

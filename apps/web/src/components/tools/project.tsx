@@ -1,7 +1,7 @@
 import { conversationTitle } from '@/lib/conversations';
 import { Folder } from 'lucide-react';
 
-import { count, field, plural, text } from './format';
+import { count, field, namedTitle, plural, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 
@@ -23,17 +23,9 @@ function projectPreview({ details }: ToolView) {
   ) : undefined;
 }
 
-function projectTitle(running: string, done: string) {
-  return ({ active, details }: ToolView) => {
-    const name = text(field(field(details, 'project'), 'name'));
-
-    if (active || !name) {
-      return running;
-    }
-
-    return `${done} “${name}”`;
-  };
-}
+const projectTitle = namedTitle(({ details }) =>
+  field(field(details, 'project'), 'name')
+);
 
 export const projectRenderers = {
   chat_move: {

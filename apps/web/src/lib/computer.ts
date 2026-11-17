@@ -1,11 +1,8 @@
-import {
-  queryOptions,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
+import { useRefreshMutation } from './mutations';
 
 export type ComputerStatus = InferResponseType<
   typeof client.computer.$get,
@@ -21,26 +18,21 @@ export const computerQueryOptions = queryOptions({
 });
 
 export function useNetworkMode() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (network: ComputerStatus['network']) =>
+  return useRefreshMutation(
+    (network: ComputerStatus['network']) =>
       call(client.computer.$patch({ json: { network } })),
-    onSuccess: (status) => queryClient.setQueryData(computerQueryKey, status),
-  });
+    { set: computerQueryKey }
+  );
 }
 
 export function useComputerAction(action: 'reset' | 'stop') {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () =>
+  return useRefreshMutation(
+    () =>
       call(
         action === 'stop'
           ? client.computer.stop.$post()
           : client.computer.$delete()
       ),
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: computerQueryKey }),
-  });
+    { invalidate: [computerQueryKey] }
+  );
 }

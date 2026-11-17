@@ -61,6 +61,28 @@ export function pathTitle(running: string, done: string) {
   };
 }
 
+export function namedTitle(
+  name: (view: ToolView) => unknown,
+  {
+    named = (value) => `“${value}”`,
+    unnamed,
+  }: { named?: (value: string) => string; unnamed?: string } = {}
+) {
+  return (running: string, done: string) => (view: ToolView) => {
+    const value = text(name(view));
+
+    if (view.active) {
+      return running;
+    }
+
+    if (value) {
+      return `${done} ${named(value)}`;
+    }
+
+    return unnamed ? `${done} ${unnamed}` : running;
+  };
+}
+
 export function seconds(value: unknown) {
   const ms = count(value);
 

@@ -1,4 +1,5 @@
 import { UserAvatar } from '@/components/account-menu';
+import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
@@ -107,11 +108,7 @@ function Picture() {
           )}
         </div>
       </div>
-      {error && (
-        <p className='text-sm text-destructive' role='alert'>
-          {error.message}
-        </p>
-      )}
+      {error && <ErrorMessage>{error.message}</ErrorMessage>}
     </section>
   );
 }

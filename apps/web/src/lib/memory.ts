@@ -1,11 +1,8 @@
-import {
-  queryOptions,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
+import { useRefreshMutation } from './mutations';
 
 export type MemoryState = InferResponseType<typeof client.memory.$get, 200>;
 
@@ -33,12 +30,8 @@ export function removeMemory(id: string) {
 export function useMemoryUpdate<T>(
   mutationFn: (value: T) => Promise<MemoryState>
 ) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    meta: { inlineError: true },
-    mutationFn,
-    onSuccess: (state) =>
-      queryClient.setQueryData(memoryQueryOptions.queryKey, state),
+  return useRefreshMutation(mutationFn, {
+    inlineError: true,
+    set: memoryQueryOptions.queryKey,
   });
 }

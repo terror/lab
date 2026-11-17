@@ -1,7 +1,7 @@
-import { untilRun } from '@/lib/schedules';
+import { untilRun } from '@/lib/time';
 import { CalendarClock } from 'lucide-react';
 
-import { count, field, plural, text } from './format';
+import { count, field, namedTitle, plural, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 
@@ -34,17 +34,10 @@ function taskPreview({ details }: ToolView) {
   );
 }
 
-function taskTitle(running: string, done: string) {
-  return ({ active, details }: ToolView) => {
-    const name = text(field(field(details, 'task'), 'title'));
-
-    if (active) {
-      return running;
-    }
-
-    return name ? `${done} “${name}”` : `${done} a task`;
-  };
-}
+const taskTitle = namedTitle(
+  ({ details }) => field(field(details, 'task'), 'title'),
+  { unnamed: 'a task' }
+);
 
 export const scheduleRenderers = {
   schedule_create: {
