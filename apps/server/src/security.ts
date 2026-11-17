@@ -25,3 +25,14 @@ export function contentSecurityPolicy(html: string) {
     workerSrc: ["'self'", 'blob:'],
   };
 }
+
+export const docsSecurityPolicy = {
+  connectSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+  defaultSrc: ["'self'"],
+  fontSrc: ["'self'", 'data:', 'https://fonts.scalar.com'],
+  frameAncestors: ["'none'"],
+  imgSrc: ["'self'", 'data:'],
+  objectSrc: ["'none'"],
+  scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.scalar.com'],
+};
