@@ -5,6 +5,8 @@ import { env } from './env';
 
 const bridge = `<script>
 (() => {
+  delete window.RTCPeerConnection;
+  delete window.webkitRTCPeerConnection;
   const send = (message) => parent.postMessage(message, '*');
   window.lab = { send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }) };
   const size = () => send({ type: 'size', height: Math.ceil(document.documentElement.getBoundingClientRect().height) });
@@ -15,6 +17,12 @@ const bridge = `<script>
   addEventListener('securitypolicyviolation', (event) => send({ type: 'error', message: 'Blocked ' + event.effectiveDirective + ' ' + event.blockedURI }));
 })();
 </script>`;
+
+const prefetch = '<meta http-equiv="x-dns-prefetch-control" content="off">';
+
+function literal(value: string) {
+  return JSON.stringify(value).replaceAll('<', '\\u003c');
+}
 
 const runner = `(() => {
   const frames = [document.getElementById('a'), document.getElementById('b')];
@@ -44,7 +52,7 @@ const runner = `(() => {
           const next = 1 - shown;
           pending = next;
           frames[next].setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
-          frames[next].srcdoc = (scripts ? ${JSON.stringify(bridge).replaceAll('<', '\\u003c')} : '') + message.html;
+          frames[next].srcdoc = ${literal(prefetch)} + (scripts ? ${literal(bridge)} : '') + message.html;
         }
       };
       port.postMessage({ type: 'ready' });
@@ -61,7 +69,7 @@ const runner = `(() => {
     if (data.type === 'error' && typeof data.message === 'string') {
       port.postMessage({ type: 'error', message: data.message.slice(0, 500) });
     }
-    if (data.type === 'send' && typeof data.text === 'string') {
+    if (data.type === 'send' && typeof data.text === 'string' && navigator.userActivation.isActive) {
       port.postMessage({ type: 'send', text: data.text.slice(0, 2000) });
     }
   });
@@ -90,6 +98,7 @@ export function framePolicy(origin: string) {
     'media-src data: blob:',
     'font-src data:',
     "connect-src 'none'",
+    "webrtc 'block'",
     "form-action 'none'",
     "base-uri 'none'",
     "object-src 'none'",
@@ -123,15 +132,19 @@ const frame = new Hono()
       'x-content-type-options': 'nosniff',
     });
   })
-  .get('/', (c) =>
-    c.html(page, 200, {
+  .get('/', (c) => {
+    const origin = new URL(env.LAB_ORIGIN).origin;
+
+    return c.html(page, 200, {
       'cache-control': 'no-store',
-      'content-security-policy': framePolicy(new URL(env.LAB_ORIGIN).origin),
+      'connection-allowlist': `("${origin}/frame/vendor/*")`,
+      'content-security-policy': framePolicy(origin),
       'permissions-policy':
         'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), clipboard-read=(), clipboard-write=()',
       'referrer-policy': 'no-referrer',
       'x-content-type-options': 'nosniff',
-    })
-  );
+      'x-dns-prefetch-control': 'off',
+    });
+  });
 
 export default frame;
