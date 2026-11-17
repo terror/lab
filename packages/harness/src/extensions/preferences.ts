@@ -13,6 +13,7 @@ import {
   type Preferences,
   defaultPreferences,
 } from '../preferences';
+import { failure, text } from './results';
 
 export const PreferencesDoc = defineDoc<Preferences>({
   kind: 'lab.preferences',
@@ -59,15 +60,7 @@ const preferencesUpdate = defineTool({
     };
 
     if (Object.keys(change).length === 0) {
-      return {
-        isError: true,
-        output: [
-          {
-            text: 'Pass at least one setting to change.',
-            type: 'text' as const,
-          },
-        ],
-      };
+      return failure('Pass at least one setting to change.');
     }
 
     const preferences = await api.commit(async (tx) => {
@@ -80,12 +73,9 @@ const preferencesUpdate = defineTool({
 
     return {
       details: { change, preferences },
-      output: [
-        {
-          text: `Changed ${Object.keys(change).join(', ')}. The user's settings are now: ${describe(preferences)}.`,
-          type: 'text' as const,
-        },
-      ],
+      output: text(
+        `Changed ${Object.keys(change).join(', ')}. The user's settings are now: ${describe(preferences)}.`
+      ),
     };
   },
 });

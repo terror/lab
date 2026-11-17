@@ -8,6 +8,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { errorMessage, failure, once, text } from './results';
+
 export const SANDBOX_OUTPUT_LENGTH = 100_000;
 
 export const networkModes = ['full', 'registries', 'none'] as const;
@@ -83,17 +85,6 @@ export type SandboxAccess = {
   ): Promise<SandboxWrite>;
 };
 
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(error: unknown): ToolExecutionResult {
-  return {
-    isError: true,
-    output: text(error instanceof Error ? error.message : String(error)),
-  };
-}
-
 function page(content: string, offset: number) {
   const end = Math.min(content.length, offset + SANDBOX_OUTPUT_LENGTH);
 
@@ -156,10 +147,7 @@ export function sandbox(access: SandboxAccess) {
           output: text(run.output ? `${header}\n\n${run.output}` : header),
         };
       } catch (error) {
-        return {
-          isError: true,
-          output: text(error instanceof Error ? error.message : String(error)),
-        };
+        return failure(errorMessage(error));
       }
     },
   });
@@ -204,7 +192,7 @@ export function sandbox(access: SandboxAccess) {
           output: text(page(file.text, start)),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });
@@ -233,7 +221,7 @@ export function sandbox(access: SandboxAccess) {
           output: text(`Wrote ${written.size} bytes to ${written.path}.`),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });
@@ -254,7 +242,7 @@ export function sandbox(access: SandboxAccess) {
           output: text(listing || 'No files.'),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });
@@ -282,7 +270,7 @@ export function sandbox(access: SandboxAccess) {
           ),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });
@@ -304,13 +292,9 @@ export function sandbox(access: SandboxAccess) {
     }),
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
       try {
-        const saved =
-          (await api.memo<SavedFile>('saved', context)) ??
-          (await api.memo(
-            'saved',
-            await access.save(api.conversationId, args.path, args.name),
-            context
-          ));
+        const saved = await once(api, 'saved', context, () =>
+          access.save(api.conversationId, args.path, args.name)
+        );
 
         return {
           details: saved,
@@ -319,7 +303,7 @@ export function sandbox(access: SandboxAccess) {
           ),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });

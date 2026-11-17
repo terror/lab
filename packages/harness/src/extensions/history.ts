@@ -9,6 +9,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { MemoryDoc } from './memory';
+import { failure, text } from './results';
 
 export const HISTORY_READ_LENGTH = 100_000;
 
@@ -32,10 +33,6 @@ export type HistoryAccess = {
 const DISABLED =
   'Referencing other chats is turned off. The user can turn it on in Settings → Memory.';
 
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
 async function enabled(api: ToolExecutionApi, context: Context) {
   return (await api.snapshot(MemoryDoc, context))?.referenceChats === true;
 }
@@ -58,7 +55,7 @@ export function history(access: HistoryAccess) {
     }),
     execute: async ({ query }, api, context): Promise<ToolExecutionResult> => {
       if (!(await enabled(api, context))) {
-        return { isError: true, output: text(DISABLED) };
+        return failure(DISABLED);
       }
 
       const matches = await access.search(api.conversationId, query);
@@ -93,13 +90,13 @@ export function history(access: HistoryAccess) {
       context
     ): Promise<ToolExecutionResult> => {
       if (!(await enabled(api, context))) {
-        return { isError: true, output: text(DISABLED) };
+        return failure(DISABLED);
       }
 
       const transcript = await access.read(api.conversationId, id);
 
       if (!transcript) {
-        return { isError: true, output: text(`No chat has the id ${id}.`) };
+        return failure(`No chat has the id ${id}.`);
       }
 
       const start = Math.min(offset ?? 0, transcript.text.length);

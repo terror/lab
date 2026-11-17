@@ -9,6 +9,7 @@ import {
 import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
+import { failure, once, text } from './results';
 
 export type ScheduledTask = {
   conversationId: number | null;
@@ -60,14 +61,6 @@ export const ProfileDoc = defineDoc<{ timezone: string }>({
   initial: () => ({ timezone: 'UTC' }),
   checkpointWhen: () => true,
 });
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(message: string): ToolExecutionResult {
-  return { isError: true, output: text(message) };
-}
 
 function line(task: ScheduledTask) {
   const state = task.enabled
@@ -167,13 +160,9 @@ export function schedule(access: ScheduleAccess) {
         };
       }
 
-      const task =
-        (await api.memo<ScheduledTask>('task', context)) ??
-        (await api.memo(
-          'task',
-          await access.create(api.conversationId, { ...args, timezone: zone }),
-          context
-        ));
+      const task = await once(api, 'task', context, () =>
+        access.create(api.conversationId, { ...args, timezone: zone })
+      );
 
       return {
         details: { approval, task },
