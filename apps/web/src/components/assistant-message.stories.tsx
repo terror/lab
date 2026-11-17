@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react';
 import { expect } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
-import { AssistantMessage } from './assistant-message';
+import { Activity, AssistantMessage } from './assistant-message';
 
 const answer = `Here is a **three day** plan.
 
@@ -69,3 +70,26 @@ export const LongRunningStep = meta.story({
     await expect(canvasElement.scrollWidth).toBe(canvasElement.clientWidth);
   },
 });
+
+const steps = [
+  'Reading package.json',
+  'Running bun install',
+  'Searching for “status”',
+  'Reading status.ts',
+  'Running the tests',
+  'Comparing timings',
+];
+
+function RapidActivity() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setStep((current) => current + 1), 150);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return <Activity status={steps[step % steps.length] ?? ''} />;
+}
+
+export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
