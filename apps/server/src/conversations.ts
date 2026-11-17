@@ -9,7 +9,7 @@ import {
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import { ANSWER_LENGTH, QuestionsDoc, TitleDoc } from '@lab/harness';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
@@ -135,7 +135,8 @@ const owned = createMiddleware<{
     .where(
       and(
         eq(schema.conversation.id, Number(c.req.param('id'))),
-        eq(schema.conversation.ownerId, c.get('user').id)
+        eq(schema.conversation.ownerId, c.get('user').id),
+        isNull(schema.conversation.deletedAt)
       )
     );
 

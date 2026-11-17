@@ -532,6 +532,8 @@ test('deleted conversations go to the trash until purged', async () => {
 
   const after = await call(headers, 'GET', '/trash');
 
+  const hidden = await call(headers, 'GET', `/conversations/${kept}`);
+
   await call(headers, 'DELETE', '/trash');
 
   const tombstones = await db
@@ -541,6 +543,7 @@ test('deleted conversations go to the trash until purged', async () => {
 
   expect({
     after: after.body.items.map(({ id }: { id: number }) => id),
+    hidden,
     again: (await call(headers, 'DELETE', `/trash/conversation/${purged}`))
       .status,
     listed: (
@@ -559,6 +562,7 @@ test('deleted conversations go to the trash until purged', async () => {
   }).toEqual({
     after: [kept],
     again: 404,
+    hidden: { body: { error: 'Conversation not found' }, status: 404 },
     listed: [restored],
     purge: 204,
     tombstones: [kept, purged].toSorted((a, b) => a - b),
