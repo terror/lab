@@ -48,6 +48,8 @@ test('tools describe themselves while running and when done', () => {
       { command: 'ls\npwd' },
       { durationMs: 1500, exitCode: 0 }
     ),
+    line('sandbox_write', false, { path: 'bar.txt' }, { size: 3 }),
+    line('sandbox_save', false, {}, { name: 'bar.csv' }),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -68,6 +70,8 @@ test('tools describe themselves while running and when done', () => {
     ['Read “foo”', 'bar.com'],
     ['Asking you a question', undefined],
     ['Ran ls', 'exit 0 · 1.5s'],
+    ['Wrote bar.txt', '3B'],
+    ['Saved bar.csv to your library', undefined],
     ['Ran foo', undefined],
   ]);
 });

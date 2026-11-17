@@ -42,7 +42,10 @@ export {
   SANDBOX_OUTPUT_LENGTH,
   type SandboxAccess,
   type SandboxCommand,
+  type SandboxFile,
   type SandboxRun,
+  type SandboxWrite,
+  type SavedFile,
 } from './sandbox';
 export { TitleDoc } from './title';
 export {

@@ -10,6 +10,7 @@ import { db } from './db';
 import { messageData } from './message-entry';
 import { backfill, entryChanges, observe } from './pipeline';
 import { contains, owners } from './records';
+import { decodeText } from './text';
 import { validator } from './validator';
 
 const table = schema.libraryItem;
@@ -113,13 +114,18 @@ async function record(entries: readonly EntryRecord[]) {
   for (const entry of entries) {
     const ownerId = owned.get(entry.conversationId);
 
-    const rows = (ownerId ? items(entry, ownerId) : []).map((row) => ({
+    const attachedRows = (ownerId ? items(entry, ownerId) : []).map((row) => ({
       ...row,
       uploadId:
         row.uploadId && uploads.get(row.uploadId) === row.ownerId
           ? row.uploadId
           : null,
     }));
+
+    const rows: Item[] = [
+      ...attachedRows,
+      ...(ownerId ? await savedItems(entry, ownerId) : []),
+    ];
 
     if (rows.length > 0) {
       await db.insert(table).values(rows).onConflictDoNothing();
@@ -140,8 +146,95 @@ async function uploadOwners(ids: readonly string[]) {
   return new Map(rows.map(({ id, ownerId }) => [id, ownerId]));
 }
 
+const savedSchema = z.object({
+  mimeType: z.string(),
+  name: z.string(),
+  uploadId: z.string(),
+});
+
+function savedFile(entry: EntryRecord) {
+  const message = entry.model?.[0];
+
+  if (
+    message?.role !== 'toolResult' ||
+    message.toolName !== 'sandbox_save' ||
+    message.isError
+  ) {
+    return undefined;
+  }
+
+  return savedSchema.safeParse(message.details).data;
+}
+
+const imageTypes = new Set([
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+async function savedItems(
+  entry: EntryRecord,
+  ownerId: string
+): Promise<Item[]> {
+  const saved = savedFile(entry);
+
+  if (!saved) {
+    return [];
+  }
+
+  const [upload] = await db
+    .select({ content: schema.upload.content })
+    .from(schema.upload)
+    .where(
+      and(
+        eq(schema.upload.id, saved.uploadId),
+        eq(schema.upload.ownerId, ownerId)
+      )
+    );
+
+  if (!upload) {
+    return [];
+  }
+
+  const base = {
+    conversationId: entry.conversationId,
+    createdAt: new Date(entry.model?.[0]?.timestamp ?? Date.now()),
+    entryId: entry.id,
+    name: saved.name,
+    ownerId,
+    position: 0,
+    uploadId: saved.uploadId,
+  };
+
+  if (imageTypes.has(saved.mimeType)) {
+    return [
+      {
+        ...base,
+        content: upload.content,
+        kind: 'image',
+        mimeType: saved.mimeType,
+        size: upload.content.byteLength,
+      },
+    ];
+  }
+
+  const text = decodeText(upload.content) ?? '';
+
+  return [
+    {
+      ...base,
+      content: new TextEncoder().encode(text),
+      kind: 'file',
+      mimeType: 'text/plain',
+      preview: text.slice(0, PREVIEW_LENGTH) || null,
+      size: upload.content.byteLength,
+    },
+  ];
+}
+
 function attached(entry: EntryRecord) {
-  return attachments(entry).length > 0;
+  return attachments(entry).length > 0 || savedFile(entry) !== undefined;
 }
 
 export const flushLibrary = observe(
