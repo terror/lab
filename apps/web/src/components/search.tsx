@@ -24,7 +24,7 @@ import {
   type SettingsSection,
   selectSettingsSection,
   settingsSectionInfo,
-  settingsSections,
+  useSettingsSections,
 } from '@/lib/settings';
 import { useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
@@ -208,6 +208,7 @@ function useResultGroups(query: string, onDone: () => void) {
   const results = useWorkspaceSearch(query);
   const projectNames = useProjectNames();
   const go = useGo(onDone);
+  const sections = useSettingsSections();
 
   const data = query ? results.data : undefined;
 
@@ -255,7 +256,7 @@ function useResultGroups(query: string, onDone: () => void) {
         title: task.title,
       })),
       settings: query
-        ? settingsSections
+        ? sections
             .filter((id) =>
               settingsSectionInfo[id].label.toLowerCase().includes(lower)
             )
@@ -268,7 +269,7 @@ function useResultGroups(query: string, onDone: () => void) {
             }))
         : [],
     }),
-    [data, go, lower, projectNames, query]
+    [data, go, lower, projectNames, query, sections]
   );
 }
 

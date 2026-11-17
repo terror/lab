@@ -1,7 +1,7 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, spyOn, test } from 'bun:test';
 
-import { signIn } from '../test/auth';
+import { signInAdmin } from '../test/auth';
 import { call, chat, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 
@@ -35,7 +35,7 @@ async function respond(input: string | Request | URL, init?: RequestInit) {
 }
 
 test('the agent searches the web and reads any page', async () => {
-  const headers = await signIn();
+  const headers = await signInAdmin();
 
   const exa = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(respond, { preconnect: fetch.preconnect })

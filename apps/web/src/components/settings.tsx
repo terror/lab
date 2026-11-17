@@ -20,8 +20,8 @@ import { usePreference } from '@/lib/preferences';
 import {
   type SettingsSection,
   settingsSectionInfo,
-  settingsSections,
   useSettingsSection,
+  useSettingsSections,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
@@ -104,7 +104,10 @@ const panels: Record<SettingsSection, ComponentType> = {
 };
 
 export function Settings() {
-  const [section, setSection] = useSettingsSection();
+  const [stored, setSection] = useSettingsSection();
+  const sections = useSettingsSections();
+
+  const section = sections.includes(stored) ? stored : 'appearance';
 
   const Panel = panels[section];
   const router = useRouter();
@@ -132,7 +135,7 @@ export function Settings() {
           aria-label='Settings'
           className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
         >
-          {settingsSections.map((id) => {
+          {sections.map((id) => {
             const { icon: Icon, label } = settingsSectionInfo[id];
 
             return (

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { requireUser } from './auth';
+import { requireAdmin, requireUser } from './auth';
 import { credentials } from './credentials';
 import { found } from './found';
 import { keyProviders } from './models';
@@ -54,6 +54,7 @@ function provider(id: string) {
 
 const providers = new Hono()
   .use(requireUser)
+  .use(requireAdmin)
   .get('/', async (c) => {
     const stored = new Set(
       (await credentials.list()).map(({ providerId }) => providerId)

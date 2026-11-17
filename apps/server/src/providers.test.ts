@@ -2,13 +2,13 @@ import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
-import { signIn } from '../test/auth';
+import { signIn, signInAdmin } from '../test/auth';
 import { call } from '../test/client';
 import { credentials } from './credentials';
 import { db } from './db';
 
 test('provider keys can be added and removed', async () => {
-  const headers = await signIn();
+  const headers = await signInAdmin();
 
   async function groq() {
     const { body } = await call(headers, 'GET', '/providers');
@@ -84,7 +84,7 @@ test('provider keys can be added and removed', async () => {
 
 test('unknown providers are rejected', async () => {
   expect(
-    await call(await signIn(), 'PUT', '/providers/foo', {
+    await call(await signInAdmin(), 'PUT', '/providers/foo', {
       apiKey: 'bar',
       method: 'api_key',
     })
@@ -92,7 +92,7 @@ test('unknown providers are rejected', async () => {
 });
 
 test('environment variables do not configure providers', async () => {
-  const headers = await signIn();
+  const headers = await signInAdmin();
 
   process.env.GROQ_API_KEY = 'foo';
 
@@ -124,7 +124,7 @@ test('environment variables do not configure providers', async () => {
 });
 
 test('keys that cannot be decrypted count as disconnected', async () => {
-  const headers = await signIn();
+  const headers = await signInAdmin();
 
   await db
     .insert(schema.providerCredential)
@@ -160,7 +160,7 @@ test('keys that cannot be decrypted count as disconnected', async () => {
 });
 
 test('providers with extra fields store them with the key', async () => {
-  const headers = await signIn();
+  const headers = await signInAdmin();
 
   const missing = await call(headers, 'PUT', '/providers/vercel-sandbox', {
     apiKey: 'foo',
@@ -185,5 +185,20 @@ test('providers with extra fields store them with the key', async () => {
       key: 'foo',
       type: 'api_key',
     },
+  });
+});
+
+test('only the admin manages providers', async () => {
+  const admin = await signInAdmin();
+  const user = await signIn();
+
+  expect({
+    admin: (await call(admin, 'GET', '/profile')).body,
+    providers: await call(user, 'GET', '/providers'),
+    user: (await call(user, 'GET', '/profile')).body,
+  }).toEqual({
+    admin: { admin: true },
+    providers: { body: { error: 'Only the admin can do this' }, status: 403 },
+    user: { admin: false },
   });
 });
