@@ -113,6 +113,8 @@ function SkillForm({
         <Field>
           <FieldLabel htmlFor='skill-name'>Name</FieldLabel>
           <Input
+            autoComplete='off'
+            data-1p-ignore
             id='skill-name'
             maxLength={64}
             onChange={(event) => edit('name')(event.target.value)}
@@ -122,6 +124,8 @@ function SkillForm({
         <Field>
           <FieldLabel htmlFor='skill-description'>When to use it</FieldLabel>
           <Input
+            autoComplete='off'
+            data-1p-ignore
             id='skill-description'
             maxLength={300}
             onChange={(event) => edit('description')(event.target.value)}
@@ -132,6 +136,8 @@ function SkillForm({
           <FieldLabel htmlFor='skill-instructions'>Instructions</FieldLabel>
           <Textarea
             className='max-h-80 min-h-40'
+            autoComplete='off'
+            data-1p-ignore
             id='skill-instructions'
             maxLength={20_000}
             onChange={(event) => edit('instructions')(event.target.value)}
