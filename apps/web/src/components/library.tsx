@@ -1,4 +1,5 @@
 import { Tile } from '@/components/library-tile';
+import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
 import { Button } from '@/components/ui/button';
 import {
@@ -299,11 +300,7 @@ export function Library() {
             </button>
           ))}
         </fieldset>
-        {library.error && (
-          <p role='alert' className='text-sm text-destructive'>
-            Unable to load your library.
-          </p>
-        )}
+        {library.error && <LoadError subject='your library' />}
         {library.empty && (
           <Empty searching={query.length > 0 || filter !== 'all'} />
         )}

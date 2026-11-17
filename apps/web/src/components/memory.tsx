@@ -1,3 +1,4 @@
+import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -112,11 +113,7 @@ export function Memory() {
           What Lab remembers about you across chats.
         </p>
       </div>
-      {memory.isError && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load memory.
-        </p>
-      )}
+      {memory.isError && <LoadError subject='memory' />}
       {memory.data && (
         <>
           <ReferenceChats enabled={memory.data.referenceChats} />

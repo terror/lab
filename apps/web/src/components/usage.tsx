@@ -1,4 +1,5 @@
 import { BudgetPanel } from '@/components/budget';
+import { LoadError } from '@/components/load-error';
 import {
   Select,
   SelectContent,
@@ -205,11 +206,7 @@ export function UsagePanel() {
         </Select>
       </div>
       <BudgetPanel />
-      {usage.isError && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load usage.
-        </p>
-      )}
+      {usage.isError && <LoadError subject='usage' />}
       {usage.data && (
         <>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
