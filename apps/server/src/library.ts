@@ -9,8 +9,8 @@ import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { messageData } from './message-entry';
-import { backfill, entryChanges, observe } from './pipeline';
-import { contains, owners } from './records';
+import { entryPipeline } from './pipeline';
+import { contains } from './records';
 import { decodeText } from './text';
 import { idParam, validator } from './validator';
 
@@ -101,37 +101,38 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
   return [...imageItems, ...fileItems];
 }
 
-async function record(entries: readonly EntryRecord[]) {
-  const owned = await owners(
-    entries.map(({ conversationId }) => conversationId)
-  );
-
+async function libraryRows(
+  entries: readonly EntryRecord[],
+  owned: ReadonlyMap<number, string>
+) {
   const uploads = await uploadOwners(
     entries.flatMap((entry) =>
       attachments(entry).flatMap(({ uploadId }) => uploadId ?? [])
     )
   );
 
-  for (const entry of entries) {
-    const ownerId = owned.get(entry.conversationId);
+  const rows = await Promise.all(
+    entries.map(async (entry): Promise<Item[]> => {
+      const ownerId = owned.get(entry.conversationId);
 
-    const attachedRows = (ownerId ? items(entry, ownerId) : []).map((row) => ({
-      ...row,
-      uploadId:
-        row.uploadId && uploads.get(row.uploadId) === row.ownerId
-          ? row.uploadId
-          : null,
-    }));
+      if (!ownerId) {
+        return [];
+      }
 
-    const rows: Item[] = [
-      ...attachedRows,
-      ...(ownerId ? await savedItems(entry, ownerId) : []),
-    ];
+      return [
+        ...items(entry, ownerId).map((row) => ({
+          ...row,
+          uploadId:
+            row.uploadId && uploads.get(row.uploadId) === row.ownerId
+              ? row.uploadId
+              : null,
+        })),
+        ...(await savedItems(entry, ownerId)),
+      ];
+    })
+  );
 
-    if (rows.length > 0) {
-      await db.insert(table).values(rows).onConflictDoNothing();
-    }
-  }
+  return rows.flat();
 }
 
 async function uploadOwners(ids: readonly string[]) {
@@ -238,20 +239,14 @@ function attached(entry: EntryRecord) {
   return attachments(entry).length > 0 || savedFile(entry) !== undefined;
 }
 
-export const flushLibrary = observe(
-  (changes) => entryChanges(changes, attached),
-  record
-);
+export const libraryPipeline = entryPipeline({
+  keep: attached,
+  name: 'library',
+  rows: libraryRows,
+  store: (rows) => db.insert(table).values(rows).onConflictDoNothing(),
+});
 
-export async function backfillLibrary() {
-  const conversations = await db
-    .select({ id: schema.conversation.id })
-    .from(schema.conversation);
-
-  for (const { id } of conversations) {
-    await backfill('library', id, (page) => record(page.filter(attached)));
-  }
-}
+export const flushLibrary = libraryPipeline.flush;
 
 async function uploadFor(id: number, ownerId: string) {
   const [row] = await db

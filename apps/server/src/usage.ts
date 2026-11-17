@@ -1,94 +1,48 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, desc, eq, gte, isNull, notExists, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
-import { flushHelperUsage } from './helper-usage';
+import { flushHelperUsage, usageFields } from './helper-usage';
 import { models as catalog } from './models';
-import { eachEntry, entryChanges, observe } from './pipeline';
+import { entryPipeline } from './pipeline';
 import { policy } from './policy';
-import { owners } from './records';
 import { validator } from './validator';
 
 const table = schema.usageEvent;
-
-function event(entry: EntryRecord, ownerId: string) {
-  const message = entry.model?.[0];
-
-  if (message?.role !== 'assistant') {
-    return [];
-  }
-
-  const { usage } = message;
-
-  return [
-    {
-      cacheRead: usage.cacheRead,
-      cacheWrite: usage.cacheWrite,
-      conversationId: entry.conversationId,
-      cost: usage.cost.total,
-      createdAt: new Date(message.timestamp),
-      entryId: entry.id,
-      input: usage.input,
-      model: message.model,
-      output: usage.output,
-      ownerId,
-      provider: message.provider,
-    },
-  ];
-}
-
-async function record(entries: readonly EntryRecord[]) {
-  const owned = await owners(
-    entries.map(({ conversationId }) => conversationId)
-  );
-
-  const rows = entries.flatMap((entry) => {
-    const ownerId = owned.get(entry.conversationId);
-
-    return ownerId ? event(entry, ownerId) : [];
-  });
-
-  if (rows.length > 0) {
-    await db.insert(table).values(rows).onConflictDoNothing();
-  }
-}
 
 function assistant(entry: EntryRecord) {
   return entry.model?.[0]?.role === 'assistant';
 }
 
-export const flushUsage = observe(
-  (changes) => entryChanges(changes, assistant),
-  record
-);
+export const usagePipeline = entryPipeline({
+  keep: assistant,
+  name: 'usage',
+  rows: (entries, owned) =>
+    entries.flatMap((entry) => {
+      const message = entry.model?.[0];
 
-export async function backfillUsage() {
-  const missing = await db
-    .select({ id: schema.conversation.id })
-    .from(schema.conversation)
-    .where(
-      notExists(
-        db
-          .select()
-          .from(table)
-          .where(
-            and(
-              eq(table.conversationId, schema.conversation.id),
-              eq(table.kind, 'response')
-            )
-          )
-      )
-    );
+      const ownerId = owned.get(entry.conversationId);
 
-  for (const { id } of missing) {
-    await eachEntry(id, (page) => record(page.filter(assistant)));
-  }
-}
+      return message?.role === 'assistant' && ownerId
+        ? [
+            {
+              ...usageFields(message),
+              conversationId: entry.conversationId,
+              entryId: entry.id,
+              ownerId,
+            },
+          ]
+        : [];
+    }),
+  store: (rows) => db.insert(table).values(rows).onConflictDoNothing(),
+});
+
+export const flushUsage = usagePipeline.flush;
 
 const range = validator(
   'query',

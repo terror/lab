@@ -5,30 +5,37 @@ import type { HelperKind } from '@lab/harness';
 import { db } from './db';
 import { conversationOwner, serial } from './records';
 
-async function record(
-  conversationId: number,
-  kind: HelperKind,
-  { model, provider, timestamp, usage }: AssistantMessage
-) {
-  const ownerId = await conversationOwner(conversationId);
+type UsageEvent = typeof schema.usageEvent.$inferInsert;
 
-  if (!ownerId) {
-    return;
-  }
-
-  await db.insert(schema.usageEvent).values({
+export function usageFields({
+  model,
+  provider,
+  timestamp,
+  usage,
+}: AssistantMessage) {
+  return {
     cacheRead: usage.cacheRead,
     cacheWrite: usage.cacheWrite,
-    conversationId,
     cost: usage.cost.total,
     createdAt: new Date(timestamp),
     input: usage.input,
-    kind,
     model,
     output: usage.output,
-    ownerId,
     provider,
-  });
+  };
+}
+
+export async function recordUsage(
+  conversationId: number,
+  event: Omit<UsageEvent, 'conversationId' | 'ownerId'>
+) {
+  const ownerId = await conversationOwner(conversationId);
+
+  if (ownerId) {
+    await db
+      .insert(schema.usageEvent)
+      .values({ ...event, conversationId, ownerId });
+  }
 }
 
 const queue = serial();
@@ -38,7 +45,9 @@ export function recordHelperUsage(
   kind: HelperKind,
   message: AssistantMessage
 ) {
-  queue.run(() => record(conversationId, kind, message));
+  queue.run(() =>
+    recordUsage(conversationId, { ...usageFields(message), kind })
+  );
 }
 
 export const flushHelperUsage = queue.flush;

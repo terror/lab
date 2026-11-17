@@ -1,8 +1,8 @@
 import { flushHelperUsage } from './helper-usage';
-import { backfillHistory, flushHistory } from './history';
-import { backfillLibrary, flushLibrary } from './library';
+import { historyPipeline } from './history';
+import { libraryPipeline } from './library';
 import { flushProjections, projectAll } from './projections';
-import { backfillUsage, flushUsage } from './usage';
+import { usagePipeline } from './usage';
 
 type Pipeline = {
   backfill?: () => Promise<unknown>;
@@ -11,10 +11,10 @@ type Pipeline = {
 
 const pipelines: readonly Pipeline[] = [
   { backfill: projectAll, flush: flushProjections },
-  { backfill: backfillUsage, flush: flushUsage },
+  usagePipeline,
   { flush: flushHelperUsage },
-  { backfill: backfillLibrary, flush: flushLibrary },
-  { backfill: backfillHistory, flush: flushHistory },
+  libraryPipeline,
+  historyPipeline,
 ];
 
 export function backfillAll() {

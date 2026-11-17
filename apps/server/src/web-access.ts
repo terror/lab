@@ -1,10 +1,8 @@
-import { schema } from '@lab/db';
 import type { WebAccess, WebRecency } from '@lab/harness';
 import { z } from 'zod';
 
 import { credentials } from './credentials';
-import { db } from './db';
-import { conversationOwner } from './records';
+import { recordUsage } from './helper-usage';
 
 export const searchProviders = [{ id: 'exa', name: 'Exa' }];
 
@@ -56,25 +54,19 @@ const costSchema = z.object({
 });
 
 async function record(conversationId: number, model: string, cost: number) {
-  const ownerId = await conversationOwner(conversationId);
-
-  if (!ownerId || cost <= 0) {
-    return;
+  if (cost > 0) {
+    await recordUsage(conversationId, {
+      cacheRead: 0,
+      cacheWrite: 0,
+      cost,
+      createdAt: new Date(),
+      input: 0,
+      kind: 'web',
+      model,
+      output: 0,
+      provider: 'exa',
+    });
   }
-
-  await db.insert(schema.usageEvent).values({
-    cacheRead: 0,
-    cacheWrite: 0,
-    conversationId,
-    cost,
-    createdAt: new Date(),
-    input: 0,
-    kind: 'web',
-    model,
-    output: 0,
-    ownerId,
-    provider: 'exa',
-  });
 }
 
 async function exa(conversationId: number, path: string, body: object) {
