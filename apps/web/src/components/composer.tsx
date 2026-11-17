@@ -26,6 +26,7 @@ import {
   type SlashCommand,
   matchCommands,
 } from '@/lib/commands';
+import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
@@ -36,6 +37,7 @@ import {
   CornerDownRight,
   FileText,
   LibraryBig,
+  Mic,
   Paperclip,
   Plus,
   Square,
@@ -107,6 +109,42 @@ function AttachmentPreview({
         <X aria-hidden='true' className='size-3' />
       </button>
     </div>
+  );
+}
+
+function DictateButton({
+  disabled,
+  listening,
+  onClick,
+}: {
+  disabled: boolean;
+  listening: boolean;
+  onClick: () => void;
+}) {
+  const label = listening ? 'Stop dictation' : 'Dictate';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          aria-label={label}
+          aria-pressed={listening}
+          className={cn(
+            'rounded-full',
+            listening &&
+              'bg-foreground text-background hover:bg-foreground/90 hover:text-background motion-safe:animate-pulse'
+          )}
+          disabled={disabled}
+          onClick={onClick}
+          size='icon'
+          type='button'
+          variant='ghost'
+        >
+          <Mic aria-hidden='true' />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -191,6 +229,13 @@ export function Composer({
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
 
+  const dictation = useDictation({ draft, onDraftChange });
+
+  const listening = dictation.state.kind === 'listening';
+
+  const dictationError =
+    dictation.state.kind === 'failed' ? dictation.state.message : undefined;
+
   const steering = running === true && !empty && onSteer !== undefined;
 
   const room = MAX_ATTACHMENTS - attachments.length;
@@ -238,6 +283,8 @@ export function Composer({
     if (empty || submitting) {
       return;
     }
+
+    dictation.stop();
 
     if (steer && onSteer) {
       onSteer(content);
@@ -399,7 +446,13 @@ export function Composer({
           disabled={disabled}
           maxRows={12}
           minRows={1}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            if (listening) {
+              dictation.stop();
+            }
+
+            onDraftChange(event.target.value);
+          }}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder={placeholder}
@@ -496,6 +549,13 @@ export function Composer({
                 </TooltipContent>
               </Tooltip>
             )}
+            {dictation.supported && (
+              <DictateButton
+                disabled={disabled === true}
+                listening={listening}
+                onClick={listening ? dictation.stop : dictation.start}
+              />
+            )}
             <SubmitButton
               disabled={disabled || empty || submitting === true}
               onStop={onStop}
@@ -504,9 +564,9 @@ export function Composer({
           </div>
         </div>
       </div>
-      {(attachError ?? error) && (
+      {(attachError ?? dictationError ?? error) && (
         <ErrorMessage className='mt-2 px-4'>
-          {attachError ?? error}
+          {attachError ?? dictationError ?? error}
         </ErrorMessage>
       )}
     </form>

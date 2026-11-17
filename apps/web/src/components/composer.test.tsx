@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -18,15 +19,17 @@ async function enter(pointer: 'coarse' | 'fine') {
   const onSubmit = vi.fn();
 
   const { screen } = await renderWithQuery(
-    <Composer
-      attachments={[]}
-      draft='foo'
-      model={undefined}
-      onAttachmentsChange={() => undefined}
-      onDraftChange={() => undefined}
-      onModelChange={() => undefined}
-      onSubmit={onSubmit}
-    />
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft='foo'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={onSubmit}
+      />
+    </TooltipProvider>
   );
 
   await screen.getByLabelText('Message').click();
@@ -51,20 +54,22 @@ test('slash commands run from the composer', async () => {
   const onDraftChange = vi.fn();
 
   const { screen } = await renderWithQuery(
-    <Composer
-      attachments={[]}
-      commandContext={{
-        conversationId: 7,
-        lastReply: undefined,
-        newChat: undefined,
-      }}
-      draft='/'
-      model={undefined}
-      onAttachmentsChange={() => undefined}
-      onDraftChange={onDraftChange}
-      onModelChange={() => undefined}
-      onSubmit={() => undefined}
-    />
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        commandContext={{
+          conversationId: 7,
+          lastReply: undefined,
+          newChat: undefined,
+        }}
+        draft='/'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={onDraftChange}
+        onModelChange={() => undefined}
+        onSubmit={() => undefined}
+      />
+    </TooltipProvider>
   );
 
   const options = screen
