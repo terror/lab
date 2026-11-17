@@ -25,17 +25,73 @@ export type SandboxRun = {
   truncated: boolean;
 };
 
+export type SandboxFile = { binary: boolean; size: number; text: string };
+
+export type SandboxWrite = { path: string; size: number };
+
+export type SavedFile = {
+  mimeType: string;
+  name: string;
+  size: number;
+  uploadId: string;
+};
+
 export type SandboxAccess = {
   available(): boolean;
   exec(
     conversationId: ConversationId,
     command: SandboxCommand
   ): Promise<SandboxRun>;
+  list(conversationId: ConversationId, path: string): Promise<string>;
+  read(
+    conversationId: ConversationId,
+    path: string
+  ): Promise<SandboxFile | undefined>;
+  save(
+    conversationId: ConversationId,
+    path: string,
+    name: string | undefined
+  ): Promise<SavedFile>;
+  upload(
+    conversationId: ConversationId,
+    libraryId: number,
+    path: string | undefined
+  ): Promise<SandboxWrite>;
+  write(
+    conversationId: ConversationId,
+    path: string,
+    content: string
+  ): Promise<SandboxWrite>;
 };
 
 function text(value: string) {
   return [{ text: value, type: 'text' as const }];
 }
+
+function failure(error: unknown): ToolExecutionResult {
+  return {
+    isError: true,
+    output: text(error instanceof Error ? error.message : String(error)),
+  };
+}
+
+function page(content: string, offset: number) {
+  const end = Math.min(content.length, offset + SANDBOX_OUTPUT_LENGTH);
+
+  const more =
+    end < content.length
+      ? `\n\n[Showing characters ${offset}–${end} of ${content.length}. Call sandbox_read with offset ${end} to continue.]`
+      : `\n\n[End of file at character ${content.length}.]`;
+
+  return `${content.slice(offset, end)}${more}`;
+}
+
+const path = str({
+  description:
+    "A path on the computer, relative to this chat's working directory unless it starts with /.",
+  maxLength: 1_000,
+  minLength: 1,
+});
 
 export function sandbox(access: SandboxAccess) {
   const sandboxExec = defineTool({
@@ -90,15 +146,182 @@ export function sandbox(access: SandboxAccess) {
     },
   });
 
+  const sandboxRead = defineTool({
+    name: 'sandbox_read',
+    description:
+      "Read a text file from the user's computer, in pages of characters.",
+    parameters: obj({
+      offset: opt(
+        int({ description: 'Character offset to continue from.', minimum: 0 })
+      ),
+      path,
+    }),
+    execute: async (args, api): Promise<ToolExecutionResult> => {
+      try {
+        const file = await access.read(api.conversationId, args.path);
+
+        if (!file) {
+          return failure(`No file at ${args.path}.`);
+        }
+
+        if (file.binary) {
+          return {
+            details: { path: args.path, size: file.size },
+            output: text(
+              `${args.path} is a binary file of ${file.size} bytes. Save it to the library with sandbox_save to share it.`
+            ),
+          };
+        }
+
+        const start = Math.min(args.offset ?? 0, file.text.length);
+
+        return {
+          details: {
+            end: Math.min(file.text.length, start + SANDBOX_OUTPUT_LENGTH),
+            passage: file.text.slice(start, start + 600),
+            path: args.path,
+            start,
+            total: file.text.length,
+          },
+          output: text(page(file.text, start)),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  });
+
+  const sandboxWrite = defineTool({
+    name: 'sandbox_write',
+    description:
+      "Write a text file on the user's computer, creating folders as needed and replacing any existing file.",
+    parameters: obj({
+      content: str({
+        description: 'The full file contents.',
+        maxLength: 1_000_000,
+      }),
+      path,
+    }),
+    execute: async (args, api): Promise<ToolExecutionResult> => {
+      try {
+        const written = await access.write(
+          api.conversationId,
+          args.path,
+          args.content
+        );
+
+        return {
+          details: written,
+          output: text(`Wrote ${written.size} bytes to ${written.path}.`),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  });
+
+  const sandboxList = defineTool({
+    name: 'sandbox_list',
+    description:
+      "List files on the user's computer, two levels deep, with their sizes.",
+    parameters: obj({
+      path: opt(path),
+    }),
+    execute: async (args, api): Promise<ToolExecutionResult> => {
+      try {
+        const listing = await access.list(api.conversationId, args.path ?? '.');
+
+        return {
+          details: { path: args.path ?? '.' },
+          output: text(listing || 'No files.'),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  });
+
+  const sandboxUpload = defineTool({
+    name: 'sandbox_upload',
+    description:
+      "Copy a file from the user's library onto the computer. Find library ids with library_search.",
+    parameters: obj({
+      libraryId: int({ description: 'The library file id.', minimum: 1 }),
+      path: opt(path),
+    }),
+    execute: async (args, api): Promise<ToolExecutionResult> => {
+      try {
+        const written = await access.upload(
+          api.conversationId,
+          args.libraryId,
+          args.path
+        );
+
+        return {
+          details: written,
+          output: text(
+            `Copied library file ${args.libraryId} to ${written.path}.`
+          ),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  });
+
+  const sandboxSave = defineTool({
+    name: 'sandbox_save',
+    description:
+      "Save a file from the computer to the user's library and show it in the chat. Use it for files the user should get, such as reports, images, or exports.",
+    parameters: obj({
+      name: opt(
+        str({
+          description:
+            'The file name to show. Defaults to the file name in the path.',
+          maxLength: 200,
+          minLength: 1,
+        })
+      ),
+      path,
+    }),
+    execute: async (args, api, context): Promise<ToolExecutionResult> => {
+      try {
+        const saved =
+          (await api.memo<SavedFile>('saved', context)) ??
+          (await api.memo(
+            'saved',
+            await access.save(api.conversationId, args.path, args.name),
+            context
+          ));
+
+        return {
+          details: saved,
+          output: text(
+            `Saved ${saved.name} (${saved.size} bytes) to the library.`
+          ),
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  });
+
   return defineExtension({
     name: 'lab.sandbox',
     sections: [
       section('sandbox', async () =>
         access.available()
-          ? "You have a persistent Linux computer for this user. Run commands on it with sandbox_exec when a task needs code, files, or tools. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials."
+          ? "You have a persistent Linux computer for this user. Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials."
           : undefined
       ),
     ],
-    tools: [sandboxExec],
+    tools: [
+      sandboxExec,
+      sandboxList,
+      sandboxRead,
+      sandboxSave,
+      sandboxUpload,
+      sandboxWrite,
+    ],
   });
 }
