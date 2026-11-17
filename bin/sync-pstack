@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source=$(mktemp -d)
+trap 'rm -rf "$source"' EXIT
+
+git clone --quiet --depth 1 --filter=blob:none --sparse \
+  https://github.com/cursor/plugins "$source"
+
+git -C "$source" sparse-checkout set --no-cone /pstack/skills/ /pstack/LICENSE
+
+rm -rf .claude/skills
+mkdir -p .claude/skills
+cp -R "$source/pstack/skills/." .claude/skills/
+cp "$source/pstack/LICENSE" .claude/skills/LICENSE

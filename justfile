@@ -47,6 +47,10 @@ migrate:
   bun run db:migrate
 
 [group: 'setup']
+pstack:
+  bin/sync-pstack
+
+[group: 'setup']
 services:
   docker compose up --no-recreate --wait -d postgres
 
