@@ -7,7 +7,7 @@ import { HTTPException } from 'hono/http-exception';
 import { db } from './db';
 import { env } from './env';
 
-function allowed(email: string | undefined) {
+export function isAdmin({ email }: { email?: string | null }) {
   return email?.toLowerCase() === env.LAB_ADMIN_EMAIL.toLowerCase();
 }
 
@@ -24,7 +24,7 @@ export const auth = betterAuth({
   },
   user: {
     validateUserInfo: ({ user }) => {
-      if (allowed(user.email)) {
+      if (isAdmin(user)) {
         return undefined;
       }
 

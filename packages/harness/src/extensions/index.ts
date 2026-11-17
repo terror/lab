@@ -24,7 +24,7 @@ export {
   type Connector,
   type ConnectorResult,
   type ConnectorTool,
-  connector,
+  connectorsExtension,
   connectorToolName,
 } from './connector';
 export {

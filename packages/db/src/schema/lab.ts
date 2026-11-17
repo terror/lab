@@ -60,13 +60,20 @@ export const conversation = pgTable(
   ]
 );
 
-export const connector = pgTable('connector', {
-  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  name: text('name').notNull(),
-  url: text('url').notNull(),
-  enabled: boolean('enabled').notNull().default(true),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+export const connector = pgTable(
+  'connector',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    url: text('url').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [index('connector_ownerId_idx').on(table.ownerId)]
+);
 
 export const providerCredential = pgTable('provider_credential', {
   providerId: text('provider_id').primaryKey(),

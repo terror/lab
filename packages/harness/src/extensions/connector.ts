@@ -4,6 +4,7 @@ import {
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
+import { createToolSearchTool } from '@earendil-works/pi-durable/tool-search';
 
 import { requestApproval } from './host-input';
 import { errorMessage, failure, once, text } from './results';
@@ -49,11 +50,10 @@ function summary(args: Record<string, unknown>) {
   });
 }
 
-export function connector({ call, name, slug, tools }: Connector) {
+function connectorParts({ call, name, slug, tools }: Connector) {
   const prefix = connectorToolName(slug, '');
 
-  return defineExtension({
-    name: `connector-${slug}`,
+  return {
     sections: [
       section(
         `connector-${slug}`,
@@ -102,5 +102,15 @@ export function connector({ call, name, slug, tools }: Connector) {
         },
       })
     ),
+  };
+}
+
+export function connectorsExtension(name: string, connectors: Connector[]) {
+  const parts = connectors.map(connectorParts);
+
+  return defineExtension({
+    name,
+    sections: parts.flatMap(({ sections }) => sections),
+    tools: [createToolSearchTool(), ...parts.flatMap(({ tools }) => tools)],
   });
 }

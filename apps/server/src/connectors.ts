@@ -1,10 +1,11 @@
 import { schema } from '@lab/db';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { requireUser } from './auth';
+import { PRIVATE_ADDRESS, checkPublicUrl } from './addresses';
+import { type User, isAdmin, requireUser } from './auth';
 import {
   connectorSlug,
   connectorState,
@@ -32,8 +33,12 @@ const change = validator(
     .extend({ enabled: z.boolean().optional() })
 );
 
-async function list() {
-  const rows = await db.select().from(table).orderBy(asc(table.createdAt));
+async function list(ownerId: string) {
+  const rows = await db
+    .select()
+    .from(table)
+    .where(eq(table.ownerId, ownerId))
+    .orderBy(asc(table.createdAt));
 
   return {
     connectors: rows.map(({ enabled, id, name, url }) => {
@@ -52,8 +57,11 @@ async function list() {
   };
 }
 
-async function checkName(name: string, id?: number) {
-  const rows = await db.select({ id: table.id, name: table.name }).from(table);
+async function checkName(ownerId: string, name: string, id?: number) {
+  const rows = await db
+    .select({ id: table.id, name: table.name })
+    .from(table)
+    .where(eq(table.ownerId, ownerId));
 
   const taken = rows.some(
     (row) => row.id !== id && connectorSlug(row.name) === connectorSlug(name)
@@ -66,65 +74,100 @@ async function checkName(name: string, id?: number) {
   }
 }
 
-async function existing(id: number) {
-  const [connector] = await db.select().from(table).where(eq(table.id, id));
+async function checkUrl(user: User, url: string) {
+  if (isAdmin(user)) {
+    return;
+  }
+
+  try {
+    await checkPublicUrl(new URL(url));
+  } catch {
+    throw new HTTPException(400, { message: PRIVATE_ADDRESS });
+  }
+}
+
+async function existing(ownerId: string, id: number) {
+  const [connector] = await db
+    .select()
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.ownerId, ownerId)));
 
   return found(connector, 'Connector not found');
 }
 
 const connectors = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json(await list()))
+  .get('/', async (c) => c.json(await list(c.get('user').id)))
   .post('/', creation, async (c) => {
+    const user = c.get('user');
+
     const { name, url } = c.req.valid('json');
 
-    await checkName(name);
+    await checkName(user.id, name);
+    await checkUrl(user, url);
 
     const [connector] = await db
       .insert(table)
-      .values({ name, url })
+      .values({ name, ownerId: user.id, url })
       .returning();
 
-    await refreshConnector(found(connector, 'Connector not found'));
+    await refreshConnector(
+      found(connector, 'Connector not found'),
+      isAdmin(user)
+    );
 
-    return c.json(await list(), 201);
+    return c.json(await list(user.id), 201);
   })
   .patch('/:id', idParam, change, async (c) => {
+    const user = c.get('user');
+
     const { id } = c.req.valid('param');
 
     const update = c.req.valid('json');
 
-    await existing(id);
+    await existing(user.id, id);
 
     if (update.name !== undefined) {
-      await checkName(update.name, id);
+      await checkName(user.id, update.name, id);
     }
 
     const [connector] = await db
       .update(table)
       .set(update)
-      .where(eq(table.id, id))
+      .where(and(eq(table.id, id), eq(table.ownerId, user.id)))
       .returning();
 
-    await refreshConnector(found(connector, 'Connector not found'));
+    await refreshConnector(
+      found(connector, 'Connector not found'),
+      isAdmin(user)
+    );
 
-    return c.json(await list());
+    return c.json(await list(user.id));
   })
   .post('/:id/reconnect', idParam, async (c) => {
-    await refreshConnector(await existing(c.req.valid('param').id));
+    const user = c.get('user');
 
-    return c.json(await list());
+    await refreshConnector(
+      await existing(user.id, c.req.valid('param').id),
+      isAdmin(user)
+    );
+
+    return c.json(await list(user.id));
   })
   .delete('/:id', idParam, async (c) => {
+    const user = c.get('user');
+
     const { id } = c.req.valid('param');
 
-    await existing(id);
+    await existing(user.id, id);
 
-    await db.delete(table).where(eq(table.id, id));
+    await db
+      .delete(table)
+      .where(and(eq(table.id, id), eq(table.ownerId, user.id)));
 
     await removeConnector(id);
 
-    return c.json(await list());
+    return c.json(await list(user.id));
   });
 
 export default connectors;
