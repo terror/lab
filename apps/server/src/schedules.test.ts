@@ -2,9 +2,16 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 
 import { signIn } from '../test/auth';
-import { call, pendingToolCall, settle, toolOutputs } from '../test/client';
+import {
+  call,
+  pendingToolCall,
+  settle,
+  toolDetails,
+  toolOutputs,
+} from '../test/client';
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
@@ -82,6 +89,27 @@ test('scheduled tasks need approval and run once when due', async () => {
 
   const invalid = await toolOutputs(headers, updating.body.id);
 
+  script(
+    toolCall('schedule_update', { cron: '* * * * *', id: created.id }),
+    fauxAssistantMessage('baz')
+  );
+
+  const retiming = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${retiming.body.id}/answers`, {
+    answer: 'denied',
+    callId: await pendingToolCall(headers, retiming.body.id),
+  });
+
+  await settle(retiming.body.id);
+
+  const approvals = [
+    ...(await toolDetails(headers, approved.id)),
+    ...(await toolDetails(headers, retiming.body.id)),
+  ].map((detail) => z.object({ approval: z.unknown() }).parse(detail).approval);
+
   const paused = await call(headers, 'PATCH', `/schedules/${created.id}`, {
     enabled: false,
   });
@@ -89,6 +117,7 @@ test('scheduled tasks need approval and run once when due', async () => {
   await call(headers, 'DELETE', `/schedules/${created.id}`);
 
   expect({
+    approvals,
     approved: approved.outputs,
     chat: [created.conversationId, ran?.conversationId],
     chats: chats.length,
@@ -100,6 +129,18 @@ test('scheduled tasks need approval and run once when due', async () => {
     paused: [paused.body.task.enabled, paused.body.task.nextRunAt],
     remaining: (await call(headers, 'GET', '/schedules')).body.tasks,
   }).toEqual({
+    approvals: [
+      {
+        action: 'Schedule “foo”',
+        decision: 'approved',
+        summary: ['Every day at 9am (0 9 * * *, UTC)', 'bar'],
+      },
+      {
+        action: 'Change a scheduled task',
+        decision: 'denied',
+        summary: ['Task: foo', 'Cron: * * * * *'],
+      },
+    ],
     approved: [
       `Scheduled [${created.id}] foo: Every day at 9am (0 9 * * *, UTC, next run ${created.nextRunAt}).`,
     ],

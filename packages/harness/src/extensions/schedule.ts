@@ -153,7 +153,7 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
 
       const { approval, approved } = await requestApproval(api, context, {
         action: `Schedule “${args.title}”`,
-        summary: [`${args.description} (${zone})`, args.prompt],
+        summary: [`${args.description} (${args.cron}, ${zone})`, args.prompt],
       });
 
       if (!approved) {
@@ -229,14 +229,26 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
         );
       }
 
+      const task = (await access.list(api.conversationId)).find(
+        (candidate) => candidate.id === taskId
+      );
+
+      if (!task) {
+        return failure(missing);
+      }
+
       const { approval, approved } = await requestApproval(api, context, {
         action:
           change.enabled === true
             ? 'Resume a scheduled task'
             : 'Change a scheduled task',
         summary: [
-          change.description ?? change.cron ?? '',
-          change.prompt ?? '',
+          `Task: ${task.title}`,
+          change.description === undefined
+            ? ''
+            : `Description: ${change.description}`,
+          change.cron === undefined ? '' : `Cron: ${change.cron}`,
+          change.prompt === undefined ? '' : `Prompt: ${change.prompt}`,
         ].filter(Boolean),
       });
 

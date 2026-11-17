@@ -1,14 +1,5 @@
 import { schema } from '@lab/db';
-import {
-  and,
-  eq,
-  isNotNull,
-  isNull,
-  lt,
-  ne,
-  notInArray,
-  sql,
-} from 'drizzle-orm';
+import { and, eq, isNotNull, lt, ne, notInArray, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
@@ -40,7 +31,7 @@ async function usedBytes(reader: Reader, ownerId: string) {
         ),
       })
       .from(library)
-      .where(and(eq(library.ownerId, ownerId), isNull(library.uploadId))),
+      .where(eq(library.ownerId, ownerId)),
   ]);
 
   return (uploads[0]?.bytes ?? 0) + (items[0]?.bytes ?? 0);

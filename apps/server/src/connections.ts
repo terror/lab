@@ -8,6 +8,7 @@ import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { eq } from 'drizzle-orm';
 
 import { connectorAuth } from './connector-auth';
 import { db } from './db';
@@ -186,18 +187,22 @@ async function connect({ id, name, ownerId, url }: Row): Promise<Entry> {
   }
 }
 
-export function refreshConnector(row: Row) {
-  return locked(row.id, async () => {
-    await disconnect(row.id);
+export function refreshConnector({ id, ownerId }: Pick<Row, 'id' | 'ownerId'>) {
+  return locked(id, async () => {
+    await disconnect(id);
 
-    const active = row.enabled && (await policy(row.ownerId)).active;
+    const [row] = await db
+      .select()
+      .from(schema.connector)
+      .where(eq(schema.connector.id, id));
 
-    entries.set(
-      row.id,
-      active ? await connect(row) : { kind: 'off', ownerId: row.ownerId }
-    );
+    if (row) {
+      const active = row.enabled && (await policy(ownerId)).active;
 
-    syncOwner(row.ownerId);
+      entries.set(id, active ? await connect(row) : { kind: 'off', ownerId });
+    }
+
+    syncOwner(ownerId);
   });
 }
 

@@ -107,9 +107,7 @@ function attachmentBytes(attachments: readonly Attachment[]) {
       return total + Math.floor((attachment.data.length * 3) / 4);
     }
 
-    return attachment.uploadId === undefined
-      ? total + Buffer.byteLength(attachment.text)
-      : total;
+    return total + Buffer.byteLength(attachment.text);
   }, 0);
 }
 

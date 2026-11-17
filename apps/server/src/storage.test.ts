@@ -74,26 +74,37 @@ test('concurrent uploads cannot go over the storage limit together', async () =>
 test('message attachments count toward the storage limit', async () => {
   env.LAB_STORAGE_LIMIT = 0.000_001;
 
+  const headers = await signIn();
+
   try {
-    expect(
-      await call(await signIn(), 'POST', '/conversations', {
-        attachments: [
-          {
-            data: 'Zm9vYmFy',
-            mimeType: 'image/png',
-            name: 'foo.png',
-            type: 'image',
-          },
-        ],
+    const send = (attachment: object) =>
+      call(headers, 'POST', '/conversations', {
+        attachments: [attachment],
         content: 'foo',
-      })
-    ).toEqual({
-      body: {
-        error:
-          'You’ve used your 0.000001 MB of storage. Delete chats with files and empty the Trash to free up space.',
-      },
-      status: 413,
-    });
+      });
+
+    expect([
+      await send({
+        data: 'Zm9vYmFy',
+        mimeType: 'image/png',
+        name: 'foo.png',
+        type: 'image',
+      }),
+      await send({
+        name: 'foo.txt',
+        text: 'bar',
+        type: 'file',
+        uploadId: '00000000-0000-4000-8000-000000000000',
+      }),
+    ]).toEqual(
+      Array.from({ length: 2 }, () => ({
+        body: {
+          error:
+            'You’ve used your 0.000001 MB of storage. Delete chats with files and empty the Trash to free up space.',
+        },
+        status: 413,
+      }))
+    );
   } finally {
     env.LAB_STORAGE_LIMIT = undefined;
   }
