@@ -1,5 +1,12 @@
 import { SandboxFrame } from '@/components/sandbox-frame';
-import { Code, Download, Eye, LayoutTemplate } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Code, Download, Eye, LayoutTemplate, Maximize2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { count, field, text } from './format';
@@ -129,8 +136,36 @@ function Superseded({ artifact }: { artifact: Shown }) {
   );
 }
 
+function FullScreen({
+  artifact,
+  onClose,
+}: {
+  artifact: Shown;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog onOpenChange={(open) => !open && onClose()} open>
+      <DialogContent
+        className='flex flex-col gap-3'
+        style={{ height: '90dvh', maxWidth: 'min(72rem, calc(100vw - 2rem))' }}
+      >
+        <DialogHeader>
+          <DialogTitle>{artifact.title}</DialogTitle>
+          <DialogDescription className='sr-only'>
+            Full screen view of the artifact
+          </DialogDescription>
+        </DialogHeader>
+        <div className='min-h-0 flex-1 overflow-y-auto'>
+          <SandboxFrame html={artifact.html} title={artifact.title} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Live({ artifact }: { artifact: Shown }) {
   const [showCode, setShowCode] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
 
   const { html, title, version } = artifact;
 
@@ -169,6 +204,14 @@ function Live({ artifact }: { artifact: Shown }) {
           >
             <Download aria-hidden='true' className='size-4' />
           </button>
+          <button
+            aria-label='Full screen'
+            className={action}
+            onClick={() => setFullScreen(true)}
+            type='button'
+          >
+            <Maximize2 aria-hidden='true' className='size-4' />
+          </button>
         </div>
       </header>
       <div className='px-4 pb-4'>
@@ -177,6 +220,9 @@ function Live({ artifact }: { artifact: Shown }) {
           <SandboxFrame html={html} title={title} />
         </div>
       </div>
+      {fullScreen && (
+        <FullScreen artifact={artifact} onClose={() => setFullScreen(false)} />
+      )}
     </section>
   );
 }
