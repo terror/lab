@@ -18,6 +18,7 @@ const schema = z.object({
     .min(1)
     .default(fileURLToPath(new URL('../../../lab.sqlite', import.meta.url))),
   RAILWAY_GIT_COMMIT_SHA: z.string().min(1).default('development'),
+  SENTRY_DSN: z.url().optional(),
 });
 
 const result = schema.safeParse(process.env);

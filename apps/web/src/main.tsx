@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import './index.css';
+import { initSentry, reportReactError } from './lib/sentry';
 import { router } from './router';
 
 declare module '@tanstack/react-query' {
@@ -36,7 +37,13 @@ if (!root) {
   throw new Error('Root element not found');
 }
 
-createRoot(root).render(
+initSentry();
+
+createRoot(root, {
+  onCaughtError: reportReactError,
+  onRecoverableError: reportReactError,
+  onUncaughtError: reportReactError,
+}).render(
   <StrictMode>
     <LazyMotion features={domAnimation} strict>
       <MotionConfig reducedMotion='user'>

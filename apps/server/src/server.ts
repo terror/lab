@@ -4,7 +4,10 @@ import app from './app';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
+import { initSentry } from './instrument';
 import { backfillAll } from './pipelines';
+
+initSentry();
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {

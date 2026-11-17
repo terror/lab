@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
+import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import { HTTPException } from 'hono/http-exception';
@@ -98,6 +99,8 @@ app.onError((error, c) => {
   }
 
   console.error(error);
+
+  Sentry.captureException(error);
 
   return c.json({ error: 'Internal server error' }, 500);
 });
