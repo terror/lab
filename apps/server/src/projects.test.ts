@@ -117,7 +117,7 @@ test('project instructions follow the custom instructions in the prompt', async 
   }).toEqual({
     memory: "<memory>\nThe user's custom instructions:\nfoo\n</memory>",
     order: true,
-    project: `<project>\nThis chat is in the user's project [${body.project.id}] bar. You can list, create, rename, and change the instructions of projects and move chats between them with project_list, project_create, project_update, and chat_move.\n\nThe project's instructions apply to every chat in it and take precedence over the user's general custom instructions:\nbaz\n</project>`,
+    project: `<project>\nThis chat is in the user's project [${body.project.id}] bar. You can list, create, rename, change the instructions of, and delete projects and move chats between them with project_list, project_create, project_update, project_delete, and chat_move.\n\nThe project's instructions apply to every chat in it and take precedence over the user's general custom instructions:\nbaz\n</project>`,
   });
 });
 
@@ -150,5 +150,73 @@ test('chats can be moved into and out of projects', async () => {
     into: { body: null, status: 204 },
     missing: { body: { error: 'Project not found' }, status: 404 },
     recent: [id],
+  });
+});
+
+test('deleting a project trashes its chats and restores only those', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/projects', { name: 'foo' });
+
+  const project = body.project.id;
+
+  const kept = await chat(headers, { content: 'bar', projectId: project });
+
+  const earlier = await chat(headers, { content: 'baz', projectId: project });
+
+  await call(headers, 'DELETE', `/conversations/${earlier}`);
+
+  await call(headers, 'DELETE', `/projects/${project}`);
+
+  async function trash() {
+    const { items } = (await call(headers, 'GET', '/trash')).body;
+
+    return items.map(({ id, kind }: { id: number; kind: string }) => [
+      kind,
+      id,
+    ]);
+  }
+
+  const deleted = {
+    projects: (await call(headers, 'GET', '/projects')).body.projects,
+    trash: await trash(),
+  };
+
+  await call(headers, 'POST', `/trash/project/${project}/restore`);
+
+  const restored = {
+    chats: await ids(headers, `filter=all&project=${project}`),
+    trash: await trash(),
+  };
+
+  await call(headers, 'DELETE', `/projects/${project}`);
+
+  await call(headers, 'DELETE', `/trash/project/${project}`);
+
+  expect({ deleted, purged: await trash(), restored }).toEqual({
+    deleted: { projects: [], trash: [['project', project]] },
+    purged: [],
+    restored: { chats: [kept], trash: [['conversation', earlier]] },
+  });
+});
+
+test('the agent can delete projects', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/projects', { name: 'foo' });
+
+  script(
+    toolCall('project_delete', { id: body.project.id }),
+    fauxAssistantMessage('bar')
+  );
+
+  const id = await chat(headers, { content: 'baz' });
+
+  expect({
+    outputs: await toolOutputs(headers, id),
+    projects: (await call(headers, 'GET', '/projects')).body.projects,
+  }).toEqual({
+    outputs: [`Moved project ${body.project.id} and its chats to the Trash.`],
+    projects: [],
   });
 });

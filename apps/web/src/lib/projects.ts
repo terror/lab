@@ -47,6 +47,10 @@ export async function updateProject({
   return project;
 }
 
+export async function deleteProject(id: number) {
+  await call(client.projects[':id'].$delete({ param: { id: String(id) } }));
+}
+
 export function useProjectSave<T>(mutationFn: (value: T) => Promise<Project>) {
   const queryClient = useQueryClient();
 

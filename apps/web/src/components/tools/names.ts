@@ -9,6 +9,7 @@ export const toolNames = [
   'library_search',
   'preferences_update',
   'project_create',
+  'project_delete',
   'project_list',
   'project_update',
   'remember',

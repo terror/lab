@@ -77,6 +77,31 @@ export const projectRenderers = {
     preview: projectPreview,
     title: projectTitle('Creating a project', 'Created'),
   },
+  project_delete: {
+    icon: Folder,
+    preview: ({ details }) => {
+      const project = field(details, 'project');
+
+      const chats = count(field(details, 'chats'));
+
+      return project ? (
+        <PreviewList
+          items={[
+            {
+              ...projectItem(project, 0),
+              meta:
+                chats === undefined
+                  ? 'In Trash'
+                  : `${plural(chats, 'chat')} in Trash`,
+              projectId: undefined,
+            },
+          ]}
+        />
+      ) : undefined;
+    },
+    title: ({ active }) =>
+      active ? 'Deleting a project' : 'Moved a project to Trash',
+  },
   project_list: {
     icon: Folder,
     preview: ({ details }) => {

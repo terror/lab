@@ -7,11 +7,7 @@ import {
   ProjectDialog,
 } from '@/components/project-dialog';
 import { ProjectInstructions } from '@/components/project-instructions';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { ProjectMenu } from '@/components/project-menu';
 import type { Attachment } from '@/lib/attachments';
 import {
   conversationsQueryKey,
@@ -23,7 +19,7 @@ import { useChatModel } from '@/lib/models';
 import { useProject } from '@/lib/projects';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
-import { Folder, Pencil } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { useState } from 'react';
 
 function ProjectComposer({ id, name }: { id: number; name: string }) {
@@ -132,19 +128,11 @@ export function Project() {
           <h1 className='truncate text-2xl font-semibold tracking-tight'>
             {current.name}
           </h1>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                aria-label='Rename project'
-                className='flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground'
-                onClick={() => setEditing({ kind: 'rename', project: current })}
-                type='button'
-              >
-                <Pencil aria-hidden='true' className='size-4' />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Rename project</TooltipContent>
-          </Tooltip>
+          <ProjectMenu
+            className='size-8 hover:bg-muted'
+            onRename={() => setEditing({ kind: 'rename', project: current })}
+            project={current}
+          />
         </div>
         <ProjectComposer id={id} name={current.name} />
         <ProjectInstructions project={current} />
