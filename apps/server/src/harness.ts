@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { openHarness, purgeConversations } from '@lab/harness';
+import { ComputerDoc, openHarness, purgeConversations } from '@lab/harness';
 import { inArray } from 'drizzle-orm';
 
 import { db } from './db';
@@ -10,7 +10,7 @@ import { recordHelperUsage } from './helper-usage';
 import { historyAccess } from './history-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
-import { sandboxAccess } from './sandbox';
+import { createSandboxAccess } from './sandbox';
 import { webAccess } from './web-access';
 
 export async function purgeDeleted(path: string) {
@@ -43,7 +43,11 @@ export const harness = await openHarness({
   onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
-  sandbox: sandboxAccess,
+  sandbox: createSandboxAccess(
+    async () =>
+      (await harness.snapshot(ComputerDoc, BACKGROUND_CONTEXT))?.network ??
+      'full'
+  ),
   web: webAccess(async (id) => {
     const conversation = await harness.conversation(
       id as ConversationId,

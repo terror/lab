@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { db } from './db';
 import { purgeDeleted } from './harness';
 import { models } from './models';
-import { sandboxAccess } from './sandbox';
+import { createSandboxAccess } from './sandbox';
 
 const queries = [
   'select id from conversations order by id',
@@ -58,7 +58,7 @@ test('deleted conversations are purged from storage', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
-    sandbox: sandboxAccess,
+    sandbox: createSandboxAccess(async () => 'full'),
     web: {
       available: async () => false,
       fetch: async () => {
@@ -88,7 +88,7 @@ test('deleted conversations are purged from storage', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
-    sandbox: sandboxAccess,
+    sandbox: createSandboxAccess(async () => 'full'),
     web: {
       available: async () => false,
       fetch: async () => {
@@ -116,7 +116,7 @@ test('fork parents and missing stores are handled by the purge', async () => {
     models,
     history: { read: async () => undefined, search: async () => [] },
     library: { read: async () => undefined, search: async () => [] },
-    sandbox: sandboxAccess,
+    sandbox: createSandboxAccess(async () => 'full'),
     web: {
       available: async () => false,
       fetch: async () => {
