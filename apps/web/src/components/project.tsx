@@ -11,7 +11,7 @@ import { StartComposer } from '@/components/start-composer';
 import { Unavailable } from '@/components/unavailable';
 import { useConversations } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { Folder } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,12 +26,7 @@ function ProjectComposer({ id, name }: { id: number; name: string }) {
 }
 
 function ProjectChats({ id }: { id: number }) {
-  const navigate = useNavigate();
-
   const chats = useConversations({ project: id });
-
-  const select = (chat: number) =>
-    void navigate({ params: { id: chat }, to: '/c/$id' });
 
   if (chats.isError) {
     return <LoadError className='px-2' subject='chats' />;
@@ -48,12 +43,7 @@ function ProjectChats({ id }: { id: number }) {
   return (
     <nav aria-label='Project chats' className='flex flex-col gap-1'>
       {chats.data?.map((chat) => (
-        <ConversationItem
-          key={chat.id}
-          conversation={chat}
-          onSelect={select}
-          selected={false}
-        />
+        <ConversationItem key={chat.id} conversation={chat} selected={false} />
       ))}
       {chats.hasNextPage && !chats.isFetchingNextPage && (
         <LoadMore onLoadMore={() => void chats.fetchNextPage()} />

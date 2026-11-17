@@ -33,8 +33,8 @@ async function check(selected: boolean, expected: string[]) {
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
 
   await expect
-    .element(screen.getByRole('button', { name: 'Options for foo' }))
-    .toBeInTheDocument();
+    .element(screen.getByRole('link', { name: /^foo/ }))
+    .toHaveAttribute('href', '/c/1');
 
   expect(
     screen
