@@ -76,7 +76,7 @@ function NetworkPicker({ value }: { value: ComputerStatus['network'] }) {
             <ChevronDown aria-hidden='true' className='size-4' />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align='end'>
+        <DropdownMenuContent align='end' className='w-max'>
           <DropdownMenuRadioGroup
             onValueChange={(next) => {
               const choice = networks.find((network) => network.value === next);
