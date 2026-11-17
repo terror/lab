@@ -274,6 +274,13 @@ export function Activity({ status: label }: { status: string }) {
   );
 }
 
+export function replyText(parts: readonly Part[]) {
+  return parts
+    .slice(parts.findLastIndex(({ type }) => type === 'toolCall') + 1)
+    .flatMap((part) => (part.type === 'text' && part.text ? [part.text] : []))
+    .join('\n\n');
+}
+
 export function AssistantMessage({
   activity,
   latest = false,
@@ -289,13 +296,7 @@ export function AssistantMessage({
   results: ReadonlyMap<string, ToolResult>;
   streaming: boolean;
 }) {
-  const final = parts.slice(
-    parts.findLastIndex(({ type }) => type === 'toolCall') + 1
-  );
-
-  const text = final
-    .flatMap((part) => (part.type === 'text' && part.text ? [part.text] : []))
-    .join('\n\n');
+  const text = replyText(parts);
 
   const answer = !streaming && text.length > 0;
 

@@ -1,6 +1,7 @@
 import {
   Activity,
   AssistantMessage,
+  replyText,
   type ToolProgress,
   type ToolResult,
 } from '@/components/assistant-message';
@@ -45,6 +46,7 @@ import {
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { FileText, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -447,8 +449,6 @@ function ConversationView({ id }: { id: number }) {
 
   const [, setPreferredModel] = usePreferredModel();
 
-  const commandContext = useMemo(() => ({ conversationId: id }), [id]);
-
   const changeModel = useMutation({
     mutationFn: (model: ModelChoice) => setConversationModel(id, model),
     onSuccess: (_, model) => setPreferredModel(model),
@@ -510,6 +510,25 @@ function ConversationView({ id }: { id: number }) {
 
     return [...base, { key, row }];
   }, [answering, committed, keyed, partial]);
+
+  const navigate = useNavigate();
+
+  const lastReply = useMemo(() => {
+    const row = committed.findLast(({ kind }) => kind === 'assistant');
+
+    const text = row?.kind === 'assistant' ? replyText(row.parts) : '';
+
+    return text || undefined;
+  }, [committed]);
+
+  const commandContext = useMemo(
+    () => ({
+      conversationId: id,
+      lastReply,
+      newChat: () => void navigate({ to: '/' }),
+    }),
+    [id, lastReply, navigate]
+  );
 
   const loadEarlierMessages = earlier.mutate;
 

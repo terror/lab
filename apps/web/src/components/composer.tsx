@@ -59,7 +59,11 @@ const LibraryPicker = lazy(async () => ({
 
 const MAX_ATTACHMENTS = 8;
 
-const noCommandContext: CommandContext = { conversationId: undefined };
+const noCommandContext: CommandContext = {
+  conversationId: undefined,
+  lastReply: undefined,
+  newChat: undefined,
+};
 
 function AttachmentPreview({
   attachment,
