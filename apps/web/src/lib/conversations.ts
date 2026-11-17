@@ -155,6 +155,18 @@ export function usePinnedConversations() {
   return useQuery(listQueryOptions('pinned'));
 }
 
+export async function answerQuestion(
+  id: number,
+  json: { answer: string; callId: string }
+) {
+  await call(
+    client.conversations[':id'].answers.$post({
+      json,
+      param: { id: String(id) },
+    })
+  );
+}
+
 export async function deleteConversation(id: number) {
   await call(
     client.conversations[':id'].$delete({ param: { id: String(id) } })

@@ -1,3 +1,4 @@
+import { QuestionCard } from '@/components/question-card';
 import { type SettingsSection, selectSettingsSection } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -8,6 +9,7 @@ import {
   Globe,
   Lightbulb,
   LoaderCircle,
+  MessageCircleQuestion,
   MessageSquareText,
   MessagesSquare,
   type LucideIcon,
@@ -16,7 +18,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { type ReactNode, createContext, useState } from 'react';
+import { type ReactNode, createContext, useContext, useState } from 'react';
 
 export type ToolResult = {
   details?: unknown;
@@ -38,9 +40,12 @@ export type ToolRecord = {
 
 export const ToolHistory = createContext<readonly ToolRecord[]>([]);
 
+export const ToolConversation = createContext<number | undefined>(undefined);
+
 export type ToolView = {
   active: boolean;
   args: Record<string, unknown>;
+  callId: string;
   details: unknown;
   history: readonly ToolRecord[];
   output: string;
@@ -48,6 +53,7 @@ export type ToolView = {
 
 type ToolRenderer = {
   actions?: ReactNode;
+  inline?: (view: ToolView) => ReactNode;
   preview?: (view: ToolView) => ReactNode;
   icon: LucideIcon;
   summary?: (view: ToolView) => string | undefined;
@@ -195,6 +201,28 @@ function PreviewPassage({ children }: { children: string }) {
     <p className='line-clamp-6 text-sm/relaxed whitespace-pre-wrap text-foreground/80'>
       {children}
     </p>
+  );
+}
+
+function AskUser({ args, callId, details }: ToolView) {
+  const conversationId = useContext(ToolConversation);
+
+  const question = text(field(details, 'question')) ?? text(args.question);
+
+  const options = field(details, 'options') ?? args.options;
+
+  if (!question || !Array.isArray(options)) {
+    return null;
+  }
+
+  return (
+    <QuestionCard
+      answer={text(field(details, 'answer'))}
+      callId={callId}
+      conversationId={conversationId}
+      options={options.filter((option) => typeof option === 'string')}
+      question={question}
+    />
   );
 }
 
@@ -370,6 +398,7 @@ function Script({ args, details, output }: ToolView) {
             const view = {
               active: call.status === 'running',
               args: parse(call.args),
+              callId: String(call.id),
               details: undefined,
               history: [],
               output: '',
@@ -415,6 +444,12 @@ type WebResult = { domain: string; title: string; url: string };
 type ChatMatch = { id: number; title: string | null; updatedAt: string };
 
 const renderers: Partial<Record<string, ToolRenderer>> = {
+  ask_user: {
+    icon: MessageCircleQuestion,
+    inline: (view) => <AskUser {...view} />,
+    title: ({ active }) =>
+      active ? 'Asking you a question' : 'Asked you a question',
+  },
   chat_read: {
     icon: MessageSquareText,
     preview: ({ details }) => {

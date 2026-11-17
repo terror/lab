@@ -96,6 +96,7 @@ function ToolCall({
   const view = {
     active,
     args: call.arguments,
+    callId: call.id,
     details: result?.details ?? progress?.details,
     history,
     output: result?.output ?? progress?.output ?? '',
@@ -129,6 +130,9 @@ function ToolCall({
           <ToolBody {...view} name={call.name} />
         </TraceCollapsibleContent>
       </TraceCollapsible>
+      {renderer.inline && (
+        <div className='mt-1.5 mb-2'>{renderer.inline(view)}</div>
+      )}
     </Trace>
   );
 }

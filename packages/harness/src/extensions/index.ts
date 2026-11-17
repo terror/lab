@@ -1,4 +1,5 @@
 import type { HelperUsage } from '../helper';
+import { ask } from './ask';
 import { assistant } from './assistant';
 import { codemode } from './codemode';
 import { compaction } from './compaction';
@@ -35,6 +36,7 @@ export {
   skills,
   updateSkill,
 } from './skills';
+export { ANSWER_LENGTH, QuestionsDoc } from './ask';
 export { TitleDoc } from './title';
 export {
   type WebAccess,
@@ -55,6 +57,7 @@ export type ExtensionDeps = {
 
 export function extensions(deps: ExtensionDeps) {
   return [
+    ask,
     assistant,
     codemode,
     compaction(deps.onHelperUsage),
