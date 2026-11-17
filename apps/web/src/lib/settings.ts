@@ -1,5 +1,4 @@
 import { useAdmin } from '@/lib/profile';
-import { usePersistentState, writeStored } from '@/lib/storage';
 import {
   Brain,
   Gauge,
@@ -51,14 +50,6 @@ export function useSettingsSections() {
   );
 }
 
-const KEY = 'settings-section';
-
-const schema = z.enum(settingsSections);
-
-export function useSettingsSection() {
-  return usePersistentState(KEY, schema, 'appearance');
-}
-
-export function selectSettingsSection(section: SettingsSection) {
-  writeStored(KEY, section);
-}
+export const settingsSearchSchema = z.object({
+  section: z.enum(settingsSections).optional().catch(undefined),
+});

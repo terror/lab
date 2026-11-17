@@ -1,4 +1,4 @@
-import { selectSettingsSection, type SettingsSection } from '@/lib/settings';
+import { type SettingsSection } from '@/lib/settings';
 import { Link, useNavigate } from '@tanstack/react-router';
 
 import { type ToolView } from './types';
@@ -168,8 +168,7 @@ export function SettingsLink({
   return (
     <FooterButton
       onClick={() => {
-        selectSettingsSection(section);
-        void navigate({ to: '/settings' });
+        void navigate({ search: { section }, to: '/settings' });
       }}
     >
       {children}
