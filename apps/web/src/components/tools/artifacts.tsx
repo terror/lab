@@ -223,7 +223,10 @@ function Live({ artifact }: { artifact: Shown }) {
   const [errors, setErrors] = useState<string[]>([]);
 
   const conversationId = useContext(ToolConversation);
-  const [, setDraft] = useDraft(conversationId ?? 'new');
+  const [draft, setDraft] = useDraft(conversationId ?? 'new');
+
+  const addToDraft = (message: string) =>
+    setDraft(draft.trim() ? `${draft.trimEnd()}\n\n${message}` : message);
 
   const onError = useCallback((message: string) => {
     setErrors((current) =>
@@ -286,7 +289,7 @@ function Live({ artifact }: { artifact: Shown }) {
           <SandboxFrame
             html={html}
             onError={onError}
-            onSend={setDraft}
+            onSend={addToDraft}
             title={title}
           />
         </div>
@@ -294,7 +297,7 @@ function Live({ artifact }: { artifact: Shown }) {
       {errors.length > 0 && (
         <Errors
           errors={errors}
-          onFix={() => setDraft(fixRequest(title, errors))}
+          onFix={() => addToDraft(fixRequest(title, errors))}
         />
       )}
       {fullScreen && (

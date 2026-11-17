@@ -270,11 +270,13 @@ const trash = new Hono()
   .delete('/', async (c) => {
     const ownerId = c.get('user').id;
 
+    const chats = new Array<number>();
+
     for (const { id, kind } of await listTrash(ownerId)) {
-      await trashables[kind].purge(ownerId, id);
+      chats.push(...((await trashables[kind].purge(ownerId, id)) ?? []));
     }
 
-    return c.body(null, 204);
+    return c.json({ chats });
   });
 
 export default trash;

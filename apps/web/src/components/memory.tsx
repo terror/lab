@@ -29,13 +29,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
-function AddMemoryDialog({
-  onOpenChange,
-  open,
-}: {
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
-}) {
+function MemoryForm({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('');
 
   const add = useMemoryUpdate(addMemory, true);
@@ -46,51 +40,59 @@ function AddMemoryDialog({
     add.mutate(text.trim(), {
       onSuccess: () => {
         setText('');
-        onOpenChange(false);
+        onClose();
       },
     });
   };
 
   return (
+    <form
+      aria-label='New memory'
+      className='flex flex-col gap-6'
+      onSubmit={onSubmit}
+    >
+      <DialogHeader>
+        <DialogTitle>Add a memory</DialogTitle>
+        <DialogDescription>
+          Lab keeps this in mind in every chat.
+        </DialogDescription>
+      </DialogHeader>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor='memory-text'>Memory</FieldLabel>
+          <Textarea
+            className='min-h-24'
+            id='memory-text'
+            maxLength={500}
+            onChange={(event) => setText(event.target.value)}
+            value={text}
+          />
+        </Field>
+        {add.error && <FieldError>{add.error.message}</FieldError>}
+      </FieldGroup>
+      <DialogFooter>
+        <Button onClick={onClose} type='button' variant='ghost'>
+          Cancel
+        </Button>
+        <Button disabled={!text.trim() || add.isPending} type='submit'>
+          Add
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function AddMemoryDialog({
+  onOpenChange,
+  open,
+}: {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
+  return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className='sm:max-w-md'>
-        <form
-          aria-label='New memory'
-          className='flex flex-col gap-6'
-          onSubmit={onSubmit}
-        >
-          <DialogHeader>
-            <DialogTitle>Add a memory</DialogTitle>
-            <DialogDescription>
-              Lab keeps this in mind in every chat.
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor='memory-text'>Memory</FieldLabel>
-              <Textarea
-                className='min-h-24'
-                id='memory-text'
-                maxLength={500}
-                onChange={(event) => setText(event.target.value)}
-                value={text}
-              />
-            </Field>
-            {add.error && <FieldError>{add.error.message}</FieldError>}
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              onClick={() => onOpenChange(false)}
-              type='button'
-              variant='ghost'
-            >
-              Cancel
-            </Button>
-            <Button disabled={!text.trim() || add.isPending} type='submit'>
-              Add
-            </Button>
-          </DialogFooter>
-        </form>
+        {open && <MemoryForm onClose={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
   );

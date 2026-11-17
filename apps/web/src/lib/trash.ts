@@ -40,7 +40,11 @@ export async function deleteForever(item: TrashRef) {
 }
 
 export async function emptyTrash() {
-  await call(client.trash.$delete());
+  const { chats } = await call(client.trash.$delete());
+
+  for (const chat of chats) {
+    clearDraft(chat);
+  }
 }
 
 const trashedQueryKeys = [
