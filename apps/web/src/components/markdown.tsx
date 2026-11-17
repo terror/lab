@@ -1,23 +1,42 @@
 import { usePreference } from '@/lib/preferences';
-import { Suspense, lazy } from 'react';
+import { Suspense, use } from 'react';
 import type { StreamdownProps } from 'streamdown';
 
-const Streamdown = lazy(async () => {
-  const [{ Streamdown: Renderer }, { code }] = await Promise.all([
+type Modules = {
+  plugins: StreamdownProps['plugins'];
+  streamdown: typeof import('streamdown');
+};
+
+let loaded: Modules | undefined;
+
+let loading: Promise<Modules> | undefined;
+
+export function loadMarkdown() {
+  loading ??= Promise.all([
     import('streamdown'),
     import('@streamdown/code'),
-  ]);
+  ]).then(([streamdown, { code }]) => {
+    loaded = { plugins: { code }, streamdown };
 
-  const plugins = { code };
+    return loaded;
+  });
 
-  const linkSafety = { enabled: false };
+  return loading;
+}
 
-  return {
-    default: (props: StreamdownProps) => (
-      <Renderer linkSafety={linkSafety} plugins={plugins} {...props} />
-    ),
-  };
-});
+const linkSafety = { enabled: false };
+
+function Streamdown(props: StreamdownProps) {
+  const { plugins, streamdown } = loaded ?? use(loadMarkdown());
+
+  return (
+    <streamdown.Streamdown
+      linkSafety={linkSafety}
+      plugins={plugins}
+      {...props}
+    />
+  );
+}
 
 export function Markdown({
   children,

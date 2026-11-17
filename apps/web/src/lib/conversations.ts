@@ -14,8 +14,9 @@ import {
 import type { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
-  queryOptions,
   keepPreviousData,
+  type QueryClient,
+  queryOptions,
   skipToken,
   useInfiniteQuery,
   useQuery,
@@ -331,4 +332,14 @@ export function contentText(content: Content | undefined) {
   return content
     .map((part) => (part.type === 'text' ? (part.text ?? '') : ''))
     .join('');
+}
+
+export async function prefetchSidebar(
+  queryClient: QueryClient,
+  sort: ConversationSort
+) {
+  await Promise.allSettled([
+    queryClient.infiniteQuery(conversationsQueryOptions(recent, sort)),
+    queryClient.query(listQueryOptions('pinned', sort)),
+  ]);
 }
