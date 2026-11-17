@@ -7,6 +7,7 @@ import {
   type ProjectEditing,
   ProjectDialog,
 } from '@/components/project-dialog';
+import { ProjectMenu } from '@/components/project-menu';
 import { useSearch } from '@/components/search';
 import {
   DropdownMenu,
@@ -348,13 +349,20 @@ function ProjectsSection({
 
           return (
             <div key={project.id} className='flex flex-col gap-0.5'>
-              <NavButton
-                active={path === `/projects/${project.id}`}
-                onClick={() => onProject(project.id)}
-              >
-                <Icon aria-hidden='true' className='size-4 shrink-0' />
-                <span className='truncate'>{project.name}</span>
-              </NavButton>
+              <div className='group relative flex items-center'>
+                <NavButton
+                  active={path === `/projects/${project.id}`}
+                  onClick={() => onProject(project.id)}
+                >
+                  <Icon aria-hidden='true' className='size-4 shrink-0' />
+                  <span className='truncate pr-6'>{project.name}</span>
+                </NavButton>
+                <ProjectMenu
+                  className='absolute right-1 p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100'
+                  onRename={() => setEditing({ kind: 'rename', project })}
+                  project={project}
+                />
+              </div>
               {project.id === open && (
                 <ProjectChats
                   id={project.id}

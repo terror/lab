@@ -24,6 +24,7 @@ export const project = pgTable(
     name: text('name').notNull(),
     instructions: text('instructions').notNull().default(''),
     createdAt: timestamp('created_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
   },
   (table) => [index('project_ownerId_idx').on(table.ownerId)]
 );

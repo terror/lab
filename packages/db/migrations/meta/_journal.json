@@ -169,6 +169,13 @@
       "when": 1794887051133,
       "tag": "0023_project_instructions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794887501744,
+      "tag": "0024_project_trash",
+      "breakpoints": true
     }
   ]
 }

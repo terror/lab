@@ -30,6 +30,7 @@ const deletedOn = new Intl.DateTimeFormat('en-US', {
 
 const names: Record<TrashItem['kind'], (item: TrashItem) => string> = {
   conversation: ({ title }) => conversationTitle(title),
+  project: ({ title }) => title ?? 'Untitled project',
 };
 
 function ConfirmDelete({

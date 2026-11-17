@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { restoreProject } from './project-access';
 import { removeChatFolder } from './sandbox';
 import { validator } from './validator';
 
@@ -22,12 +23,37 @@ type Trashable = {
 
 const table = schema.conversation;
 
+const projectTable = schema.project;
+
+const outsideTrashedProject = sql`not exists (select 1 from ${projectTable} where ${projectTable.id} = ${table.projectId} and ${projectTable.deletedAt} is not null)`;
+
 function trashed(ownerId: string, id: number) {
   return and(
     eq(table.id, id),
     eq(table.ownerId, ownerId),
-    isNotNull(table.deletedAt)
+    isNotNull(table.deletedAt),
+    outsideTrashedProject
   );
+}
+
+async function purgeChat(ownerId: string, id: number) {
+  const conversation = await harness.conversation(
+    id as ConversationId,
+    BACKGROUND_CONTEXT
+  );
+
+  await conversation?.abort(BACKGROUND_CONTEXT);
+
+  void removeChatFolder(ownerId, id).catch(console.error);
+
+  await db.transaction(async (tx) => {
+    await tx.delete(table).where(eq(table.id, id));
+
+    await tx
+      .insert(schema.conversationDeletion)
+      .values({ id, ownerId })
+      .onConflictDoNothing();
+  });
 }
 
 const conversations: Trashable = {
@@ -35,7 +61,13 @@ const conversations: Trashable = {
     const rows = await db
       .select({ deletedAt: table.deletedAt, id: table.id, title: table.title })
       .from(table)
-      .where(and(eq(table.ownerId, ownerId), isNotNull(table.deletedAt)));
+      .where(
+        and(
+          eq(table.ownerId, ownerId),
+          isNotNull(table.deletedAt),
+          outsideTrashedProject
+        )
+      );
 
     return rows.flatMap(({ deletedAt, id, title }) =>
       deletedAt ? [{ deletedAt, id, title }] : []
@@ -51,23 +83,7 @@ const conversations: Trashable = {
       return false;
     }
 
-    const conversation = await harness.conversation(
-      id as ConversationId,
-      BACKGROUND_CONTEXT
-    );
-
-    await conversation?.abort(BACKGROUND_CONTEXT);
-
-    void removeChatFolder(ownerId, id).catch(console.error);
-
-    await db.transaction(async (tx) => {
-      await tx.delete(table).where(eq(table.id, id));
-
-      await tx
-        .insert(schema.conversationDeletion)
-        .values({ id, ownerId })
-        .onConflictDoNothing();
-    });
+    await purgeChat(ownerId, id);
 
     return true;
   },
@@ -82,10 +98,65 @@ const conversations: Trashable = {
   },
 };
 
-const kinds = ['conversation'] as const;
+function trashedProject(ownerId: string, id: number) {
+  return and(
+    eq(projectTable.id, id),
+    eq(projectTable.ownerId, ownerId),
+    isNotNull(projectTable.deletedAt)
+  );
+}
+
+const projects: Trashable = {
+  list: async (ownerId) => {
+    const rows = await db
+      .select({
+        deletedAt: projectTable.deletedAt,
+        id: projectTable.id,
+        title: projectTable.name,
+      })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.ownerId, ownerId),
+          isNotNull(projectTable.deletedAt)
+        )
+      );
+
+    return rows.flatMap(({ deletedAt, id, title }) =>
+      deletedAt ? [{ deletedAt, id, title }] : []
+    );
+  },
+  purge: async (ownerId, id) => {
+    const [row] = await db
+      .select({ id: projectTable.id })
+      .from(projectTable)
+      .where(trashedProject(ownerId, id));
+
+    if (!row) {
+      return false;
+    }
+
+    const chats = await db
+      .select({ id: table.id })
+      .from(table)
+      .where(eq(table.projectId, id));
+
+    for (const chat of chats) {
+      await purgeChat(ownerId, chat.id);
+    }
+
+    await db.delete(projectTable).where(eq(projectTable.id, id));
+
+    return true;
+  },
+  restore: restoreProject,
+};
+
+const kinds = ['conversation', 'project'] as const;
 
 const trashables: Record<(typeof kinds)[number], Trashable> = {
   conversation: conversations,
+  project: projects,
 };
 
 const params = validator(

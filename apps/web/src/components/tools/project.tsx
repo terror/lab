@@ -77,6 +77,11 @@ export const projectRenderers = {
     preview: projectPreview,
     title: projectTitle('Creating a project', 'Created'),
   },
+  project_delete: {
+    icon: Folder,
+    title: ({ active }) =>
+      active ? 'Deleting a project' : 'Moved a project to Trash',
+  },
   project_list: {
     icon: Folder,
     preview: ({ details }) => {

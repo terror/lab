@@ -26,6 +26,7 @@ export type ProjectAccess = {
     name: string
   ): Promise<Project | undefined>;
   current(conversationId: ConversationId): Promise<Project | undefined>;
+  trash(conversationId: ConversationId, id: number): Promise<boolean>;
   list(conversationId: ConversationId): Promise<Project[]>;
   move(
     conversationId: ConversationId,
@@ -135,6 +136,22 @@ export function project(access: ProjectAccess) {
     },
   });
 
+  const projectDelete = defineTool({
+    name: 'project_delete',
+    description:
+      'Move a project and every chat in it to the Trash. The user can restore them from Settings → Trash.',
+    parameters: obj({ id: projectId }),
+    execute: async (args, api): Promise<ToolExecutionResult> =>
+      (await access.trash(api.conversationId, args.id))
+        ? {
+            details: { projectId: args.id },
+            output: text(
+              `Moved project ${args.id} and its chats to the Trash.`
+            ),
+          }
+        : failure(missing),
+  });
+
   const chatMove = defineTool({
     name: 'chat_move',
     description:
@@ -177,7 +194,7 @@ export function project(access: ProjectAccess) {
         const current = await access.current(conversationId);
 
         const tools =
-          'You can list, create, rename, and change the instructions of projects and move chats between them with project_list, project_create, project_update, and chat_move.';
+          'You can list, create, rename, change the instructions of, and delete projects and move chats between them with project_list, project_create, project_update, project_delete, and chat_move.';
 
         if (!current) {
           return `This chat is not in a project. ${tools}`;
@@ -194,6 +211,6 @@ export function project(access: ProjectAccess) {
           .join('\n\n');
       }),
     ],
-    tools: [chatMove, projectCreate, projectList, projectUpdate],
+    tools: [chatMove, projectCreate, projectDelete, projectList, projectUpdate],
   });
 }
