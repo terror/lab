@@ -6,8 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
+import { found } from './found';
 import { harness } from './harness';
-import { validator } from './validator';
+import { keyParam, validator } from './validator';
 
 async function read() {
   const doc = await harness.snapshot(MemoryDoc, BACKGROUND_CONTEXT);
@@ -31,8 +32,6 @@ const addition = validator(
   'json',
   z.object({ text: z.string().trim().min(1).max(MEMORY_LENGTH) })
 );
-
-const params = validator('param', z.object({ id: z.string().min(1) }));
 
 const memory = new Hono()
   .use(requireUser)
@@ -79,7 +78,7 @@ const memory = new Hono()
 
     return c.json(await read(), 201);
   })
-  .delete('/:id', params, async (c) => {
+  .delete('/:id', keyParam, async (c) => {
     const { id } = c.req.valid('param');
 
     const removed = await harness.commit(async (tx) => {
@@ -94,9 +93,7 @@ const memory = new Hono()
       return index >= 0;
     }, BACKGROUND_CONTEXT);
 
-    if (!removed) {
-      throw new HTTPException(404, { message: 'Memory not found' });
-    }
+    found(removed, 'Memory not found');
 
     return c.json(await read());
   });

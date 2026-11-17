@@ -4,12 +4,11 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { credentials } from './credentials';
+import { found } from './found';
 import { keyProviders } from './models';
 import { sandboxProviders } from './sandbox';
-import { validator } from './validator';
+import { keyParam, validator } from './validator';
 import { searchProviders } from './web-access';
-
-const params = validator('param', z.object({ id: z.string().min(1) }));
 
 const connection = validator(
   'json',
@@ -47,13 +46,10 @@ function allProviders() {
 }
 
 function provider(id: string) {
-  const match = allProviders().find((candidate) => candidate.id === id);
-
-  if (!match) {
-    throw new HTTPException(404, { message: 'Provider not found' });
-  }
-
-  return match;
+  return found(
+    allProviders().find((candidate) => candidate.id === id),
+    'Provider not found'
+  );
 }
 
 const providers = new Hono()
@@ -77,7 +73,7 @@ const providers = new Hono()
 
     return c.json({ providers: list });
   })
-  .put('/:id', params, connection, async (c) => {
+  .put('/:id', keyParam, connection, async (c) => {
     const { fields, id } = provider(c.req.valid('param').id);
 
     const { apiKey, settings } = c.req.valid('json');
@@ -106,7 +102,7 @@ const providers = new Hono()
 
     return c.body(null, 204);
   })
-  .delete('/:id', params, async (c) => {
+  .delete('/:id', keyParam, async (c) => {
     const { id } = provider(c.req.valid('param').id);
 
     await credentials.delete(id);

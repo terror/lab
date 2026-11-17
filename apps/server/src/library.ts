@@ -2,17 +2,17 @@ import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
 import { fileHeaders } from './file-headers';
+import { found } from './found';
 import { messageData } from './message-entry';
 import { backfill, entryChanges, observe } from './pipeline';
 import { contains, owners } from './records';
 import { decodeText } from './text';
-import { validator } from './validator';
+import { idParam, validator } from './validator';
 
 const table = schema.libraryItem;
 
@@ -280,11 +280,6 @@ const listing = validator(
   })
 );
 
-const params = validator(
-  'param',
-  z.object({ id: z.coerce.number().int().positive() })
-);
-
 const download = validator(
   'query',
   z.object({ download: z.literal('1').optional() })
@@ -372,12 +367,11 @@ const library = new Hono()
       next: last && rows.length > limit ? cursorFor(last) : null,
     });
   })
-  .get('/:id/original', params, async (c) => {
-    const upload = await uploadFor(c.req.valid('param').id, c.get('user').id);
-
-    if (!upload) {
-      throw new HTTPException(404, { message: 'File not found' });
-    }
+  .get('/:id/original', idParam, async (c) => {
+    const upload = found(
+      await uploadFor(c.req.valid('param').id, c.get('user').id),
+      'File not found'
+    );
 
     return c.body(
       new Uint8Array(upload.content),
@@ -385,25 +379,20 @@ const library = new Hono()
       fileHeaders(upload.mimeType)
     );
   })
-  .get('/:id/thumbnail', params, async (c) => {
-    const upload = await uploadFor(c.req.valid('param').id, c.get('user').id);
-
-    if (!upload?.thumbnail) {
-      throw new HTTPException(404, { message: 'Thumbnail not found' });
-    }
-
-    return c.body(
-      new Uint8Array(upload.thumbnail),
-      200,
-      fileHeaders('image/png')
+  .get('/:id/thumbnail', idParam, async (c) => {
+    const thumbnail = found(
+      (await uploadFor(c.req.valid('param').id, c.get('user').id))?.thumbnail,
+      'Thumbnail not found'
     );
+
+    return c.body(new Uint8Array(thumbnail), 200, fileHeaders('image/png'));
   })
-  .get('/:id', params, download, async (c) => {
+  .get('/:id', idParam, download, async (c) => {
     const user = c.get('user');
 
     const { id } = c.req.valid('param');
 
-    const [item] = await db
+    const [row] = await db
       .select({
         content: table.content,
         kind: table.kind,
@@ -413,9 +402,7 @@ const library = new Hono()
       .from(table)
       .where(and(eq(table.id, id), eq(table.ownerId, user.id)));
 
-    if (!item) {
-      throw new HTTPException(404, { message: 'File not found' });
-    }
+    const item = found(row, 'File not found');
 
     const { download: downloading } = c.req.valid('query');
 
