@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/trace';
 import { cn } from '@/lib/utils';
 import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 type Part =
@@ -253,13 +254,35 @@ function MessageActions({ latest, text }: { latest: boolean; text: string }) {
   );
 }
 
+export function Activity({ status: label }: { status: string }) {
+  return (
+    <output className='flex'>
+      <AnimatePresence initial={false} mode='wait'>
+        <m.span
+          key={label}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          initial={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.2 }}
+        >
+          <TraceLine status='running'>
+            <TraceTitle>{label}</TraceTitle>
+          </TraceLine>
+        </m.span>
+      </AnimatePresence>
+    </output>
+  );
+}
+
 export function AssistantMessage({
+  activity,
   latest = false,
   parts,
   progress,
   results,
   streaming,
 }: {
+  activity?: string;
   latest?: boolean;
   parts: readonly Part[];
   progress: ReadonlyMap<string, ToolProgress>;
@@ -304,6 +327,7 @@ export function AssistantMessage({
             </Markdown>
           );
         })}
+        {activity !== undefined && <Activity status={activity} />}
         {answer && <MessageActions latest={latest} text={text} />}
       </MessageContent>
     </Message>

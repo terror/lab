@@ -1,4 +1,5 @@
 import {
+  Activity,
   AssistantMessage,
   type ToolProgress,
   type ToolResult,
@@ -16,7 +17,6 @@ import {
   MessageScrollerViewport,
   useMessageScroller,
 } from '@/components/ui/message-scroller';
-import { TraceLine, TraceTitle } from '@/components/ui/trace';
 import { type Attachment, imageSource } from '@/lib/attachments';
 import { client } from '@/lib/client';
 import {
@@ -46,7 +46,6 @@ import {
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, X } from 'lucide-react';
-import { AnimatePresence, m } from 'motion/react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 
@@ -123,28 +122,6 @@ function useSecondsUntil(at: number) {
   }, []);
 
   return Math.max(0, Math.ceil((at - now) / 1_000));
-}
-
-function Activity({ status }: { status: string | undefined }) {
-  const label = status ?? 'Thinking';
-
-  return (
-    <output className='flex'>
-      <AnimatePresence initial={false} mode='wait'>
-        <m.span
-          key={label}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          initial={{ opacity: 0, y: 4 }}
-          transition={{ duration: 0.2 }}
-        >
-          <TraceLine status='running'>
-            <TraceTitle>{label}</TraceTitle>
-          </TraceLine>
-        </m.span>
-      </AnimatePresence>
-    </output>
-  );
 }
 
 function RetryStatus({ retry }: { retry: { at: number; error: string } }) {
@@ -361,6 +338,7 @@ function replyKeys(rows: readonly Row[]) {
 }
 
 const TranscriptRow = memo(function TranscriptRow({
+  activity,
   latest,
   loading,
   onEarlier,
@@ -369,6 +347,7 @@ const TranscriptRow = memo(function TranscriptRow({
   results,
   row,
 }: {
+  activity: string | undefined;
   latest: boolean;
   loading: boolean;
   onEarlier: () => void;
@@ -407,6 +386,7 @@ const TranscriptRow = memo(function TranscriptRow({
   if (row.kind === 'assistant') {
     return (
       <AssistantMessage
+        activity={activity}
         latest={latest}
         parts={row.parts}
         progress={progress}
@@ -574,6 +554,16 @@ function ConversationView({ id }: { id: number }) {
     }
   }, [queryClient, running]);
 
+  const thinking =
+    running && !retry && !answering && !toolsRunning && !finishing
+      ? (activity ?? 'Thinking')
+      : undefined;
+
+  const last = rows.at(-1)?.row;
+
+  const inline =
+    thinking !== undefined && last?.kind === 'assistant' ? last : undefined;
+
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <MessageScroller className='flex-1'>
@@ -592,6 +582,7 @@ function ConversationView({ id }: { id: number }) {
                 scrollAnchor={row === anchor}
               >
                 <TranscriptRow
+                  activity={row === inline ? thinking : undefined}
                   latest={row === latest && !running}
                   loading={earlier.isPending || gap.isPending}
                   onEarlier={onEarlier}
@@ -603,8 +594,8 @@ function ConversationView({ id }: { id: number }) {
               </MessageScrollerItem>
             ))}
             {retry && <RetryStatus retry={retry} />}
-            {running && !retry && !answering && !toolsRunning && !finishing && (
-              <Activity status={activity} />
+            {thinking !== undefined && inline === undefined && (
+              <Activity status={thinking} />
             )}
             {!running && (live?.compactions?.length ?? 0) > 0 && (
               <Activity status='Summarizing earlier messages' />
