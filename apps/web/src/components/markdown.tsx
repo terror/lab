@@ -11,12 +11,37 @@ let loaded: Modules | undefined;
 
 let loading: Promise<Modules> | undefined;
 
+function darkMode() {
+  return document.documentElement.classList.contains('dark');
+}
+
+const mermaid: NonNullable<StreamdownProps['plugins']>['mermaid'] = {
+  getMermaid: (config) => ({
+    initialize: () => undefined,
+    render: async (id, source) => {
+      const { default: renderer } = await import('mermaid');
+
+      renderer.initialize({
+        ...config,
+        securityLevel: 'strict',
+        startOnLoad: false,
+        theme: darkMode() ? 'dark' : 'neutral',
+      });
+
+      return renderer.render(id, source);
+    },
+  }),
+  language: 'mermaid',
+  name: 'mermaid',
+  type: 'diagram',
+};
+
 export function loadMarkdown() {
   loading ??= Promise.all([
     import('streamdown'),
     import('@streamdown/code'),
   ]).then(([streamdown, { code }]) => {
-    loaded = { plugins: { code }, streamdown };
+    loaded = { plugins: { code, mermaid }, streamdown };
 
     return loaded;
   });
