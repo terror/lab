@@ -27,11 +27,11 @@ function AskUser({ args, callId, details }: ToolView) {
   );
 }
 
-export const askRenderers: Record<string, ToolRenderer> = {
+export const askRenderers = {
   ask_user: {
     icon: MessageCircleQuestion,
     inline: (view) => <AskUser {...view} />,
     title: ({ active }) =>
       active ? 'Asking you a question' : 'Asked you a question',
   },
-};
+} satisfies Record<string, ToolRenderer>;

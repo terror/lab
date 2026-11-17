@@ -1,7 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/lib/conversations';
+import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
 const approvalSchema = z.object({
@@ -9,6 +11,44 @@ const approvalSchema = z.object({
   decision: z.enum(['approved', 'denied']).optional(),
   summary: z.array(z.string()),
 });
+
+function ClampedText({ children }: { children: string }) {
+  const paragraph = useRef<HTMLParagraphElement>(null);
+
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = paragraph.current;
+
+    if (element) {
+      setOverflowing(element.scrollHeight > element.clientHeight);
+    }
+  }, []);
+
+  return (
+    <div className='flex flex-col items-start gap-1'>
+      <p
+        className={cn(
+          'text-sm whitespace-pre-wrap text-muted-foreground',
+          !expanded && 'line-clamp-3'
+        )}
+        ref={paragraph}
+      >
+        {children}
+      </p>
+      {(overflowing || expanded) && (
+        <button
+          className='text-xs text-muted-foreground hover:text-foreground'
+          onClick={() => setExpanded(!expanded)}
+          type='button'
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function approvalOf(details: unknown) {
   return z.object({ approval: approvalSchema }).safeParse(details).data
@@ -37,9 +77,7 @@ export function ApprovalCard({
       <div className='flex flex-col gap-1'>
         <p className='text-sm font-medium'>{approval.action}</p>
         {approval.summary.map((line) => (
-          <p key={line} className='text-sm text-muted-foreground'>
-            {line}
-          </p>
+          <ClampedText key={line}>{line}</ClampedText>
         ))}
       </div>
       {decision === undefined ? (

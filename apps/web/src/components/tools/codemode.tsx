@@ -57,7 +57,7 @@ function Script({ args, details, output }: ToolView) {
   );
 }
 
-export const codemodeRenderers: Record<string, ToolRenderer> = {
+export const codemodeRenderers = {
   codemode: {
     preview: Script,
     icon: Code,
@@ -72,4 +72,4 @@ export const codemodeRenderers: Record<string, ToolRenderer> = {
     },
     title: ({ active }) => (active ? 'Running a script' : 'Ran a script'),
   },
-};
+} satisfies Record<string, ToolRenderer>;

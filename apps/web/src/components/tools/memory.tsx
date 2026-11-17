@@ -48,7 +48,7 @@ function forgottenText({ args, details, history }: ToolView) {
   );
 }
 
-export const memoryRenderers: Record<string, ToolRenderer> = {
+export const memoryRenderers = {
   forget: {
     actions: manageMemories,
     icon: Lightbulb,
@@ -91,4 +91,4 @@ export const memoryRenderers: Record<string, ToolRenderer> = {
       return memory ? `${verb} “${memory}”` : verb;
     },
   },
-};
+} satisfies Record<string, ToolRenderer>;

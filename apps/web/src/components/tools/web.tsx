@@ -6,7 +6,7 @@ import { type ToolRenderer } from './types';
 
 type WebResult = { domain: string; title: string; url: string };
 
-export const webRenderers: Record<string, ToolRenderer> = {
+export const webRenderers = {
   web_fetch: {
     icon: Globe,
     preview: ({ details }) => {
@@ -53,4 +53,4 @@ export const webRenderers: Record<string, ToolRenderer> = {
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} the web${quoted(args.query)}`,
   },
-};
+} satisfies Record<string, ToolRenderer>;

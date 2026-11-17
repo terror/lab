@@ -5,13 +5,14 @@ import { chatRenderers } from './chats';
 import { codemodeRenderers } from './codemode';
 import { libraryRenderers } from './library';
 import { memoryRenderers } from './memory';
+import { type ToolName } from './names';
 import { sandboxRenderers } from './sandbox';
 import { scheduleRenderers } from './schedule';
 import { skillRenderers } from './skills';
-import type { ToolRenderer } from './types';
+import type { FallbackRenderer, ToolRenderer } from './types';
 import { webRenderers } from './web';
 
-const renderers: Partial<Record<string, ToolRenderer>> = {
+const renderers = {
   ...askRenderers,
   ...chatRenderers,
   ...codemodeRenderers,
@@ -21,13 +22,17 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
   ...scheduleRenderers,
   ...skillRenderers,
   ...webRenderers,
-};
+} satisfies Record<ToolName, ToolRenderer>;
 
-const fallback = (name: string): ToolRenderer => ({
+function isToolName(name: string): name is ToolName {
+  return name in renderers;
+}
+
+const fallback = (name: string): FallbackRenderer => ({
   icon: Wrench,
   title: ({ active }) => `${active ? 'Running' : 'Ran'} ${name}`,
 });
 
-export function toolRenderer(name: string): ToolRenderer {
-  return renderers[name] ?? fallback(name);
+export function toolRenderer(name: string): FallbackRenderer {
+  return isToolName(name) ? renderers[name] : fallback(name);
 }
