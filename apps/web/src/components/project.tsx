@@ -1,4 +1,3 @@
-import { Composer } from '@/components/composer';
 import { ConversationItem } from '@/components/conversation-item';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
@@ -8,61 +7,20 @@ import {
 } from '@/components/project-dialog';
 import { ProjectInstructions } from '@/components/project-instructions';
 import { ProjectMenu } from '@/components/project-menu';
+import { StartComposer } from '@/components/start-composer';
 import { Unavailable } from '@/components/unavailable';
-import type { Attachment } from '@/lib/attachments';
-import {
-  conversationsQueryKey,
-  createConversation,
-  useConversations,
-  useDraft,
-} from '@/lib/conversations';
-import { useChatModel } from '@/lib/models';
+import { useConversations } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Folder } from 'lucide-react';
 import { useState } from 'react';
 
 function ProjectComposer({ id, name }: { id: number; name: string }) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-
-  const [draft, setDraft] = useDraft(`project:${id}`);
-  const [model, setModel] = useChatModel();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  const create = useMutation({
-    meta: { inlineError: true },
-    mutationFn: (content: string) =>
-      createConversation(content, attachments, model, id),
-    onSuccess: async (chat, content) => {
-      if (draft.trim() === content) {
-        setDraft('');
-      }
-
-      await navigate({ params: { id: chat }, to: '/c/$id' });
-      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-    },
-  });
-
   return (
-    <Composer
-      attachments={attachments}
-      draft={draft}
-      error={create.error?.message}
-      model={model}
-      onAttachmentsChange={setAttachments}
-      onDraftChange={(value) => {
-        if (create.isError) {
-          create.reset();
-        }
-
-        setDraft(value);
-      }}
-      onModelChange={setModel}
-      onSubmit={(content) => create.mutate(content)}
+    <StartComposer
+      draft={`project:${id}`}
       placeholder={`New chat in ${name}`}
-      submitting={create.isPending}
+      projectId={id}
     />
   );
 }

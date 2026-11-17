@@ -12,12 +12,10 @@ import {
 import { Kbd } from '@/components/ui/kbd';
 import {
   conversationTitle,
-  conversationsQueryKey,
-  createConversation,
   useConversations,
+  useStartChat,
 } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
-import { useRefreshMutation } from '@/lib/mutations';
 import { useProjects } from '@/lib/projects';
 import { type Segment, useWorkspaceSearch } from '@/lib/search';
 import {
@@ -410,16 +408,9 @@ function Palette({
   onDone: () => void;
   onNewProject: () => void;
 }) {
-  const navigate = useNavigate();
   const [model] = useChatModel();
 
-  const start = useRefreshMutation(
-    (content: string) => createConversation(content, [], model),
-    {
-      invalidate: [conversationsQueryKey],
-      onSuccess: (id) => navigate({ params: { id }, to: '/c/$id' }),
-    }
-  );
+  const start = useStartChat({ inlineError: false });
 
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState<Scope | 'all'>('all');
@@ -471,7 +462,7 @@ function Palette({
     }
 
     onDone();
-    start.mutate(query);
+    start.mutate({ attachments: [], content: query, model });
   };
 
   const onKeyDown = (event: KeyboardEvent) => {

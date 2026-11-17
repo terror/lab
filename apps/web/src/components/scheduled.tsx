@@ -1,5 +1,5 @@
-import { Composer } from '@/components/composer';
 import { LoadError } from '@/components/load-error';
+import { StartComposer } from '@/components/start-composer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,13 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { Attachment } from '@/lib/attachments';
-import {
-  conversationsQueryKey,
-  createConversation,
-  useDraft,
-} from '@/lib/conversations';
-import { useChatModel } from '@/lib/models';
+import { conversationsQueryKey } from '@/lib/conversations';
 import {
   type ScheduledTask,
   deleteTask,
@@ -25,7 +19,7 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Clock, Ellipsis } from 'lucide-react';
 import { useState } from 'react';
@@ -184,46 +178,11 @@ function FilterMenu({
 }
 
 function SchedulePrompt() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const [draft, setDraft] = useDraft('scheduled');
-  const [selectedModel, setModel] = useChatModel();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  const create = useMutation({
-    meta: { inlineError: true },
-    mutationFn: (content: string) =>
-      createConversation(
-        `Schedule this task: ${content}`,
-        attachments,
-        selectedModel
-      ),
-    onSuccess: async (id) => {
-      setDraft('');
-
-      await navigate({ params: { id }, to: '/c/$id' });
-      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-    },
-  });
-
   return (
-    <Composer
-      attachments={attachments}
-      draft={draft}
-      error={create.error?.message}
-      model={selectedModel}
-      onAttachmentsChange={setAttachments}
-      onDraftChange={(value) => {
-        if (create.isError) {
-          create.reset();
-        }
-
-        setDraft(value);
-      }}
-      onModelChange={setModel}
-      onSubmit={(content) => create.mutate(content)}
+    <StartComposer
+      draft='scheduled'
       placeholder='Schedule a task...'
-      submitting={create.isPending}
+      prompt={(content) => `Schedule this task: ${content}`}
     />
   );
 }

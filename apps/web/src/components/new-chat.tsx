@@ -1,16 +1,6 @@
-import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
+import { StartComposer } from '@/components/start-composer';
 import { UnreadChips } from '@/components/unread-chips';
-import type { Attachment } from '@/lib/attachments';
-import {
-  conversationsQueryKey,
-  createConversation,
-  useDraft,
-} from '@/lib/conversations';
-import { useChatModel } from '@/lib/models';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 
 function greeting(name: string) {
   const hour = new Date().getHours();
@@ -32,26 +22,6 @@ function greeting(name: string) {
 }
 
 export function NewChat({ user }: { user: { name: string } }) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const [draft, setDraft] = useDraft('new');
-  const [selectedModel, setModel] = useChatModel();
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  const create = useMutation({
-    meta: { inlineError: true },
-    mutationFn: (content: string) =>
-      createConversation(content, attachments, selectedModel),
-    onSuccess: async (id, content) => {
-      if (draft.trim() === content) {
-        setDraft('');
-      }
-
-      await navigate({ params: { id }, to: '/c/$id' });
-      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-    },
-  });
-
   return (
     <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-24'>
       <div className='flex w-full max-w-3xl flex-col items-center gap-8'>
@@ -62,23 +32,7 @@ export function NewChat({ user }: { user: { name: string } }) {
           </h1>
         </div>
         <div className='relative w-full'>
-          <Composer
-            attachments={attachments}
-            draft={draft}
-            error={create.error?.message}
-            model={selectedModel}
-            onAttachmentsChange={setAttachments}
-            onDraftChange={(value) => {
-              if (create.isError) {
-                create.reset();
-              }
-
-              setDraft(value);
-            }}
-            onModelChange={setModel}
-            onSubmit={(content) => create.mutate(content)}
-            submitting={create.isPending}
-          />
+          <StartComposer draft='new' />
           <UnreadChips />
         </div>
       </div>
