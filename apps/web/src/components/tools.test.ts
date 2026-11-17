@@ -30,6 +30,7 @@ test('tools describe themselves while running and when done', () => {
     ),
     line('remember', false, { text: 'foo' }),
     line('forget', true),
+    line('forget', false, { id: 'bar' }, { id: 'bar', text: 'foo' }),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -40,6 +41,7 @@ test('tools describe themselves while running and when done', () => {
     ['Read foo', 'characters 2–4 of 9'],
     ['Remembered “foo”', undefined],
     ['Forgetting a memory', undefined],
+    ['Forgot “foo”', undefined],
     ['Ran foo', undefined],
   ]);
 });

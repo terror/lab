@@ -4,7 +4,7 @@ import { memory } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
+import { call, chat, toolDetails } from '../test/client';
 import { script, toolCall } from '../test/models';
 
 test('memories and instructions can be managed', async () => {
@@ -32,24 +32,32 @@ test('memories and instructions can be managed', async () => {
   await call(headers, 'PATCH', '/memory', { instructions: '' });
 });
 
-test('the agent remembers facts', async () => {
+test('the agent remembers and forgets facts', async () => {
   const headers = await signIn();
 
   script(toolCall('remember', { text: 'baz' }), fauxAssistantMessage('foo'));
 
-  const { body } = await call(headers, 'POST', '/conversations', {
-    content: 'foo',
+  const remembered = await chat(headers, { content: 'foo' });
+
+  const [{ id }] = (await call(headers, 'GET', '/memory')).body.memories;
+
+  script(toolCall('forget', { id }), fauxAssistantMessage('foo'));
+
+  const forgotten = await chat(headers, { content: 'foo' });
+
+  expect({
+    details: [
+      ...(await toolDetails(headers, remembered)),
+      ...(await toolDetails(headers, forgotten)),
+    ],
+    memories: (await call(headers, 'GET', '/memory')).body.memories,
+  }).toEqual({
+    details: [
+      { id, text: 'baz' },
+      { id, text: 'baz' },
+    ],
+    memories: [],
   });
-
-  await idle(body.id);
-
-  const state = await call(headers, 'GET', '/memory');
-
-  const [saved] = state.body.memories;
-
-  await call(headers, 'DELETE', `/memory/${saved.id}`);
-
-  expect(saved.text).toBe('baz');
 });
 
 test('instructions and memories are added to the prompt', async () => {

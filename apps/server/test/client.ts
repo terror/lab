@@ -65,19 +65,31 @@ export function raw(headers: Headers, path: string) {
 }
 
 type ToolResultEntry = {
-  model?: { content: { text?: string }[]; role: string }[];
+  model?: {
+    content: { text?: string }[];
+    details?: unknown;
+    role: string;
+  }[];
 };
 
-export async function toolOutputs(headers: Headers, id: number) {
+async function toolResults(headers: Headers, id: number) {
   const { body } = await call(
     headers,
     'GET',
     `/conversations/${id}/entries?order=ascending`
   );
 
-  return body.items.flatMap(({ model }: ToolResultEntry) =>
-    model?.[0]?.role === 'toolResult'
-      ? [model[0].content.map(({ text }) => text).join('')]
-      : []
+  return (body.items as ToolResultEntry[]).flatMap(({ model }) =>
+    model?.[0]?.role === 'toolResult' ? [model[0]] : []
   );
+}
+
+export async function toolOutputs(headers: Headers, id: number) {
+  return (await toolResults(headers, id)).map(({ content }) =>
+    content.map(({ text }) => text).join('')
+  );
+}
+
+export async function toolDetails(headers: Headers, id: number) {
+  return (await toolResults(headers, id)).map(({ details }) => details);
 }

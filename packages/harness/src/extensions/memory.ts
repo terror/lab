@@ -92,7 +92,12 @@ const remember = defineTool({
       };
     }
 
-    return { details: { id }, output: text(`Remembered [${id}]: ${memory}`) };
+    return {
+      details: { id, text: memory },
+      output: text(
+        `Remembered [${id}]: ${memory}\n\nThis is a new memory; it now also appears in your memory list.`
+      ),
+    };
   },
 });
 
@@ -109,20 +114,14 @@ const forget = defineTool({
 
       const index = doc.memories.findIndex((entry) => entry.id === id);
 
-      if (index < 0) {
-        return false;
-      }
-
-      doc.memories.splice(index, 1);
-
-      return true;
+      return index < 0 ? undefined : doc.memories.splice(index, 1)[0]?.text;
     }, context);
 
-    if (!removed) {
+    if (removed === undefined) {
       return { isError: true, output: text(`No memory has the id ${id}.`) };
     }
 
-    return { details: { id }, output: text(`Forgot [${id}].`) };
+    return { details: { id, text: removed }, output: text(`Forgot [${id}].`) };
   },
 });
 

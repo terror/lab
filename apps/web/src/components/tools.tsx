@@ -1,3 +1,6 @@
+import { selectSettingsSection } from '@/lib/settings';
+import { cn } from '@/lib/utils';
+import { useNavigate } from '@tanstack/react-router';
 import {
   Check,
   Code,
@@ -33,6 +36,7 @@ export type ToolView = {
 };
 
 type ToolRenderer = {
+  actions?: ReactNode;
   preview?: (view: ToolView) => ReactNode;
   icon: LucideIcon;
   summary?: (view: ToolView) => string | undefined;
@@ -147,6 +151,58 @@ function PreviewPassage({ children }: { children: string }) {
     <p className='line-clamp-6 text-sm/relaxed whitespace-pre-wrap text-foreground/80'>
       {children}
     </p>
+  );
+}
+
+function MemoryNote({
+  forgotten = false,
+  text: note,
+}: {
+  forgotten?: boolean;
+  text: string;
+}) {
+  return (
+    <p
+      className={cn(
+        'rounded-xl bg-muted/40 px-3.5 py-3 text-sm/relaxed text-foreground/90',
+        forgotten && 'text-muted-foreground line-through'
+      )}
+    >
+      {note}
+    </p>
+  );
+}
+
+function FooterButton({
+  children,
+  onClick,
+}: {
+  children: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className='text-xs text-muted-foreground transition-colors hover:text-foreground'
+      onClick={onClick}
+      type='button'
+    >
+      {children}
+    </button>
+  );
+}
+
+function ManageMemories() {
+  const navigate = useNavigate();
+
+  return (
+    <FooterButton
+      onClick={() => {
+        selectSettingsSection('memory');
+        void navigate({ to: '/settings' });
+      }}
+    >
+      Manage memories
+    </FooterButton>
   );
 }
 
@@ -296,8 +352,22 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
     title: ({ active }) => (active ? 'Running a script' : 'Ran a script'),
   },
   forget: {
+    actions: <ManageMemories />,
     icon: Lightbulb,
-    title: ({ active }) => (active ? 'Forgetting a memory' : 'Forgot a memory'),
+    preview: ({ details }) => {
+      const note = text(field(details, 'text'));
+
+      return note ? <MemoryNote forgotten text={note} /> : undefined;
+    },
+    title: ({ active, details }) => {
+      const note = text(field(details, 'text'));
+
+      if (active) {
+        return 'Forgetting a memory';
+      }
+
+      return note ? `Forgot “${note}”` : 'Forgot a memory';
+    },
   },
   library_read: {
     preview: ({ details }) => {
@@ -345,7 +415,13 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
       `${active ? 'Searching' : 'Searched'} your library${quoted(args.query)}`,
   },
   remember: {
+    actions: <ManageMemories />,
     icon: Lightbulb,
+    preview: ({ args, details }) => {
+      const note = text(field(details, 'text')) ?? text(args.text);
+
+      return note && details ? <MemoryNote text={note} /> : undefined;
+    },
     title: ({ active, args }) => {
       const memory = text(args.text);
 
@@ -368,7 +444,9 @@ export function toolRenderer(name: string): ToolRenderer {
 export function ToolBody(props: ToolView & { name: string }) {
   const [raw, setRaw] = useState(false);
 
-  const preview = toolRenderer(props.name).preview?.(props);
+  const renderer = toolRenderer(props.name);
+
+  const preview = renderer.preview?.(props);
 
   if (preview === undefined || preview === null) {
     return <Raw {...props} />;
@@ -377,13 +455,12 @@ export function ToolBody(props: ToolView & { name: string }) {
   return (
     <>
       {preview}
-      <button
-        className='self-start text-xs text-muted-foreground transition-colors hover:text-foreground'
-        onClick={() => setRaw(!raw)}
-        type='button'
-      >
-        {raw ? 'Hide raw output' : 'Show raw output'}
-      </button>
+      <div className='flex items-center gap-4'>
+        {renderer.actions}
+        <FooterButton onClick={() => setRaw(!raw)}>
+          {raw ? 'Hide raw output' : 'Show raw output'}
+        </FooterButton>
+      </div>
       {raw && <Raw {...props} />}
     </>
   );
