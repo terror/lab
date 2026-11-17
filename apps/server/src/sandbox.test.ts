@@ -67,7 +67,10 @@ test('commands run on the user computer in the chat directory', async () => {
 function memoryProvider(): SandboxProvider & {
   computers: Map<string, string>;
   files: Map<string, Uint8Array>;
+  networks: string[];
 } {
+  const networks: string[] = [];
+
   const files = new Map<string, Uint8Array>();
 
   const computers = new Map<string, string>();
@@ -87,6 +90,10 @@ function memoryProvider(): SandboxProvider & {
         : undefined;
     },
     label: 'Foo',
+    network: async (_computer, mode) => {
+      networks.push(mode);
+    },
+    networks,
     read: async (_computer, path) => files.get(path),
     remove: async (_computer, path) => {
       for (const key of files.keys()) {
@@ -183,6 +190,10 @@ test('the computer can be stopped, reset, and cleaned up from the trash', async 
 
   const running = (await call(headers, 'GET', '/computer')).body;
 
+  const network = await call(headers, 'PATCH', '/computer', {
+    network: 'none',
+  });
+
   await call(headers, 'POST', '/computer/stop');
 
   const stopped = (await call(headers, 'GET', '/computer')).body.computer.state;
@@ -195,16 +206,27 @@ test('the computer can be stopped, reset, and cleaned up from the trash', async 
 
   await call(headers, 'DELETE', '/computer');
 
+  const reset = (await call(headers, 'GET', '/computer')).body;
+
+  const applied = [...provider.networks];
+
+  await call(headers, 'PATCH', '/computer', { network: 'full' });
+
   expect({
+    applied,
     files,
-    reset: (await call(headers, 'GET', '/computer')).body,
+    network: network.body.network,
+    reset,
     running,
     stopped,
   }).toEqual({
+    applied: ['full', 'none'],
     files: [],
-    reset: { computer: null, provider: 'Foo' },
+    network: 'none',
+    reset: { computer: null, network: 'none', provider: 'Foo' },
     running: {
       computer: { createdAt: '2026-01-01T00:00:00.000Z', state: 'running' },
+      network: 'full',
       provider: 'Foo',
     },
     stopped: 'stopped',

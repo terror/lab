@@ -20,6 +20,16 @@ export const computerQueryOptions = queryOptions({
     call(client.computer.$get(undefined, { init: { signal } })),
 });
 
+export function useNetworkMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (network: ComputerStatus['network']) =>
+      call(client.computer.$patch({ json: { network } })),
+    onSuccess: (status) => queryClient.setQueryData(computerQueryKey, status),
+  });
+}
+
 export function useComputerAction(action: 'reset' | 'stop') {
   const queryClient = useQueryClient();
 
