@@ -130,6 +130,7 @@ export const scheduleAccess: ScheduleAccess = {
       .insert(table)
       .values({
         ...input,
+        conversationId,
         nextRunAt: nextRun(input.cron, input.timezone, new Date()),
         ownerId,
       })

@@ -133,7 +133,7 @@ export function schedule(access: ScheduleAccess) {
   const scheduleCreate = defineTool({
     name: 'schedule_create',
     description:
-      'Schedule a task that runs a prompt on a recurring schedule and posts the result to its own chat. The user must approve it first.',
+      'Schedule a task that runs a prompt on a recurring schedule in this chat. The user must approve it first.',
     callers: ['model'],
     replay: 'safe',
     parameters: obj({
