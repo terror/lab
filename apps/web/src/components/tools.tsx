@@ -133,11 +133,11 @@ function PreviewList({
   const rest = items.length - shown.length;
 
   return (
-    <ul className='-mx-2.5 flex flex-col'>
+    <ul className='flex flex-col'>
       {shown.map(({ key, label, meta }) => (
         <li
           key={key}
-          className='flex items-baseline justify-between gap-4 rounded-lg px-2.5 py-1 text-sm hover:bg-muted/40'
+          className='flex items-baseline justify-between gap-4 py-1 text-sm'
         >
           <span className='min-w-0 truncate text-foreground/90'>{label}</span>
           {meta && (
@@ -148,9 +148,7 @@ function PreviewList({
         </li>
       ))}
       {rest > 0 && (
-        <li className='px-2.5 py-1 text-xs text-muted-foreground'>
-          {rest} more
-        </li>
+        <li className='py-1 text-xs text-muted-foreground'>{rest} more</li>
       )}
     </ul>
   );
