@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
+import { removeChatFolder } from './sandbox';
 import { validator } from './validator';
 
 type Trashed = { deletedAt: Date; id: number; title: string | null };
@@ -56,6 +57,8 @@ const conversations: Trashable = {
     );
 
     await conversation?.abort(BACKGROUND_CONTEXT);
+
+    void removeChatFolder(ownerId, id).catch(console.error);
 
     await db.transaction(async (tx) => {
       await tx.delete(table).where(eq(table.id, id));

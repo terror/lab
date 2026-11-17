@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import { auth, requireUser } from './auth';
 import changelog from './changelog';
+import computer from './computer';
 import conversations from './conversations';
 import { db } from './db';
 import { harness } from './harness';
@@ -68,6 +69,7 @@ const api = new Hono()
       models: await listModels(),
     });
   })
+  .route('/computer', computer)
   .route('/conversations', conversations)
   .route('/providers', providers)
   .route('/library', library)

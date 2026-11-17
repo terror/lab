@@ -6,6 +6,7 @@ export const settingsSections = [
   'personalization',
   'memory',
   'skills',
+  'computer',
   'providers',
   'usage',
   'trash',

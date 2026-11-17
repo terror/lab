@@ -1,6 +1,6 @@
 import { schema } from '@lab/db';
 import { SANDBOX_OUTPUT_LENGTH, type SandboxAccess } from '@lab/harness';
-import { Sandbox } from '@vercel/sandbox';
+import { APIError, Sandbox } from '@vercel/sandbox';
 import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
 import { Writable } from 'node:stream';
@@ -10,7 +10,22 @@ import { env } from './env';
 import { owners } from './records';
 import { decodeText } from './text';
 
+export type ComputerState = {
+  createdAt: string;
+  state:
+    | 'aborted'
+    | 'failed'
+    | 'pending'
+    | 'running'
+    | 'snapshotting'
+    | 'stopped'
+    | 'stopping';
+};
+
 export type SandboxProvider = {
+  destroy(computer: string): Promise<void>;
+  inspect(computer: string): Promise<ComputerState | undefined>;
+  label: string;
   read(computer: string, path: string): Promise<Uint8Array | undefined>;
   run(
     computer: string,
@@ -22,6 +37,8 @@ export type SandboxProvider = {
       timeoutMs: number;
     }
   ): Promise<{ exitCode: number }>;
+  remove(computer: string, path: string): Promise<void>;
+  stop(computer: string): Promise<void>;
   write(computer: string, path: string, content: Uint8Array): Promise<void>;
 };
 
@@ -47,7 +64,33 @@ function vercel(): SandboxProvider | undefined {
       timeout: IDLE_TIMEOUT_MS,
     });
 
+  const find = async (computer: string) => {
+    try {
+      return await Sandbox.get({ ...credentials, name: computer });
+    } catch (error) {
+      if (error instanceof APIError && error.response.status === 404) {
+        return undefined;
+      }
+
+      throw error;
+    }
+  };
+
   return {
+    destroy: async (computer) => {
+      await (await find(computer))?.delete();
+    },
+    inspect: async (computer) => {
+      const sandbox = await find(computer);
+
+      return (
+        sandbox && {
+          createdAt: sandbox.createdAt.toISOString(),
+          state: sandbox.status,
+        }
+      );
+    },
+    label: 'Vercel Sandbox',
     read: async (computer, path) => {
       const content = await (await open(computer)).readFileToBuffer({ path });
 
@@ -76,6 +119,12 @@ function vercel(): SandboxProvider | undefined {
       });
 
       return { exitCode: finished.exitCode };
+    },
+    remove: async (computer, path) => {
+      await (await find(computer))?.runCommand('rm', ['-rf', path]);
+    },
+    stop: async (computer) => {
+      await (await find(computer))?.stop();
     },
     write: async (computer, path, content) => {
       await (await open(computer)).writeFiles([{ content, path }]);
@@ -345,3 +394,42 @@ export const sandboxAccess: SandboxAccess = {
     return { path: shownPath(computer, target), size: bytes.byteLength };
   },
 };
+
+export async function computerStatus(ownerId: string) {
+  const { provider } = selected;
+
+  return {
+    computer: provider
+      ? ((await provider.inspect(computerName(ownerId))) ?? null)
+      : null,
+    provider: provider?.label ?? null,
+  };
+}
+
+function requireProvider() {
+  const { provider } = selected;
+
+  if (!provider) {
+    throw new Error("The user's computer isn't set up.");
+  }
+
+  return provider;
+}
+
+export async function stopComputer(ownerId: string) {
+  await requireProvider().stop(computerName(ownerId));
+}
+
+export async function resetComputer(ownerId: string) {
+  await requireProvider().destroy(computerName(ownerId));
+}
+
+export async function removeChatFolder(
+  ownerId: string,
+  conversationId: number
+) {
+  await selected.provider?.remove(
+    computerName(ownerId),
+    `chats/${conversationId}`
+  );
+}

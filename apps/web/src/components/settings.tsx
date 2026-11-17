@@ -1,3 +1,4 @@
+import { Computer } from '@/components/computer';
 import { Memory } from '@/components/memory';
 import { Personalization } from '@/components/personalization';
 import { Providers } from '@/components/providers';
@@ -28,6 +29,7 @@ import {
   ChevronDown,
   Gauge,
   KeyRound,
+  Monitor,
   type LucideIcon,
   Palette,
   Trash2,
@@ -109,6 +111,7 @@ const sections: Record<
   { icon: LucideIcon; label: string; panel: ComponentType }
 > = {
   appearance: { icon: Palette, label: 'Appearance', panel: Appearance },
+  computer: { icon: Monitor, label: 'Computer', panel: Computer },
   memory: { icon: Brain, label: 'Memory', panel: Memory },
   personalization: {
     icon: UserRound,
