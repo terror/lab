@@ -21,7 +21,13 @@ function initials(name: string) {
     .join('');
 }
 
-function UserAvatar({ className, user }: { className?: string; user: User }) {
+export function UserAvatar({
+  className,
+  user,
+}: {
+  className?: string;
+  user: User;
+}) {
   return (
     <Avatar className={className}>
       {user.image && (
