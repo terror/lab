@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { type User, requireUser } from './auth';
 import { pinChat, renameChat } from './chat-actions';
 import { db } from './db';
+import { fileHeaders } from './file-headers';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
 import { listConversations, listSchema, running } from './listing';
@@ -315,11 +316,11 @@ const conversations = new Hono()
       throw new HTTPException(404, { message: 'Image not found' });
     }
 
-    return c.body(Buffer.from(image.data, 'base64'), 200, {
-      'cache-control': 'private, max-age=31536000, immutable',
-      'content-type': image.mimeType,
-      'x-content-type-options': 'nosniff',
-    });
+    return c.body(
+      Buffer.from(image.data, 'base64'),
+      200,
+      fileHeaders(image.mimeType)
+    );
   })
   .get('/:id/events', params, owned, async (c) => {
     const { conversation } = c.var;

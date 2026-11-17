@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
+import { fileHeaders } from './file-headers';
 import { validator } from './validator';
 
 const MAX_DOCUMENT_BYTES = 20_000_000;
@@ -51,11 +52,6 @@ async function owned(id: string, ownerId: string) {
   return row;
 }
 
-const cached = {
-  'cache-control': 'private, max-age=31536000, immutable',
-  'x-content-type-options': 'nosniff',
-};
-
 const uploads = new Hono()
   .use(requireUser)
   .get('/:id', params, async (c) => {
@@ -65,10 +61,11 @@ const uploads = new Hono()
       throw new HTTPException(404, { message: 'Upload not found' });
     }
 
-    return c.body(new Uint8Array(upload.content), 200, {
-      ...cached,
-      'content-type': upload.mimeType,
-    });
+    return c.body(
+      new Uint8Array(upload.content),
+      200,
+      fileHeaders(upload.mimeType)
+    );
   })
   .get('/:id/thumbnail', params, async (c) => {
     const upload = await owned(c.req.valid('param').id, c.get('user').id);
@@ -77,10 +74,11 @@ const uploads = new Hono()
       throw new HTTPException(404, { message: 'Thumbnail not found' });
     }
 
-    return c.body(new Uint8Array(upload.thumbnail), 200, {
-      ...cached,
-      'content-type': 'image/png',
-    });
+    return c.body(
+      new Uint8Array(upload.thumbnail),
+      200,
+      fileHeaders('image/png')
+    );
   })
   .post('/', form, async (c) => {
     const { document, thumbnail } = c.req.valid('form');

@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { db } from './db';
+import { fileHeaders } from './file-headers';
 import { messageData } from './message-entry';
 import { backfill, entryChanges, observe } from './pipeline';
 import { contains, owners } from './records';
@@ -378,11 +379,11 @@ const library = new Hono()
       throw new HTTPException(404, { message: 'File not found' });
     }
 
-    return c.body(new Uint8Array(upload.content), 200, {
-      'cache-control': 'private, max-age=31536000, immutable',
-      'content-type': upload.mimeType,
-      'x-content-type-options': 'nosniff',
-    });
+    return c.body(
+      new Uint8Array(upload.content),
+      200,
+      fileHeaders(upload.mimeType)
+    );
   })
   .get('/:id/thumbnail', params, async (c) => {
     const upload = await uploadFor(c.req.valid('param').id, c.get('user').id);
@@ -391,11 +392,11 @@ const library = new Hono()
       throw new HTTPException(404, { message: 'Thumbnail not found' });
     }
 
-    return c.body(new Uint8Array(upload.thumbnail), 200, {
-      'cache-control': 'private, max-age=31536000, immutable',
-      'content-type': 'image/png',
-      'x-content-type-options': 'nosniff',
-    });
+    return c.body(
+      new Uint8Array(upload.thumbnail),
+      200,
+      fileHeaders('image/png')
+    );
   })
   .get('/:id', params, download, async (c) => {
     const user = c.get('user');
@@ -430,10 +431,8 @@ const library = new Hono()
       !original && /\.pdf$/i.test(item.name) ? `${item.name}.txt` : item.name;
 
     return c.body(new Uint8Array(original?.content ?? item.content), 200, {
-      'cache-control': 'private, max-age=31536000, immutable',
+      ...fileHeaders(type),
       'content-disposition': `${disposition}; filename*=UTF-8''${encodeURIComponent(filename)}`,
-      'content-type': type,
-      'x-content-type-options': 'nosniff',
     });
   });
 

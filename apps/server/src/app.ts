@@ -60,9 +60,20 @@ const docsHeaders = secureHeaders({
   contentSecurityPolicy: docsSecurityPolicy,
 });
 
-app.use((c, next) =>
-  c.req.path === '/api/docs' ? docsHeaders(c, next) : appHeaders(c, next)
-);
+app.use(async (c, next) => {
+  const apply = c.req.path === '/api/docs' ? docsHeaders : appHeaders;
+
+  let own: string | null = null;
+
+  await apply(c, async () => {
+    await next();
+    own = c.res.headers.get('content-security-policy');
+  });
+
+  if (own) {
+    c.res.headers.set('content-security-policy', own);
+  }
+});
 
 const api = new Hono()
   .get('/health', async (c) => {
