@@ -10,7 +10,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
-import { serial } from './records';
+import { owners, serial } from './records';
 
 export function observe<T>(
   select: (changes: readonly CommitChange[]) => readonly T[],
@@ -104,4 +104,44 @@ export async function backfill(
     },
     checkpoint?.entryId
   );
+}
+
+export function entryPipeline<Row>({
+  keep,
+  name,
+  rows,
+  store,
+}: {
+  keep: (entry: EntryRecord) => boolean;
+  name: string;
+  rows: (
+    entries: readonly EntryRecord[],
+    owned: ReadonlyMap<number, string>
+  ) => Row[] | Promise<Row[]>;
+  store: (rows: Row[]) => Promise<unknown>;
+}) {
+  const record = async (entries: readonly EntryRecord[]) => {
+    const owned = await owners(
+      entries.map(({ conversationId }) => conversationId)
+    );
+
+    const built = await rows(entries, owned);
+
+    if (built.length > 0) {
+      await store(built);
+    }
+  };
+
+  return {
+    backfill: async () => {
+      const conversations = await db
+        .select({ id: schema.conversation.id })
+        .from(schema.conversation);
+
+      for (const { id } of conversations) {
+        await backfill(name, id, (page) => record(page.filter(keep)));
+      }
+    },
+    flush: observe((changes) => entryChanges(changes, keep), record),
+  };
 }

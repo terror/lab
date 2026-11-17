@@ -7,7 +7,7 @@ import { call, create, settle } from '../test/client';
 import { db } from './db';
 import { env } from './env';
 import { conversationOwner } from './records';
-import { backfillUsage } from './usage';
+import { usagePipeline } from './usage';
 
 test('usage is summarized from assistant responses', async () => {
   const headers = await signIn();
@@ -25,7 +25,7 @@ test('usage is summarized from assistant responses', async () => {
       )
     );
 
-  await backfillUsage();
+  await usagePipeline.backfill();
 
   const { body } = await call(headers, 'GET', '/usage?days=7');
 

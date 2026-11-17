@@ -6,7 +6,7 @@ import { signIn } from '../test/auth';
 import { call, chat, idle, raw, settle } from '../test/client';
 import app from './app';
 import { db } from './db';
-import { backfillLibrary } from './library';
+import { libraryPipeline } from './library';
 
 type Item = Record<string, unknown> & { id: number; name: string };
 
@@ -43,7 +43,7 @@ test('attachments are collected into the library', async () => {
     .delete(schema.libraryItem)
     .where(eq(schema.libraryItem.conversationId, body.id));
 
-  await backfillLibrary();
+  await libraryPipeline.backfill();
 
   const library = await call(headers, 'GET', '/library');
 
@@ -165,12 +165,12 @@ test('the library backfill resumes from its checkpoint', async () => {
     ).length;
 
   await remove();
-  await backfillLibrary();
+  await libraryPipeline.backfill();
 
   const first = await count();
 
   await remove();
-  await backfillLibrary();
+  await libraryPipeline.backfill();
 
   expect([first, await count()]).toEqual([1, 0]);
 });

@@ -3,8 +3,7 @@ import { schema } from '@lab/db';
 
 import { db } from './db';
 import { isMessage, messageData } from './message-entry';
-import { backfill, entryChanges, observe } from './pipeline';
-import { owners } from './records';
+import { entryPipeline } from './pipeline';
 
 const table = schema.messageText;
 
@@ -33,48 +32,29 @@ function searchable(entry: EntryRecord) {
   return messageText(entry) !== undefined;
 }
 
-async function record(entries: readonly EntryRecord[]) {
-  const owned = await owners(
-    entries.map(({ conversationId }) => conversationId)
-  );
+export const historyPipeline = entryPipeline({
+  keep: searchable,
+  name: 'history',
+  rows: (entries, owned) =>
+    entries.flatMap((entry) => {
+      const ownerId = owned.get(entry.conversationId);
 
-  const rows = entries.flatMap((entry) => {
-    const ownerId = owned.get(entry.conversationId);
+      const content = messageText(entry);
 
-    const content = messageText(entry);
+      return ownerId && content
+        ? [
+            {
+              conversationId: entry.conversationId,
+              createdAt: new Date(entry.model?.[0]?.timestamp ?? Date.now()),
+              entryId: entry.id,
+              ownerId,
+              role: content.role,
+              text: content.text,
+            },
+          ]
+        : [];
+    }),
+  store: (rows) => db.insert(table).values(rows).onConflictDoNothing(),
+});
 
-    if (!ownerId || !content) {
-      return [];
-    }
-
-    return [
-      {
-        conversationId: entry.conversationId,
-        createdAt: new Date(entry.model?.[0]?.timestamp ?? Date.now()),
-        entryId: entry.id,
-        ownerId,
-        role: content.role,
-        text: content.text,
-      },
-    ];
-  });
-
-  if (rows.length > 0) {
-    await db.insert(table).values(rows).onConflictDoNothing();
-  }
-}
-
-export const flushHistory = observe(
-  (changes) => entryChanges(changes, searchable),
-  record
-);
-
-export async function backfillHistory() {
-  const conversations = await db
-    .select({ id: schema.conversation.id })
-    .from(schema.conversation);
-
-  for (const { id } of conversations) {
-    await backfill('history', id, (page) => record(page.filter(searchable)));
-  }
-}
+export const flushHistory = historyPipeline.flush;
