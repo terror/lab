@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       proxy: {
         '/api': `http://${hostname}:${port}`,
+        '/frame': `http://${hostname}:${port}`,
       },
     },
   };
