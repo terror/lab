@@ -8,13 +8,14 @@ import { preferencesQueryOptions } from './preferences';
 import { projectsQueryOptions } from './projects';
 import { schedulesQueryOptions } from './schedules';
 import { skillsQueryOptions } from './skills';
+import { trashQueryKey } from './trash';
 
 const toolWrites = {
   artifact_create: [],
   artifact_read: [],
   artifact_update: [],
   ask_user: [],
-  chat_delete: [conversationsQueryKey],
+  chat_delete: [conversationsQueryKey, trashQueryKey],
   chat_move: [conversationsQueryKey],
   chat_pin: [conversationsQueryKey],
   chat_read: [],
@@ -26,7 +27,11 @@ const toolWrites = {
   library_search: [],
   preferences_update: [preferencesQueryOptions.queryKey],
   project_create: [projectsQueryOptions.queryKey],
-  project_delete: [conversationsQueryKey, projectsQueryOptions.queryKey],
+  project_delete: [
+    conversationsQueryKey,
+    projectsQueryOptions.queryKey,
+    trashQueryKey,
+  ],
   project_list: [],
   project_update: [projectsQueryOptions.queryKey],
   remember: [memoryQueryOptions.queryKey],
@@ -46,8 +51,16 @@ const toolWrites = {
   skill_update: [skillsQueryOptions.queryKey],
   tool_output_read: [],
   trash_list: [],
-  trash_purge: [conversationsQueryKey, projectsQueryOptions.queryKey],
-  trash_restore: [conversationsQueryKey, projectsQueryOptions.queryKey],
+  trash_purge: [
+    conversationsQueryKey,
+    projectsQueryOptions.queryKey,
+    trashQueryKey,
+  ],
+  trash_restore: [
+    conversationsQueryKey,
+    projectsQueryOptions.queryKey,
+    trashQueryKey,
+  ],
   web_fetch: [],
   web_search: [],
 } satisfies Record<ToolName, readonly QueryKey[]>;
