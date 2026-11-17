@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
@@ -22,7 +23,13 @@ test('viewing an idle chat marks it read', async () => {
 
   const router = createRouter({
     history: createMemoryHistory(),
-    routeTree: createRootRoute({ component: () => <Conversation id={1} /> }),
+    routeTree: createRootRoute({
+      component: () => (
+        <TooltipProvider>
+          <Conversation id={1} />
+        </TooltipProvider>
+      ),
+    }),
   });
 
   await renderWithQuery(<RouterProvider router={router} />);
