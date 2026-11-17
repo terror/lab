@@ -1,5 +1,6 @@
 import { Composer } from '@/components/composer';
 import { LabMark } from '@/components/lab-mark';
+import { UnreadChips } from '@/components/unread-chips';
 import type { Attachment } from '@/lib/attachments';
 import {
   conversationsQueryKey,
@@ -60,23 +61,26 @@ export function NewChat({ user }: { user: { name: string } }) {
             {greeting(user.name)}
           </h1>
         </div>
-        <Composer
-          attachments={attachments}
-          draft={draft}
-          error={create.error?.message}
-          model={selectedModel}
-          onAttachmentsChange={setAttachments}
-          onDraftChange={(value) => {
-            if (create.isError) {
-              create.reset();
-            }
+        <div className='relative w-full'>
+          <Composer
+            attachments={attachments}
+            draft={draft}
+            error={create.error?.message}
+            model={selectedModel}
+            onAttachmentsChange={setAttachments}
+            onDraftChange={(value) => {
+              if (create.isError) {
+                create.reset();
+              }
 
-            setDraft(value);
-          }}
-          onModelChange={setModel}
-          onSubmit={(content) => create.mutate(content)}
-          submitting={create.isPending}
-        />
+              setDraft(value);
+            }}
+            onModelChange={setModel}
+            onSubmit={(content) => create.mutate(content)}
+            submitting={create.isPending}
+          />
+          <UnreadChips />
+        </div>
       </div>
     </div>
   );

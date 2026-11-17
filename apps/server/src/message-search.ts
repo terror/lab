@@ -38,7 +38,7 @@ function segments(headline: string): Segment[] {
     .filter(({ text }) => text.length > 0);
 }
 
-function plain(text: string) {
+export function plain(text: string) {
   return text.replace(/\*\*|__|`+|^#+\s+/gm, '');
 }
 

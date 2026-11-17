@@ -23,7 +23,7 @@ import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
-import { listConversations, listSchema, running } from './listing';
+import { listConversations, listSchema, listUnread, running } from './listing';
 import {
   draftSchema,
   emptyMessage,
@@ -225,6 +225,7 @@ const conversations = new Hono()
   .get('/', listQuery, async (c) =>
     c.json(await listConversations(c.get('user'), c.req.valid('query')))
   )
+  .get('/unread', async (c) => c.json(await listUnread(c.get('user'))))
   .post('/', creation, async (c) => {
     const user = c.get('user');
     const {
