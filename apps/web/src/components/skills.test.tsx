@@ -13,7 +13,7 @@ const skill = {
   updatedAt: 0,
 };
 
-test('a new skill is saved from the form', async () => {
+test('a new skill is created in a dialog', async () => {
   const fetch = stubFetch((_, init) =>
     Response.json({ skills: init?.method === 'POST' ? [skill] : [] })
   );
@@ -25,7 +25,7 @@ test('a new skill is saved from the form', async () => {
   await screen.getByLabelText('When to use it').fill('bar');
   await screen.getByLabelText('Instructions').click();
   await userEvent.keyboard('baz');
-  await screen.getByRole('button', { name: 'Save' }).click();
+  await screen.getByRole('button', { name: 'Create' }).click();
 
   await expect.element(screen.getByText('foo')).toBeVisible();
 
@@ -40,7 +40,7 @@ test('a new skill is saved from the form', async () => {
   });
 });
 
-test('a skill is edited in place', async () => {
+test('a skill is edited in a dialog', async () => {
   const fetch = stubFetch(() => Response.json({ skills: [skill] }));
 
   const { screen } = await renderWithQuery(<Skills />);
