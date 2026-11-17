@@ -1,6 +1,8 @@
+import { ApprovalCard, approvalOf } from '@/components/approval-card';
 import { Markdown } from '@/components/markdown';
 import {
   ToolBody,
+  ToolConversation,
   ToolHistory,
   type ToolProgress,
   toolRenderer,
@@ -104,6 +106,10 @@ function ToolCall({
 
   const renderer = toolRenderer(call.name);
 
+  const conversationId = useContext(ToolConversation);
+
+  const approval = approvalOf(view.details);
+
   const Icon = failed ? TriangleAlert : renderer.icon;
 
   const summary = renderer.summary?.(view);
@@ -130,6 +136,15 @@ function ToolCall({
           <ToolBody {...view} name={call.name} />
         </TraceCollapsibleContent>
       </TraceCollapsible>
+      {approval && (
+        <div className='mt-1.5 mb-2'>
+          <ApprovalCard
+            approval={approval}
+            callId={call.id}
+            conversationId={conversationId}
+          />
+        </div>
+      )}
       {renderer.inline && (
         <div className='mt-1.5 mb-2'>{renderer.inline(view)}</div>
       )}

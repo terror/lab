@@ -37,7 +37,14 @@ export {
   skills,
   updateSkill,
 } from './skills';
-export { ANSWER_LENGTH, QuestionsDoc } from './ask';
+export {
+  ANSWER_LENGTH,
+  APPROVED,
+  type ApprovalRequest,
+  DENIED,
+  QuestionsDoc,
+  requestApproval,
+} from './host-input';
 export {
   ComputerDoc,
   type NetworkMode,
