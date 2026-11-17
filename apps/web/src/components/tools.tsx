@@ -15,7 +15,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, createContext, useState } from 'react';
 
 export type ToolResult = {
   details?: unknown;
@@ -29,10 +29,19 @@ export type ToolProgress = {
   status: 'pending' | 'running' | 'done';
 };
 
+export type ToolRecord = {
+  args: Record<string, unknown>;
+  details: unknown;
+  name: string;
+};
+
+export const ToolHistory = createContext<readonly ToolRecord[]>([]);
+
 export type ToolView = {
   active: boolean;
   args: Record<string, unknown>;
   details: unknown;
+  history: readonly ToolRecord[];
   output: string;
 };
 
@@ -251,6 +260,26 @@ function SkillCard({
   );
 }
 
+function forgottenText({ args, details, history }: ToolView) {
+  const saved = text(field(details, 'text'));
+
+  if (saved) {
+    return saved;
+  }
+
+  const id = text(args.id);
+
+  const remembered = history.find(
+    (record) =>
+      record.name === 'remember' && text(field(record.details, 'id')) === id
+  );
+
+  return (
+    remembered &&
+    (text(field(remembered.details, 'text')) ?? text(remembered.args.text))
+  );
+}
+
 function skillTitle(running: string, done: string) {
   return ({ active, details }: ToolView) => {
     const name = text(field(details, 'name'));
@@ -308,6 +337,7 @@ function Script({ args, details, output }: ToolView) {
               active: call.status === 'running',
               args: parse(call.args),
               details: undefined,
+              history: [],
               output: '',
             };
 
@@ -411,15 +441,23 @@ const renderers: Partial<Record<string, ToolRenderer>> = {
   forget: {
     actions: manageMemories,
     icon: Lightbulb,
-    preview: ({ details }) => {
-      const note = text(field(details, 'text'));
+    preview: (view) => {
+      const note = forgottenText(view);
 
-      return note ? <MemoryNote forgotten text={note} /> : undefined;
+      if (!note) {
+        return (
+          <p className='text-sm text-muted-foreground'>
+            The forgotten memory's text isn't available.
+          </p>
+        );
+      }
+
+      return <MemoryNote forgotten text={note} />;
     },
-    title: ({ active, details }) => {
-      const note = text(field(details, 'text'));
+    title: (view) => {
+      const note = forgottenText(view);
 
-      if (active) {
+      if (view.active) {
         return 'Forgetting a memory';
       }
 

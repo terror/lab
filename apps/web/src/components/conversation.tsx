@@ -6,6 +6,7 @@ import {
   type ToolResult,
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
+import { ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
 import { Message, MessageContent } from '@/components/ui/message';
@@ -474,6 +475,26 @@ function ConversationView({ id }: { id: number }) {
     [view?.items]
   );
 
+  const history = useMemo(
+    () =>
+      committed.flatMap((row) =>
+        row.kind === 'assistant'
+          ? row.parts.flatMap((part) =>
+              part.type === 'toolCall'
+                ? [
+                    {
+                      args: part.arguments,
+                      details: results.get(part.id)?.details,
+                      name: part.name,
+                    },
+                  ]
+                : []
+            )
+          : []
+      ),
+    [committed, results]
+  );
+
   const keyed = useMemo(() => replyKeys(committed), [committed]);
 
   const rows = useMemo(() => {
@@ -591,54 +612,56 @@ function ConversationView({ id }: { id: number }) {
             className='mx-auto max-w-3xl px-6 py-8'
             spacerClassName={cn(!running && 'hidden!')}
           >
-            {view === undefined && (
-              <p className='text-sm text-muted-foreground'>Connecting…</p>
-            )}
-            {rows.map(({ key, row }) => (
-              <MessageScrollerItem
-                key={key}
-                messageId={key}
-                scrollAnchor={row === anchor}
-              >
-                <TranscriptRow
-                  activity={row === inline ? thinking : undefined}
-                  latest={row === latest && !running}
-                  loading={earlier.isPending || gap.isPending}
-                  onEarlier={onEarlier}
-                  onGap={onGap}
-                  progress={progress}
-                  results={results}
-                  row={row}
+            <ToolHistory value={history}>
+              {view === undefined && (
+                <p className='text-sm text-muted-foreground'>Connecting…</p>
+              )}
+              {rows.map(({ key, row }) => (
+                <MessageScrollerItem
+                  key={key}
+                  messageId={key}
+                  scrollAnchor={row === anchor}
+                >
+                  <TranscriptRow
+                    activity={row === inline ? thinking : undefined}
+                    latest={row === latest && !running}
+                    loading={earlier.isPending || gap.isPending}
+                    onEarlier={onEarlier}
+                    onGap={onGap}
+                    progress={progress}
+                    results={results}
+                    row={row}
+                  />
+                </MessageScrollerItem>
+              ))}
+              {retry && <RetryStatus retry={retry} />}
+              {thinking !== undefined && inline === undefined && (
+                <Activity status={thinking} />
+              )}
+              {!running && (live?.compactions?.length ?? 0) > 0 && (
+                <Activity status='Summarizing earlier messages' />
+              )}
+              {live?.runFailure && (
+                <p
+                  role='alert'
+                  className={cn(
+                    'text-sm',
+                    live.runFailure.reason === 'aborted'
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                  )}
+                >
+                  {runFailureTitles[live.runFailure.reason]}
+                </p>
+              )}
+              {queued.map(({ bubble, submission }) => (
+                <QueuedMessage
+                  key={bubble.id}
+                  bubble={bubble}
+                  onCancel={() => cancel.mutate(submission)}
                 />
-              </MessageScrollerItem>
-            ))}
-            {retry && <RetryStatus retry={retry} />}
-            {thinking !== undefined && inline === undefined && (
-              <Activity status={thinking} />
-            )}
-            {!running && (live?.compactions?.length ?? 0) > 0 && (
-              <Activity status='Summarizing earlier messages' />
-            )}
-            {live?.runFailure && (
-              <p
-                role='alert'
-                className={cn(
-                  'text-sm',
-                  live.runFailure.reason === 'aborted'
-                    ? 'text-muted-foreground'
-                    : 'text-destructive'
-                )}
-              >
-                {runFailureTitles[live.runFailure.reason]}
-              </p>
-            )}
-            {queued.map(({ bubble, submission }) => (
-              <QueuedMessage
-                key={bubble.id}
-                bubble={bubble}
-                onCancel={() => cancel.mutate(submission)}
-              />
-            ))}
+              ))}
+            </ToolHistory>
           </MessageScrollerContent>
         </MessageScrollerViewport>
         <MessageScrollerButton
