@@ -24,6 +24,7 @@ const schema = z.object({
   LAB_ORIGIN: z.url(),
   LAB_REPOSITORY: z.string().min(1).default('terror/lab'),
   LAB_SANDBOX_PROVIDER: z.enum(['vercel']).optional(),
+  LAB_STORAGE_LIMIT: z.coerce.number().positive().optional(),
   LAB_STORAGE_PATH: z
     .string()
     .min(1)

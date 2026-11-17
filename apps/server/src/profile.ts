@@ -8,6 +8,7 @@ import { isAdmin, requireUser } from './auth';
 import { db } from './db';
 import { rateLimit } from './limits';
 import { imageTypes } from './schemas';
+import { checkStorage } from './storage';
 import { validator } from './validator';
 
 const PICTURE_BYTES = 5 * 1024 * 1024;
@@ -37,6 +38,8 @@ const profile = new Hono()
     const user = c.get('user');
 
     const { picture: file } = c.req.valid('form');
+
+    await checkStorage(user.id, file.size);
 
     const [upload] = await db
       .insert(schema.upload)
