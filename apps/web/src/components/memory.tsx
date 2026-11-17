@@ -1,7 +1,21 @@
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   type MemoryState,
   addMemory,
@@ -11,19 +25,78 @@ import {
   useMemoryUpdate,
 } from '@/lib/memory';
 import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
-function Memories({ memories }: { memories: MemoryState['memories'] }) {
+function AddMemoryDialog({
+  onOpenChange,
+  open,
+}: {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) {
   const [text, setText] = useState('');
 
   const add = useMemoryUpdate(addMemory);
-  const remove = useMemoryUpdate(removeMemory);
 
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    add.mutate(text.trim(), { onSuccess: () => setText('') });
+    add.mutate(text.trim(), {
+      onSuccess: () => {
+        setText('');
+        onOpenChange(false);
+      },
+    });
   };
+
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className='sm:max-w-md'>
+        <form
+          aria-label='New memory'
+          className='flex flex-col gap-6'
+          onSubmit={onSubmit}
+        >
+          <DialogHeader>
+            <DialogTitle>Add a memory</DialogTitle>
+            <DialogDescription>
+              Lab keeps this in mind in every chat.
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor='memory-text'>Memory</FieldLabel>
+              <Textarea
+                className='min-h-24'
+                id='memory-text'
+                maxLength={500}
+                onChange={(event) => setText(event.target.value)}
+                value={text}
+              />
+            </Field>
+            {add.error && <FieldError>{add.error.message}</FieldError>}
+          </FieldGroup>
+          <DialogFooter>
+            <Button
+              onClick={() => onOpenChange(false)}
+              type='button'
+              variant='ghost'
+            >
+              Cancel
+            </Button>
+            <Button disabled={!text.trim() || add.isPending} type='submit'>
+              Add
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Memories({ memories }: { memories: MemoryState['memories'] }) {
+  const remove = useMemoryUpdate(removeMemory);
 
   return (
     <div className='flex flex-col gap-3'>
@@ -56,23 +129,6 @@ function Memories({ memories }: { memories: MemoryState['memories'] }) {
           </li>
         ))}
       </ul>
-      <form className='flex items-center gap-2' onSubmit={onSubmit}>
-        <Input
-          aria-label='New memory'
-          maxLength={500}
-          onChange={(event) => setText(event.target.value)}
-          placeholder='Add a memory'
-          value={text}
-        />
-        <Button
-          disabled={!text.trim() || add.isPending}
-          size='sm'
-          type='submit'
-          variant='secondary'
-        >
-          Add
-        </Button>
-      </form>
     </div>
   );
 }
@@ -105,13 +161,21 @@ function ReferenceChats({ enabled }: { enabled: boolean }) {
 export function Memory() {
   const memory = useQuery(memoryQueryOptions);
 
+  const [adding, setAdding] = useState(false);
+
   return (
     <section className='space-y-8'>
-      <div className='space-y-1'>
-        <h1 className='text-2xl font-semibold tracking-tight'>Memory</h1>
-        <p className='text-sm text-muted-foreground'>
-          What Lab remembers about you across chats.
-        </p>
+      <div className='flex items-start justify-between gap-4'>
+        <div className='space-y-1'>
+          <h1 className='text-2xl font-semibold tracking-tight'>Memory</h1>
+          <p className='text-sm text-muted-foreground'>
+            What Lab remembers about you across chats.
+          </p>
+        </div>
+        <Button onClick={() => setAdding(true)} size='sm'>
+          <Plus aria-hidden='true' />
+          Add memory
+        </Button>
       </div>
       {memory.isError && <LoadError subject='memory' />}
       {memory.data && (
@@ -120,6 +184,7 @@ export function Memory() {
           <Memories memories={memory.data.memories} />
         </>
       )}
+      <AddMemoryDialog onOpenChange={setAdding} open={adding} />
     </section>
   );
 }
