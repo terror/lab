@@ -1,6 +1,6 @@
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, chat, settle } from '../test/client';
@@ -73,7 +73,12 @@ test('message matches report when they were sent in any server timezone', async 
     const [message] = await db
       .select({ createdAt: schema.messageText.createdAt })
       .from(schema.messageText)
-      .where(eq(schema.messageText.conversationId, id));
+      .where(
+        and(
+          eq(schema.messageText.conversationId, id),
+          eq(schema.messageText.role, 'user')
+        )
+      );
 
     const { body } = await call(headers, 'GET', '/search?q=qux');
 
