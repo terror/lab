@@ -24,7 +24,7 @@ export function knownTimezone(timezone: string) {
   }
 }
 
-export function cronError(cron: string, timezone: string) {
+function cronError(cron: string, timezone: string) {
   if (!knownTimezone(timezone)) {
     return `Unknown timezone: ${timezone}`;
   }

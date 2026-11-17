@@ -13,7 +13,7 @@ import { requireOwner } from './records';
 import { storeUpload } from './storage';
 import { decodeText } from './text';
 
-export type ComputerState = {
+type ComputerState = {
   createdAt: string;
   state:
     | 'aborted'
@@ -192,20 +192,16 @@ async function configuredVercel() {
     : undefined;
 }
 
-const override: { provider: SandboxProvider | undefined; set: boolean } = {
-  provider: undefined,
-  set: false,
-};
+const override: { provider?: SandboxProvider } = {};
 
 async function activeProvider() {
-  return override.set ? override.provider : configuredVercel();
+  return override.provider ?? configuredVercel();
 }
 
 const applied = new Map<string, NetworkMode>();
 
 export function useSandboxProvider(provider: SandboxProvider | undefined) {
   override.provider = provider;
-  override.set = provider !== undefined;
   applied.clear();
 }
 
@@ -265,11 +261,7 @@ async function computerFor(
 ): Promise<Computer> {
   const ownerId = await requireOwner(conversationId);
 
-  const provider = await providerFor(ownerId);
-
-  if (!provider) {
-    throw new Error("The user's computer isn't set up.");
-  }
+  const provider = await requireProvider(ownerId);
 
   const name = computerName(ownerId);
 
@@ -312,7 +304,15 @@ async function libraryFile(ownerId: string, id: number) {
 async function run(
   computer: Computer,
   command: string,
-  options: { onOutput?: (chunk: string) => void; signal?: AbortSignal } = {}
+  {
+    onOutput,
+    signal,
+    timeoutMs = 120_000,
+  }: {
+    onOutput?: (chunk: string) => void;
+    signal?: AbortSignal;
+    timeoutMs?: number;
+  } = {}
 ) {
   const chunks: string[] = [];
 
@@ -321,10 +321,10 @@ async function run(
     cwd: computer.chat,
     onOutput: (chunk) => {
       chunks.push(chunk);
-      options.onOutput?.(chunk);
+      onOutput?.(chunk);
     },
-    signal: options.signal,
-    timeoutMs: 120_000,
+    signal,
+    timeoutMs,
   });
 
   return { exitCode, output: chunks.join('') };
@@ -344,20 +344,11 @@ export function createSandboxAccess(
 
       const started = Date.now();
 
-      const chunks: string[] = [];
-
-      const { exitCode } = await computer.provider.run(computer.name, {
-        command,
-        cwd: computer.chat,
-        onOutput: (chunk) => {
-          chunks.push(chunk);
-          onOutput(chunk);
-        },
+      const { exitCode, output } = await run(computer, command, {
+        onOutput,
         signal,
         timeoutMs,
       });
-
-      const output = chunks.join('');
 
       return { durationMs: Date.now() - started, exitCode, output };
     },

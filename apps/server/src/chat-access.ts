@@ -42,13 +42,6 @@ export const chatsAccess: ChatsAccess = {
   trashed: async (conversationId) => {
     const { listTrash } = await import('./trash');
 
-    const items = await listTrash(await requireOwner(conversationId));
-
-    return items.map(({ deletedAt, id, kind, title }) => ({
-      deletedAt: deletedAt.toISOString(),
-      id,
-      kind,
-      title,
-    }));
+    return listTrash(await requireOwner(conversationId));
   },
 };

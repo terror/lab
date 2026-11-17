@@ -230,21 +230,20 @@ export async function listTrash(ownerId: string) {
 
   return lists
     .flat()
-    .toSorted((a, b) => b.deletedAt.getTime() - a.deletedAt.getTime());
+    .toSorted((a, b) => b.deletedAt.getTime() - a.deletedAt.getTime())
+    .map(({ deletedAt, id, kind, title }) => ({
+      deletedAt: deletedAt.toISOString(),
+      id,
+      kind,
+      title,
+    }));
 }
 
 const trash = new Hono()
   .use(requireUser)
   .get('/', async (c) =>
     c.json({
-      items: (await listTrash(c.get('user').id)).map(
-        ({ deletedAt, id, kind, title }) => ({
-          deletedAt: deletedAt.toISOString(),
-          id,
-          kind,
-          title,
-        })
-      ),
+      items: await listTrash(c.get('user').id),
     })
   )
   .post('/:kind/:id/restore', params, async (c) => {

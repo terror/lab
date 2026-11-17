@@ -5,7 +5,7 @@ const prefix = 'lab:';
 
 const listeners = new Set<() => void>();
 
-export function subscribeStorage(listener: () => void) {
+function subscribeStorage(listener: () => void) {
   listeners.add(listener);
   window.addEventListener('storage', listener);
 

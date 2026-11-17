@@ -124,6 +124,10 @@ async function changes(since: string) {
     .flatMap((commit) => entry(commit, bodies))
     .toReversed();
 
+  if (cache.size >= 100) {
+    cache.clear();
+  }
+
   cache.set(since, entries);
 
   return entries;

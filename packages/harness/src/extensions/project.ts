@@ -17,7 +17,7 @@ export type Project = { id: number; instructions: string; name: string };
 
 export type ProjectChange = { instructions?: string; name?: string };
 
-export type ChatMove = {
+type ChatMove = {
   chat: { id: number; title: string | null };
   project: Project | null;
 };

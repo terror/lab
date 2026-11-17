@@ -18,7 +18,7 @@ const STORED_OUTPUTS = 20;
 
 const STORED_LENGTH = 5_000_000;
 
-export const OutputDoc = defineDoc<{ outputs: Record<string, string> }>({
+const OutputDoc = defineDoc<{ outputs: Record<string, string> }>({
   kind: 'lab.output',
   version: 1,
   scope: 'conversation',

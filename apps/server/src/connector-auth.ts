@@ -50,12 +50,23 @@ async function load(connectorId: number): Promise<AuthState> {
 }
 
 async function save(connectorId: number, change: AuthState) {
-  const state = sealSecret({ ...(await load(connectorId)), ...change });
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ state: table.state })
+      .from(table)
+      .where(eq(table.connectorId, connectorId))
+      .for('update');
 
-  await db
-    .insert(table)
-    .values({ connectorId, state })
-    .onConflictDoUpdate({ set: { state }, target: table.connectorId });
+    const current =
+      (row && stateSchema.safeParse(openSecret(row.state)).data) ?? {};
+
+    const state = sealSecret({ ...current, ...change });
+
+    await tx
+      .insert(table)
+      .values({ connectorId, state })
+      .onConflictDoUpdate({ set: { state }, target: table.connectorId });
+  });
 }
 
 function client(value: unknown) {
