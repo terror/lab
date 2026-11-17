@@ -207,11 +207,57 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
     }),
     execute: async (
       { id: taskId, ...change },
-      api
+      api,
+      context
     ): Promise<ToolExecutionResult> => {
-      const result = await access.update(api.conversationId, taskId, change);
+      if (change.cron !== undefined) {
+        const invalid = access.invalid(change.cron, change.timezone ?? 'UTC');
 
-      return updateResult(result);
+        if (invalid) {
+          return failure(invalid);
+        }
+      }
+
+      const sensitive =
+        change.prompt !== undefined ||
+        change.cron !== undefined ||
+        change.enabled === true;
+
+      if (!sensitive) {
+        return updateResult(
+          await access.update(api.conversationId, taskId, change)
+        );
+      }
+
+      const { approval, approved } = await requestApproval(api, context, {
+        action:
+          change.enabled === true
+            ? 'Resume a scheduled task'
+            : 'Change a scheduled task',
+        summary: [
+          change.description ?? change.cron ?? '',
+          change.prompt ?? '',
+        ].filter(Boolean),
+      });
+
+      if (!approved) {
+        return {
+          details: { approval },
+          output: text('The user declined to change this task.'),
+        };
+      }
+
+      const result = await once(api, 'updated', context, () =>
+        access.update(api.conversationId, taskId, change)
+      );
+
+      return {
+        ...updateResult(result),
+        details: {
+          approval,
+          ...(result.kind === 'updated' && { task: result.task }),
+        },
+      };
     },
   });
 

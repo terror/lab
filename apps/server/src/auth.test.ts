@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import { call } from '../test/client';
-import { emailAllowed } from './auth';
+import { allowed, emailAllowed } from './auth';
+import { env } from './env';
 
 test('allowed emails match exactly, by domain, or with a wildcard', () => {
   expect([
@@ -23,4 +24,11 @@ test('accounts without a verified email are not allowed', async () => {
     body: { error: 'This account is not allowed to use Lab.' },
     status: 403,
   });
+});
+
+test('the admin email still needs to be verified', () => {
+  expect([
+    allowed({ email: env.LAB_ADMIN_EMAIL, emailVerified: true }),
+    allowed({ email: env.LAB_ADMIN_EMAIL, emailVerified: false }),
+  ]).toEqual([true, false]);
 });

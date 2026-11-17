@@ -37,6 +37,7 @@ import { moveChat } from './project-access';
 import { thinkingLevelSchema } from './schemas';
 import { subscribeStatus } from './status';
 import { moveToTrash } from './trash';
+import { checkSpend } from './usage';
 import { idParam, positiveId, validator } from './validator';
 
 const imageParams = validator(
@@ -444,20 +445,31 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/answers', idParam, owned, answering, async (c) => {
-    const { conversation } = c.var;
+  .post(
+    '/:id/answers',
+    rateLimit('messages'),
+    idParam,
+    owned,
+    answering,
+    async (c) => {
+      await checkSpend(c.get('user').id);
 
-    const { answer, callId } = c.req.valid('json');
+      const { conversation } = c.var;
 
-    await conversation.commit(async (tx) => {
-      const doc = await tx.doc(QuestionsDoc, conversation.id);
+      const { answer, callId } = c.req.valid('json');
 
-      doc.answers[callId] ??= answer;
-    }, BACKGROUND_CONTEXT);
+      await conversation.commit(async (tx) => {
+        const doc = await tx.doc(QuestionsDoc, conversation.id);
 
-    return c.body(null, 204);
-  })
+        doc.answers[callId] ??= answer;
+      }, BACKGROUND_CONTEXT);
+
+      return c.body(null, 204);
+    }
+  )
   .post('/:id/compact', rateLimit('messages'), idParam, owned, async (c) => {
+    await checkSpend(c.get('user').id);
+
     const { conversation } = c.var;
 
     await conversation.compact(undefined, BACKGROUND_CONTEXT);

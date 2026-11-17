@@ -15,6 +15,8 @@ test('private network addresses are recognized', () => {
     '2606:4700::1111',
     '::1',
     '::ffff:127.0.0.1',
+    '::7f00:1',
+    '2002:7f00:1::',
     'fd00::1',
     'fe80::1',
   ];
@@ -35,6 +37,8 @@ test('private network addresses are recognized', () => {
     '8.8.8.8': false,
     '::1': true,
     '::ffff:127.0.0.1': true,
+    '::7f00:1': true,
+    '2002:7f00:1::': true,
     'fd00::1': true,
     'fe80::1': true,
   });

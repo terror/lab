@@ -192,9 +192,11 @@ export function refreshConnector(row: Row) {
   return locked(async () => {
     const previous = await disconnect(row.id);
 
+    const active = row.enabled && (await policy(row.ownerId)).active;
+
     entries.set(
       row.id,
-      row.enabled
+      active
         ? await connect(row)
         : { ownerId: row.ownerId, state: { kind: 'off' } }
     );
