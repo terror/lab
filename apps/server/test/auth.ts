@@ -15,12 +15,12 @@ const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
 });
 
-export async function signIn() {
+export async function signIn(user = { emailVerified: true }) {
   const { test } = await auth.$context;
 
-  const user = await test.saveUser(test.createUser());
+  const saved = await test.saveUser(test.createUser(user));
 
-  return test.getAuthHeaders({ userId: user.id });
+  return test.getAuthHeaders({ userId: saved.id });
 }
 
 export async function signInAdmin() {

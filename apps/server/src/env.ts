@@ -7,10 +7,20 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   LAB_ADMIN_EMAIL: z.email(),
+  LAB_ALLOWED_EMAILS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((pattern) => pattern.trim().toLowerCase())
+        .filter(Boolean)
+    ),
   LAB_CREDENTIALS_KEY: z.string().min(32).optional(),
   LAB_CREDENTIALS_KEY_PREVIOUS: z.string().min(32).optional(),
   LAB_DEFAULT_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
+  LAB_MONTHLY_LIMIT: z.coerce.number().positive().optional(),
   LAB_ORIGIN: z.url(),
   LAB_REPOSITORY: z.string().min(1).default('terror/lab'),
   LAB_SANDBOX_PROVIDER: z.enum(['vercel']).optional(),

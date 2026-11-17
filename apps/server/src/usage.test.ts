@@ -2,9 +2,11 @@ import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 
-import { signIn } from '../test/auth';
+import { signIn, signInAdmin } from '../test/auth';
 import { call, create, settle } from '../test/client';
 import { db } from './db';
+import { env } from './env';
+import { conversationOwner } from './records';
 import { backfillUsage } from './usage';
 
 test('usage is summarized from assistant responses', async () => {
@@ -113,4 +115,50 @@ test('trashed chats are left out of the most expensive chats', async () => {
   const { body } = await call(headers, 'GET', '/usage?days=7');
 
   expect(body.conversations).toEqual([]);
+});
+
+test('users other than the admin stop at the monthly limit', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await settle();
+
+  const ownerId = (await conversationOwner(id)) ?? '';
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: id,
+    cost: 2,
+    createdAt: new Date(),
+    input: 0,
+    model: 'foo',
+    output: 0,
+    ownerId,
+    provider: 'foo',
+  });
+
+  env.LAB_MONTHLY_LIMIT = 1;
+
+  try {
+    expect({
+      admin: (
+        await call(await signInAdmin(), 'POST', '/conversations', {
+          content: 'foo',
+        })
+      ).status,
+      user: await call(headers, 'POST', `/conversations/${id}/messages`, {
+        content: 'foo',
+      }),
+    }).toEqual({
+      admin: 201,
+      user: {
+        body: { error: 'You’ve used this month’s $1.00 limit' },
+        status: 402,
+      },
+    });
+  } finally {
+    env.LAB_MONTHLY_LIMIT = undefined;
+  }
 });

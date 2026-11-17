@@ -63,6 +63,7 @@ Object.assign(process.env, {
   GOOGLE_CLIENT_ID: 'foo',
   GOOGLE_CLIENT_SECRET: 'foo',
   LAB_ADMIN_EMAIL: 'foo@example.com',
+  LAB_ALLOWED_EMAILS: '*',
   LAB_ORIGIN: 'http://localhost:3000',
   LAB_STORAGE_PATH: join(await mkdtemp(join(tmpdir(), 'lab-')), 'lab.sqlite'),
 });
