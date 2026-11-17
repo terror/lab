@@ -11,7 +11,7 @@ function line(
 ) {
   const renderer = toolRenderer(name);
 
-  const view = { active, args, details, history, output: '' };
+  const view = { active, args, callId: 'bar', details, history, output: '' };
 
   return [renderer.title(view), renderer.summary?.(view)];
 }
@@ -41,6 +41,7 @@ test('tools describe themselves while running and when done', () => {
     line('skill_delete', false, { id: 'bar' }),
     line('web_search', false, { query: 'foo' }, { count: 2 }),
     line('web_fetch', false, {}, { domain: 'bar.com', title: 'foo' }),
+    line('ask_user', true),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -59,6 +60,7 @@ test('tools describe themselves while running and when done', () => {
     ['Deleted a skill', undefined],
     ['Searched the web for “foo”', '2 results'],
     ['Read “foo”', 'bar.com'],
+    ['Asking you a question', undefined],
     ['Ran foo', undefined],
   ]);
 });

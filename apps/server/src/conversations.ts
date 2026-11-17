@@ -8,7 +8,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
-import { TitleDoc } from '@lab/harness';
+import { ANSWER_LENGTH, QuestionsDoc, TitleDoc } from '@lab/harness';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -85,6 +85,14 @@ const entriesQuery = validator(
 );
 
 const listQuery = validator('query', listSchema);
+
+const answering = validator(
+  'json',
+  z.object({
+    answer: z.string().trim().min(1).max(ANSWER_LENGTH),
+    callId: z.string().min(1).max(200),
+  })
+);
 
 const modelSelection = validator(
   'json',
@@ -383,6 +391,19 @@ const conversations = new Hono()
       modelChange(await findModel(provider, id), thinkingLevel),
       BACKGROUND_CONTEXT
     );
+
+    return c.body(null, 204);
+  })
+  .post('/:id/answers', params, owned, answering, async (c) => {
+    const { conversation } = c.var;
+
+    const { answer, callId } = c.req.valid('json');
+
+    await conversation.commit(async (tx) => {
+      const doc = await tx.doc(QuestionsDoc, conversation.id);
+
+      doc.answers[callId] ??= answer;
+    }, BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })
