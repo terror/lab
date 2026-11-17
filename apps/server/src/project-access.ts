@@ -1,11 +1,14 @@
 import { schema } from '@lab/db';
 import type { ProjectAccess } from '@lab/harness';
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
 import { requireOwner } from './records';
 
-export const PROJECT_LIMIT = 100;
+const PROJECT_LIMIT = 100;
+
+export const projectLimitMessage = `You can have up to ${PROJECT_LIMIT} projects`;
 
 const table = schema.project;
 
@@ -18,6 +21,8 @@ const fields = {
 export type Project = { id: number; instructions: string; name: string };
 
 export type ProjectChange = { instructions?: string; name?: string };
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function live(ownerId: string) {
   return and(eq(table.ownerId, ownerId), isNull(table.deletedAt));
@@ -35,25 +40,37 @@ export async function listProjects(ownerId: string): Promise<Project[]> {
     .orderBy(asc(sql`lower(${table.name})`), asc(table.id));
 }
 
-export async function createProject(
-  ownerId: string,
-  name: string
-): Promise<Project | undefined> {
-  const [{ count } = { count: 0 }] = await db
+async function hasRoom(tx: Transaction, ownerId: string) {
+  await tx
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.id, ownerId))
+    .for('update');
+
+  const [{ count } = { count: 0 }] = await tx
     .select({ count: sql<number>`count(*)::int` })
     .from(table)
     .where(live(ownerId));
 
-  if (count >= PROJECT_LIMIT) {
-    return undefined;
-  }
+  return count < PROJECT_LIMIT;
+}
 
-  const [row] = await db
-    .insert(table)
-    .values({ name, ownerId })
-    .returning(fields);
+export async function createProject(
+  ownerId: string,
+  name: string
+): Promise<Project | undefined> {
+  return db.transaction(async (tx) => {
+    if (!(await hasRoom(tx, ownerId))) {
+      return undefined;
+    }
 
-  return row;
+    const [row] = await tx
+      .insert(table)
+      .values({ name, ownerId })
+      .returning(fields);
+
+    return row;
+  });
 }
 
 export async function updateProject(
@@ -140,6 +157,10 @@ export async function restoreProject(ownerId: string, id: number) {
 
     if (!row?.deletedAt) {
       return false;
+    }
+
+    if (!(await hasRoom(tx, ownerId))) {
+      throw new HTTPException(400, { message: projectLimitMessage });
     }
 
     await tx.update(table).set({ deletedAt: null }).where(eq(table.id, id));

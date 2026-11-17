@@ -5,7 +5,7 @@ import type {
   ScheduledTask,
 } from '@lab/harness';
 import { Cron } from 'croner';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm';
 
 import { db } from './db';
 import { requireOwner } from './records';
@@ -59,8 +59,18 @@ export function toTask(row: Row): ScheduledTask {
 
 export async function listTasks(ownerId: string) {
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(table),
+      conversationId: schema.conversation.id,
+    })
     .from(table)
+    .leftJoin(
+      schema.conversation,
+      and(
+        eq(schema.conversation.id, table.conversationId),
+        isNull(schema.conversation.deletedAt)
+      )
+    )
     .where(eq(table.ownerId, ownerId))
     .orderBy(asc(table.createdAt));
 

@@ -122,3 +122,56 @@ test('the reported timezone must be a known one', async () => {
     status: 400,
   });
 });
+
+test('tasks skip runs while their chat is in the trash', async () => {
+  const headers = await signIn();
+
+  const { id } = await ask(headers, 'approved');
+
+  const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+
+  await db
+    .update(schema.scheduledTask)
+    .set({ nextRunAt: new Date('2026-01-01T00:00:00Z') })
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  await runDueTasks(new Date('2026-01-01T00:00:30Z'));
+
+  const [ran] = await db
+    .select()
+    .from(schema.scheduledTask)
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  const trashed = {
+    chats: (await call(headers, 'GET', '/conversations?filter=all')).body
+      .conversations,
+    listed: (await call(headers, 'GET', '/schedules')).body.tasks[0]
+      .conversationId,
+    run: await call(headers, 'POST', `/schedules/${created.id}/run`),
+    searched: (await call(headers, 'GET', '/search?q=foo')).body.schedules[0]
+      .conversationId,
+    stored: ran?.conversationId,
+  };
+
+  await call(headers, 'POST', `/trash/conversation/${id}/restore`);
+
+  expect({
+    restored: (await call(headers, 'GET', '/schedules')).body.tasks[0]
+      .conversationId,
+    trashed,
+  }).toEqual({
+    restored: id,
+    trashed: {
+      chats: [],
+      listed: null,
+      run: {
+        body: { error: 'This task’s chat is in the Trash' },
+        status: 409,
+      },
+      searched: null,
+      stored: id,
+    },
+  });
+});

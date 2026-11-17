@@ -6,9 +6,9 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { found } from './found';
 import {
-  PROJECT_LIMIT,
   createProject,
   listProjects,
+  projectLimitMessage,
   updateProject,
 } from './project-access';
 import { moveToTrash } from './trash';
@@ -43,9 +43,7 @@ const projects = new Hono()
     );
 
     if (!project) {
-      throw new HTTPException(400, {
-        message: `You can have up to ${PROJECT_LIMIT} projects`,
-      });
+      throw new HTTPException(400, { message: projectLimitMessage });
     }
 
     return c.json({ project }, 201);
