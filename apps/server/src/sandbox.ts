@@ -9,6 +9,7 @@ import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
 import { requireOwner } from './records';
+import { checkStorage } from './storage';
 import { decodeText } from './text';
 
 export type ComputerState = {
@@ -416,6 +417,8 @@ export function createSandboxAccess(
       const fileName = name ?? posix.basename(path);
 
       const type = mimeType(fileName);
+
+      await checkStorage(computer.ownerId, content.byteLength);
 
       const [created] = await db
         .insert(schema.upload)

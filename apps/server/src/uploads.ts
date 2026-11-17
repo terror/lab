@@ -8,6 +8,7 @@ import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { rateLimit } from './limits';
+import { checkStorage } from './storage';
 import { uuidParam, validator } from './validator';
 
 const MAX_DOCUMENT_BYTES = 20_000_000;
@@ -75,6 +76,11 @@ const uploads = new Hono()
   })
   .post('/', rateLimit('uploads'), form, async (c) => {
     const { document, thumbnail } = c.req.valid('form');
+
+    await checkStorage(
+      c.get('user').id,
+      document.size + (thumbnail?.size ?? 0)
+    );
 
     const [created] = await db
       .insert(schema.upload)
