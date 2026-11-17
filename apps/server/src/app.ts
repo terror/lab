@@ -21,6 +21,7 @@ import { defaultModel, listModels } from './models';
 import providers from './providers';
 import { contentSecurityPolicy } from './security';
 import skills from './skills';
+import trash from './trash';
 import uploads from './uploads';
 import usage from './usage';
 
@@ -72,6 +73,7 @@ const api = new Hono()
   .route('/library', library)
   .route('/memory', memory)
   .route('/skills', skills)
+  .route('/trash', trash)
   .route('/uploads', uploads)
   .route('/usage', usage);
 

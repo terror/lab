@@ -2,7 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { expect, spyOn, test } from 'bun:test';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create, idle, raw, settle } from '../test/client';
@@ -511,40 +511,73 @@ test('conversations can be renamed', async () => {
   });
 });
 
-test('conversations can be deleted', async () => {
+test('deleted conversations go to the trash until purged', async () => {
   const headers = await signIn();
 
-  const id = await create(headers);
+  const [kept, restored, purged] = [
+    await create(headers),
+    await create(headers),
+    await create(headers),
+  ];
 
-  expect(await call(headers, 'DELETE', `/conversations/${id}`)).toEqual({
-    body: null,
-    status: 204,
+  for (const id of [restored, purged, kept]) {
+    await call(headers, 'DELETE', `/conversations/${id}`);
+  }
+
+  const trashed = await call(headers, 'GET', '/trash');
+
+  await call(headers, 'POST', `/trash/conversation/${restored}/restore`);
+
+  const purge = await call(headers, 'DELETE', `/trash/conversation/${purged}`);
+
+  const after = await call(headers, 'GET', '/trash');
+
+  await call(headers, 'DELETE', '/trash');
+
+  const tombstones = await db
+    .select({ id: schema.conversationDeletion.id })
+    .from(schema.conversationDeletion)
+    .where(inArray(schema.conversationDeletion.id, [kept, restored, purged]));
+
+  expect({
+    after: after.body.items.map(({ id }: { id: number }) => id),
+    again: (await call(headers, 'DELETE', `/trash/conversation/${purged}`))
+      .status,
+    listed: (
+      await call(headers, 'GET', '/conversations')
+    ).body.conversations.map(({ id }: { id: number }) => id),
+    purge: purge.status,
+    tombstones: tombstones.map(({ id }) => id).toSorted((a, b) => a - b),
+    trash: (await call(headers, 'GET', '/trash')).body.items,
+    trashed: trashed.body.items.map(
+      ({ id, kind, title }: { id: number; kind: string; title: string }) => [
+        id,
+        kind,
+        title,
+      ]
+    ),
+  }).toEqual({
+    after: [kept],
+    again: 404,
+    listed: [restored],
+    purge: 204,
+    tombstones: [kept, purged].toSorted((a, b) => a - b),
+    trash: [],
+    trashed: [
+      [kept, 'conversation', 'foo'],
+      [purged, 'conversation', 'foo'],
+      [restored, 'conversation', 'foo'],
+    ],
   });
-
-  expect(await call(headers, 'GET', '/conversations')).toEqual({
-    body: { conversations: [], next: null },
-    status: 200,
-  });
-
-  expect(
-    await db
-      .select({ id: schema.conversationDeletion.id })
-      .from(schema.conversationDeletion)
-      .where(eq(schema.conversationDeletion.id, id))
-  ).toEqual([{ id }]);
 });
 
-test('conversations can be pinned and archived', async () => {
+test('conversations can be pinned', async () => {
   const headers = await signIn();
 
   const pinned = await create(headers);
-  const archived = await create(headers);
   const recent = await create(headers);
 
   await call(headers, 'PATCH', `/conversations/${pinned}`, { pinned: true });
-  await call(headers, 'PATCH', `/conversations/${archived}`, {
-    archived: true,
-  });
 
   const ids = async (filter: string) => {
     const { body } = await call(
@@ -559,20 +592,18 @@ test('conversations can be pinned and archived', async () => {
   };
 
   expect({
-    archived: await ids('archived'),
+    all: await ids('all'),
     patch: await call(headers, 'PATCH', `/conversations/${recent}`, {}),
     pinned: await ids('pinned'),
     recent: await ids('recent'),
-    unarchived: await ids('unarchived'),
   }).toEqual({
-    archived: [[archived, false]],
-    patch: { body: { error: '✖ Nothing to update' }, status: 400 },
-    pinned: [[pinned, true]],
-    recent: [[recent, false]],
-    unarchived: [
+    all: [
       [recent, false],
       [pinned, true],
     ],
+    patch: { body: { error: '✖ Nothing to update' }, status: 400 },
+    pinned: [[pinned, true]],
+    recent: [[recent, false]],
   });
 });
 

@@ -1,6 +1,6 @@
 import { schema } from '@lab/db';
 import type { LibraryAccess } from '@lab/harness';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { db } from './db';
 import { contains, owners } from './records';
@@ -72,6 +72,7 @@ export const libraryAccess: LibraryAccess = {
       .where(
         and(
           eq(table.ownerId, ownerId),
+          isNull(schema.conversation.deletedAt),
           kind === undefined ? undefined : eq(table.kind, kind),
           ...(search ?? '')
             .split(/[^\p{L}\p{N}]+/u)

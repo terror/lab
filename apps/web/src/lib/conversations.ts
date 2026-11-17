@@ -126,14 +126,14 @@ export async function createConversation(
 
 export async function updateConversation(
   id: number,
-  json: { archived?: boolean; pinned?: boolean; title?: string }
+  json: { pinned?: boolean; title?: string }
 ) {
   await call(
     client.conversations[':id'].$patch({ param: { id: String(id) }, json })
   );
 }
 
-function listQueryOptions(filter: 'archived' | 'pinned') {
+function listQueryOptions(filter: 'pinned') {
   return queryOptions({
     queryKey: [...conversationsQueryKey, filter],
     queryFn: async ({ signal }) => {
@@ -155,22 +155,20 @@ export function usePinnedConversations() {
   return useQuery(listQueryOptions('pinned'));
 }
 
-export function useArchivedConversations() {
-  return useQuery(listQueryOptions('archived'));
-}
-
 export async function deleteConversation(id: number) {
   await call(
     client.conversations[':id'].$delete({ param: { id: String(id) } })
   );
-
-  removeStored(draftKey(id));
 }
 
 const draftSchema = z.string();
 
 function draftKey(id: number | 'new') {
   return `draft:${id}`;
+}
+
+export function clearDraft(id: number) {
+  removeStored(draftKey(id));
 }
 
 export function useDraft(id: number | 'new') {

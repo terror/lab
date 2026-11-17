@@ -75,6 +75,7 @@ export const historyAccess: HistoryAccess = {
       join ${schema.conversation} on ${schema.conversation.id} = ${table.conversationId}
       where ${table.ownerId} = ${ownerId}
         and ${table.conversationId} <> ${conversationId}
+        and ${schema.conversation.deletedAt} is null
         and ${table.search} @@ ${terms}
       group by ${table.conversationId}, ${schema.conversation.title}
       order by max(ts_rank(${table.search}, ${terms})) desc

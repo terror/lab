@@ -141,6 +141,13 @@
       "when": 1794879807955,
       "tag": "0019_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794880981334,
+      "tag": "0020_trash",
+      "breakpoints": true
     }
   ]
 }
