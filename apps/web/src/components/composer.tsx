@@ -158,6 +158,7 @@ export function Composer({
   onSteer,
   onStop,
   onSubmit,
+  placeholder = 'Ask anything...',
   running,
   submitting,
 }: {
@@ -173,6 +174,7 @@ export function Composer({
   onSteer?: (content: string) => void;
   onStop?: () => void;
   onSubmit: (content: string) => void;
+  placeholder?: string;
   running?: boolean;
   submitting?: boolean;
 }) {
@@ -399,7 +401,7 @@ export function Composer({
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
-          placeholder='Ask anything...'
+          placeholder={placeholder}
           value={draft}
         />
         <div className='flex items-center gap-2 px-3 pb-3'>

@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import {
   ArrowDownUp,
   ChevronDown,
+  Clock,
   LibraryBig,
   PanelLeftClose,
   PanelLeftOpen,
@@ -210,14 +211,20 @@ function NavButton({
   );
 }
 
+export const navPages = [
+  { icon: SquarePen, label: 'New chat', to: '/' },
+  { icon: Clock, label: 'Scheduled', to: '/scheduled' },
+  { icon: LibraryBig, label: 'Library', to: '/library' },
+] as const;
+
+export type NavPath = (typeof navPages)[number]['to'];
+
 function SidebarRail({
-  onLibrary,
-  onNewChat,
+  onNavigate,
   onToggle,
   user,
 }: {
-  onLibrary: () => void;
-  onNewChat: () => void;
+  onNavigate: (to: NavPath) => void;
   onToggle: () => void;
   user: User;
 }) {
@@ -229,22 +236,17 @@ function SidebarRail({
         <PanelLeftOpen aria-hidden='true' className='size-4' />
       </RailButton>
       <SearchButton side='right' />
-      <RailButton
-        active={path === '/'}
-        label='New chat'
-        onClick={onNewChat}
-        side='right'
-      >
-        <SquarePen aria-hidden='true' className='size-4' />
-      </RailButton>
-      <RailButton
-        active={path === '/library'}
-        label='Library'
-        onClick={onLibrary}
-        side='right'
-      >
-        <LibraryBig aria-hidden='true' className='size-4' />
-      </RailButton>
+      {navPages.map(({ icon: Icon, label, to }) => (
+        <RailButton
+          key={to}
+          active={path === to}
+          label={label}
+          onClick={() => onNavigate(to)}
+          side='right'
+        >
+          <Icon aria-hidden='true' className='size-4' />
+        </RailButton>
+      ))}
       <div className='mt-auto'>
         <AccountMenu compact user={user} />
       </div>
@@ -255,16 +257,14 @@ function SidebarRail({
 export function Sidebar({
   collapsed = false,
   selected,
-  onLibrary,
-  onNewChat,
+  onNavigate,
   onSelect,
   onToggle,
   user,
 }: {
   collapsed?: boolean;
   selected: number | undefined;
-  onLibrary: () => void;
-  onNewChat: () => void;
+  onNavigate: (to: NavPath) => void;
   onSelect: (id: number) => void;
   onToggle?: () => void;
   user: User;
@@ -291,9 +291,8 @@ export function Sidebar({
         <SidebarContent
           conversations={conversations.data}
           error={conversations.isError}
-          onLibrary={onLibrary}
           onLoadMore={loadMore}
-          onNewChat={onNewChat}
+          onNavigate={onNavigate}
           onSelect={onSelect}
           onToggle={onToggle}
           rail={rail}
@@ -312,8 +311,7 @@ function SidebarContent({
   if (rail && props.onToggle) {
     return (
       <SidebarRail
-        onLibrary={props.onLibrary}
-        onNewChat={props.onNewChat}
+        onNavigate={props.onNavigate}
         onToggle={props.onToggle}
         user={props.user}
       />
@@ -326,9 +324,8 @@ function SidebarContent({
 function SidebarPanel({
   conversations,
   error,
-  onLibrary,
   onLoadMore,
-  onNewChat,
+  onNavigate,
   onSelect,
   onToggle,
   selected,
@@ -338,9 +335,8 @@ function SidebarPanel({
     | { id: number; pinned: boolean; running: boolean; title: string | null }[]
     | undefined;
   error: boolean;
-  onLibrary: () => void;
   onLoadMore: (() => void) | undefined;
-  onNewChat: () => void;
+  onNavigate: (to: NavPath) => void;
   onSelect: (id: number) => void;
   onToggle: (() => void) | undefined;
   selected: number | undefined;
@@ -362,7 +358,7 @@ function SidebarPanel({
         <button
           aria-label='New chat'
           className='flex rounded-md outline-none'
-          onClick={onNewChat}
+          onClick={() => onNavigate('/')}
           type='button'
         >
           <LabMark className='size-6' />
@@ -377,14 +373,16 @@ function SidebarPanel({
         </div>
       </div>
       <div className='flex flex-col gap-0.5'>
-        <NavButton active={path === '/'} onClick={onNewChat}>
-          <SquarePen aria-hidden='true' className='size-4' />
-          New chat
-        </NavButton>
-        <NavButton active={path === '/library'} onClick={onLibrary}>
-          <LibraryBig aria-hidden='true' className='size-4' />
-          Library
-        </NavButton>
+        {navPages.map(({ icon: Icon, label, to }) => (
+          <NavButton
+            key={to}
+            active={path === to}
+            onClick={() => onNavigate(to)}
+          >
+            <Icon aria-hidden='true' className='size-4' />
+            {label}
+          </NavButton>
+        ))}
       </div>
       {(pinned.data?.length ?? 0) > 0 && (
         <div className='flex flex-col gap-1'>
