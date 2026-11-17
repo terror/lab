@@ -14,6 +14,7 @@ import {
 } from '../test/client';
 import { serveMcp, serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
+import { refreshConnector } from './connections';
 import { db } from './db';
 import { env } from './env';
 import { registry } from './registry';
@@ -403,4 +404,26 @@ test('tools whose names collide are all registered', async () => {
     'mcp__foo__read',
     'mcp__foo__write',
   ]);
+});
+
+test('refreshing a deleted connector does not bring it back', async () => {
+  const headers = await signInAdmin();
+
+  const { body } = await call(headers, 'POST', '/connectors', {
+    name: 'Foo',
+    url: mcp(),
+  });
+
+  const [row] = await db
+    .select()
+    .from(schema.connector)
+    .where(eq(schema.connector.id, body.connectors[0].id));
+
+  await call(headers, 'DELETE', `/connectors/${row?.id}`);
+
+  await refreshConnector(row!);
+
+  expect(
+    registry.snapshot().extension(`connectors-${row?.ownerId}`)
+  ).toBeUndefined();
 });
