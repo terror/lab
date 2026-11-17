@@ -4,7 +4,12 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": [".claude/skills/", "dist/", "storybook-static/"],
+  "ignorePatterns": [
+    ".agents/skills/",
+    ".claude/skills/",
+    "dist/",
+    "storybook-static/"
+  ],
   "options": {
     "denyWarnings": true,
     "reportUnusedDisableDirectives": "error",
