@@ -1,9 +1,7 @@
-import type { EntryRecord } from '@earendil-works/pi-durable';
-import { type WebAccess, type WebRecency, normalizeUrl } from '@lab/harness';
+import type { WebAccess, WebRecency } from '@lab/harness';
 import { z } from 'zod';
 
 import { credentials } from './credentials';
-import { messageData } from './message-entry';
 
 export const searchProviders = [{ id: 'exa', name: 'Exa' }];
 
@@ -77,17 +75,7 @@ async function exa(path: string, body: object) {
   return response.json();
 }
 
-const URL_PATTERN = /https?:\/\/[^\s<>()"'`]+/g;
-
-function linksIn(text: string) {
-  return [...text.matchAll(URL_PATTERN)].flatMap(
-    ([match]) => normalizeUrl(match.replace(/[.,;:!?]+$/, '')) ?? []
-  );
-}
-
-type Entries = (conversationId: number) => Promise<readonly EntryRecord[]>;
-
-export function webAccess(entries: Entries): WebAccess {
+export function webAccess(): WebAccess {
   return {
     available: async () => (await exaKey()) !== undefined,
     fetch: async (url) => {
@@ -105,13 +93,6 @@ export function webAccess(entries: Entries): WebAccess {
       }
 
       return { text: page.text, title: page.title ?? url, url: page.url };
-    },
-    mentioned: async (conversationId, url) => {
-      const messages = await entries(conversationId);
-
-      return messages.some((entry) =>
-        linksIn(messageData(entry)?.text ?? '').includes(url)
-      );
     },
     search: async ({ domains, limit, query, recency }) => {
       const { results } = searchSchema.parse(

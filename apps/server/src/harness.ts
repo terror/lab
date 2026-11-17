@@ -1,5 +1,4 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { ComputerDoc, openHarness, purgeConversations } from '@lab/harness';
 import { inArray } from 'drizzle-orm';
@@ -33,8 +32,6 @@ export async function purgeDeleted(path: string) {
   return purged;
 }
 
-const RECENT_MESSAGES = 200;
-
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
 export const harness = await openHarness({
@@ -50,19 +47,5 @@ export const harness = await openHarness({
       (await harness.snapshot(ComputerDoc, BACKGROUND_CONTEXT))?.network ??
       'full'
   ),
-  web: webAccess(async (id) => {
-    const conversation = await harness.conversation(
-      id as ConversationId,
-      BACKGROUND_CONTEXT
-    );
-
-    const page = await conversation?.entries(
-      { order: 'descending' },
-      RECENT_MESSAGES,
-      undefined,
-      BACKGROUND_CONTEXT
-    );
-
-    return page?.items ?? [];
-  }),
+  web: webAccess(),
 });

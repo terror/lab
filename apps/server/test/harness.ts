@@ -15,7 +15,6 @@ export function emptyDeps(): ExtensionDeps {
       fetch: async () => {
         throw new Error('Web search is unavailable in tests.');
       },
-      mentioned: async () => false,
       search: async () => [],
     },
   };
