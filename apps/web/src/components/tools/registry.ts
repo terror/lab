@@ -6,6 +6,7 @@ import { codemodeRenderers } from './codemode';
 import { libraryRenderers } from './library';
 import { memoryRenderers } from './memory';
 import { type ToolName } from './names';
+import { outputRenderers } from './output';
 import { sandboxRenderers } from './sandbox';
 import { scheduleRenderers } from './schedule';
 import { skillRenderers } from './skills';
@@ -18,6 +19,7 @@ const renderers = {
   ...codemodeRenderers,
   ...libraryRenderers,
   ...memoryRenderers,
+  ...outputRenderers,
   ...sandboxRenderers,
   ...scheduleRenderers,
   ...skillRenderers,

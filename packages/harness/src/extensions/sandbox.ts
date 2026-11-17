@@ -8,7 +8,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
-export const SANDBOX_OUTPUT_LENGTH = 20_000;
+export const SANDBOX_OUTPUT_LENGTH = 100_000;
 
 export const networkModes = ['full', 'registries', 'none'] as const;
 
@@ -42,7 +42,6 @@ export type SandboxRun = {
   durationMs: number;
   exitCode: number;
   output: string;
-  truncated: boolean;
 };
 
 export type SandboxFile = { binary: boolean; size: number; text: string };
@@ -117,7 +116,7 @@ export function sandbox(access: SandboxAccess) {
   const sandboxExec = defineTool({
     name: 'sandbox_exec',
     description:
-      "Run a shell command on the user's persistent Linux computer. Each chat has its own working directory, and installed packages and files persist between chats. Returns the exit code and the end of the command's output.",
+      "Run a shell command on the user's persistent Linux computer. Each chat has its own working directory, and installed packages and files persist between chats. Returns the exit code and the command's output.",
     callers: ['model'],
     parameters: obj({
       command: str({
@@ -146,13 +145,12 @@ export function sandbox(access: SandboxAccess) {
           timeoutMs: (timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1_000,
         });
 
-        const header = `Exit code ${run.exitCode}${run.truncated ? ` (showing the last ${SANDBOX_OUTPUT_LENGTH} characters)` : ''}`;
+        const header = `Exit code ${run.exitCode}`;
 
         return {
           details: {
             durationMs: run.durationMs,
             exitCode: run.exitCode,
-            truncated: run.truncated,
           },
           isError: run.exitCode !== 0,
           output: text(run.output ? `${header}\n\n${run.output}` : header),

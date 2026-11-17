@@ -7,7 +7,7 @@ export const searchProviders = [{ id: 'exa', name: 'Exa' }];
 
 const EXA_URL = 'https://api.exa.ai';
 
-const MAX_PAGE_LENGTH = 200_000;
+const MAX_PAGE_LENGTH = 1_000_000;
 
 const DAY = 86_400_000;
 

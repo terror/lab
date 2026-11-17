@@ -21,6 +21,7 @@ export const toolNames = [
   'skill_delete',
   'skill_read',
   'skill_update',
+  'tool_output_read',
   'web_fetch',
   'web_search',
 ] as const;
