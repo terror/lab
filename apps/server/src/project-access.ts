@@ -1,5 +1,5 @@
 import { schema } from '@lab/db';
-import type { ProjectAccess } from '@lab/harness';
+import type { Project, ProjectAccess, ProjectChange } from '@lab/harness';
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
@@ -17,10 +17,6 @@ const fields = {
   instructions: table.instructions,
   name: table.name,
 };
-
-export type Project = { id: number; instructions: string; name: string };
-
-export type ProjectChange = { instructions?: string; name?: string };
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

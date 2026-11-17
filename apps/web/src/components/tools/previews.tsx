@@ -3,7 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 
 import { type ToolView } from './types';
 
-export const PREVIEW_ITEMS = 5;
+const PREVIEW_ITEMS = 5;
 
 export function Label({ children }: { children: string }) {
   return <span className='text-xs text-muted-foreground'>{children}</span>;
