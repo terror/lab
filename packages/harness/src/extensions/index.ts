@@ -69,12 +69,10 @@ export {
 export { TitleDoc } from './title';
 export {
   type WebAccess,
-  WebDoc,
   type WebPage,
   type WebRecency,
   type WebResult,
   type WebSearch,
-  normalizeUrl,
 } from './web';
 
 export type ExtensionDeps = {

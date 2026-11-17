@@ -1,7 +1,5 @@
 import {
-  type ConversationId,
   type ToolExecutionResult,
-  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -9,8 +7,6 @@ import {
 import { arr, int, lit, obj, opt, str, union } from '@earendil-works/pi-schema';
 
 export const WEB_READ_LENGTH = 20_000;
-
-const SEEN_LIMIT = 500;
 
 export type WebRecency = 'day' | 'month' | 'week' | 'year';
 
@@ -33,31 +29,8 @@ export type WebSearch = {
 export type WebAccess = {
   available(): Promise<boolean>;
   fetch(url: string): Promise<WebPage>;
-  mentioned(conversationId: ConversationId, url: string): Promise<boolean>;
   search(search: WebSearch): Promise<WebResult[]>;
 };
-
-export const WebDoc = defineDoc<{ urls: string[] }>({
-  kind: 'lab.web',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ urls: [] }),
-  checkpointWhen: () => true,
-});
-
-export function normalizeUrl(value: string) {
-  try {
-    const url = new URL(value);
-
-    url.hash = '';
-
-    return url.href.replace(/\/$/, '');
-  } catch {
-    return undefined;
-  }
-}
 
 function text(value: string) {
   return [{ text: value, type: 'text' as const }];
@@ -149,14 +122,6 @@ export function web(access: WebAccess) {
             context
           ));
 
-        await api.commit(async (tx) => {
-          const doc = await tx.doc(WebDoc, api.conversationId);
-
-          const urls = results.flatMap(({ url }) => normalizeUrl(url) ?? []);
-
-          doc.urls = [...new Set([...doc.urls, ...urls])].slice(-SEEN_LIMIT);
-        }, context);
-
         return {
           details: {
             count: results.length,
@@ -176,7 +141,7 @@ export function web(access: WebAccess) {
   const webFetch = defineTool({
     name: 'web_fetch',
     description:
-      "Read a web page as text. Only URLs from web_search results or the user's messages can be opened.",
+      'Read a web page as text.',
     parameters: obj({
       offset: opt(
         int({
@@ -191,21 +156,6 @@ export function web(access: WebAccess) {
       api,
       context
     ): Promise<ToolExecutionResult> => {
-      const target = normalizeUrl(url);
-
-      const doc = await api.snapshot(WebDoc, api.conversationId, context);
-
-      const known =
-        target !== undefined &&
-        ((doc?.urls.includes(target) ?? false) ||
-          (await access.mentioned(api.conversationId, target)));
-
-      if (!known) {
-        return failure(
-          "Only pages from web_search results or the user's messages can be opened. Search for the page first."
-        );
-      }
-
       try {
         const fetched =
           (await api.memo<WebPage>('page', context)) ??
