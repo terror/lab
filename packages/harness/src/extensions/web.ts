@@ -1,4 +1,5 @@
 import {
+  type ConversationId,
   type ToolExecutionResult,
   defineExtension,
   defineTool,
@@ -30,8 +31,11 @@ export type WebSearch = {
 
 export type WebAccess = {
   available(): Promise<boolean>;
-  fetch(url: string): Promise<WebPage>;
-  search(search: WebSearch): Promise<WebResult[]>;
+  fetch(conversationId: ConversationId, url: string): Promise<WebPage>;
+  search(
+    conversationId: ConversationId,
+    search: WebSearch
+  ): Promise<WebResult[]>;
 };
 
 function domain(url: string) {
@@ -106,7 +110,12 @@ export function web(access: WebAccess) {
     ): Promise<ToolExecutionResult> => {
       try {
         const results = await once(api, 'results', context, () =>
-          access.search({ domains, limit: limit ?? 5, query, recency })
+          access.search(api.conversationId, {
+            domains,
+            limit: limit ?? 5,
+            query,
+            recency,
+          })
         );
 
         return {
@@ -144,7 +153,7 @@ export function web(access: WebAccess) {
     ): Promise<ToolExecutionResult> => {
       try {
         const fetched = await once(api, 'page', context, () =>
-          access.fetch(url)
+          access.fetch(api.conversationId, url)
         );
 
         const start = Math.min(offset ?? 0, fetched.text.length);

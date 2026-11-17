@@ -1,9 +1,10 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { afterEach, expect, test } from 'bun:test';
 
-import { signIn } from '../test/auth';
+import { signIn, signInAdmin } from '../test/auth';
 import { call, chat, toolDetails, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
+import { env } from './env';
 import { type SandboxProvider, useSandboxProvider } from './sandbox';
 
 afterEach(() => {
@@ -261,4 +262,23 @@ test('the computer can be stopped, reset, and cleaned up from the trash', async 
     },
     stopped: 'stopped',
   });
+});
+
+async function computerProvider(headers: Headers) {
+  return (await call(headers, 'GET', '/computer')).body.provider;
+}
+
+test('only the admin gets a computer unless everyone is allowed', async () => {
+  useSandboxProvider(memoryProvider());
+
+  env.LAB_COMPUTER_USERS = 'admin';
+
+  try {
+    expect({
+      admin: await computerProvider(await signInAdmin()),
+      user: await computerProvider(await signIn()),
+    }).toEqual({ admin: 'Foo', user: null });
+  } finally {
+    env.LAB_COMPUTER_USERS = 'everyone';
+  }
 });

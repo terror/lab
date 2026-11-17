@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
 import { Writable } from 'node:stream';
 
+import { isAdmin } from './auth';
 import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
@@ -254,17 +255,34 @@ async function applyNetwork(
   }
 }
 
+async function allowed(ownerId: string) {
+  if (env.LAB_COMPUTER_USERS === 'everyone') {
+    return true;
+  }
+
+  const [owner] = await db
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(eq(schema.user.id, ownerId));
+
+  return owner !== undefined && isAdmin(owner);
+}
+
+async function providerFor(ownerId: string) {
+  return (await allowed(ownerId)) ? activeProvider() : undefined;
+}
+
 async function computerFor(
   readNetwork: (ownerId: string) => Promise<NetworkMode>,
   conversationId: number
 ): Promise<Computer> {
-  const provider = await activeProvider();
+  const ownerId = await requireOwner(conversationId);
+
+  const provider = await providerFor(ownerId);
 
   if (!provider) {
     throw new Error("The user's computer isn't set up.");
   }
-
-  const ownerId = await requireOwner(conversationId);
 
   const name = computerName(ownerId);
 
@@ -332,7 +350,8 @@ export function createSandboxAccess(
     computerFor(readNetwork, conversationId);
 
   return {
-    available: async () => (await activeProvider()) !== undefined,
+    available: async (conversationId) =>
+      (await providerFor(await requireOwner(conversationId))) !== undefined,
     exec: async (conversationId, { command, onOutput, signal, timeoutMs }) => {
       const computer = await computerOf(conversationId);
 
@@ -473,7 +492,7 @@ export function createSandboxAccess(
 }
 
 export async function inspectComputer(ownerId: string) {
-  const provider = await activeProvider();
+  const provider = await providerFor(ownerId);
 
   return {
     computer: provider
@@ -484,15 +503,15 @@ export async function inspectComputer(ownerId: string) {
 }
 
 export async function applyComputerNetwork(ownerId: string, mode: NetworkMode) {
-  const provider = await activeProvider();
+  const provider = await providerFor(ownerId);
 
   if (provider) {
     await applyNetwork(provider, computerName(ownerId), mode);
   }
 }
 
-async function requireProvider() {
-  const provider = await activeProvider();
+async function requireProvider(ownerId: string) {
+  const provider = await providerFor(ownerId);
 
   if (!provider) {
     throw new Error("The user's computer isn't set up.");
@@ -502,11 +521,11 @@ async function requireProvider() {
 }
 
 export async function stopComputer(ownerId: string) {
-  await (await requireProvider()).stop(computerName(ownerId));
+  await (await requireProvider(ownerId)).stop(computerName(ownerId));
 }
 
 export async function resetComputer(ownerId: string) {
-  await (await requireProvider()).destroy(computerName(ownerId));
+  await (await requireProvider(ownerId)).destroy(computerName(ownerId));
 }
 
 export async function removeChatFolder(
@@ -514,6 +533,6 @@ export async function removeChatFolder(
   conversationId: number
 ) {
   await (
-    await activeProvider()
+    await providerFor(ownerId)
   )?.remove(computerName(ownerId), `chats/${conversationId}`);
 }

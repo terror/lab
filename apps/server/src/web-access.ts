@@ -1,7 +1,10 @@
+import { schema } from '@lab/db';
 import type { WebAccess, WebRecency } from '@lab/harness';
 import { z } from 'zod';
 
 import { credentials } from './credentials';
+import { db } from './db';
+import { conversationOwner } from './records';
 
 export const searchProviders = [{ id: 'exa', name: 'Exa' }];
 
@@ -48,7 +51,33 @@ async function exaKey() {
   return credential?.type === 'api_key' ? credential.key : undefined;
 }
 
-async function exa(path: string, body: object) {
+const costSchema = z.object({
+  costDollars: z.object({ total: z.number() }).optional(),
+});
+
+async function record(conversationId: number, model: string, cost: number) {
+  const ownerId = await conversationOwner(conversationId);
+
+  if (!ownerId || cost <= 0) {
+    return;
+  }
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId,
+    cost,
+    createdAt: new Date(),
+    input: 0,
+    kind: 'web',
+    model,
+    output: 0,
+    ownerId,
+    provider: 'exa',
+  });
+}
+
+async function exa(conversationId: number, path: string, body: object) {
   const key = await exaKey();
 
   if (!key) {
@@ -72,15 +101,21 @@ async function exa(path: string, body: object) {
     throw new Error(`Web search failed (${response.status}).`);
   }
 
-  return response.json();
+  const json: unknown = await response.json();
+
+  const cost = costSchema.safeParse(json).data?.costDollars?.total ?? 0;
+
+  await record(conversationId, path.slice(1), cost);
+
+  return json;
 }
 
 export function webAccess(): WebAccess {
   return {
     available: async () => (await exaKey()) !== undefined,
-    fetch: async (url) => {
+    fetch: async (conversationId, url) => {
       const { results } = contentsSchema.parse(
-        await exa('/contents', {
+        await exa(conversationId, '/contents', {
           text: { maxCharacters: MAX_PAGE_LENGTH },
           urls: [url],
         })
@@ -94,9 +129,9 @@ export function webAccess(): WebAccess {
 
       return { text: page.text, title: page.title ?? url, url: page.url };
     },
-    search: async ({ domains, limit, query, recency }) => {
+    search: async (conversationId, { domains, limit, query, recency }) => {
       const { results } = searchSchema.parse(
-        await exa('/search', {
+        await exa(conversationId, '/search', {
           contents: { highlights: { highlightsPerUrl: 1, numSentences: 3 } },
           numResults: limit,
           query,
