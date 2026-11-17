@@ -1,8 +1,9 @@
 import { schema } from '@lab/db';
 import type { HistoryAccess } from '@lab/harness';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { db } from './db';
+import { markedSnippet, searchMessages } from './message-search';
 import { conversationOwner } from './records';
 
 const table = schema.messageText;
@@ -50,40 +51,16 @@ export const historyAccess: HistoryAccess = {
       return [];
     }
 
-    const anyWord = query.trim().split(/\s+/).join(' or ');
+    const matches = await searchMessages(ownerId, query, {
+      exclude: conversationId,
+      limit: SEARCH_LIMIT,
+    });
 
-    const terms = sql`websearch_to_tsquery('english', ${anyWord})`;
-
-    const rows = await db.execute<{
-      id: number;
-      snippet: string;
-      title: string | null;
-      updated_at: string;
-    }>(sql`
-      select
-        ${table.conversationId} as id,
-        ${schema.conversation.title} as title,
-        max(${table.createdAt})::text as updated_at,
-        (array_agg(
-          ts_headline('english', ${table.text}, ${terms}, 'MaxWords=24, MinWords=8, StartSel=**, StopSel=**')
-          order by ts_rank(${table.search}, ${terms}) desc
-        ))[1] as snippet
-      from ${table}
-      join ${schema.conversation} on ${schema.conversation.id} = ${table.conversationId}
-      where ${table.ownerId} = ${ownerId}
-        and ${table.conversationId} <> ${conversationId}
-        and ${schema.conversation.deletedAt} is null
-        and ${table.search} @@ ${terms}
-      group by ${table.conversationId}, ${schema.conversation.title}
-      order by max(ts_rank(${table.search}, ${terms})) desc
-      limit ${SEARCH_LIMIT}
-    `);
-
-    return [...rows].map(({ id, snippet, title, updated_at }) => ({
-      id: Number(id),
-      snippet,
+    return matches.map(({ id, snippet, title, updatedAt }) => ({
+      id,
+      snippet: markedSnippet(snippet),
       title,
-      updatedAt: new Date(updated_at).toISOString(),
+      updatedAt,
     }));
   },
 };

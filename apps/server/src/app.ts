@@ -27,6 +27,7 @@ import preferences from './preferences';
 import projects from './projects';
 import providers from './providers';
 import schedules from './schedules';
+import search from './search';
 import { contentSecurityPolicy, docsSecurityPolicy } from './security';
 import skills from './skills';
 import trash from './trash';
@@ -95,6 +96,7 @@ const api = new Hono()
   .route('/library', library)
   .route('/memory', memory)
   .route('/schedules', schedules)
+  .route('/search', search)
   .route('/skills', skills)
   .route('/trash', trash)
   .route('/uploads', uploads)
