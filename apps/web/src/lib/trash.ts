@@ -1,13 +1,9 @@
-import {
-  type QueryClient,
-  queryOptions,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { queryOptions, useQueryClient } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
 import { clearDraft, conversationsQueryKey } from './conversations';
+import { invalidateAll, useRefreshMutation } from './mutations';
 import { projectsQueryOptions } from './projects';
 
 export type TrashItem = InferResponseType<
@@ -45,21 +41,14 @@ export async function emptyTrash() {
   await call(client.trash.$delete());
 }
 
-function refreshTrashed(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: trashQueryKey }),
-    queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
-    queryClient.invalidateQueries({ queryKey: projectsQueryOptions.queryKey }),
-  ]);
-}
+const trashedQueryKeys = [
+  trashQueryKey,
+  conversationsQueryKey,
+  projectsQueryOptions.queryKey,
+];
 
 export function useTrashAction<T>(mutationFn: (value: T) => Promise<void>) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn,
-    onSettled: () => refreshTrashed(queryClient),
-  });
+  return useRefreshMutation(mutationFn, { invalidate: trashedQueryKeys });
 }
 
 export function useUndoTrash() {
@@ -67,7 +56,7 @@ export function useUndoTrash() {
 
   return async (item: TrashRef, then?: () => Promise<void>) => {
     await restoreFromTrash(item);
-    await refreshTrashed(queryClient);
+    await invalidateAll(queryClient, trashedQueryKeys);
     await then?.();
   };
 }

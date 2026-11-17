@@ -1,3 +1,4 @@
+import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
 import { answerQuestion } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
@@ -108,11 +109,7 @@ export function ApprovalCard({
           {decision === 'approved' ? 'Approved' : 'Denied'}
         </p>
       )}
-      {send.error && (
-        <p role='alert' className='text-sm text-destructive'>
-          {send.error.message}
-        </p>
-      )}
+      {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
     </div>
   );
 }

@@ -22,9 +22,9 @@ import {
   runTask,
   schedulesQueryOptions,
   setTaskEnabled,
-  untilRun,
   useScheduleAction,
 } from '@/lib/schedules';
+import { untilRun } from '@/lib/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Clock, Ellipsis } from 'lucide-react';

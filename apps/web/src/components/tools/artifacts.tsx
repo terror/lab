@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
-import { count, field, text } from './format';
+import { count, field, namedTitle, text } from './format';
 import { PreviewCode, PreviewList } from './previews';
 import { type ToolRenderer, type ToolView, ToolConversation } from './types';
 
@@ -331,17 +331,11 @@ function artifactCard(name: string) {
   };
 }
 
-function artifactTitle(running: string, done: string) {
-  return ({ active, args, details }: ToolView) => {
-    const title = text(field(details, 'title')) ?? text(field(args, 'title'));
-
-    if (active) {
-      return running;
-    }
-
-    return title ? `${done} “${title}”` : `${done} an artifact`;
-  };
-}
+const artifactTitle = namedTitle(
+  ({ args, details }) =>
+    text(field(details, 'title')) ?? text(field(args, 'title')),
+  { unnamed: 'an artifact' }
+);
 
 export const artifactRenderers = {
   artifact_create: {

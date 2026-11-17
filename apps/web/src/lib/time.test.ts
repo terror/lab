@@ -1,11 +1,15 @@
 import { expect, test } from 'vitest';
 
-import { ago } from './search';
+import { ago, untilRun } from './time';
 
 const now = new Date('2026-01-10T12:00:00Z').getTime();
 
 function before(ms: number) {
   return ago(new Date(now - ms).toISOString(), now);
+}
+
+function relative(ms: number) {
+  return untilRun(new Date(ms).toISOString(), 0);
 }
 
 test('result times read as short relative labels', () => {
@@ -17,4 +21,20 @@ test('result times read as short relative labels', () => {
     before(4 * 86_400_000),
     before(30 * 86_400_000),
   ]).toEqual(['1m', '5m', '3h', 'Yesterday', 'Tue', 'Dec 11']);
+});
+
+test('next runs read as relative times', () => {
+  expect([
+    relative(6 * 86_400_000),
+    relative(86_400_000),
+    relative(3 * 3_600_000),
+    relative(5 * 60_000),
+    relative(10_000),
+  ]).toEqual([
+    'in 6 days',
+    'tomorrow',
+    'in 3 hours',
+    'in 5 minutes',
+    'this minute',
+  ]);
 });

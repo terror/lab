@@ -18,8 +18,7 @@ import {
 } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
 import { useProjects } from '@/lib/projects';
-import { untilRun } from '@/lib/schedules';
-import { type Segment, ago, useWorkspaceSearch } from '@/lib/search';
+import { type Segment, useWorkspaceSearch } from '@/lib/search';
 import {
   type SettingsSection,
   selectSettingsSection,
@@ -27,6 +26,7 @@ import {
   settingsSections,
 } from '@/lib/settings';
 import { useTheme } from '@/lib/theme';
+import { ago, untilRun } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';

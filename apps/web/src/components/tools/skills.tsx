@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
 import { WandSparkles } from 'lucide-react';
 
-import { field, text } from './format';
+import { field, namedTitle, text } from './format';
 import { PreviewPassage, SettingsLink } from './previews';
-import { type ToolRenderer, type ToolView } from './types';
+import { type ToolRenderer } from './types';
 
 const manageSkills = (
   <SettingsLink section='skills'>Manage skills</SettingsLink>
@@ -39,17 +39,10 @@ function SkillCard({
   );
 }
 
-function skillTitle(running: string, done: string) {
-  return ({ active, details }: ToolView) => {
-    const name = text(field(details, 'name'));
-
-    if (active) {
-      return running;
-    }
-
-    return name ? `${done} the “${name}” skill` : `${done} a skill`;
-  };
-}
+const skillTitle = namedTitle(({ details }) => field(details, 'name'), {
+  named: (name) => `the “${name}” skill`,
+  unnamed: 'a skill',
+});
 
 export const skillRenderers = {
   skill_create: {

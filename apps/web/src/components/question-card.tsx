@@ -1,3 +1,4 @@
+import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { answerQuestion } from '@/lib/conversations';
@@ -90,11 +91,7 @@ export function QuestionCard({
           </Button>
         </form>
       )}
-      {send.error && (
-        <p role='alert' className='text-sm text-destructive'>
-          {send.error.message}
-        </p>
-      )}
+      {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
     </div>
   );
 }

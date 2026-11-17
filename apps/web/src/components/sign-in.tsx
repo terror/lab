@@ -1,3 +1,4 @@
+import { ErrorMessage } from '@/components/error-message';
 import { GoogleLogo } from '@/components/google-logo';
 import { LabMark } from '@/components/lab-mark';
 import { Button } from '@/components/ui/button';
@@ -36,9 +37,9 @@ export function SignIn() {
             Continue with Google
           </Button>
           {error && (
-            <p role='alert' className='text-sm text-destructive'>
+            <ErrorMessage>
               {errors.get(error) ?? 'Unable to sign in. Try again.'}
-            </p>
+            </ErrorMessage>
           )}
         </div>
       </div>

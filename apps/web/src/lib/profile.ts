@@ -1,16 +1,14 @@
-import { useMutation } from '@tanstack/react-query';
-
 import { authClient } from './auth';
 import { call, client } from './client';
+import { useRefreshMutation } from './mutations';
 
 export function usePictureUpdate<T>(
   mutationFn: (value: T) => Promise<unknown>
 ) {
   const session = authClient.useSession();
 
-  return useMutation({
-    meta: { inlineError: true },
-    mutationFn,
+  return useRefreshMutation(mutationFn, {
+    inlineError: true,
     onSuccess: () => session.refetch(),
   });
 }

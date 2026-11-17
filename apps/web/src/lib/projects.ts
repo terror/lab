@@ -1,12 +1,8 @@
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
+import { invalidateAll, useRefreshMutation } from './mutations';
 
 export type Project = InferResponseType<
   typeof client.projects.$get,
@@ -52,14 +48,9 @@ export async function deleteProject(id: number) {
 }
 
 export function useProjectSave<T>(mutationFn: (value: T) => Promise<Project>) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    meta: { inlineError: true },
-    mutationFn,
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: projectsQueryOptions.queryKey,
-      }),
+  return useRefreshMutation(mutationFn, {
+    inlineError: true,
+    onSuccess: (_, queryClient) =>
+      invalidateAll(queryClient, [projectsQueryOptions.queryKey]),
   });
 }
