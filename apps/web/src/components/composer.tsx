@@ -432,7 +432,6 @@ export function Composer({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align='start'
-              className='w-auto'
               onCloseAutoFocus={(event) => {
                 if (openingPicker.current) {
                   openingPicker.current = false;
