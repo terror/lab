@@ -25,8 +25,8 @@ import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import {
   ArrowLeft,
   Brain,
-  ChartColumn,
   ChevronDown,
+  Gauge,
   KeyRound,
   type LucideIcon,
   Palette,
@@ -118,7 +118,7 @@ const sections: Record<
   providers: { icon: KeyRound, label: 'Providers', panel: Providers },
   skills: { icon: WandSparkles, label: 'Skills', panel: Skills },
   trash: { icon: Trash2, label: 'Trash', panel: Trash },
-  usage: { icon: ChartColumn, label: 'Usage', panel: UsagePanel },
+  usage: { icon: Gauge, label: 'Usage', panel: UsagePanel },
 };
 
 export function Settings() {
