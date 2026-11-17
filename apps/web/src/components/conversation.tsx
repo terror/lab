@@ -56,7 +56,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { FileText, LoaderCircle, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 type BubbleFile = { name: string; uploadId?: string };
@@ -649,10 +649,14 @@ function ConversationView({ id }: { id: number }) {
 
   const running = phase.kind !== 'idle';
 
+  const wasRunning = useRef(running);
+
   useEffect(() => {
-    if (!running) {
+    if (wasRunning.current && !running) {
       void refreshAgentWrites(queryClient);
     }
+
+    wasRunning.current = running;
   }, [queryClient, running]);
 
   const { mutate: markRead } = useMutation({

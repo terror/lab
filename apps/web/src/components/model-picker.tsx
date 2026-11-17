@@ -346,7 +346,6 @@ export function ModelPicker({
       <DropdownMenuContent
         align='end'
         className='w-72 p-0'
-        onCloseAutoFocus={(event) => event.preventDefault()}
         side='top'
         sideOffset={8}
       >

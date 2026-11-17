@@ -24,6 +24,7 @@ import {
   useSettingsSections,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
+import { useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
 import {
   Link,
@@ -115,6 +116,8 @@ export function Settings() {
   ).section;
 
   const sections = useSettingsSections();
+
+  useDocumentTitle('Settings');
 
   const section =
     requested && sections.includes(requested) ? requested : 'appearance';

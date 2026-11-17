@@ -4,6 +4,7 @@ import {
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
 } from '@tanstack/react-router';
 import { expect, test } from 'vitest';
@@ -18,18 +19,29 @@ test('starting a chat sends the prompt and clears the draft', async () => {
       : Response.json({ default: null, models: [] })
   );
 
+  const rootRoute = createRootRoute();
+
   const router = createRouter({
     history: createMemoryHistory(),
-    routeTree: createRootRoute({
-      component: () => (
-        <TooltipProvider>
-          <StartComposer
-            draft='scheduled'
-            prompt={(content) => `bar ${content}`}
-          />
-        </TooltipProvider>
-      ),
-    }),
+    routeTree: rootRoute.addChildren([
+      createRoute({
+        component: () => (
+          <TooltipProvider>
+            <StartComposer
+              draft='scheduled'
+              prompt={(content) => `bar ${content}`}
+            />
+          </TooltipProvider>
+        ),
+        getParentRoute: () => rootRoute,
+        path: '/',
+      }),
+      createRoute({
+        component: () => null,
+        getParentRoute: () => rootRoute,
+        path: '/c/$id',
+      }),
+    ]),
   });
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
@@ -47,8 +59,11 @@ test('starting a chat sends the prompt and clears the draft', async () => {
         requestUrl(input).pathname === '/api/conversations'
     ) ?? [];
 
-  expect({
-    body: typeof init?.body === 'string' && JSON.parse(init.body).content,
-    draft: window.localStorage.getItem('lab:draft:scheduled'),
-  }).toEqual({ body: 'bar foo', draft: null });
+  expect(typeof init?.body === 'string' && JSON.parse(init.body).content).toBe(
+    'bar foo'
+  );
+
+  await expect
+    .poll(() => window.localStorage.getItem('lab:draft:scheduled'))
+    .toBeNull();
 });

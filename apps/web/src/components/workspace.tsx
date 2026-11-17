@@ -1,4 +1,4 @@
-import { SearchProvider, useSearch } from '@/components/search';
+import { useSearch } from '@/components/search';
 import { type NavPath, Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,10 +19,11 @@ import { useMediaQuery } from '@/lib/media';
 import { useProjects } from '@/lib/projects';
 import { useTimezoneReport } from '@/lib/schedules';
 import { usePersistentState } from '@/lib/storage';
+import { useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, Search, SquarePen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { z } from 'zod';
 
@@ -242,19 +243,7 @@ export function Workspace() {
 
   useTimezoneReport();
 
-  const title = usePageTitle(selected);
+  useDocumentTitle(usePageTitle(selected));
 
-  useEffect(() => {
-    document.title = `${title} – Lab`;
-
-    return () => {
-      document.title = 'Lab';
-    };
-  }, [title]);
-
-  return (
-    <SearchProvider>
-      <WorkspaceLayout desktop={desktop} selected={selected} user={user} />
-    </SearchProvider>
-  );
+  return <WorkspaceLayout desktop={desktop} selected={selected} user={user} />;
 }

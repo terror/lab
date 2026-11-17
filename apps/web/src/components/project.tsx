@@ -63,6 +63,10 @@ export function Project() {
     return <Unavailable subject='project' />;
   }
 
+  if (project.isError) {
+    return <LoadError className='m-6' subject='this project' />;
+  }
+
   if (!project.data) {
     return null;
   }
