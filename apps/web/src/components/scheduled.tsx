@@ -241,8 +241,7 @@ export function Scheduled() {
         <div className='flex flex-col gap-1'>
           <h1 className='text-2xl font-semibold tracking-tight'>Scheduled</h1>
           <p className='text-sm text-muted-foreground'>
-            Lab runs these on a schedule and posts each result to the task’s
-            chat.
+            Lab runs these on a schedule in the chat where you set them up.
           </p>
         </div>
         <SchedulePrompt />

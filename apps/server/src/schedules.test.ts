@@ -33,7 +33,7 @@ async function ask(headers: Headers, answer: string) {
 
   await settle(body.id);
 
-  return toolOutputs(headers, body.id);
+  return { id: body.id, outputs: await toolOutputs(headers, body.id) };
 }
 
 test('scheduled tasks need approval and run once when due', async () => {
@@ -86,10 +86,11 @@ test('scheduled tasks need approval and run once when due', async () => {
   await call(headers, 'DELETE', `/schedules/${created.id}`);
 
   expect({
-    approved,
+    approved: approved.outputs,
+    chat: [created.conversationId, ran?.conversationId],
     chats: chats.length,
     conversationId: listed.body.tasks[0].conversationId,
-    denied,
+    denied: denied.outputs,
     invalid,
     lastRunAt: ran?.lastRunAt?.toISOString(),
     nextRunAt: ran?.nextRunAt?.toISOString(),
@@ -99,6 +100,7 @@ test('scheduled tasks need approval and run once when due', async () => {
     approved: [
       `Scheduled [${created.id}] foo: Every day at 9am (0 9 * * *, UTC, next run ${created.nextRunAt}).`,
     ],
+    chat: [approved.id, approved.id],
     chats: 1,
     conversationId: ran?.conversationId,
     denied: ['The user declined to schedule this task.'],
