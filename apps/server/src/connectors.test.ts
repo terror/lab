@@ -16,7 +16,7 @@ import { serveMcp, serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
-import { registry } from './harness';
+import { registry } from './registry';
 
 const servers: { stop: () => void }[] = [];
 

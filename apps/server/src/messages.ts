@@ -1,9 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { Conversation } from '@earendil-works/pi-durable';
+import { AgentDoc, type Conversation } from '@earendil-works/pi-durable';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { selectConnectors } from './connections';
+import { connectorsExtensionName } from './connections';
+import { harness } from './harness';
 import { MESSAGE_KIND, type MessageData } from './message-entry';
 import { acceptsImages } from './models';
 import { requireOwner } from './records';
@@ -110,6 +111,31 @@ function attachmentBytes(attachments: readonly Attachment[]) {
       ? total + Buffer.byteLength(attachment.text)
       : total;
   }, 0);
+}
+
+export async function selectConnectors(
+  conversation: Conversation,
+  ownerId: string
+) {
+  const name = connectorsExtensionName(ownerId);
+
+  const stored = (
+    await harness.snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
+  )?.extensions;
+
+  if (Array.isArray(stored) || stored?.add?.includes(name)) {
+    return;
+  }
+
+  await conversation.configure(
+    {
+      extensions: {
+        add: [...(stored?.add ?? []), name].map((added) => ({ name: added })),
+        remove: (stored?.remove ?? []).map((removed) => ({ name: removed })),
+      },
+    },
+    BACKGROUND_CONTEXT
+  );
 }
 
 export async function submitMessage(
