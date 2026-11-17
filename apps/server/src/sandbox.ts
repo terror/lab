@@ -12,7 +12,7 @@ import { Writable } from 'node:stream';
 import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
-import { owners } from './records';
+import { conversationOwner } from './records';
 import { decodeText } from './text';
 
 export type ComputerState = {
@@ -267,7 +267,7 @@ async function computerFor(
     throw new Error("The user's computer isn't set up.");
   }
 
-  const ownerId = (await owners([conversationId])).get(conversationId);
+  const ownerId = await conversationOwner(conversationId);
 
   if (!ownerId) {
     throw new Error('This chat has no owner.');

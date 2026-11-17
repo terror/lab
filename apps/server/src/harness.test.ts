@@ -8,10 +8,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+import { emptyDeps } from '../test/harness';
 import { db } from './db';
 import { purgeDeleted } from './harness';
 import { models } from './models';
-import { createSandboxAccess } from './sandbox';
 
 const queries = [
   'select id from conversations order by id',
@@ -56,18 +56,7 @@ test('deleted conversations are purged from storage', async () => {
 
   const first = await openHarness({
     models,
-    history: { read: async () => undefined, search: async () => [] },
-    library: { read: async () => undefined, search: async () => [] },
-    sandbox: createSandboxAccess(async () => 'full'),
-    web: {
-      available: async () => false,
-      fetch: async () => {
-        throw new Error('foo');
-      },
-      mentioned: async () => false,
-      search: async () => [],
-    },
-    onHelperUsage: () => undefined,
+    ...emptyDeps(),
     path,
   });
 
@@ -86,18 +75,7 @@ test('deleted conversations are purged from storage', async () => {
 
   const second = await openHarness({
     models,
-    history: { read: async () => undefined, search: async () => [] },
-    library: { read: async () => undefined, search: async () => [] },
-    sandbox: createSandboxAccess(async () => 'full'),
-    web: {
-      available: async () => false,
-      fetch: async () => {
-        throw new Error('foo');
-      },
-      mentioned: async () => false,
-      search: async () => [],
-    },
-    onHelperUsage: () => undefined,
+    ...emptyDeps(),
     path,
   });
 
@@ -114,18 +92,7 @@ test('fork parents and missing stores are handled by the purge', async () => {
 
   const harness = await openHarness({
     models,
-    history: { read: async () => undefined, search: async () => [] },
-    library: { read: async () => undefined, search: async () => [] },
-    sandbox: createSandboxAccess(async () => 'full'),
-    web: {
-      available: async () => false,
-      fetch: async () => {
-        throw new Error('foo');
-      },
-      mentioned: async () => false,
-      search: async () => [],
-    },
-    onHelperUsage: () => undefined,
+    ...emptyDeps(),
     path,
   });
 

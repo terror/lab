@@ -3,19 +3,15 @@ import type { LibraryAccess } from '@lab/harness';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { db } from './db';
-import { contains, owners } from './records';
+import { contains, conversationOwner } from './records';
 
 const table = schema.libraryItem;
 
 const SEARCH_LIMIT = 20;
 
-async function owner(conversationId: number) {
-  return (await owners([conversationId])).get(conversationId);
-}
-
 export const libraryAccess: LibraryAccess = {
   read: async (conversationId, id) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await conversationOwner(conversationId);
 
     if (!ownerId) {
       return undefined;
@@ -49,7 +45,7 @@ export const libraryAccess: LibraryAccess = {
     return { kind: 'file', name: item.name, text: bytes.toString('utf8') };
   },
   search: async (conversationId, { kind, search }) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await conversationOwner(conversationId);
 
     if (!ownerId) {
       return [];
