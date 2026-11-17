@@ -169,8 +169,17 @@ async function owner(conversationId: number) {
 }
 
 export const projectAccess: ProjectAccess = {
-  trash: async (conversationId, id) =>
-    (await trashProject(await owner(conversationId), id)) !== undefined,
+  trash: async (conversationId, id) => {
+    const ownerId = await owner(conversationId);
+
+    const project = (await listProjects(ownerId)).find(
+      (candidate) => candidate.id === id
+    );
+
+    const chats = project && (await trashProject(ownerId, id));
+
+    return project && chats && { chats: chats.length, project };
+  },
   create: async (conversationId, name) =>
     createProject(await owner(conversationId), name),
   current: async (conversationId) => {

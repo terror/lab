@@ -11,7 +11,7 @@ import {
   deleteProject,
   projectsQueryOptions,
 } from '@/lib/projects';
-import { restoreFromTrash, useTrashAction } from '@/lib/trash';
+import { useUndoTrash } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -41,9 +41,7 @@ export function ProjectMenu({
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
     ]);
 
-  const restore = useTrashAction(() =>
-    restoreFromTrash({ id: project.id, kind: 'project' })
-  );
+  const undo = useUndoTrash();
 
   const remove = useMutation({
     mutationFn: () => deleteProject(project.id),
@@ -54,17 +52,13 @@ export function ProjectMenu({
         action: {
           label: 'Undo',
           onClick: () =>
-            restore.mutate(undefined, {
-              onSuccess: async () => {
-                await refresh();
-
-                if (viewing) {
-                  await navigate({
-                    params: { projectId: String(project.id) },
-                    to: '/projects/$projectId',
-                  });
-                }
-              },
+            void undo({ id: project.id, kind: 'project' }, async () => {
+              if (viewing) {
+                await navigate({
+                  params: { projectId: String(project.id) },
+                  to: '/projects/$projectId',
+                });
+              }
             }),
         },
       });

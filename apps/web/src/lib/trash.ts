@@ -1,4 +1,5 @@
 import {
+  type QueryClient,
   queryOptions,
   useMutation,
   useQueryClient,
@@ -7,6 +8,7 @@ import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
 import { clearDraft, conversationsQueryKey } from './conversations';
+import { projectsQueryOptions } from './projects';
 
 export type TrashItem = InferResponseType<
   typeof client.trash.$get,
@@ -43,15 +45,29 @@ export async function emptyTrash() {
   await call(client.trash.$delete());
 }
 
+function refreshTrashed(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: trashQueryKey }),
+    queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+    queryClient.invalidateQueries({ queryKey: projectsQueryOptions.queryKey }),
+  ]);
+}
+
 export function useTrashAction<T>(mutationFn: (value: T) => Promise<void>) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn,
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trashQueryKey }),
-        queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
-      ]),
+    onSettled: () => refreshTrashed(queryClient),
   });
+}
+
+export function useUndoTrash() {
+  const queryClient = useQueryClient();
+
+  return async (item: TrashRef, then?: () => Promise<void>) => {
+    await restoreFromTrash(item);
+    await refreshTrashed(queryClient);
+    await then?.();
+  };
 }

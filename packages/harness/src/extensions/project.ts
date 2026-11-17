@@ -26,7 +26,10 @@ export type ProjectAccess = {
     name: string
   ): Promise<Project | undefined>;
   current(conversationId: ConversationId): Promise<Project | undefined>;
-  trash(conversationId: ConversationId, id: number): Promise<boolean>;
+  trash(
+    conversationId: ConversationId,
+    id: number
+  ): Promise<{ chats: number; project: Project } | undefined>;
   list(conversationId: ConversationId): Promise<Project[]>;
   move(
     conversationId: ConversationId,
@@ -141,15 +144,18 @@ export function project(access: ProjectAccess) {
     description:
       'Move a project and every chat in it to the Trash. The user can restore them from Settings → Trash.',
     parameters: obj({ id: projectId }),
-    execute: async (args, api): Promise<ToolExecutionResult> =>
-      (await access.trash(api.conversationId, args.id))
+    execute: async (args, api): Promise<ToolExecutionResult> => {
+      const trashed = await access.trash(api.conversationId, args.id);
+
+      return trashed
         ? {
-            details: { projectId: args.id },
+            details: trashed,
             output: text(
               `Moved project ${args.id} and its chats to the Trash.`
             ),
           }
-        : failure(missing),
+        : failure(missing);
+    },
   });
 
   const chatMove = defineTool({

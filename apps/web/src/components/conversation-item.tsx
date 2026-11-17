@@ -25,7 +25,7 @@ import {
   updateConversation,
 } from '@/lib/conversations';
 import { projectsQueryOptions, useProjects } from '@/lib/projects';
-import { restoreFromTrash, useTrashAction } from '@/lib/trash';
+import { useUndoTrash } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -253,9 +253,7 @@ export function ConversationItem({
     projectId: conversation.projectId,
   };
 
-  const restore = useTrashAction(() =>
-    restoreFromTrash({ id: conversation.id, kind: 'conversation' })
-  );
+  const undo = useUndoTrash();
 
   const remove = useMutation({
     mutationFn: () => deleteConversation(conversation.id),
@@ -264,16 +262,17 @@ export function ConversationItem({
         action: {
           label: 'Undo',
           onClick: () =>
-            restore.mutate(undefined, {
-              onSuccess: () => {
+            void undo(
+              { id: conversation.id, kind: 'conversation' },
+              async () => {
                 if (selected) {
-                  void navigate({
+                  await navigate({
                     params: { id: conversation.id },
                     to: '/c/$id',
                   });
                 }
-              },
-            }),
+              }
+            ),
         },
       });
 
