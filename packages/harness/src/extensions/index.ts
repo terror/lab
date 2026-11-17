@@ -69,7 +69,7 @@ export {
   type ScheduleUpdate,
   type ScheduledTask,
 } from './schedule';
-export { TitleDoc } from './title';
+export { TitleDoc, plainTitle } from './title';
 export {
   type WebAccess,
   type WebPage,
