@@ -5,8 +5,8 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { PRIVATE_ADDRESS, checkPublicUrl, publicFetch } from './addresses';
-import { isAdmin, requireUser } from './auth';
+import { PRIVATE_ADDRESS, checkPublicUrl } from './addresses';
+import { requireUser } from './auth';
 import {
   connectorSlug,
   connectorState,
@@ -23,6 +23,7 @@ import {
 import { db } from './db';
 import { found } from './found';
 import { rateLimit } from './limits';
+import { policy } from './policy';
 import { idParam, validator } from './validator';
 
 const table = schema.connector;
@@ -85,10 +86,10 @@ async function checkName(ownerId: string, name: string, id?: number) {
   }
 }
 
-type Owner = { email?: string | null; id: string };
+type Owner = { id: string };
 
 async function checkUrl(owner: Owner, url: string) {
-  if (isAdmin(owner)) {
+  if ((await policy(owner.id)).privateNetwork) {
     return;
   }
 
@@ -141,7 +142,7 @@ export async function addConnector(
 
   const row = found(connector, 'Connector not found');
 
-  await refreshConnector(row, isAdmin(owner));
+  await refreshConnector(row);
 
   return row;
 }
@@ -167,7 +168,7 @@ export async function updateConnector(
 
   const row = found(connector, 'Connector not found');
 
-  await refreshConnector(row, isAdmin(owner));
+  await refreshConnector(row);
 
   return row;
 }
@@ -212,7 +213,7 @@ const connectors = new Hono()
       connectorAuth(row.id, (url) => {
         redirects.push(url);
       }),
-      { fetchFn: isAdmin(user) ? undefined : publicFetch, serverUrl: row.url }
+      { fetchFn: (await policy(user.id)).fetch, serverUrl: row.url }
     );
 
     const [target] = redirects;
@@ -221,7 +222,7 @@ const connectors = new Hono()
       return c.redirect(target.href);
     }
 
-    await refreshConnector(row, isAdmin(user));
+    await refreshConnector(row);
 
     return c.redirect('/settings');
   })
@@ -256,23 +257,20 @@ const connectors = new Hono()
 
     await auth(connectorAuth(id), {
       authorizationCode: code,
-      fetchFn: isAdmin(user) ? undefined : publicFetch,
+      fetchFn: (await policy(user.id)).fetch,
       serverUrl: row.url,
     });
 
     await finishAuthorization(id);
 
-    await refreshConnector(row, isAdmin(user));
+    await refreshConnector(row);
 
     return c.redirect('/settings');
   })
   .post('/:id/reconnect', rateLimit('connectors'), idParam, async (c) => {
     const user = c.get('user');
 
-    await refreshConnector(
-      await existing(user.id, c.req.valid('param').id),
-      isAdmin(user)
-    );
+    await refreshConnector(await existing(user.id, c.req.valid('param').id));
 
     return c.json(await listConnectors(user.id));
   })

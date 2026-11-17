@@ -44,3 +44,17 @@ test('uploads stop at the storage limit for everyone but the admin', async () =>
     env.LAB_STORAGE_LIMIT = undefined;
   }
 });
+
+test('concurrent uploads cannot go over the storage limit together', async () => {
+  env.LAB_STORAGE_LIMIT = 0.000_005;
+
+  try {
+    const headers = await signIn();
+
+    const statuses = await Promise.all([upload(headers), upload(headers)]);
+
+    expect(statuses.map(({ status }) => status).toSorted()).toEqual([201, 413]);
+  } finally {
+    env.LAB_STORAGE_LIMIT = undefined;
+  }
+});

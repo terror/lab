@@ -10,13 +10,11 @@ import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { eq } from 'drizzle-orm';
 
-import { publicFetch } from './addresses';
-import { isAdmin } from './auth';
 import { connectorAuth } from './connector-auth';
 import { db } from './db';
 import { harness, registry } from './harness';
+import { policy } from './policy';
 
 type Row = typeof schema.connector.$inferSelect;
 
@@ -136,13 +134,13 @@ async function disconnect(id: number) {
   return entry?.ownerId;
 }
 
-async function connect({ id, name, ownerId, url }: Row, local: boolean) {
+async function connect({ id, name, ownerId, url }: Row) {
   const client = new Client({ name: 'Lab', version: '1.0.0' });
 
   try {
     const transport = new StreamableHTTPClientTransport(new URL(url), {
       authProvider: connectorAuth(id),
-      fetch: local ? fetch : publicFetch,
+      fetch: (await policy(ownerId)).fetch,
     });
 
     await client.connect(transport, { timeout: TIMEOUT });
@@ -190,14 +188,14 @@ async function connect({ id, name, ownerId, url }: Row, local: boolean) {
   }
 }
 
-export function refreshConnector(row: Row, local: boolean) {
+export function refreshConnector(row: Row) {
   return locked(async () => {
     const previous = await disconnect(row.id);
 
     entries.set(
       row.id,
       row.enabled
-        ? await connect(row, local)
+        ? await connect(row)
         : { ownerId: row.ownerId, state: { kind: 'off' } }
     );
 
@@ -224,16 +222,9 @@ export function connectorState(id: number): ConnectorState {
 }
 
 export async function startConnectors() {
-  const rows = await db
-    .select({ connector: schema.connector, email: schema.user.email })
-    .from(schema.connector)
-    .innerJoin(schema.user, eq(schema.user.id, schema.connector.ownerId));
+  const rows = await db.select().from(schema.connector);
 
-  await Promise.all(
-    rows.map(({ connector, email }) =>
-      refreshConnector(connector, isAdmin({ email }))
-    )
-  );
+  await Promise.all(rows.map(refreshConnector));
 }
 
 type Conversation = NonNullable<

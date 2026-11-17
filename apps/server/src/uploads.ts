@@ -8,7 +8,7 @@ import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { rateLimit } from './limits';
-import { checkStorage } from './storage';
+import { storeUpload } from './storage';
 import { uuidParam, validator } from './validator';
 
 const MAX_DOCUMENT_BYTES = 20_000_000;
@@ -77,22 +77,13 @@ const uploads = new Hono()
   .post('/', rateLimit('uploads'), form, async (c) => {
     const { document, thumbnail } = c.req.valid('form');
 
-    await checkStorage(
-      c.get('user').id,
-      document.size + (thumbnail?.size ?? 0)
-    );
+    const id = await storeUpload(c.get('user').id, {
+      content: await bytes(document),
+      mimeType: document.type,
+      thumbnail: thumbnail ? await bytes(thumbnail) : null,
+    });
 
-    const [created] = await db
-      .insert(schema.upload)
-      .values({
-        content: await bytes(document),
-        mimeType: document.type,
-        ownerId: c.get('user').id,
-        thumbnail: thumbnail ? await bytes(thumbnail) : null,
-      })
-      .returning({ id: schema.upload.id });
-
-    return c.json({ id: created?.id ?? '' }, 201);
+    return c.json({ id }, 201);
   });
 
 export default uploads;

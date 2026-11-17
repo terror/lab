@@ -9,7 +9,7 @@ import { isAdmin, requireUser } from './auth';
 import { db } from './db';
 import { rateLimit } from './limits';
 import { imageTypes } from './schemas';
-import { checkStorage } from './storage';
+import { storeUpload } from './storage';
 import { validator } from './validator';
 
 const PICTURE_BYTES = 5 * 1024 * 1024;
@@ -58,22 +58,12 @@ const profile = new Hono()
 
     const { picture: file } = c.req.valid('form');
 
-    await checkStorage(user.id, file.size);
+    const upload = await storeUpload(user.id, {
+      content: new Uint8Array(await file.arrayBuffer()),
+      mimeType: file.type,
+    });
 
-    const [upload] = await db
-      .insert(schema.upload)
-      .values({
-        content: new Uint8Array(await file.arrayBuffer()),
-        mimeType: file.type,
-        ownerId: user.id,
-      })
-      .returning({ id: schema.upload.id });
-
-    if (!upload) {
-      throw new HTTPException(500, { message: 'Unable to save the picture' });
-    }
-
-    const image = `/api/uploads/${upload.id}`;
+    const image = `/api/uploads/${upload}`;
 
     await setImage(user.id, image);
 
