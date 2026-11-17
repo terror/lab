@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
+import { deleteAccount, exportAccount } from './account';
 import { isAdmin, requireUser } from './auth';
 import { db } from './db';
 import { rateLimit } from './limits';
@@ -34,6 +35,24 @@ async function setImage(userId: string, image: string | null) {
 const profile = new Hono()
   .use(requireUser)
   .get('/', (c) => c.json({ admin: isAdmin(c.get('user')) }))
+  .get('/export', async (c) => {
+    c.header('content-disposition', 'attachment; filename="lab-export.json"');
+
+    return c.json(await exportAccount(c.get('user')));
+  })
+  .delete('/', async (c) => {
+    const user = c.get('user');
+
+    if (isAdmin(user)) {
+      throw new HTTPException(403, {
+        message: 'The admin account can’t be deleted',
+      });
+    }
+
+    await deleteAccount(user.id);
+
+    return c.body(null, 204);
+  })
   .put('/picture', rateLimit('uploads'), picture, async (c) => {
     const user = c.get('user');
 

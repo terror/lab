@@ -33,3 +33,9 @@ export function setPicture(picture: File) {
 export function removePicture() {
   return call(client.profile.picture.$delete());
 }
+
+export const exportUrl = client.profile.export.$url().pathname;
+
+export function deleteAccount() {
+  return call(client.profile.$delete());
+}

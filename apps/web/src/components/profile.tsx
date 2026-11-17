@@ -2,16 +2,33 @@ import { UserAvatar } from '@/components/account-menu';
 import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useUser } from '@/lib/auth';
+import { authClient, useUser } from '@/lib/auth';
 import {
   memoryQueryOptions,
   updateMemory,
   useMemoryUpdate,
 } from '@/lib/memory';
-import { removePicture, setPicture, usePictureUpdate } from '@/lib/profile';
-import { useQuery } from '@tanstack/react-query';
+import {
+  deleteAccount,
+  exportUrl,
+  removePicture,
+  setPicture,
+  useAdmin,
+  usePictureUpdate,
+} from '@/lib/profile';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type SubmitEvent, useState } from 'react';
 
 function Instructions({ initial }: { initial: string }) {
@@ -113,6 +130,71 @@ function Picture() {
   );
 }
 
+export function YourData() {
+  const admin = useAdmin();
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+
+  const remove = useMutation({
+    meta: { inlineError: true },
+    mutationFn: deleteAccount,
+    onSuccess: async () => {
+      await authClient.signOut().catch(() => undefined);
+      queryClient.clear();
+    },
+  });
+
+  return (
+    <section className='flex flex-col gap-3'>
+      <div className='space-y-1'>
+        <h2 className='text-sm font-medium'>Your data</h2>
+        <p className='text-sm text-muted-foreground'>
+          Download your chats, settings, and memories, or delete your account
+          and everything in it.
+        </p>
+      </div>
+      <div className='flex gap-2'>
+        <Button asChild size='sm' variant='outline'>
+          <a download href={exportUrl}>
+            Export data
+          </a>
+        </Button>
+        {!admin && (
+          <Button
+            disabled={remove.isPending}
+            onClick={() => setConfirming(true)}
+            size='sm'
+            variant='ghost'
+          >
+            Delete account
+          </Button>
+        )}
+      </div>
+      {remove.error && <ErrorMessage>{remove.error.message}</ErrorMessage>}
+      <AlertDialog onOpenChange={setConfirming} open={confirming}>
+        <AlertDialogContent size='sm'>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your chats, projects, files, memories, connectors, and computer
+              will be permanently deleted. This can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => remove.mutate()}
+              variant='destructive'
+            >
+              Delete account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
 export function Profile() {
   const memory = useQuery(memoryQueryOptions);
 
@@ -129,6 +211,7 @@ export function Profile() {
           initial={memory.data.instructions}
         />
       )}
+      <YourData />
     </SettingsPage>
   );
 }
