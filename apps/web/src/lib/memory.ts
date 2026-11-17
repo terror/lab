@@ -28,10 +28,11 @@ export function removeMemory(id: string) {
 }
 
 export function useMemoryUpdate<T>(
-  mutationFn: (value: T) => Promise<MemoryState>
+  mutationFn: (value: T) => Promise<MemoryState>,
+  inlineError = false
 ) {
   return useRefreshMutation(mutationFn, {
-    inlineError: true,
+    inlineError,
     set: memoryQueryOptions.queryKey,
   });
 }

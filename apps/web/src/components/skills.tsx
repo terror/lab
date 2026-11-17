@@ -73,8 +73,8 @@ function SkillForm({
       : blank
   );
 
-  const create = useSkillsUpdate(createSkill);
-  const update = useSkillsUpdate(updateSkill);
+  const create = useSkillsUpdate(createSkill, true);
+  const update = useSkillsUpdate(updateSkill, true);
 
   const save = editing.kind === 'edit' ? update : create;
 

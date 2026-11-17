@@ -23,6 +23,7 @@ export function QuestionCard({
   const [other, setOther] = useState('');
 
   const send = useMutation({
+    meta: { inlineError: true },
     mutationFn: (value: string) =>
       answerQuestion(conversationId ?? 0, { answer: value, callId }),
   });

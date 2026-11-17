@@ -40,11 +40,18 @@ export function loadMarkdown() {
   loading ??= Promise.all([
     import('streamdown'),
     import('@streamdown/code'),
-  ]).then(([streamdown, { code }]) => {
-    loaded = { plugins: { code, mermaid }, streamdown };
+  ]).then(
+    ([streamdown, { code }]) => {
+      loaded = { plugins: { code, mermaid }, streamdown };
 
-    return loaded;
-  });
+      return loaded;
+    },
+    (error: unknown) => {
+      loading = undefined;
+
+      throw error;
+    }
+  );
 
   return loading;
 }
@@ -80,6 +87,7 @@ export function Markdown({
         }
         isAnimating={streaming}
         lineNumbers={lineNumbers}
+        parseIncompleteMarkdown={streaming}
       >
         {children}
       </Streamdown>

@@ -38,7 +38,7 @@ function AddMemoryDialog({
 }) {
   const [text, setText] = useState('');
 
-  const add = useMemoryUpdate(addMemory);
+  const add = useMemoryUpdate(addMemory, true);
 
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();

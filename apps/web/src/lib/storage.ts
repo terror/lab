@@ -42,6 +42,16 @@ export function writeStored(key: string, value: unknown) {
   notify();
 }
 
+export function clearStored() {
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith(prefix)) {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  notify();
+}
+
 export function removeStored(key: string) {
   window.localStorage.removeItem(prefix + key);
   notify();

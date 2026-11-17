@@ -66,6 +66,7 @@ export function ApprovalCard({
   conversationId: number | undefined;
 }) {
   const send = useMutation({
+    meta: { inlineError: true },
     mutationFn: (answer: 'approved' | 'denied') =>
       answerQuestion(conversationId ?? 0, { answer, callId }),
   });

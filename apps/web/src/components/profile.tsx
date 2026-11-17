@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { authClient, useUser } from '@/lib/auth';
+import { signOut, useUser } from '@/lib/auth';
 import {
   memoryQueryOptions,
   updateMemory,
@@ -138,10 +138,7 @@ export function YourData() {
   const remove = useMutation({
     meta: { inlineError: true },
     mutationFn: deleteAccount,
-    onSuccess: async () => {
-      await authClient.signOut().catch(() => undefined);
-      queryClient.clear();
-    },
+    onSuccess: () => signOut(queryClient),
   });
 
   return (

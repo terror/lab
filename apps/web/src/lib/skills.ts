@@ -29,10 +29,11 @@ export function deleteSkill(id: string) {
 }
 
 export function useSkillsUpdate<T>(
-  mutationFn: (value: T) => Promise<SkillsState>
+  mutationFn: (value: T) => Promise<SkillsState>,
+  inlineError = false
 ) {
   return useRefreshMutation(mutationFn, {
-    inlineError: true,
+    inlineError,
     set: skillsQueryOptions.queryKey,
   });
 }

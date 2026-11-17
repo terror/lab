@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { type User, authClient } from '@/lib/auth';
+import { type User, signOut } from '@/lib/auth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-react';
@@ -92,10 +92,7 @@ export function AccountMenu({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const signOut = useMutation({
-    mutationFn: () => authClient.signOut(),
-    onSuccess: () => queryClient.clear(),
-  });
+  const leave = useMutation({ mutationFn: () => signOut(queryClient) });
 
   return (
     <DropdownMenu>
@@ -113,8 +110,8 @@ export function AccountMenu({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          disabled={signOut.isPending}
-          onSelect={() => signOut.mutate()}
+          disabled={leave.isPending}
+          onSelect={() => leave.mutate()}
         >
           <LogOut aria-hidden='true' />
           Sign out
