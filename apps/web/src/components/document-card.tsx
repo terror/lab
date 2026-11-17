@@ -53,7 +53,7 @@ export function DocumentCard({
     <>
       <button
         aria-label={`Open ${name}`}
-        className='group relative h-44 w-36 overflow-hidden rounded-xl bg-muted text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+        className='group relative h-44 w-36 overflow-hidden rounded-xl bg-muted text-left outline-none'
         onClick={() => setOpen(true)}
         type='button'
       >

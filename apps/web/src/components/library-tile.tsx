@@ -87,7 +87,7 @@ export function Tile({
       aria-label={item.name}
       aria-pressed={selected}
       className={cn(
-        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-40',
+        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none disabled:opacity-40',
         selected && 'ring-2 ring-foreground'
       )}
       disabled={disabled}
