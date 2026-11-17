@@ -29,6 +29,7 @@ import {
   contentText,
   conversationsQueryKey,
   type Gap,
+  readConversation,
   sendMessage,
   useConversation,
   useConversationSummary,
@@ -656,6 +657,19 @@ function ConversationView({ id }: { id: number }) {
       void refreshAgentWrites(queryClient);
     }
   }, [queryClient, running]);
+
+  const { mutate: markRead } = useMutation({
+    meta: { inlineError: true },
+    mutationFn: () => readConversation(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+  });
+
+  useEffect(() => {
+    if (!running) {
+      markRead();
+    }
+  }, [markRead, running]);
 
   const thinking =
     running && !retry && !answering && !toolsRunning && !finishing

@@ -207,6 +207,12 @@ export async function compactConversation(id: number) {
   );
 }
 
+export async function readConversation(id: number) {
+  await call(
+    client.conversations[':id'].read.$post({ param: { id: String(id) } })
+  );
+}
+
 export async function abortConversation(id: number) {
   await call(
     client.conversations[':id'].abort.$post({ param: { id: String(id) } })

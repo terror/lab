@@ -2,10 +2,11 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type ChatSummary, TitleDoc } from '@lab/harness';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
+import { flushProjections } from './projections';
 
 const table = schema.conversation;
 
@@ -63,4 +64,13 @@ export async function pinChat(
     .returning({ id: table.id, title: table.title });
 
   return row && { ...row, pinned };
+}
+
+export async function readChat(ownerId: string, id: number) {
+  await flushProjections();
+
+  await db
+    .update(table)
+    .set({ readAt: sql`${table.lastMessageAt}` })
+    .where(live(ownerId, id));
 }
