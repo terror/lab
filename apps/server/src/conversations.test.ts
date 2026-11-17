@@ -621,7 +621,7 @@ test('deleted conversations go to the trash until purged', async () => {
     listed: (
       await call(headers, 'GET', '/conversations')
     ).body.conversations.map(({ id }: { id: number }) => id),
-    purge: purge.status,
+    purge,
     tombstones: tombstones.map(({ id }) => id).toSorted((a, b) => a - b),
     trash: (await call(headers, 'GET', '/trash')).body.items,
     trashed: trashed.body.items.map(
@@ -636,7 +636,7 @@ test('deleted conversations go to the trash until purged', async () => {
     again: 404,
     hidden: { body: { error: 'Conversation not found' }, status: 404 },
     listed: [restored],
-    purge: 204,
+    purge: { body: { chats: [purged] }, status: 200 },
     tombstones: [kept, purged].toSorted((a, b) => a - b),
     trash: [],
     trashed: [

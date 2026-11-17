@@ -18,7 +18,7 @@ type Trashed = { deletedAt: Date; id: number; title: string | null };
 
 type Trashable = {
   list: (ownerId: string) => Promise<Trashed[]>;
-  purge: (ownerId: string, id: number) => Promise<boolean>;
+  purge: (ownerId: string, id: number) => Promise<number[] | undefined>;
   restore: (ownerId: string, id: number) => Promise<boolean>;
   trash: (ownerId: string, id: number) => Promise<number[] | undefined>;
 };
@@ -97,12 +97,12 @@ const conversations: Trashable = {
       .where(trashed(ownerId, id));
 
     if (!row) {
-      return false;
+      return undefined;
     }
 
     await purgeChat(ownerId, id);
 
-    return true;
+    return [id];
   },
   restore: async (ownerId, id) => {
     const restored = await db
@@ -151,13 +151,14 @@ const projects: Trashable = {
       .where(trashedProject(ownerId, id));
 
     if (!row) {
-      return false;
+      return undefined;
     }
 
     const chats = await db
       .select({ id: table.id })
       .from(table)
-      .where(eq(table.projectId, id));
+      .where(eq(table.projectId, id))
+      .orderBy(table.id);
 
     for (const chat of chats) {
       await purgeChat(ownerId, chat.id);
@@ -165,7 +166,7 @@ const projects: Trashable = {
 
     await db.delete(projectTable).where(eq(projectTable.id, id));
 
-    return true;
+    return chats.map((chat) => chat.id);
   },
   restore: restoreProject,
 };
@@ -201,8 +202,12 @@ export function restoreFromTrash(kind: TrashKind, ownerId: string, id: number) {
   return trashables[kind].restore(ownerId, id);
 }
 
-export function purgeFromTrash(kind: TrashKind, ownerId: string, id: number) {
-  return trashables[kind].purge(ownerId, id);
+export async function purgeFromTrash(
+  kind: TrashKind,
+  ownerId: string,
+  id: number
+) {
+  return (await trashables[kind].purge(ownerId, id)) !== undefined;
 }
 
 const params = validator(
@@ -252,12 +257,12 @@ const trash = new Hono()
   .delete('/:kind/:id', params, async (c) => {
     const { id, kind } = c.req.valid('param');
 
-    found(
+    const chats = found(
       await trashables[kind].purge(c.get('user').id, id),
       'Not in the trash'
     );
 
-    return c.body(null, 204);
+    return c.json({ chats });
   })
   .delete('/', async (c) => {
     const ownerId = c.get('user').id;

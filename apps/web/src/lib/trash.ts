@@ -30,10 +30,12 @@ export async function restoreFromTrash(item: TrashRef) {
 }
 
 export async function deleteForever(item: TrashRef) {
-  await call(client.trash[':kind'][':id'].$delete(param(item)));
+  const { chats } = await call(
+    client.trash[':kind'][':id'].$delete(param(item))
+  );
 
-  if (item.kind === 'conversation') {
-    clearDraft(item.id);
+  for (const chat of chats) {
+    clearDraft(chat);
   }
 }
 

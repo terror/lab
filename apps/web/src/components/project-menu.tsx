@@ -4,7 +4,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { conversationsQueryKey } from '@/lib/conversations';
+import {
+  conversationsQueryKey,
+  useConversationSummary,
+} from '@/lib/conversations';
 import { usePath } from '@/lib/location';
 import {
   type Project,
@@ -14,7 +17,7 @@ import {
 import { useUndoTrash } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,6 +33,7 @@ export function ProjectMenu({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const path = usePath();
+  const chat = useConversationSummary(useParams({ strict: false }).id);
 
   const page = `/projects/${project.id}`;
 
@@ -46,7 +50,7 @@ export function ProjectMenu({
   const remove = useMutation({
     mutationFn: () => deleteProject(project.id),
     onSuccess: async () => {
-      const viewing = path === page;
+      const viewing = path === page || chat.data?.projectId === project.id;
 
       toast('Project moved to Trash.', {
         action: {
@@ -54,10 +58,7 @@ export function ProjectMenu({
           onClick: () =>
             void undo({ id: project.id, kind: 'project' }, async () => {
               if (viewing) {
-                await navigate({
-                  params: { projectId: String(project.id) },
-                  to: '/projects/$projectId',
-                });
+                await navigate({ href: path });
               }
             }),
         },

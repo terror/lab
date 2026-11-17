@@ -17,6 +17,7 @@ import {
   useConversations,
 } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
+import { useRefreshMutation } from '@/lib/mutations';
 import { useProjects } from '@/lib/projects';
 import { type Segment, useWorkspaceSearch } from '@/lib/search';
 import {
@@ -28,7 +29,6 @@ import {
 import { useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Clock,
@@ -408,9 +408,16 @@ function Palette({
   onDone: () => void;
   onNewProject: () => void;
 }) {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [model] = useChatModel();
+
+  const start = useRefreshMutation(
+    (content: string) => createConversation(content, [], model),
+    {
+      invalidate: [conversationsQueryKey],
+      onSuccess: (id) => navigate({ params: { id }, to: '/c/$id' }),
+    }
+  );
 
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState<Scope | 'all'>('all');
@@ -456,23 +463,19 @@ function Palette({
     ...scopes.filter(({ id }) => counts[id] > 0).map(({ id }) => id),
   ];
 
-  const ask = async () => {
+  const ask = () => {
     if (!query) {
       return;
     }
 
     onDone();
-
-    const id = await createConversation(query, [], model);
-
-    await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-    await navigate({ params: { id }, to: '/c/$id' });
+    start.mutate(query);
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Enter' && event.metaKey) {
       event.preventDefault();
-      void ask();
+      ask();
     }
 
     if (event.key === 'Tab' && query) {
@@ -534,7 +537,7 @@ function Palette({
           <CommandGroup>
             <CommandItem
               className='gap-2.5 rounded-lg px-2.5 py-2'
-              onSelect={() => void ask()}
+              onSelect={ask}
               value='ask'
             >
               <MessageSquarePlus
