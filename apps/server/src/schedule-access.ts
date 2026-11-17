@@ -8,7 +8,7 @@ import { Cron } from 'croner';
 import { and, asc, eq } from 'drizzle-orm';
 
 import { db } from './db';
-import { conversationOwner } from './records';
+import { requireOwner } from './records';
 
 const table = schema.scheduledTask;
 
@@ -112,19 +112,9 @@ export async function deleteTask(ownerId: string, id: number) {
   return row && toTask(row);
 }
 
-async function owner(conversationId: number) {
-  const ownerId = await conversationOwner(conversationId);
-
-  if (!ownerId) {
-    throw new Error('This chat has no owner.');
-  }
-
-  return ownerId;
-}
-
 export const scheduleAccess: ScheduleAccess = {
   create: async (conversationId, input) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await requireOwner(conversationId);
 
     const [row] = await db
       .insert(table)
@@ -143,9 +133,9 @@ export const scheduleAccess: ScheduleAccess = {
     return toTask(row);
   },
   delete: async (conversationId, id) =>
-    deleteTask(await owner(conversationId), id),
+    deleteTask(await requireOwner(conversationId), id),
   invalid: cronError,
-  list: async (conversationId) => listTasks(await owner(conversationId)),
+  list: async (conversationId) => listTasks(await requireOwner(conversationId)),
   update: async (conversationId, id, change) =>
-    updateTask(await owner(conversationId), id, change),
+    updateTask(await requireOwner(conversationId), id, change),
 };

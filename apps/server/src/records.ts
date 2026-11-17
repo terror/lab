@@ -70,3 +70,13 @@ export function contains(column: AnyPgColumn, search: string) {
 export async function conversationOwner(conversationId: number) {
   return (await owners([conversationId])).get(conversationId);
 }
+
+export async function requireOwner(conversationId: number) {
+  const ownerId = await conversationOwner(conversationId);
+
+  if (!ownerId) {
+    throw new Error('This chat has no owner.');
+  }
+
+  return ownerId;
+}

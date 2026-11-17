@@ -4,6 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
+import { found } from './found';
 import {
   PROJECT_LIMIT,
   createProject,
@@ -11,12 +12,7 @@ import {
   updateProject,
 } from './project-access';
 import { moveToTrash } from './trash';
-import { validator } from './validator';
-
-const params = validator(
-  'param',
-  z.object({ id: z.coerce.number().int().positive() })
-);
+import { idParam, validator } from './validator';
 
 const name = z.string().trim().min(1).max(PROJECT_NAME_LENGTH);
 
@@ -54,25 +50,23 @@ const projects = new Hono()
 
     return c.json({ project }, 201);
   })
-  .patch('/:id', params, change, async (c) => {
-    const project = await updateProject(
-      c.get('user').id,
-      c.req.valid('param').id,
-      c.req.valid('json')
+  .patch('/:id', idParam, change, async (c) => {
+    const project = found(
+      await updateProject(
+        c.get('user').id,
+        c.req.valid('param').id,
+        c.req.valid('json')
+      ),
+      'Project not found'
     );
-
-    if (!project) {
-      throw new HTTPException(404, { message: 'Project not found' });
-    }
 
     return c.json({ project });
   })
-  .delete('/:id', params, async (c) => {
-    if (
-      !(await moveToTrash('project', c.get('user').id, c.req.valid('param').id))
-    ) {
-      throw new HTTPException(404, { message: 'Project not found' });
-    }
+  .delete('/:id', idParam, async (c) => {
+    found(
+      await moveToTrash('project', c.get('user').id, c.req.valid('param').id),
+      'Project not found'
+    );
 
     return c.body(null, 204);
   });

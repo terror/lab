@@ -15,8 +15,9 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
+import { found } from './found';
 import { harness } from './harness';
-import { validator } from './validator';
+import { keyParam, validator } from './validator';
 
 const fields = z.object({
   description: z.string().trim().min(1).max(SKILL_DESCRIPTION_LENGTH),
@@ -27,8 +28,6 @@ const fields = z.object({
 const creation = validator('json', fields);
 
 const change = validator('json', fields.partial());
-
-const params = validator('param', z.object({ id: z.string().min(1) }));
 
 const failures = {
   duplicate: [409, 'A skill with that name already exists'],
@@ -70,7 +69,7 @@ const skills = new Hono()
 
     return c.json(await read(), 201);
   })
-  .patch('/:id', params, change, async (c) => {
+  .patch('/:id', keyParam, change, async (c) => {
     const result = await harness.commit(
       async (tx) =>
         updateSkill(await tx.doc(SkillsDoc), {
@@ -85,16 +84,14 @@ const skills = new Hono()
 
     return c.json(await read());
   })
-  .delete('/:id', params, async (c) => {
+  .delete('/:id', keyParam, async (c) => {
     const removed = await harness.commit(
       async (tx) =>
         deleteSkill(await tx.doc(SkillsDoc), c.req.valid('param').id),
       BACKGROUND_CONTEXT
     );
 
-    if (!removed) {
-      throw new HTTPException(404, { message: 'Skill not found' });
-    }
+    found(removed, 'Skill not found');
 
     return c.json(await read());
   });

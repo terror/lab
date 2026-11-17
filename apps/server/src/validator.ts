@@ -17,3 +17,11 @@ export function validator<
     }
   });
 }
+
+export const positiveId = z.coerce.number().int().positive();
+
+export const idParam = validator('param', z.object({ id: positiveId }));
+
+export const keyParam = validator('param', z.object({ id: z.string().min(1) }));
+
+export const uuidParam = validator('param', z.object({ id: z.uuid() }));

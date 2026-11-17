@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { createChat } from './conversations';
 import { db } from './db';
+import { found } from './found';
 import { harness } from './harness';
 import { submitMessage } from './messages';
 import { defaultModel, modelChange } from './models';
@@ -20,7 +21,7 @@ import {
   toTask,
   updateTask,
 } from './schedule-access';
-import { validator } from './validator';
+import { idParam, validator } from './validator';
 
 const table = schema.scheduledTask;
 
@@ -119,11 +120,6 @@ export function startScheduler() {
   return () => clearInterval(timer);
 }
 
-const params = validator(
-  'param',
-  z.object({ id: z.coerce.number().int().positive() })
-);
-
 const change = validator('json', z.object({ enabled: z.boolean() }));
 
 const timezone = validator(
@@ -131,13 +127,7 @@ const timezone = validator(
   z.object({ timezone: z.string().min(1).max(64) })
 );
 
-function found<T>(value: T | undefined) {
-  if (value === undefined) {
-    throw new HTTPException(404, { message: 'Scheduled task not found' });
-  }
-
-  return value;
-}
+const MISSING = 'Scheduled task not found';
 
 const schedules = new Hono()
   .use(requireUser)
@@ -149,7 +139,7 @@ const schedules = new Hono()
 
     return c.body(null, 204);
   })
-  .patch('/:id', params, change, async (c) => {
+  .patch('/:id', idParam, change, async (c) => {
     const result = await updateTask(
       c.get('user').id,
       c.req.valid('param').id,
@@ -161,10 +151,10 @@ const schedules = new Hono()
     }
 
     return c.json({
-      task: found(result.kind === 'updated' ? result.task : undefined),
+      task: found(result.kind === 'updated' ? result.task : undefined, MISSING),
     });
   })
-  .post('/:id/run', params, async (c) => {
+  .post('/:id/run', idParam, async (c) => {
     const [row] = await db
       .select()
       .from(table)
@@ -175,7 +165,7 @@ const schedules = new Hono()
         )
       );
 
-    await run(found(row));
+    await run(found(row, MISSING));
 
     const [updated] = await db
       .update(table)
@@ -183,10 +173,10 @@ const schedules = new Hono()
       .where(eq(table.id, c.req.valid('param').id))
       .returning();
 
-    return c.json({ task: found(updated && toTask(updated)) });
+    return c.json({ task: found(updated && toTask(updated), MISSING) });
   })
-  .delete('/:id', params, async (c) => {
-    found(await deleteTask(c.get('user').id, c.req.valid('param').id));
+  .delete('/:id', idParam, async (c) => {
+    found(await deleteTask(c.get('user').id, c.req.valid('param').id), MISSING);
 
     return c.body(null, 204);
   });

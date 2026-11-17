@@ -20,6 +20,7 @@ import { type User, requireUser } from './auth';
 import { pinChat, renameChat } from './chat-actions';
 import { db } from './db';
 import { fileHeaders } from './file-headers';
+import { found } from './found';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
 import { listConversations, listSchema, running } from './listing';
@@ -35,18 +36,13 @@ import { moveChat } from './project-access';
 import { thinkingLevelSchema } from './schemas';
 import { subscribeStatus } from './status';
 import { moveToTrash } from './trash';
-import { validator } from './validator';
-
-const params = validator(
-  'param',
-  z.object({ id: z.coerce.number().int().positive() })
-);
+import { idParam, positiveId, validator } from './validator';
 
 const imageParams = validator(
   'param',
   z.object({
-    entryId: z.coerce.number().int().positive(),
-    id: z.coerce.number().int().positive(),
+    entryId: positiveId,
+    id: positiveId,
     index: z.coerce.number().int().min(0),
   })
 );
@@ -54,8 +50,8 @@ const imageParams = validator(
 const submissionParams = validator(
   'param',
   z.object({
-    id: z.coerce.number().int().positive(),
-    submissionId: z.coerce.number().int().positive(),
+    id: positiveId,
+    submissionId: positiveId,
   })
 );
 
@@ -259,7 +255,7 @@ const conversations = new Hono()
 
     return c.json({ id }, 201);
   })
-  .get('/:id', params, owned, async (c) => {
+  .get('/:id', idParam, owned, async (c) => {
     const { conversation } = c.var;
 
     const doc = await harness.snapshot(
@@ -277,7 +273,7 @@ const conversations = new Hono()
       title: doc?.title ?? null,
     });
   })
-  .get('/:id/entries', params, owned, entriesQuery, async (c) => {
+  .get('/:id/entries', idParam, owned, entriesQuery, async (c) => {
     const { conversation } = c.var;
 
     const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
@@ -310,11 +306,7 @@ const conversations = new Hono()
       BACKGROUND_CONTEXT
     );
 
-    const image = imageAt(items[0], index);
-
-    if (!image) {
-      throw new HTTPException(404, { message: 'Image not found' });
-    }
+    const image = found(imageAt(items[0], index), 'Image not found');
 
     return c.body(
       Buffer.from(image.data, 'base64'),
@@ -322,7 +314,7 @@ const conversations = new Hono()
       fileHeaders(image.mimeType)
     );
   })
-  .get('/:id/events', params, owned, async (c) => {
+  .get('/:id/events', idParam, owned, async (c) => {
     const { conversation } = c.var;
 
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
@@ -380,7 +372,7 @@ const conversations = new Hono()
       status.unsubscribe();
     });
   })
-  .post('/:id/messages', params, owned, message, async (c) => {
+  .post('/:id/messages', idParam, owned, message, async (c) => {
     const { conversation } = c.var;
 
     const { steer, ...draft } = c.req.valid('json');
@@ -431,7 +423,7 @@ const conversations = new Hono()
       return c.body(null, 204);
     }
   )
-  .put('/:id/model', params, owned, modelSelection, async (c) => {
+  .put('/:id/model', idParam, owned, modelSelection, async (c) => {
     const { conversation } = c.var;
 
     const { id, provider, thinkingLevel } = c.req.valid('json');
@@ -443,7 +435,7 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/answers', params, owned, answering, async (c) => {
+  .post('/:id/answers', idParam, owned, answering, async (c) => {
     const { conversation } = c.var;
 
     const { answer, callId } = c.req.valid('json');
@@ -456,21 +448,21 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/compact', params, owned, async (c) => {
+  .post('/:id/compact', idParam, owned, async (c) => {
     const { conversation } = c.var;
 
     await conversation.compact(undefined, BACKGROUND_CONTEXT);
 
     return c.body(null, 202);
   })
-  .post('/:id/abort', params, owned, async (c) => {
+  .post('/:id/abort', idParam, owned, async (c) => {
     const { conversation } = c.var;
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })
-  .patch('/:id', params, owned, update, async (c) => {
+  .patch('/:id', idParam, owned, update, async (c) => {
     const { conversation } = c.var;
 
     const { pinned, projectId, title } = c.req.valid('json');
@@ -492,7 +484,7 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .delete('/:id', params, owned, async (c) => {
+  .delete('/:id', idParam, owned, async (c) => {
     await moveToTrash('conversation', c.get('user').id, c.var.conversation.id);
 
     return c.body(null, 204);

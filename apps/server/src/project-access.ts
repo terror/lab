@@ -3,7 +3,7 @@ import type { ProjectAccess } from '@lab/harness';
 import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { db } from './db';
-import { conversationOwner } from './records';
+import { requireOwner } from './records';
 
 export const PROJECT_LIMIT = 100;
 
@@ -158,19 +158,9 @@ export async function restoreProject(ownerId: string, id: number) {
   });
 }
 
-async function owner(conversationId: number) {
-  const ownerId = await conversationOwner(conversationId);
-
-  if (!ownerId) {
-    throw new Error('This chat has no owner.');
-  }
-
-  return ownerId;
-}
-
 export const projectAccess: ProjectAccess = {
   trash: async (conversationId, id) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await requireOwner(conversationId);
 
     const project = (await listProjects(ownerId)).find(
       (candidate) => candidate.id === id
@@ -195,7 +185,7 @@ export const projectAccess: ProjectAccess = {
     return trashed ? { chats: chats.length, project } : undefined;
   },
   create: async (conversationId, name) =>
-    createProject(await owner(conversationId), name),
+    createProject(await requireOwner(conversationId), name),
   current: async (conversationId) => {
     const [row] = await db
       .select(fields)
@@ -207,9 +197,10 @@ export const projectAccess: ProjectAccess = {
 
     return row;
   },
-  list: async (conversationId) => listProjects(await owner(conversationId)),
+  list: async (conversationId) =>
+    listProjects(await requireOwner(conversationId)),
   move: async (conversationId, chatId, projectId) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await requireOwner(conversationId);
 
     if (!(await moveChat(ownerId, chatId, projectId))) {
       return undefined;
@@ -226,5 +217,5 @@ export const projectAccess: ProjectAccess = {
     return chat && { chat, project };
   },
   update: async (conversationId, id, change) =>
-    updateProject(await owner(conversationId), id, change),
+    updateProject(await requireOwner(conversationId), id, change),
 };

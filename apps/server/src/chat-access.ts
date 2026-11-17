@@ -1,40 +1,30 @@
 import type { ChatsAccess } from '@lab/harness';
 
-import { conversationOwner } from './records';
-
-async function owner(conversationId: number) {
-  const ownerId = await conversationOwner(conversationId);
-
-  if (!ownerId) {
-    throw new Error('This chat has no owner.');
-  }
-
-  return ownerId;
-}
+import { requireOwner } from './records';
 
 export const chatsAccess: ChatsAccess = {
   pin: async (conversationId, chatId, pinned) => {
     const { pinChat } = await import('./chat-actions');
 
-    return pinChat(await owner(conversationId), chatId, pinned);
+    return pinChat(await requireOwner(conversationId), chatId, pinned);
   },
   purge: async (conversationId, kind, id) => {
     const { purgeFromTrash } = await import('./trash');
 
-    return purgeFromTrash(kind, await owner(conversationId), id);
+    return purgeFromTrash(kind, await requireOwner(conversationId), id);
   },
   rename: async (conversationId, chatId, title) => {
     const { renameChat } = await import('./chat-actions');
 
-    return renameChat(await owner(conversationId), chatId, title);
+    return renameChat(await requireOwner(conversationId), chatId, title);
   },
   restore: async (conversationId, kind, id) => {
     const { restoreFromTrash } = await import('./trash');
 
-    return restoreFromTrash(kind, await owner(conversationId), id);
+    return restoreFromTrash(kind, await requireOwner(conversationId), id);
   },
   trash: async (conversationId, chatId) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await requireOwner(conversationId);
 
     const { chatSummary } = await import('./chat-actions');
     const { moveToTrash } = await import('./trash');
@@ -52,7 +42,7 @@ export const chatsAccess: ChatsAccess = {
   trashed: async (conversationId) => {
     const { listTrash } = await import('./trash');
 
-    const items = await listTrash(await owner(conversationId));
+    const items = await listTrash(await requireOwner(conversationId));
 
     return items.map(({ deletedAt, id, kind, title }) => ({
       deletedAt: deletedAt.toISOString(),
