@@ -1,0 +1,72 @@
+import { Plug } from 'lucide-react';
+
+import { field, namedTitle, text } from './format';
+import { SettingsLink } from './previews';
+import { type ToolRenderer } from './types';
+
+const manageConnectors = (
+  <SettingsLink section='connectors'>Manage connectors</SettingsLink>
+);
+
+function ConnectorCard({ connector }: { connector: unknown }) {
+  const name = text(field(connector, 'name'));
+
+  const url = text(field(connector, 'url'));
+
+  if (!name) {
+    return undefined;
+  }
+
+  return (
+    <div className='flex flex-col gap-0.5 rounded-xl bg-muted/40 px-3.5 py-3 text-sm'>
+      <span className='font-medium'>{name}</span>
+      {url && <span className='truncate text-muted-foreground'>{url}</span>}
+    </div>
+  );
+}
+
+const card: ToolRenderer['preview'] = ({ details }) => (
+  <ConnectorCard connector={field(details, 'connector')} />
+);
+
+const connectorTitle = namedTitle(
+  ({ details }) => field(field(details, 'connector'), 'name'),
+  { named: (name) => `the “${name}” connector`, unnamed: 'a connector' }
+);
+
+export const connectorRenderers = {
+  connector_add: {
+    actions: manageConnectors,
+    icon: Plug,
+    preview: card,
+    title: connectorTitle('Adding a connector', 'Added'),
+  },
+  connector_list: {
+    icon: Plug,
+    preview: ({ details }) => {
+      const connectors = field(details, 'connectors');
+
+      return Array.isArray(connectors) && connectors.length > 0 ? (
+        <div className='flex flex-col gap-2'>
+          {connectors.map((connector, index) => (
+            <ConnectorCard key={index} connector={connector} />
+          ))}
+        </div>
+      ) : undefined;
+    },
+    title: ({ active }) =>
+      active ? 'Listing connectors' : 'Listed connectors',
+  },
+  connector_remove: {
+    actions: manageConnectors,
+    icon: Plug,
+    preview: card,
+    title: connectorTitle('Removing a connector', 'Removed'),
+  },
+  connector_update: {
+    actions: manageConnectors,
+    icon: Plug,
+    preview: card,
+    title: connectorTitle('Updating a connector', 'Updated'),
+  },
+} satisfies Record<string, ToolRenderer>;

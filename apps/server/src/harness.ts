@@ -10,6 +10,7 @@ import {
 import { inArray, sql } from 'drizzle-orm';
 
 import { chatsAccess } from './chat-access';
+import { connectorAccess } from './connector-access';
 import { db } from './db';
 import { env } from './env';
 import { recordHelperUsage } from './helper-usage';
@@ -65,6 +66,7 @@ export const harness = await openHarness({
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
   chats: chatsAccess,
+  connectors: connectorAccess,
   owner,
   project: projectAccess,
   registry,

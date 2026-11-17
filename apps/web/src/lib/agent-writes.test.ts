@@ -13,6 +13,7 @@ test('a finished run refreshes every query a tool can write', async () => {
   expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
     ['conversations'],
     ['trash'],
+    ['connectors'],
     ['memory'],
     ['preferences'],
     ['projects'],

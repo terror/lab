@@ -5,7 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { PRIVATE_ADDRESS, checkPublicUrl } from './addresses';
-import { type User, isAdmin, requireUser } from './auth';
+import { isAdmin, requireUser } from './auth';
 import {
   connectorSlug,
   connectorState,
@@ -25,15 +25,7 @@ const fields = z.object({
 
 const creation = validator('json', fields);
 
-const change = validator(
-  'json',
-  fields
-    .pick({ name: true })
-    .partial()
-    .extend({ enabled: z.boolean().optional() })
-);
-
-async function list(ownerId: string) {
+export async function listConnectors(ownerId: string) {
   const rows = await db
     .select()
     .from(table)
@@ -74,8 +66,10 @@ async function checkName(ownerId: string, name: string, id?: number) {
   }
 }
 
-async function checkUrl(user: User, url: string) {
-  if (isAdmin(user)) {
+type Owner = { email?: string | null; id: string };
+
+async function checkUrl(owner: Owner, url: string) {
+  if (isAdmin(owner)) {
     return;
   }
 
@@ -95,54 +89,98 @@ async function existing(ownerId: string, id: number) {
   return found(connector, 'Connector not found');
 }
 
+function valid<T>(shape: z.ZodType<T>, value: unknown) {
+  const result = shape.safeParse(value);
+
+  if (!result.success) {
+    throw new HTTPException(400, { message: z.prettifyError(result.error) });
+  }
+
+  return result.data;
+}
+
+const changeSchema = fields
+  .pick({ name: true })
+  .partial()
+  .extend({ enabled: z.boolean().optional() });
+
+const change = validator('json', changeSchema);
+
+export async function addConnector(
+  owner: Owner,
+  input: { name: string; url: string }
+) {
+  const { name, url } = valid(fields, input);
+
+  await checkName(owner.id, name);
+  await checkUrl(owner, url);
+
+  const [connector] = await db
+    .insert(table)
+    .values({ name, ownerId: owner.id, url })
+    .returning();
+
+  const row = found(connector, 'Connector not found');
+
+  await refreshConnector(row, isAdmin(owner));
+
+  return row;
+}
+
+export async function updateConnector(
+  owner: Owner,
+  id: number,
+  input: { enabled?: boolean; name?: string }
+) {
+  const update = valid(changeSchema, input);
+
+  await existing(owner.id, id);
+
+  if (update.name !== undefined) {
+    await checkName(owner.id, update.name, id);
+  }
+
+  const [connector] = await db
+    .update(table)
+    .set(update)
+    .where(and(eq(table.id, id), eq(table.ownerId, owner.id)))
+    .returning();
+
+  const row = found(connector, 'Connector not found');
+
+  await refreshConnector(row, isAdmin(owner));
+
+  return row;
+}
+
+export async function deleteConnector(owner: Owner, id: number) {
+  const row = await existing(owner.id, id);
+
+  await db
+    .delete(table)
+    .where(and(eq(table.id, id), eq(table.ownerId, owner.id)));
+
+  await removeConnector(id);
+
+  return row;
+}
+
 const connectors = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json(await list(c.get('user').id)))
+  .get('/', async (c) => c.json(await listConnectors(c.get('user').id)))
   .post('/', creation, async (c) => {
     const user = c.get('user');
 
-    const { name, url } = c.req.valid('json');
+    await addConnector(user, c.req.valid('json'));
 
-    await checkName(user.id, name);
-    await checkUrl(user, url);
-
-    const [connector] = await db
-      .insert(table)
-      .values({ name, ownerId: user.id, url })
-      .returning();
-
-    await refreshConnector(
-      found(connector, 'Connector not found'),
-      isAdmin(user)
-    );
-
-    return c.json(await list(user.id), 201);
+    return c.json(await listConnectors(user.id), 201);
   })
   .patch('/:id', idParam, change, async (c) => {
     const user = c.get('user');
 
-    const { id } = c.req.valid('param');
+    await updateConnector(user, c.req.valid('param').id, c.req.valid('json'));
 
-    const update = c.req.valid('json');
-
-    await existing(user.id, id);
-
-    if (update.name !== undefined) {
-      await checkName(user.id, update.name, id);
-    }
-
-    const [connector] = await db
-      .update(table)
-      .set(update)
-      .where(and(eq(table.id, id), eq(table.ownerId, user.id)))
-      .returning();
-
-    await refreshConnector(
-      found(connector, 'Connector not found'),
-      isAdmin(user)
-    );
-
-    return c.json(await list(user.id));
+    return c.json(await listConnectors(user.id));
   })
   .post('/:id/reconnect', idParam, async (c) => {
     const user = c.get('user');
@@ -152,22 +190,14 @@ const connectors = new Hono()
       isAdmin(user)
     );
 
-    return c.json(await list(user.id));
+    return c.json(await listConnectors(user.id));
   })
   .delete('/:id', idParam, async (c) => {
     const user = c.get('user');
 
-    const { id } = c.req.valid('param');
+    await deleteConnector(user, c.req.valid('param').id);
 
-    await existing(user.id, id);
-
-    await db
-      .delete(table)
-      .where(and(eq(table.id, id), eq(table.ownerId, user.id)));
-
-    await removeConnector(id);
-
-    return c.json(await list(user.id));
+    return c.json(await listConnectors(user.id));
   });
 
 export default connectors;

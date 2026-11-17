@@ -1,6 +1,7 @@
 import type { ToolName } from '@/components/tools/names';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
+import { connectorsQueryOptions } from './connectors';
 import { conversationsQueryKey } from './conversations';
 import { libraryQueryKey } from './library';
 import { memoryQueryOptions } from './memory';
@@ -22,6 +23,10 @@ const toolWrites = {
   chat_rename: [conversationsQueryKey],
   chat_search: [],
   codemode: [],
+  connector_add: [connectorsQueryOptions.queryKey],
+  connector_list: [],
+  connector_remove: [connectorsQueryOptions.queryKey],
+  connector_update: [connectorsQueryOptions.queryKey],
   forget: [memoryQueryOptions.queryKey],
   library_read: [],
   library_search: [],
