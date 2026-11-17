@@ -55,7 +55,7 @@ export type SavedFile = {
 };
 
 export type SandboxAccess = {
-  available(): Promise<boolean>;
+  available(conversationId: ConversationId): Promise<boolean>;
   exec(
     conversationId: ConversationId,
     command: SandboxCommand
@@ -309,7 +309,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
     name: 'lab.sandbox',
     sections: [
       section('sandbox', async ({ conversationId, read }, context) =>
-        (await access.available())
+        (await access.available(conversationId))
           ? `You have a persistent Linux computer for this user. ${networkNotes[(await read.snapshot(ComputerDoc, await owner(conversationId), context))?.network ?? 'full']} Run commands on it with sandbox_exec, manage files with sandbox_read, sandbox_write, and sandbox_list, copy library files in with sandbox_upload, and give the user files with sandbox_save. Each chat starts in its own working directory; installed packages persist. Commands run without the user's credentials.`
           : undefined
       ),

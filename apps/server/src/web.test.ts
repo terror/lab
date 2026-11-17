@@ -1,9 +1,12 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
+import { schema } from '@lab/db';
 import { expect, spyOn, test } from 'bun:test';
+import { and, eq } from 'drizzle-orm';
 
 import { signInAdmin } from '../test/auth';
 import { call, chat, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
+import { db } from './db';
 
 function url(input: string | Request | URL) {
   return new URL(input instanceof Request ? input.url : input);
@@ -18,6 +21,7 @@ function body(init: RequestInit | undefined) {
 async function respond(input: string | Request | URL, init?: RequestInit) {
   if (url(input).pathname === '/search') {
     return Response.json({
+      costDollars: { total: 0.005 },
       results: [
         {
           highlights: ['bar'],
@@ -86,4 +90,37 @@ test('the agent searches the web and reads any page', async () => {
     search: ['https://api.exa.ai/search', 'qux', 3],
     unconfigured: 0,
   });
+});
+
+test('web searches count toward the user’s usage', async () => {
+  const headers = await signInAdmin();
+
+  spyOn(globalThis, 'fetch').mockImplementation(
+    Object.assign(respond, { preconnect: fetch.preconnect })
+  );
+
+  await call(headers, 'PUT', '/providers/exa', {
+    apiKey: 'qux',
+    method: 'api_key',
+  });
+
+  script(toolCall('web_search', { query: 'foo' }), fauxAssistantMessage('bar'));
+
+  const id = await chat(headers, { content: 'foo' });
+
+  expect(
+    await db
+      .select({
+        cost: schema.usageEvent.cost,
+        model: schema.usageEvent.model,
+        provider: schema.usageEvent.provider,
+      })
+      .from(schema.usageEvent)
+      .where(
+        and(
+          eq(schema.usageEvent.conversationId, id),
+          eq(schema.usageEvent.kind, 'web')
+        )
+      )
+  ).toEqual([{ cost: 0.005, model: 'search', provider: 'exa' }]);
 });
