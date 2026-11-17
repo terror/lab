@@ -3,6 +3,7 @@ import type { Extension } from '@earendil-works/pi-durable';
 import type { HelperUsage } from '../helper';
 import { ask } from './ask';
 import { assistant } from './assistant';
+import { type ChatsAccess, chats } from './chats';
 import { codemode } from './codemode';
 import { compaction } from './compaction';
 import { type HistoryAccess, history } from './history';
@@ -78,6 +79,12 @@ export {
   type ScheduleUpdate,
   type ScheduledTask,
 } from './schedule';
+export {
+  type ChatSummary,
+  type ChatsAccess,
+  type TrashEntry,
+  type TrashKind,
+} from './chats';
 export { PreferencesDoc } from './preferences';
 export { TitleDoc, plainTitle } from './title';
 export {
@@ -89,6 +96,7 @@ export {
 } from './web';
 
 export type ExtensionDeps = {
+  chats: ChatsAccess;
   history: HistoryAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
@@ -119,6 +127,7 @@ export function extensions(deps: ExtensionDeps) {
   return [
     ask,
     assistant,
+    chats(deps.chats),
     codemode,
     output,
     preferences,

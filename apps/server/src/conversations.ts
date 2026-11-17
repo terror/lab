@@ -17,6 +17,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
 import { type User, requireUser } from './auth';
+import { pinChat, renameChat } from './chat-actions';
 import { db } from './db';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
@@ -32,6 +33,7 @@ import { defaultModel, findModel, modelChange, models } from './models';
 import { moveChat } from './project-access';
 import { thinkingLevelSchema } from './schemas';
 import { subscribeStatus } from './status';
+import { moveToTrash } from './trash';
 import { validator } from './validator';
 
 const params = validator(
@@ -480,29 +482,17 @@ const conversations = new Hono()
     }
 
     if (title !== undefined) {
-      await conversation.commit(async (tx) => {
-        (await tx.doc(TitleDoc, conversation.id)).title = title;
-      }, BACKGROUND_CONTEXT);
+      await renameChat(c.get('user').id, conversation.id, title);
     }
 
     if (pinned !== undefined) {
-      await db
-        .update(schema.conversation)
-        .set({ pinnedAt: pinned ? new Date() : null })
-        .where(eq(schema.conversation.id, conversation.id));
+      await pinChat(c.get('user').id, conversation.id, pinned);
     }
 
     return c.body(null, 204);
   })
   .delete('/:id', params, owned, async (c) => {
-    const { conversation } = c.var;
-
-    await conversation.abort(BACKGROUND_CONTEXT);
-
-    await db
-      .update(schema.conversation)
-      .set({ deletedAt: new Date() })
-      .where(eq(schema.conversation.id, conversation.id));
+    await moveToTrash('conversation', c.get('user').id, c.var.conversation.id);
 
     return c.body(null, 204);
   });

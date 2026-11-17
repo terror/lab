@@ -4,6 +4,7 @@ import { askRenderers } from './ask';
 import { chatRenderers } from './chats';
 import { codemodeRenderers } from './codemode';
 import { libraryRenderers } from './library';
+import { manageRenderers } from './manage';
 import { memoryRenderers } from './memory';
 import { type ToolName } from './names';
 import { outputRenderers } from './output';
@@ -20,6 +21,7 @@ const renderers = {
   ...chatRenderers,
   ...codemodeRenderers,
   ...libraryRenderers,
+  ...manageRenderers,
   ...memoryRenderers,
   ...outputRenderers,
   ...preferencesRenderers,

@@ -3,6 +3,7 @@ import { schema } from '@lab/db';
 import { ComputerDoc, openHarness, purgeConversations } from '@lab/harness';
 import { inArray } from 'drizzle-orm';
 
+import { chatsAccess } from './chat-access';
 import { db } from './db';
 import { env } from './env';
 import { recordHelperUsage } from './helper-usage';
@@ -42,6 +43,7 @@ export const harness = await openHarness({
   onHelperUsage: recordHelperUsage,
   onReport: (report) => console.error(report),
   path: env.LAB_STORAGE_PATH,
+  chats: chatsAccess,
   project: projectAccess,
   schedule: scheduleAccess,
   sandbox: createSandboxAccess(

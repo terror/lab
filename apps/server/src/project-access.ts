@@ -176,9 +176,23 @@ export const projectAccess: ProjectAccess = {
       (candidate) => candidate.id === id
     );
 
-    const chats = project && (await trashProject(ownerId, id));
+    const chats = await db
+      .select({ id: schema.conversation.id })
+      .from(schema.conversation)
+      .where(
+        and(
+          eq(schema.conversation.projectId, id),
+          isNull(schema.conversation.deletedAt)
+        )
+      );
 
-    return project && chats && { chats: chats.length, project };
+    const { moveToTrash } = await import('./trash');
+
+    const trashed =
+      project &&
+      (await moveToTrash('project', ownerId, id, { running: conversationId }));
+
+    return trashed ? { chats: chats.length, project } : undefined;
   },
   create: async (conversationId, name) =>
     createProject(await owner(conversationId), name),
