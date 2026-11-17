@@ -96,6 +96,7 @@ export function useConversationSummary(id: number | undefined) {
     queryFn:
       id === undefined ? skipToken : ({ signal }) => loadSummary(id, signal),
     refetchInterval: ({ state }) => (state.data?.running ? 2_000 : false),
+    retry: false,
   });
 }
 

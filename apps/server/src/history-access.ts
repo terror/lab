@@ -1,6 +1,6 @@
 import { schema } from '@lab/db';
 import type { HistoryAccess } from '@lab/harness';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 
 import { db } from './db';
 import { owners } from './records';
@@ -27,7 +27,8 @@ export const historyAccess: HistoryAccess = {
       .where(
         and(
           eq(schema.conversation.id, id),
-          eq(schema.conversation.ownerId, ownerId)
+          eq(schema.conversation.ownerId, ownerId),
+          isNull(schema.conversation.deletedAt)
         )
       );
 
