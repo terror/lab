@@ -6,6 +6,7 @@ import { compaction } from './compaction';
 import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
+import { type SandboxAccess, sandbox } from './sandbox';
 import { skills } from './skills';
 import { title } from './title';
 import { type WebAccess, web } from './web';
@@ -37,6 +38,12 @@ export {
   updateSkill,
 } from './skills';
 export { ANSWER_LENGTH, QuestionsDoc } from './ask';
+export {
+  SANDBOX_OUTPUT_LENGTH,
+  type SandboxAccess,
+  type SandboxCommand,
+  type SandboxRun,
+} from './sandbox';
 export { TitleDoc } from './title';
 export {
   type WebAccess,
@@ -52,6 +59,7 @@ export type ExtensionDeps = {
   history: HistoryAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
+  sandbox: SandboxAccess;
   web: WebAccess;
 };
 
@@ -64,6 +72,7 @@ export function extensions(deps: ExtensionDeps) {
     history(deps.history),
     library(deps.library),
     memory,
+    sandbox(deps.sandbox),
     skills,
     title(deps.onHelperUsage),
     web(deps.web),

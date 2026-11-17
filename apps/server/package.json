@@ -24,6 +24,7 @@
     "@lab/db": "workspace:*",
     "@lab/harness": "workspace:*",
     "@sentry/bun": "11.13.0",
+    "@vercel/sandbox": "3.9.1",
     "better-auth": "1.7.25",
     "drizzle-orm": "0.45.4",
     "hono": "^4.13.13",
