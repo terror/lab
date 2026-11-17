@@ -64,6 +64,36 @@ test('commands run on the user computer in the chat directory', async () => {
   });
 });
 
+test('long tool output is shown in pages the agent can keep reading', async () => {
+  const headers = await signIn();
+
+  const output = 'a\n'.repeat(70_000);
+
+  useSandboxProvider({
+    ...memoryProvider(),
+    run: async (_computer, { onOutput }) => {
+      onOutput(output);
+
+      return { exitCode: 0 };
+    },
+  });
+
+  script(
+    toolCall('sandbox_exec', { command: 'foo' }, 'bar'),
+    toolCall('tool_output_read', { call_id: 'bar', offset: 100_000 }),
+    fauxAssistantMessage('baz')
+  );
+
+  const id = await chat(headers, { content: 'qux' });
+
+  const text = `Exit code 0\n\n${output}`;
+
+  expect(await toolOutputs(headers, id)).toEqual([
+    `${text.slice(0, 100_000)}\n\n[Showing characters 0–100000 of ${text.length}. Call tool_output_read with call_id "bar" and offset 100000 to read more.]`,
+    `${text.slice(100_000)}\n\n[End of output at character ${text.length}.]`,
+  ]);
+});
+
 function memoryProvider(): SandboxProvider & {
   computers: Map<string, string>;
   files: Map<string, Uint8Array>;

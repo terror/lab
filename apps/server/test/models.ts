@@ -21,9 +21,10 @@ export const respond: FauxResponseStep = (_context, options) => {
 
 export function toolCall(
   name: string,
-  args: Parameters<typeof fauxToolCall>[1]
+  args: Parameters<typeof fauxToolCall>[1],
+  id?: string
 ) {
-  return fauxAssistantMessage(fauxToolCall(name, args), {
+  return fauxAssistantMessage(fauxToolCall(name, args, { id }), {
     stopReason: 'toolUse',
   });
 }

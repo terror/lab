@@ -6,7 +6,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { arr, int, lit, obj, opt, str, union } from '@earendil-works/pi-schema';
 
-export const WEB_READ_LENGTH = 20_000;
+export const WEB_READ_LENGTH = 100_000;
 
 export type WebRecency = 'day' | 'month' | 'week' | 'year';
 

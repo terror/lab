@@ -6,7 +6,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str, union, lit } from '@earendil-works/pi-schema';
 
-export const READ_LENGTH = 20_000;
+export const READ_LENGTH = 100_000;
 
 export type LibraryEntry = {
   chat: string | null;

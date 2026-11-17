@@ -1,9 +1,5 @@
 import { schema } from '@lab/db';
-import {
-  type NetworkMode,
-  SANDBOX_OUTPUT_LENGTH,
-  type SandboxAccess,
-} from '@lab/harness';
+import { type NetworkMode, type SandboxAccess } from '@lab/harness';
 import { APIError, type NetworkPolicy, Sandbox } from '@vercel/sandbox';
 import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
@@ -360,12 +356,7 @@ export function createSandboxAccess(
 
       const output = chunks.join('');
 
-      return {
-        durationMs: Date.now() - started,
-        exitCode,
-        output: output.slice(-SANDBOX_OUTPUT_LENGTH),
-        truncated: output.length > SANDBOX_OUTPUT_LENGTH,
-      };
+      return { durationMs: Date.now() - started, exitCode, output };
     },
     list: async (conversationId, path) => {
       const computer = await computerOf(conversationId);

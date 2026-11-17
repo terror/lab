@@ -10,7 +10,7 @@ import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { MemoryDoc } from './memory';
 
-export const HISTORY_READ_LENGTH = 20_000;
+export const HISTORY_READ_LENGTH = 100_000;
 
 export type ChatMatch = {
   id: number;

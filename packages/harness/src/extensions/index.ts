@@ -1,3 +1,5 @@
+import type { Extension } from '@earendil-works/pi-durable';
+
 import type { HelperUsage } from '../helper';
 import { ask } from './ask';
 import { assistant } from './assistant';
@@ -6,6 +8,7 @@ import { compaction } from './compaction';
 import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
+import { limitOutput, output } from './output';
 import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
@@ -84,11 +87,29 @@ export type ExtensionDeps = {
   web: WebAccess;
 };
 
+const outputLimits = {
+  maxBytes: 4 * 1024 * 1024,
+  maxLines: Number.MAX_SAFE_INTEGER,
+};
+
+function ownLimits(extension: Extension): Extension {
+  return {
+    ...extension,
+    tools: extension.tools?.map((tool) => ({
+      ...tool,
+      execute: async (args, api, context) =>
+        limitOutput(await tool.execute(args, api, context), api, context),
+      outputLimits,
+    })),
+  };
+}
+
 export function extensions(deps: ExtensionDeps) {
   return [
     ask,
     assistant,
     codemode,
+    output,
     compaction(deps.onHelperUsage),
     history(deps.history),
     library(deps.library),
@@ -98,5 +119,5 @@ export function extensions(deps: ExtensionDeps) {
     skills,
     title(deps.onHelperUsage),
     web(deps.web),
-  ];
+  ].map(ownLimits);
 }
