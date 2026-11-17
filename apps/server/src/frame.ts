@@ -17,8 +17,23 @@ const bridge = `<script>
 </script>`;
 
 const runner = `(() => {
-  const frame = document.getElementById('content');
+  const frames = [document.getElementById('a'), document.getElementById('b')];
+  let shown = 0;
+  let pending = -1;
   let port;
+  const show = (index) => {
+    frames.forEach((frame, other) => frame.classList.toggle('pending', other !== index));
+  };
+  frames.forEach((frame, index) => {
+    frame.addEventListener('load', () => {
+      if (index === pending) {
+        shown = index;
+        pending = -1;
+        show(index);
+      }
+    });
+  });
+  const current = (source) => [shown, pending].some((index) => index >= 0 && frames[index].contentWindow === source);
   addEventListener('message', (event) => {
     const data = event.data;
     if (!port && event.source === parent && data && data.type === 'lab:connect' && event.ports[0]) {
@@ -26,18 +41,22 @@ const runner = `(() => {
       port.onmessage = ({ data: message }) => {
         if (message && message.type === 'render' && typeof message.html === 'string') {
           const scripts = message.scripts !== false;
-          frame.setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
-          frame.srcdoc = (scripts ? ${JSON.stringify(bridge).replaceAll('<', '\\u003c')} : '') + message.html;
+          const next = 1 - shown;
+          pending = next;
+          frames[next].setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
+          frames[next].srcdoc = (scripts ? ${JSON.stringify(bridge).replaceAll('<', '\\u003c')} : '') + message.html;
         }
       };
       port.postMessage({ type: 'ready' });
       return;
     }
-    if (!port || event.source !== frame.contentWindow || !data) {
+    if (!port || !current(event.source) || !data) {
       return;
     }
     if (data.type === 'size' && Number.isFinite(data.height)) {
-      port.postMessage({ type: 'size', height: Math.min(Math.max(data.height, 0), 10000) });
+      if (event.source === frames[shown].contentWindow) {
+        port.postMessage({ type: 'size', height: Math.min(Math.max(data.height, 0), 10000) });
+      }
     }
     if (data.type === 'error' && typeof data.message === 'string') {
       port.postMessage({ type: 'error', message: data.message.slice(0, 500) });
@@ -52,10 +71,11 @@ const page = `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<style>html,body{margin:0;background:transparent}iframe{display:block;width:100%;height:100vh;border:0}</style>
+<style>html,body{margin:0;background:transparent}body{position:relative}iframe{display:block;width:100%;height:100vh;border:0}iframe.pending{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}</style>
 </head>
 <body>
-<iframe id="content" sandbox="allow-scripts allow-forms" title="Content"></iframe>
+<iframe id="a" sandbox="allow-scripts allow-forms" title="Content"></iframe>
+<iframe class="pending" id="b" sandbox="allow-scripts allow-forms" title="Content"></iframe>
 <script>${runner}</script>
 </body>
 </html>`;
