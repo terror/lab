@@ -23,7 +23,9 @@ const runner = `(() => {
       port = event.ports[0];
       port.onmessage = ({ data: message }) => {
         if (message && message.type === 'render' && typeof message.html === 'string') {
-          frame.srcdoc = ${JSON.stringify(bridge).replaceAll('<', '\\u003c')} + message.html;
+          const scripts = message.scripts !== false;
+          frame.setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
+          frame.srcdoc = (scripts ? ${JSON.stringify(bridge).replaceAll('<', '\\u003c')} : '') + message.html;
         }
       };
       port.postMessage({ type: 'ready' });

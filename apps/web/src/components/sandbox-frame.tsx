@@ -38,12 +38,16 @@ function themed(html: string) {
 }
 
 export function SandboxFrame({
+  height: fixed,
   html,
   onError,
+  scripts = true,
   title,
 }: {
+  height?: number;
   html: string;
   onError?: (message: string) => void;
+  scripts?: boolean;
   title: string;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -60,8 +64,8 @@ export function SandboxFrame({
 
   useEffect(() => {
     latest.current = html;
-    port.current?.postMessage({ html: themed(html), type: 'render' });
-  }, [html]);
+    port.current?.postMessage({ html: themed(html), scripts, type: 'render' });
+  }, [html, scripts]);
 
   useEffect(() => () => port.current?.close(), []);
 
@@ -86,6 +90,7 @@ export function SandboxFrame({
       if (message?.type === 'ready') {
         channel.port1.postMessage({
           html: themed(latest.current),
+          scripts,
           type: 'render',
         });
       }
@@ -123,7 +128,10 @@ export function SandboxFrame({
       referrerPolicy='no-referrer'
       sandbox={FRAME_SANDBOX}
       src='/frame'
-      style={{ colorScheme: dark() ? 'dark' : 'light', height }}
+      style={{
+        colorScheme: dark() ? 'dark' : 'light',
+        height: fixed ?? height,
+      }}
       title={title}
     />
   );
