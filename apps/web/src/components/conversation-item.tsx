@@ -28,7 +28,7 @@ import { projectsQueryOptions, useProjects } from '@/lib/projects';
 import { useUndoTrash } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   Ellipsis,
   Folder,
@@ -208,7 +208,7 @@ export function ConversationItem({
     title: string | null;
     unread: boolean;
   };
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   selected: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -327,16 +327,17 @@ export function ConversationItem({
                 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
             )}
           >
-            <button
+            <Link
               aria-current={selected ? 'page' : undefined}
               className='min-w-0 flex-1 px-2 py-1.5 text-left text-sm'
-              onClick={() => onSelect(conversation.id)}
-              type='button'
+              onClick={onSelect}
+              params={{ id: conversation.id }}
+              to='/c/$id'
             >
               <span className='block truncate'>{title}</span>
               {conversation.running && <span className='sr-only'>Running</span>}
               {unread && <span className='sr-only'>Unread</span>}
-            </button>
+            </Link>
             <div className='relative mr-1 flex'>
               <DropdownMenu onOpenChange={setMenu}>
                 <DropdownMenuTrigger asChild>

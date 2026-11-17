@@ -299,7 +299,7 @@ function ProjectChats({
 }: {
   id: number;
   onProject: (id: number) => void;
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   selected: number | undefined;
 }) {
   const chats = useConversations({ project: id });
@@ -329,7 +329,7 @@ function ProjectsSection({
   selected,
 }: {
   onProject: (id: number) => void;
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   selected: number | undefined;
 }) {
   const list = useId();
@@ -450,7 +450,7 @@ function PinnedSection({
   onSelect,
   selected,
 }: {
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   selected: number | undefined;
 }) {
   const list = useId();
@@ -540,7 +540,7 @@ export function Sidebar({
   selected: number | undefined;
   onNavigate: (to: NavPath) => void;
   onProject: (id: number) => void;
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   onToggle?: () => void;
   user: User;
 }) {
@@ -613,7 +613,7 @@ function SidebarPanel({
   onLoadMore: (() => void) | undefined;
   onNavigate: (to: NavPath) => void;
   onProject: (id: number) => void;
-  onSelect: (id: number) => void;
+  onSelect?: () => void;
   onToggle: (() => void) | undefined;
   selected: number | undefined;
   user: User;

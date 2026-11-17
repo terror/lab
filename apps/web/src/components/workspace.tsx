@@ -53,9 +53,6 @@ function useNavigation() {
         to: '/projects/$projectId',
       });
     },
-    selectConversation: (id: number) => {
-      void navigate({ params: { id }, to: '/c/$id' });
-    },
   };
 }
 
@@ -66,7 +63,7 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { navigateTo, openProject, selectConversation } = useNavigation();
+  const { navigateTo, openProject } = useNavigation();
   const panel = usePanelRef();
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -117,7 +114,6 @@ function DesktopWorkspace({
             selected={selected}
             onNavigate={navigateTo}
             onProject={openProject}
-            onSelect={selectConversation}
             onToggle={toggle}
             user={user}
           />
@@ -138,7 +134,7 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { navigateTo, openProject, selectConversation } = useNavigation();
+  const { navigateTo, openProject } = useNavigation();
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
@@ -192,10 +188,7 @@ function MobileWorkspace({
               setOpen(false);
               openProject(id);
             }}
-            onSelect={(id) => {
-              setOpen(false);
-              selectConversation(id);
-            }}
+            onSelect={() => setOpen(false)}
             user={user}
           />
         </SheetContent>
