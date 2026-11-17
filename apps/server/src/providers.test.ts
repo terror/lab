@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call } from '../test/client';
+import { credentials } from './credentials';
 import { db } from './db';
 
 test('provider keys can be added and removed', async () => {
@@ -26,6 +27,7 @@ test('provider keys can be added and removed', async () => {
     models: false,
     provider: {
       configured: false,
+      fields: [{ id: 'apiKey', label: 'API key', secret: true }],
       id: 'groq',
       kind: 'model',
       methods: ['api_key'],
@@ -44,6 +46,7 @@ test('provider keys can be added and removed', async () => {
     models: true,
     provider: {
       configured: true,
+      fields: [{ id: 'apiKey', label: 'API key', secret: true }],
       id: 'groq',
       kind: 'model',
       methods: ['api_key'],
@@ -67,6 +70,7 @@ test('provider keys can be added and removed', async () => {
     models: false,
     provider: {
       configured: false,
+      fields: [{ id: 'apiKey', label: 'API key', secret: true }],
       id: 'groq',
       kind: 'model',
       methods: ['api_key'],
@@ -102,6 +106,7 @@ test('environment variables do not configure providers', async () => {
     }).toEqual({
       groq: {
         configured: false,
+        fields: [{ id: 'apiKey', label: 'API key', secret: true }],
         id: 'groq',
         kind: 'model',
         methods: ['api_key'],
@@ -134,6 +139,7 @@ test('keys that cannot be decrypted count as disconnected', async () => {
     }).toEqual({
       mistral: {
         configured: false,
+        fields: [{ id: 'apiKey', label: 'API key', secret: true }],
         id: 'mistral',
         kind: 'model',
         methods: ['api_key'],
@@ -146,4 +152,33 @@ test('keys that cannot be decrypted count as disconnected', async () => {
       .delete(schema.providerCredential)
       .where(eq(schema.providerCredential.providerId, 'mistral'));
   }
+});
+
+test('providers with extra fields store them with the key', async () => {
+  const headers = await signIn();
+
+  const missing = await call(headers, 'PUT', '/providers/vercel-sandbox', {
+    apiKey: 'foo',
+    method: 'api_key',
+    settings: { projectId: 'bar' },
+  });
+
+  await call(headers, 'PUT', '/providers/vercel-sandbox', {
+    apiKey: 'foo',
+    method: 'api_key',
+    settings: { projectId: 'bar', teamId: 'baz' },
+  });
+
+  const stored = await credentials.read('vercel-sandbox');
+
+  await call(headers, 'DELETE', '/providers/vercel-sandbox');
+
+  expect({ missing, stored }).toEqual({
+    missing: { body: { error: 'Team ID is required' }, status: 400 },
+    stored: {
+      env: { projectId: 'bar', teamId: 'baz' },
+      key: 'foo',
+      type: 'api_key',
+    },
+  });
 });

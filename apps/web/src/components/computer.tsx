@@ -125,8 +125,8 @@ function Details({ status }: { status: ComputerStatus }) {
   if (!provider) {
     return (
       <p className='text-sm text-muted-foreground'>
-        No computer is set up. Set LAB_SANDBOX_PROVIDER and the provider's
-        credentials on the server.
+        No computer is set up. Connect a computer provider such as Vercel
+        Sandbox in Providers.
       </p>
     );
   }
