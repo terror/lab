@@ -12,6 +12,7 @@ import {
   attachmentSchema,
   attachmentTextLimit,
 } from './schemas';
+import { checkStorage } from './storage';
 import { checkSpend } from './usage';
 
 export const draftSchema = z.object({
@@ -99,6 +100,18 @@ function entryFile(attachment: Attachment): MessageData['files'][number] {
   return { name: attachment.name, type: 'image' };
 }
 
+function attachmentBytes(attachments: readonly Attachment[]) {
+  return attachments.reduce((total, attachment) => {
+    if (attachment.type === 'image') {
+      return total + Math.floor((attachment.data.length * 3) / 4);
+    }
+
+    return attachment.uploadId === undefined
+      ? total + Buffer.byteLength(attachment.text)
+      : total;
+  }, 0);
+}
+
 export async function submitMessage(
   conversation: Conversation,
   draft: { attachments: Attachment[]; content: string },
@@ -107,6 +120,7 @@ export async function submitMessage(
   const ownerId = await requireOwner(conversation.id);
 
   await checkSpend(ownerId);
+  await checkStorage(ownerId, attachmentBytes(draft.attachments));
   await selectConnectors(conversation, ownerId);
 
   return conversation.submit(

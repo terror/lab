@@ -12,6 +12,7 @@ import { found } from './found';
 import { harness } from './harness';
 import { restoreProject, trashProject } from './project-access';
 import { removeChatFolder } from './sandbox';
+import { pruneUploads } from './storage';
 import { positiveId, validator } from './validator';
 
 type Trashed = { deletedAt: Date; id: number; title: string | null };
@@ -56,6 +57,8 @@ async function purgeChat(ownerId: string, id: number) {
       .values({ id, ownerId })
       .onConflictDoNothing();
   });
+
+  void pruneUploads(ownerId).catch(console.error);
 }
 
 const conversations: Trashable = {
