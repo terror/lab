@@ -1,5 +1,6 @@
 export const toolNames = [
   'ask_user',
+  'chat_move',
   'chat_read',
   'chat_search',
   'codemode',
@@ -7,6 +8,9 @@ export const toolNames = [
   'library_read',
   'library_search',
   'preferences_update',
+  'project_create',
+  'project_list',
+  'project_rename',
   'remember',
   'sandbox_exec',
   'sandbox_list',

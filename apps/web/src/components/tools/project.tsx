@@ -1,7 +1,27 @@
+import { conversationTitle } from '@/lib/conversations';
 import { Folder } from 'lucide-react';
 
 import { count, field, plural, text } from './format';
+import { PreviewList } from './previews';
 import type { ToolRenderer, ToolView } from './types';
+
+function projectItem(project: unknown, index: number) {
+  const id = count(field(project, 'id'));
+
+  return {
+    key: String(id ?? index),
+    label: text(field(project, 'name')) ?? 'Untitled project',
+    projectId: id,
+  };
+}
+
+function projectPreview({ details }: ToolView) {
+  const project = field(details, 'project');
+
+  return project ? (
+    <PreviewList items={[projectItem(project, 0)]} />
+  ) : undefined;
+}
 
 function projectTitle(running: string, done: string) {
   return ({ active, details }: ToolView) => {
@@ -15,25 +35,57 @@ function projectTitle(running: string, done: string) {
   };
 }
 
-export const projectRenderers: Record<string, ToolRenderer> = {
+export const projectRenderers = {
   chat_move: {
     icon: Folder,
+    preview: ({ details }) => {
+      const chat = field(details, 'chat');
+
+      const id = count(field(chat, 'id'));
+
+      if (id === undefined) {
+        return undefined;
+      }
+
+      const project = field(details, 'project');
+
+      return (
+        <PreviewList
+          items={[
+            {
+              chatId: id,
+              key: String(id),
+              label: conversationTitle(text(field(chat, 'title')) ?? null),
+              meta: text(field(project, 'name')) ?? 'No project',
+            },
+          ]}
+        />
+      );
+    },
     title: ({ active, details }) => {
       if (active) {
         return 'Moving a chat';
       }
 
-      return field(details, 'projectId') === null
+      return field(details, 'project') === null
         ? 'Moved a chat out of its project'
         : 'Moved a chat into a project';
     },
   },
   project_create: {
     icon: Folder,
+    preview: projectPreview,
     title: projectTitle('Creating a project', 'Created'),
   },
   project_list: {
     icon: Folder,
+    preview: ({ details }) => {
+      const projects = field(details, 'projects');
+
+      return Array.isArray(projects) ? (
+        <PreviewList items={projects.map(projectItem)} />
+      ) : undefined;
+    },
     summary: ({ details }) => {
       const found = count(field(details, 'count'));
 
@@ -43,6 +95,7 @@ export const projectRenderers: Record<string, ToolRenderer> = {
   },
   project_rename: {
     icon: Folder,
+    preview: projectPreview,
     title: projectTitle('Renaming a project', 'Renamed to'),
   },
-};
+} satisfies Record<string, ToolRenderer>;

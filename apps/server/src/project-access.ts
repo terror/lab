@@ -108,8 +108,23 @@ export const projectAccess: ProjectAccess = {
     return row;
   },
   list: async (conversationId) => listProjects(await owner(conversationId)),
-  move: async (conversationId, chatId, projectId) =>
-    moveChat(await owner(conversationId), chatId, projectId),
+  move: async (conversationId, chatId, projectId) => {
+    const ownerId = await owner(conversationId);
+
+    if (!(await moveChat(ownerId, chatId, projectId))) {
+      return undefined;
+    }
+
+    const [chat] = await db
+      .select({ id: schema.conversation.id, title: schema.conversation.title })
+      .from(schema.conversation)
+      .where(eq(schema.conversation.id, chatId));
+
+    const project =
+      (await listProjects(ownerId)).find(({ id }) => id === projectId) ?? null;
+
+    return chat && { chat, project };
+  },
   rename: async (conversationId, id, name) =>
     renameProject(await owner(conversationId), id, name),
 };

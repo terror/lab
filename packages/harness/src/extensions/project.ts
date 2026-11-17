@@ -11,6 +11,11 @@ export const PROJECT_NAME_LENGTH = 80;
 
 export type ProjectSummary = { id: number; name: string };
 
+export type ChatMove = {
+  chat: { id: number; title: string | null };
+  project: ProjectSummary | null;
+};
+
 export type ProjectAccess = {
   create(
     conversationId: ConversationId,
@@ -22,7 +27,7 @@ export type ProjectAccess = {
     conversationId: ConversationId,
     chatId: number,
     projectId: number | null
-  ): Promise<boolean>;
+  ): Promise<ChatMove | undefined>;
   rename(
     conversationId: ConversationId,
     id: number,
@@ -140,7 +145,7 @@ export function project(access: ProjectAccess) {
       }
 
       return {
-        details: { chatId: chat, projectId: target },
+        details: moved,
         output: text(
           target === null
             ? `Moved chat ${chat} out of its project.`
