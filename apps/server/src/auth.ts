@@ -1,4 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
 import { createMiddleware } from 'hono/factory';
@@ -37,6 +38,7 @@ export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
   database: drizzleAdapter(db, { provider: 'pg', schema }),
+  plugins: [expo()],
   secret: env.BETTER_AUTH_SECRET,
   socialProviders: {
     google: {
@@ -44,6 +46,7 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
+  trustedOrigins: ['com.scalzulli.lab://'],
   user: {
     validateUserInfo: ({ user }) => {
       if (allowed(user)) {

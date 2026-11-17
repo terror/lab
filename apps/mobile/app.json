@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Lab",
+    "slug": "lab",
+    "scheme": "com.scalzulli.lab",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "ios": {
+      "bundleIdentifier": "com.scalzulli.lab"
+    },
+    "android": {
+      "package": "com.scalzulli.lab"
+    }
+  }
+}

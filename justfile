@@ -46,6 +46,11 @@ lint:
 migrate:
   bun run db:migrate
 
+[group: 'mobile']
+[working-directory: 'apps/mobile']
+mobile:
+  bun run start
+
 [group: 'setup']
 pstack:
   bin/sync-pstack
