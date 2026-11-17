@@ -23,6 +23,7 @@
     "@hono/zod-validator": "0.9.1",
     "@lab/db": "workspace:*",
     "@lab/harness": "workspace:*",
+    "@sentry/bun": "11.13.0",
     "better-auth": "1.7.25",
     "drizzle-orm": "0.45.4",
     "hono": "^4.13.13",

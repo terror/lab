@@ -13,7 +13,7 @@ export function inlineScriptHashes(html: string) {
 export function contentSecurityPolicy(html: string) {
   return {
     baseUri: ["'self'"],
-    connectSrc: ["'self'"],
+    connectSrc: ["'self'", 'https://*.ingest.us.sentry.io'],
     defaultSrc: ["'self'"],
     fontSrc: ["'self'", 'data:'],
     formAction: ["'self'"],
