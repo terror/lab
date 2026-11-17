@@ -1,6 +1,7 @@
 import { Tile } from '@/components/library-tile';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
+import { PdfPages } from '@/components/pdf-pages';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +21,7 @@ import {
   type LibraryItem,
   type LibraryKind,
   libraryItemUrl,
+  libraryOriginalUrl,
   libraryTextQueryOptions,
   useLibrarySearch,
 } from '@/lib/library';
@@ -114,6 +116,31 @@ function FilePreview({ id }: { id: number }) {
   );
 }
 
+function ItemPreview({ item }: { item: LibraryItem }) {
+  if (item.kind === 'image') {
+    return (
+      <div className='flex justify-center rounded-xl bg-muted'>
+        <img
+          alt={item.name}
+          className='max-h-128 rounded-xl object-contain'
+          src={libraryItemUrl(item.id)}
+        />
+      </div>
+    );
+  }
+
+  if (item.upload) {
+    return (
+      <PdfPages
+        className='max-h-128 overflow-y-auto rounded-xl bg-muted p-3'
+        url={libraryOriginalUrl(item.id)}
+      />
+    );
+  }
+
+  return <FilePreview id={item.id} />;
+}
+
 function Viewer({
   hasMore,
   id,
@@ -198,17 +225,7 @@ function Viewer({
             </Link>
           </DialogDescription>
         </DialogHeader>
-        {item.kind === 'image' ? (
-          <div className='flex justify-center rounded-xl bg-muted'>
-            <img
-              alt={item.name}
-              className='max-h-128 rounded-xl object-contain'
-              src={libraryItemUrl(item.id)}
-            />
-          </div>
-        ) : (
-          <FilePreview id={item.id} />
-        )}
+        <ItemPreview item={item} />
         <DialogFooter className='sm:justify-between'>
           <div className='flex gap-1'>
             <Button

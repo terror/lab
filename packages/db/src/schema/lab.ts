@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 import { user } from './auth';
@@ -80,6 +81,17 @@ const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
   dataType: () => 'bytea',
 });
 
+export const upload = pgTable('upload', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ownerId: text('owner_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  mimeType: text('mime_type').notNull(),
+  content: bytea('content').notNull(),
+  thumbnail: bytea('thumbnail'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const libraryItem = pgTable(
   'library_item',
   {
@@ -98,6 +110,9 @@ export const libraryItem = pgTable(
     size: integer('size').notNull(),
     preview: text('preview'),
     content: bytea('content').notNull(),
+    uploadId: uuid('upload_id').references(() => upload.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at').notNull(),
   },
   (table) => [

@@ -20,6 +20,7 @@ import { defaultModel, listModels } from './models';
 import providers from './providers';
 import { contentSecurityPolicy } from './security';
 import skills from './skills';
+import uploads from './uploads';
 import usage from './usage';
 
 const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
@@ -70,6 +71,7 @@ const api = new Hono()
   .route('/library', library)
   .route('/memory', memory)
   .route('/skills', skills)
+  .route('/uploads', uploads)
   .route('/usage', usage);
 
 export type AppType = typeof api;

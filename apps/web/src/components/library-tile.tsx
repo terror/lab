@@ -1,4 +1,8 @@
-import { type LibraryItem, libraryItemUrl } from '@/lib/library';
+import {
+  type LibraryItem,
+  libraryItemUrl,
+  libraryThumbnailUrl,
+} from '@/lib/library';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
@@ -20,6 +24,51 @@ function FileTile({ item }: { item: LibraryItem }) {
       <span className='mt-auto truncate text-sm font-medium'>{item.name}</span>
     </div>
   );
+}
+
+function DocumentTile({ item }: { item: LibraryItem }) {
+  return (
+    <>
+      <img
+        alt=''
+        className='size-full bg-white object-cover object-top transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
+        decoding='async'
+        loading='lazy'
+        src={libraryThumbnailUrl(item.id)}
+      />
+      <span className='absolute top-3 left-3 rounded-md bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground'>
+        {extension(item.name)}
+      </span>
+      <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/70 px-3 pt-8 pb-2.5 text-left text-sm font-medium text-white'>
+        {item.name}
+      </span>
+    </>
+  );
+}
+
+function TileContent({ item }: { item: LibraryItem }) {
+  if (item.kind === 'image') {
+    return (
+      <>
+        <img
+          alt=''
+          className='size-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
+          decoding='async'
+          loading='lazy'
+          src={libraryItemUrl(item.id)}
+        />
+        <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
+          {item.name}
+        </span>
+      </>
+    );
+  }
+
+  if (item.upload?.thumbnail) {
+    return <DocumentTile item={item} />;
+  }
+
+  return <FileTile item={item} />;
 }
 
 export function Tile({
@@ -50,22 +99,7 @@ export function Tile({
           <Check aria-hidden='true' className='size-3.5' />
         </span>
       )}
-      {item.kind === 'image' ? (
-        <>
-          <img
-            alt=''
-            className='size-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
-            decoding='async'
-            loading='lazy'
-            src={libraryItemUrl(item.id)}
-          />
-          <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
-            {item.name}
-          </span>
-        </>
-      ) : (
-        <FileTile item={item} />
-      )}
+      <TileContent item={item} />
     </button>
   );
 }

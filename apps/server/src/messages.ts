@@ -89,6 +89,7 @@ function entryFile(attachment: Attachment): MessageData['files'][number] {
       name: attachment.name,
       text: attachment.text,
       type: 'file',
+      ...(attachment.uploadId && { uploadId: attachment.uploadId }),
     };
   }
 

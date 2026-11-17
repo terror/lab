@@ -40,6 +40,7 @@ export const attachmentSchema = z.discriminatedUnion('type', [
     name: z.string().max(200),
     text: z.string().max(MAX_ATTACHMENT_TEXT),
     type: z.literal('file'),
+    uploadId: z.uuid().optional(),
   }),
 ]);
 

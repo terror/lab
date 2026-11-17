@@ -3,7 +3,8 @@ import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
-import { call, idle, raw, settle } from '../test/client';
+import { call, chat, idle, raw, settle } from '../test/client';
+import app from './app';
 import { db } from './db';
 import { backfillLibrary } from './library';
 
@@ -172,4 +173,82 @@ test('the library backfill resumes from its checkpoint', async () => {
   await backfillLibrary();
 
   expect([first, await count()]).toEqual([1, 0]);
+});
+
+async function upload(headers: Headers, document: File) {
+  const form = new FormData();
+
+  form.set('document', document);
+  form.set('thumbnail', new File(['bar'], 'bar.png', { type: 'image/png' }));
+
+  const response = await app.request('/api/uploads', {
+    body: form,
+    headers,
+    method: 'POST',
+  });
+
+  return {
+    body: (await response.json()) as { error?: string; id?: string },
+    status: response.status,
+  };
+}
+
+test('uploaded pdfs keep their original and thumbnail', async () => {
+  const headers = await signIn();
+
+  const pdf = new File(['foobar'], 'foo.pdf', { type: 'application/pdf' });
+
+  const [mine, theirs, rejected] = [
+    await upload(headers, pdf),
+    await upload(await signIn(), pdf),
+    await upload(headers, new File(['foo'], 'foo.txt', { type: 'text/plain' })),
+  ];
+
+  const id = await chat(headers, {
+    attachments: [
+      { name: 'foo.pdf', text: 'baz', type: 'file', uploadId: mine.body.id },
+      { name: 'bar.pdf', text: 'baz', type: 'file', uploadId: theirs.body.id },
+    ],
+    content: 'foo',
+  });
+
+  const { body } = await call(headers, 'GET', '/library');
+
+  const [first, second] = (body.items as Item[]).filter(
+    ({ conversation }) => (conversation as { id: number }).id === id
+  );
+
+  const read = async (path: string) => {
+    const response = await raw(headers, path);
+
+    return [
+      response.status,
+      response.headers.get('content-type'),
+      await response.text(),
+    ];
+  };
+
+  expect({
+    download: await read(`/library/${first?.id}?download=1`),
+    original: await read(`/library/${first?.id}/original`),
+    size: first?.size,
+    rejected,
+    thumbnail: await read(`/library/${first?.id}/thumbnail`),
+    unlinked: [
+      second?.upload,
+      (await raw(headers, `/library/${second?.id}/original`)).status,
+    ],
+    upload: first?.upload,
+  }).toEqual({
+    download: [200, 'application/pdf', 'foobar'],
+    original: [200, 'application/pdf', 'foobar'],
+    size: 6,
+    rejected: {
+      body: { error: '✖ Upload a PDF up to 20 MB\n  → at document' },
+      status: 400,
+    },
+    thumbnail: [200, 'image/png', 'bar'],
+    unlinked: [null, 404],
+    upload: { id: mine.body.id, thumbnail: true },
+  });
 });
