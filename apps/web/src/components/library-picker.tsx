@@ -1,4 +1,5 @@
 import { Tile } from '@/components/library-tile';
+import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,11 +79,7 @@ function PickerBody({ attached, limit, onAdd, onCancel }: PickerProps) {
         />
       </InputGroup>
       <div className='-mx-1 max-h-112 min-h-48 overflow-y-auto p-1'>
-        {error && (
-          <p role='alert' className='text-sm text-destructive'>
-            Unable to load your library.
-          </p>
-        )}
+        {error && <LoadError subject='your library' />}
         {empty && (
           <p className='py-16 text-center text-sm text-muted-foreground'>
             {query ? 'Nothing matches your search.' : 'Your library is empty.'}

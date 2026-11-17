@@ -1,3 +1,4 @@
+import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
 import {
   conversationTitle,
@@ -71,11 +72,7 @@ export function Archived() {
           Archived chats are hidden from the sidebar until you unarchive them.
         </p>
       </div>
-      {archived.isError && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load archived chats.
-        </p>
-      )}
+      {archived.isError && <LoadError subject='archived chats' />}
       {archived.isSuccess && archived.data.length === 0 && (
         <p className='text-sm text-muted-foreground'>No archived chats.</p>
       )}

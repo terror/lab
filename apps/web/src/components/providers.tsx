@@ -1,3 +1,4 @@
+import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
 import { Button } from '@/components/ui/button';
 import {
@@ -276,11 +277,7 @@ export function Providers() {
           Add provider
         </Button>
       </div>
-      {providers.isError && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load providers.
-        </p>
-      )}
+      {providers.isError && <LoadError subject='providers' />}
       {providers.isSuccess && connected.length === 0 && (
         <p className='text-sm text-muted-foreground'>
           No providers are connected yet.

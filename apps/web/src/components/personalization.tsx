@@ -1,3 +1,4 @@
+import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -64,11 +65,7 @@ export function Personalization() {
           How Lab should respond in every chat.
         </p>
       </div>
-      {memory.isError && (
-        <p role='alert' className='text-sm text-destructive'>
-          Unable to load personalization.
-        </p>
-      )}
+      {memory.isError && <LoadError subject='personalization' />}
       {memory.data && (
         <Instructions
           key={memory.data.instructions}

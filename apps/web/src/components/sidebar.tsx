@@ -1,6 +1,7 @@
 import { AccountMenu } from '@/components/account-menu';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
+import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
 import { useSearch } from '@/components/search';
 import {
@@ -422,11 +423,7 @@ function SidebarPanel({
           hidden={collapsed}
           id={list}
         >
-          {error && (
-            <p role='alert' className='px-2 text-sm text-destructive'>
-              Unable to load chats.
-            </p>
-          )}
+          {error && <LoadError className='px-2' subject='chats' />}
           {conversations?.map((conversation) => (
             <ConversationItem
               key={conversation.id}
