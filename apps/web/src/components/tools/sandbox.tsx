@@ -1,4 +1,5 @@
 import { DocumentCard } from '@/components/document-card';
+import { formatBytes } from '@/lib/format';
 import { uploadUrl } from '@/lib/uploads';
 import {
   Download,
@@ -9,15 +10,7 @@ import {
   Upload,
 } from 'lucide-react';
 
-import {
-  formatBytes,
-  count,
-  field,
-  pathTitle,
-  readRange,
-  seconds,
-  text,
-} from './format';
+import { count, field, pathTitle, readRange, seconds, text } from './format';
 import { PreviewCode, PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer, type ToolView } from './types';
 

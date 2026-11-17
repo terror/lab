@@ -24,7 +24,7 @@ import {
   settingsSectionInfo,
   useSettingsSections,
 } from '@/lib/settings';
-import { useTheme } from '@/lib/theme';
+import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
@@ -282,12 +282,9 @@ function EmptyQuery({
   const recents = useConversations();
   const projectNames = useProjectNames();
   const go = useGo(onDone);
-  const [theme, setTheme] = useTheme();
+  const [, setTheme] = useTheme();
 
-  const dark =
-    theme === 'dark' ||
-    (theme === 'system' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const dark = useDark();
 
   const recent: Row[] = (recents.data ?? []).slice(0, 4).map((chat) => ({
     chip:

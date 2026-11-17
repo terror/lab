@@ -28,6 +28,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
+import { plural } from '@/lib/format';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
@@ -180,10 +181,6 @@ function StepStatus({
   const view = useToolView(call, progress, result);
 
   return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
-}
-
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 export function Worked({

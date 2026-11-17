@@ -1,6 +1,8 @@
+import { conversationTitle } from '@/lib/conversations';
+import { plural, shortDate } from '@/lib/format';
 import { MessageSquareText, MessagesSquare } from 'lucide-react';
 
-import { count, day, field, plural, quoted, readRange, text } from './format';
+import { count, field, quoted, readRange, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -39,8 +41,8 @@ export const chatRenderers = {
           items={matches.map(({ id, title, updatedAt }) => ({
             chatId: id,
             key: String(id),
-            label: title ?? 'Untitled chat',
-            meta: day.format(new Date(updatedAt)),
+            label: conversationTitle(title),
+            meta: shortDate(updatedAt),
           }))}
         />
       );

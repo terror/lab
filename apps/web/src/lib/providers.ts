@@ -23,8 +23,6 @@ export type Connection = InferRequestType<
   (typeof client.providers)[':id']['$put']
 >['json'];
 
-export type Method = Provider['methods'][number];
-
 export async function connectProvider(id: string, connection: Connection) {
   await call(client.providers[':id'].$put({ json: connection, param: { id } }));
 }

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { shortDate } from '@/lib/format';
 import {
   type ChangelogEntry,
   changelogQueryOptions,
@@ -19,11 +20,6 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 const DEVELOPMENT = 'development';
-
-const day = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-});
 
 export function Changelog({
   entries,
@@ -70,7 +66,7 @@ export function Changelog({
                 </a>
                 {date && (
                   <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
-                    {day.format(new Date(date))}
+                    {shortDate(date)}
                   </span>
                 )}
               </div>
