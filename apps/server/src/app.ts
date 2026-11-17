@@ -19,6 +19,7 @@ import memory from './memory';
 import { defaultModel, listModels } from './models';
 import providers from './providers';
 import { contentSecurityPolicy } from './security';
+import skills from './skills';
 import usage from './usage';
 
 const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
@@ -68,6 +69,7 @@ const api = new Hono()
   .route('/providers', providers)
   .route('/library', library)
   .route('/memory', memory)
+  .route('/skills', skills)
   .route('/usage', usage);
 
 export type AppType = typeof api;

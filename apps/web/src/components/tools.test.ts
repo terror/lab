@@ -31,6 +31,9 @@ test('tools describe themselves while running and when done', () => {
     line('remember', false, { text: 'foo' }),
     line('forget', true),
     line('forget', false, { id: 'bar' }, { id: 'bar', text: 'foo' }),
+    line('skill_create', true),
+    line('skill_read', false, { id: 'bar' }, { name: 'foo' }),
+    line('skill_delete', false, { id: 'bar' }),
     line('foo', false),
   ]).toEqual([
     ['Searching your chats for “foo”', undefined],
@@ -42,6 +45,9 @@ test('tools describe themselves while running and when done', () => {
     ['Remembered “foo”', undefined],
     ['Forgetting a memory', undefined],
     ['Forgot “foo”', undefined],
+    ['Creating a skill', undefined],
+    ['Read the “foo” skill', undefined],
+    ['Deleted a skill', undefined],
     ['Ran foo', undefined],
   ]);
 });

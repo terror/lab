@@ -5,6 +5,7 @@ export const settingsSections = [
   'appearance',
   'personalization',
   'memory',
+  'skills',
   'providers',
   'usage',
   'archived',
