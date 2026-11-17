@@ -18,8 +18,11 @@ import {
   queryOptions,
   skipToken,
   useInfiniteQuery,
+  useMutation,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -108,7 +111,7 @@ export function useConversations(scope = recent) {
   return useInfiniteQuery(conversationsQueryOptions(scope, sort));
 }
 
-export async function createConversation(
+async function createConversation(
   content: string,
   attachments: Attachment[],
   model: ModelChoice | undefined,
@@ -127,6 +130,34 @@ export async function createConversation(
   );
 
   return id;
+}
+
+export function useStartChat({
+  inlineError = true,
+  projectId,
+}: {
+  inlineError?: boolean;
+  projectId?: number;
+} = {}) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  return useMutation({
+    meta: { inlineError },
+    mutationFn: ({
+      attachments,
+      content,
+      model,
+    }: {
+      attachments: Attachment[];
+      content: string;
+      model: ModelChoice | undefined;
+    }) => createConversation(content, attachments, model, projectId),
+    onSuccess: async (id) => {
+      await navigate({ params: { id }, to: '/c/$id' });
+      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+    },
+  });
 }
 
 export async function updateConversation(
