@@ -1,15 +1,12 @@
 import { useEffect } from 'react';
-import { z } from 'zod';
 
 import { useMediaQuery } from './media';
-import { usePersistentState } from './storage';
+import { type Preferences, usePreference } from './preferences';
 
-const themeSchema = z.enum(['dark', 'light', 'system']);
-
-export type Theme = z.infer<typeof themeSchema>;
+export type Theme = Preferences['theme'];
 
 export function useTheme() {
-  return usePersistentState('theme', themeSchema, 'system');
+  return usePreference('theme');
 }
 
 export function useThemeClass() {

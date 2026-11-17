@@ -1,4 +1,4 @@
-import { useLineNumbers } from '@/lib/preferences';
+import { usePreference } from '@/lib/preferences';
 import { Suspense, lazy } from 'react';
 import type { StreamdownProps } from 'streamdown';
 
@@ -26,7 +26,7 @@ export function Markdown({
   children: string;
   streaming: boolean;
 }) {
-  const [lineNumbers] = useLineNumbers();
+  const [lineNumbers] = usePreference('lineNumbers');
 
   return (
     <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>

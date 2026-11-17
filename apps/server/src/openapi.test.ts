@@ -32,6 +32,7 @@ test('the api is described with openapi', async () => {
       'Library',
       'Memory',
       'Models',
+      'Preferences',
       'Providers',
       'Schedules',
       'Skills',

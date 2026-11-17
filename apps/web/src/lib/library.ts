@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 
 import { call, client } from './client';
 
+export const libraryQueryKey = ['library'];
+
 export type LibraryItem = InferResponseType<
   typeof client.library.$get,
   200
@@ -38,7 +40,7 @@ function libraryQueryOptions(
   search: string | undefined
 ) {
   return infiniteQueryOptions({
-    queryKey: ['library', kind, search],
+    queryKey: [...libraryQueryKey, kind, search],
     queryFn: ({ pageParam, signal }) =>
       call(
         client.library.$get(
@@ -99,7 +101,7 @@ export function useLibrarySearch(kind: LibraryKind | undefined) {
 
 export function libraryTextQueryOptions(id: number) {
   return queryOptions({
-    queryKey: ['library', 'text', id],
+    queryKey: [...libraryQueryKey, 'text', id],
     queryFn: async ({ signal }) => {
       const response = await fetch(libraryItemUrl(id), { signal });
 
