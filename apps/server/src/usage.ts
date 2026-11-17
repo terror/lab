@@ -5,12 +5,12 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { isAdmin, requireUser } from './auth';
+import { requireUser } from './auth';
 import { db } from './db';
-import { env } from './env';
 import { flushHelperUsage } from './helper-usage';
 import { models as catalog } from './models';
 import { eachEntry, entryChanges, observe } from './pipeline';
+import { policy } from './policy';
 import { owners } from './records';
 import { validator } from './validator';
 
@@ -133,22 +133,9 @@ const dollars = new Intl.NumberFormat('en-US', {
 });
 
 export async function checkSpend(ownerId: string) {
-  const limit = env.LAB_MONTHLY_LIMIT;
+  const limit = (await policy(ownerId)).spendLimit;
 
-  if (limit === undefined) {
-    return;
-  }
-
-  const [owner] = await db
-    .select({ email: schema.user.email })
-    .from(schema.user)
-    .where(eq(schema.user.id, ownerId));
-
-  if (!owner || isAdmin(owner)) {
-    return;
-  }
-
-  if ((await monthSpend(ownerId)) >= limit) {
+  if (limit !== undefined && (await monthSpend(ownerId)) >= limit) {
     throw new HTTPException(402, {
       message: `You’ve used this month’s ${dollars.format(limit)} limit`,
     });

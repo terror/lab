@@ -5,12 +5,12 @@ import { and, eq } from 'drizzle-orm';
 import { posix } from 'node:path';
 import { Writable } from 'node:stream';
 
-import { isAdmin } from './auth';
 import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
+import { policy } from './policy';
 import { requireOwner } from './records';
-import { checkStorage } from './storage';
+import { storeUpload } from './storage';
 import { decodeText } from './text';
 
 export type ComputerState = {
@@ -255,21 +255,8 @@ async function applyNetwork(
   }
 }
 
-async function allowed(ownerId: string) {
-  if (env.LAB_COMPUTER_USERS === 'everyone') {
-    return true;
-  }
-
-  const [owner] = await db
-    .select({ email: schema.user.email })
-    .from(schema.user)
-    .where(eq(schema.user.id, ownerId));
-
-  return owner !== undefined && isAdmin(owner);
-}
-
 async function providerFor(ownerId: string) {
-  return (await allowed(ownerId)) ? activeProvider() : undefined;
+  return (await policy(ownerId)).computer ? activeProvider() : undefined;
 }
 
 async function computerFor(
@@ -437,22 +424,16 @@ export function createSandboxAccess(
 
       const type = mimeType(fileName);
 
-      await checkStorage(computer.ownerId, content.byteLength);
-
-      const [created] = await db
-        .insert(schema.upload)
-        .values({ content, mimeType: type, ownerId: computer.ownerId })
-        .returning({ id: schema.upload.id });
-
-      if (!created) {
-        throw new Error(`Unable to save ${fileName}.`);
-      }
+      const uploadId = await storeUpload(computer.ownerId, {
+        content,
+        mimeType: type,
+      });
 
       return {
         mimeType: type,
         name: fileName,
         size: content.byteLength,
-        uploadId: created.id,
+        uploadId,
       };
     },
     upload: async (conversationId, libraryId, path) => {
