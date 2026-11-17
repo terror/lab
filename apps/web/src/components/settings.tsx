@@ -18,25 +18,14 @@ import { UsagePanel } from '@/components/usage';
 import { usePreference } from '@/lib/preferences';
 import {
   type SettingsSection,
+  settingsSectionInfo,
   settingsSections,
   useSettingsSection,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
-import {
-  ArrowLeft,
-  Brain,
-  ChevronDown,
-  Gauge,
-  KeyRound,
-  Monitor,
-  type LucideIcon,
-  Palette,
-  Trash2,
-  UserRound,
-  WandSparkles,
-} from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 const themes: { label: string; value: Theme }[] = [
@@ -101,24 +90,21 @@ function Appearance() {
   );
 }
 
-const sections: Record<
-  SettingsSection,
-  { icon: LucideIcon; label: string; panel: ComponentType }
-> = {
-  appearance: { icon: Palette, label: 'Appearance', panel: Appearance },
-  computer: { icon: Monitor, label: 'Computer', panel: Computer },
-  memory: { icon: Brain, label: 'Memory', panel: Memory },
-  profile: { icon: UserRound, label: 'Profile', panel: Profile },
-  providers: { icon: KeyRound, label: 'Providers', panel: Providers },
-  skills: { icon: WandSparkles, label: 'Skills', panel: Skills },
-  trash: { icon: Trash2, label: 'Trash', panel: Trash },
-  usage: { icon: Gauge, label: 'Usage', panel: UsagePanel },
+const panels: Record<SettingsSection, ComponentType> = {
+  appearance: Appearance,
+  computer: Computer,
+  memory: Memory,
+  profile: Profile,
+  providers: Providers,
+  skills: Skills,
+  trash: Trash,
+  usage: UsagePanel,
 };
 
 export function Settings() {
   const [section, setSection] = useSettingsSection();
 
-  const Panel = sections[section].panel;
+  const Panel = panels[section];
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
@@ -145,7 +131,7 @@ export function Settings() {
           className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
         >
           {settingsSections.map((id) => {
-            const { icon: Icon, label } = sections[id];
+            const { icon: Icon, label } = settingsSectionInfo[id];
 
             return (
               <button

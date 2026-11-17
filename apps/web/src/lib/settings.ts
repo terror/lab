@@ -1,4 +1,15 @@
 import { usePersistentState, writeStored } from '@/lib/storage';
+import {
+  Brain,
+  Gauge,
+  KeyRound,
+  type LucideIcon,
+  Monitor,
+  Palette,
+  Trash2,
+  UserRound,
+  WandSparkles,
+} from 'lucide-react';
 import { z } from 'zod';
 
 export const settingsSections = [
@@ -13,6 +24,20 @@ export const settingsSections = [
 ] as const;
 
 export type SettingsSection = (typeof settingsSections)[number];
+
+export const settingsSectionInfo: Record<
+  SettingsSection,
+  { icon: LucideIcon; label: string }
+> = {
+  appearance: { icon: Palette, label: 'Appearance' },
+  computer: { icon: Monitor, label: 'Computer' },
+  memory: { icon: Brain, label: 'Memory' },
+  profile: { icon: UserRound, label: 'Profile' },
+  providers: { icon: KeyRound, label: 'Providers' },
+  skills: { icon: WandSparkles, label: 'Skills' },
+  trash: { icon: Trash2, label: 'Trash' },
+  usage: { icon: Gauge, label: 'Usage' },
+};
 
 const KEY = 'settings-section';
 

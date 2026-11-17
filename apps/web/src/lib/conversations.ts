@@ -14,7 +14,6 @@ import {
 import type { sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
-  keepPreviousData,
   type QueryClient,
   queryOptions,
   skipToken,
@@ -72,24 +71,6 @@ function conversationsQueryOptions(scope: ChatScope, sort: ConversationSort) {
       return running ? 2_000 : false;
     },
     select: ({ pages }) => pages.flatMap(({ conversations }) => conversations),
-  });
-}
-
-export function useConversationSearch(search: string) {
-  return useQuery({
-    enabled: search.length > 0,
-    placeholderData: keepPreviousData,
-    queryKey: [...conversationsQueryKey, 'search', search],
-    queryFn: async ({ signal }) => {
-      const { conversations } = await call(
-        client.conversations.$get(
-          { query: { limit: '20', search } },
-          { init: { signal } }
-        )
-      );
-
-      return conversations;
-    },
   });
 }
 
