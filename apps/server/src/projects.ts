@@ -1,4 +1,4 @@
-import { PROJECT_NAME_LENGTH } from '@lab/harness';
+import { PROJECT_INSTRUCTIONS_LENGTH, PROJECT_NAME_LENGTH } from '@lab/harness';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import {
   PROJECT_LIMIT,
   createProject,
   listProjects,
-  renameProject,
+  updateProject,
 } from './project-access';
 import { validator } from './validator';
 
@@ -17,9 +17,21 @@ const params = validator(
   z.object({ id: z.coerce.number().int().positive() })
 );
 
-const naming = validator(
+const name = z.string().trim().min(1).max(PROJECT_NAME_LENGTH);
+
+const naming = validator('json', z.object({ name }));
+
+const change = validator(
   'json',
-  z.object({ name: z.string().trim().min(1).max(PROJECT_NAME_LENGTH) })
+  z
+    .object({
+      instructions: z.string().max(PROJECT_INSTRUCTIONS_LENGTH).optional(),
+      name: name.optional(),
+    })
+    .refine(
+      (value) => value.instructions !== undefined || value.name !== undefined,
+      'Nothing to change'
+    )
 );
 
 const projects = new Hono()
@@ -41,11 +53,11 @@ const projects = new Hono()
 
     return c.json({ project }, 201);
   })
-  .patch('/:id', params, naming, async (c) => {
-    const project = await renameProject(
+  .patch('/:id', params, change, async (c) => {
+    const project = await updateProject(
       c.get('user').id,
       c.req.valid('param').id,
-      c.req.valid('json').name
+      c.req.valid('json')
     );
 
     if (!project) {

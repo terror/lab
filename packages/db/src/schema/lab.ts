@@ -22,6 +22,7 @@ export const project = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    instructions: text('instructions').notNull().default(''),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [index('project_ownerId_idx').on(table.ownerId)]

@@ -10,7 +10,7 @@ export const toolNames = [
   'preferences_update',
   'project_create',
   'project_list',
-  'project_rename',
+  'project_update',
   'remember',
   'sandbox_exec',
   'sandbox_list',

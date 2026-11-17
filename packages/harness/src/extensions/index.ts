@@ -64,9 +64,11 @@ export {
   type SavedFile,
 } from './sandbox';
 export {
+  PROJECT_INSTRUCTIONS_LENGTH,
   PROJECT_NAME_LENGTH,
+  type Project,
   type ProjectAccess,
-  type ProjectSummary,
+  type ProjectChange,
 } from './project';
 export {
   ProfileDoc,

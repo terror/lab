@@ -36,9 +36,12 @@ export async function createProject(name: string) {
   return project;
 }
 
-export async function renameProject({ id, name }: Project) {
+export async function updateProject({
+  id,
+  ...json
+}: Pick<Project, 'id'> & Partial<Pick<Project, 'instructions' | 'name'>>) {
   const { project } = await call(
-    client.projects[':id'].$patch({ json: { name }, param: { id: String(id) } })
+    client.projects[':id'].$patch({ json, param: { id: String(id) } })
   );
 
   return project;

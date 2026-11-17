@@ -7,32 +7,36 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+export const PROJECT_INSTRUCTIONS_LENGTH = 8_000;
+
 export const PROJECT_NAME_LENGTH = 80;
 
-export type ProjectSummary = { id: number; name: string };
+export type Project = { id: number; instructions: string; name: string };
+
+export type ProjectChange = { instructions?: string; name?: string };
 
 export type ChatMove = {
   chat: { id: number; title: string | null };
-  project: ProjectSummary | null;
+  project: Project | null;
 };
 
 export type ProjectAccess = {
   create(
     conversationId: ConversationId,
     name: string
-  ): Promise<ProjectSummary | undefined>;
-  current(conversationId: ConversationId): Promise<ProjectSummary | undefined>;
-  list(conversationId: ConversationId): Promise<ProjectSummary[]>;
+  ): Promise<Project | undefined>;
+  current(conversationId: ConversationId): Promise<Project | undefined>;
+  list(conversationId: ConversationId): Promise<Project[]>;
   move(
     conversationId: ConversationId,
     chatId: number,
     projectId: number | null
   ): Promise<ChatMove | undefined>;
-  rename(
+  update(
     conversationId: ConversationId,
     id: number,
-    name: string
-  ): Promise<ProjectSummary | undefined>;
+    change: ProjectChange
+  ): Promise<Project | undefined>;
 };
 
 function text(value: string) {
@@ -43,7 +47,7 @@ function failure(message: string): ToolExecutionResult {
   return { isError: true, output: text(message) };
 }
 
-function line({ id, name: projectName }: ProjectSummary) {
+function line({ id, name: projectName }: Project) {
   return `[${id}] ${projectName}`;
 }
 
@@ -84,7 +88,7 @@ export function project(access: ProjectAccess) {
     parameters: obj({ name }),
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
       const created =
-        (await api.memo<ProjectSummary>('project', context)) ??
+        (await api.memo<Project>('project', context)) ??
         (await access.create(api.conversationId, args.name));
 
       if (!created) {
@@ -100,21 +104,32 @@ export function project(access: ProjectAccess) {
     },
   });
 
-  const projectRename = defineTool({
-    name: 'project_rename',
-    description: 'Rename a project.',
-    parameters: obj({ id: projectId, name }),
-    execute: async (args, api): Promise<ToolExecutionResult> => {
-      const renamed = await access.rename(
-        api.conversationId,
-        args.id,
-        args.name
-      );
+  const projectUpdate = defineTool({
+    name: 'project_update',
+    description:
+      'Rename a project or replace its instructions, which apply to every chat in it. Only the fields you pass change.',
+    parameters: obj({
+      id: projectId,
+      instructions: opt(
+        str({
+          description:
+            'The full new instructions. Pass an empty string to clear them.',
+          maxLength: PROJECT_INSTRUCTIONS_LENGTH,
+        })
+      ),
+      name: opt(name),
+    }),
+    execute: async ({ id, ...change }, api): Promise<ToolExecutionResult> => {
+      if (change.instructions === undefined && change.name === undefined) {
+        return failure('Pass a name or instructions to change.');
+      }
 
-      return renamed
+      const updated = await access.update(api.conversationId, id, change);
+
+      return updated
         ? {
-            details: { project: renamed },
-            output: text(`Renamed the project to ${line(renamed)}.`),
+            details: { project: updated },
+            output: text(`Updated the project ${line(updated)}.`),
           }
         : failure(missing);
     },
@@ -161,13 +176,24 @@ export function project(access: ProjectAccess) {
       section('project', async ({ conversationId }) => {
         const current = await access.current(conversationId);
 
-        const place = current
-          ? `This chat is in the user's project ${line(current)}.`
-          : 'This chat is not in a project.';
+        const tools =
+          'You can list, create, rename, and change the instructions of projects and move chats between them with project_list, project_create, project_update, and chat_move.';
 
-        return `${place} You can list, create, and rename projects and move chats between them with project_list, project_create, project_rename, and chat_move.`;
+        if (!current) {
+          return `This chat is not in a project. ${tools}`;
+        }
+
+        const instructions = current.instructions.trim();
+
+        return [
+          `This chat is in the user's project ${line(current)}. ${tools}`,
+          instructions &&
+            `The project's instructions apply to every chat in it and take precedence over the user's general custom instructions:\n${instructions}`,
+        ]
+          .filter(Boolean)
+          .join('\n\n');
       }),
     ],
-    tools: [chatMove, projectCreate, projectList, projectRename],
+    tools: [chatMove, projectCreate, projectList, projectUpdate],
   });
 }
