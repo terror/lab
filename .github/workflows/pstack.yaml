@@ -1,0 +1,47 @@
+name: Sync pstack
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync skills
+        run: bin/sync-pstack
+
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain .claude/skills)" ]; then
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch --create sync-pstack
+          git add .claude/skills
+          git commit --message 'Sync pstack skills'
+          git push --force origin sync-pstack
+
+          if [ -z "$(gh pr list --head sync-pstack --json number --jq '.[]')" ]; then
+            gh pr create \
+              --title 'Sync pstack skills' \
+              --body 'Updates the vendored pstack skills from cursor/plugins.'
+          fi
