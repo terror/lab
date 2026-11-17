@@ -2,10 +2,12 @@ import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, desc, eq, gte, isNull, notExists, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
-import { requireUser } from './auth';
+import { isAdmin, requireUser } from './auth';
 import { db } from './db';
+import { env } from './env';
 import { flushHelperUsage } from './helper-usage';
 import { models as catalog } from './models';
 import { eachEntry, entryChanges, observe } from './pipeline';
@@ -102,12 +104,7 @@ const budgetBody = validator(
   z.object({ limit: z.number().positive().max(1_000_000).nullable() })
 );
 
-async function budget(ownerId: string) {
-  const [row] = await db
-    .select({ limit: schema.spendBudget.monthlyLimit })
-    .from(schema.spendBudget)
-    .where(eq(schema.spendBudget.ownerId, ownerId));
-
+async function monthSpend(ownerId: string) {
   const [month] = await db
     .select({ spent: total(sql`${table.cost}`) })
     .from(table)
@@ -118,7 +115,44 @@ async function budget(ownerId: string) {
       )
     );
 
-  return { limit: row?.limit ?? null, spent: month?.spent ?? 0 };
+  return month?.spent ?? 0;
+}
+
+async function budget(ownerId: string) {
+  const [row] = await db
+    .select({ limit: schema.spendBudget.monthlyLimit })
+    .from(schema.spendBudget)
+    .where(eq(schema.spendBudget.ownerId, ownerId));
+
+  return { limit: row?.limit ?? null, spent: await monthSpend(ownerId) };
+}
+
+const dollars = new Intl.NumberFormat('en-US', {
+  currency: 'USD',
+  style: 'currency',
+});
+
+export async function checkSpend(ownerId: string) {
+  const limit = env.LAB_MONTHLY_LIMIT;
+
+  if (limit === undefined) {
+    return;
+  }
+
+  const [owner] = await db
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(eq(schema.user.id, ownerId));
+
+  if (!owner || isAdmin(owner)) {
+    return;
+  }
+
+  if ((await monthSpend(ownerId)) >= limit) {
+    throw new HTTPException(402, {
+      message: `You’ve used this month’s ${dollars.format(limit)} limit`,
+    });
+  }
 }
 
 const usage = new Hono()

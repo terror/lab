@@ -12,6 +12,7 @@ import {
   attachmentSchema,
   attachmentTextLimit,
 } from './schemas';
+import { checkSpend } from './usage';
 
 export const draftSchema = z.object({
   attachments: z.array(attachmentSchema).max(8).default([]),
@@ -103,7 +104,10 @@ export async function submitMessage(
   draft: { attachments: Attachment[]; content: string },
   whenBusy: 'followUp' | 'steer' = 'followUp'
 ) {
-  await selectConnectors(conversation, await requireOwner(conversation.id));
+  const ownerId = await requireOwner(conversation.id);
+
+  await checkSpend(ownerId);
+  await selectConnectors(conversation, ownerId);
 
   return conversation.submit(
     {
