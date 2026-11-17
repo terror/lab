@@ -1,12 +1,13 @@
 import { expect, test } from 'vitest';
 
-import { type Row, mergeReplies } from './conversation';
+import { type Row, type Span, mergeReplies } from './conversation';
 
-function reply(key: string, text: string): Row {
+function reply(key: string, text: string, span?: Span): Row {
   return {
     key,
     kind: 'assistant',
     parts: [{ text, type: 'text' }],
+    span,
   };
 }
 
@@ -39,5 +40,24 @@ test('consecutive replies merge into one row per turn', () => {
     },
     user('d'),
     reply('e', 'baz'),
+  ]);
+});
+
+test('merged replies span the whole turn', () => {
+  expect(
+    mergeReplies([
+      reply('a', 'foo', { end: 3, start: 1 }),
+      reply('b', 'bar', { end: 9, start: 5 }),
+    ])
+  ).toEqual([
+    {
+      key: 'a',
+      kind: 'assistant',
+      parts: [
+        { text: 'foo', type: 'text' },
+        { text: 'bar', type: 'text' },
+      ],
+      span: { end: 9, start: 1 },
+    },
   ]);
 });

@@ -86,3 +86,25 @@ export function period(value: string, now: Date) {
     ? month.format(date)
     : monthYear.format(date);
 }
+
+export function duration(milliseconds: number) {
+  const seconds = Math.max(1, Math.round(milliseconds / 1_000));
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+export function clock(milliseconds: number) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1_000));
+
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
