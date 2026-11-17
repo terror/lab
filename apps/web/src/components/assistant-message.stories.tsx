@@ -1,3 +1,5 @@
+import { expect } from 'storybook/test';
+
 import preview from '../../.storybook/preview';
 import { AssistantMessage } from './assistant-message';
 
@@ -47,5 +49,23 @@ export const ToolCall = meta.story({
     results: new Map([
       ['call-1', { isError: false, output: 'Open 9:00 to 17:00' }],
     ]),
+  },
+});
+
+export const LongRunningStep = meta.story({
+  args: {
+    parts: [
+      {
+        arguments: { command: 'foo '.repeat(100) },
+        id: 'call-1',
+        name: 'sandbox_exec',
+        type: 'toolCall',
+      },
+    ],
+    streaming: true,
+    working: true,
+  },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.scrollWidth).toBe(canvasElement.clientWidth);
   },
 });
