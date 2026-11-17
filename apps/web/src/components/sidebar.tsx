@@ -239,15 +239,18 @@ function SortMenu() {
 function NavButton({
   active,
   children,
+  expanded,
   onClick,
 }: {
   active: boolean;
   children: ReactNode;
+  expanded?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       aria-current={active ? 'page' : undefined}
+      aria-expanded={expanded}
       className={cn(
         'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent',
         active && 'bg-sidebar-accent text-sidebar-accent-foreground'
@@ -338,8 +341,28 @@ function ProjectsSection({
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
+  const [closed, setClosed] = useState<number>();
 
   const open = openProject(path, summary.data?.projectId);
+
+  const [previous, setPrevious] = useState(open);
+
+  if (open !== previous) {
+    setPrevious(open);
+    setClosed(undefined);
+  }
+
+  const showing = closed === open ? undefined : open;
+
+  const select = (id: number) => {
+    if (id !== open) {
+      setClosed(undefined);
+      onProject(id);
+      return;
+    }
+
+    setClosed(closed === open ? undefined : open);
+  };
 
   const all = projects.data?.projects ?? [];
 
@@ -378,14 +401,17 @@ function ProjectsSection({
         id={list}
       >
         {shown.map((project) => {
-          const Icon = project.id === open ? FolderOpen : Folder;
+          const Icon = project.id === showing ? FolderOpen : Folder;
 
           return (
             <div key={project.id} className='flex flex-col gap-0.5'>
               <div className='group relative flex items-center'>
                 <NavButton
                   active={path === `/projects/${project.id}`}
-                  onClick={() => onProject(project.id)}
+                  expanded={
+                    project.id === open ? project.id === showing : undefined
+                  }
+                  onClick={() => select(project.id)}
                 >
                   <Icon aria-hidden='true' className='size-4 shrink-0' />
                   <span className='truncate pr-6'>{project.name}</span>
@@ -396,7 +422,7 @@ function ProjectsSection({
                   project={project}
                 />
               </div>
-              {project.id === open && (
+              {project.id === showing && (
                 <ProjectChats
                   id={project.id}
                   onProject={onProject}
