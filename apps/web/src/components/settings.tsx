@@ -49,7 +49,7 @@ function Appearance() {
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
   return (
-    <section className='space-y-6'>
+    <section className='space-y-8'>
       <div className='space-y-1'>
         <h1 className='text-2xl font-semibold tracking-tight'>Appearance</h1>
         <p className='text-sm text-muted-foreground'>

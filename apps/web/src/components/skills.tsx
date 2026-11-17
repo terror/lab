@@ -104,29 +104,31 @@ function SkillRow({
   skill: Skill;
 }) {
   return (
-    <li className='flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors hover:bg-muted/50'>
+    <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
       <div className='min-w-0 flex-1'>
         <p className='truncate text-sm font-medium'>{skill.name}</p>
         <p className='truncate text-sm text-muted-foreground'>
           {skill.description}
         </p>
       </div>
-      <Button
-        aria-label={`Edit ${skill.name}`}
-        onClick={onEdit}
-        size='sm'
-        variant='ghost'
-      >
-        Edit
-      </Button>
-      <Button
-        aria-label={`Delete ${skill.name}`}
-        onClick={onDelete}
-        size='sm'
-        variant='ghost'
-      >
-        Delete
-      </Button>
+      <div className='flex shrink-0 items-center gap-1'>
+        <Button
+          aria-label={`Delete ${skill.name}`}
+          onClick={onDelete}
+          size='sm'
+          variant='ghost'
+        >
+          Delete
+        </Button>
+        <Button
+          aria-label={`Edit ${skill.name}`}
+          onClick={onEdit}
+          size='sm'
+          variant='secondary'
+        >
+          Edit
+        </Button>
+      </div>
     </li>
   );
 }
@@ -145,7 +147,7 @@ function SkillList({ skills }: { skills: readonly Skill[] }) {
       {skills.length === 0 && editing !== 'new' && (
         <p className='text-sm text-muted-foreground'>No skills yet.</p>
       )}
-      <ul className='-mx-3 flex flex-col gap-1'>
+      <ul className='-mx-3 flex flex-col'>
         {skills.map((skill) =>
           editing === skill.id ? (
             <li key={skill.id} className='px-3'>
