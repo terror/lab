@@ -10,8 +10,8 @@ import { found } from './found';
 import { harness } from './harness';
 import { keyParam, validator } from './validator';
 
-async function read() {
-  const doc = await harness.snapshot(MemoryDoc, BACKGROUND_CONTEXT);
+async function read(ownerId: string) {
+  const doc = await harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT);
 
   return {
     instructions: doc?.instructions ?? '',
@@ -35,12 +35,12 @@ const addition = validator(
 
 const memory = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json(await read()))
+  .get('/', async (c) => c.json(await read(c.get('user').id)))
   .patch('/', settings, async (c) => {
     const { instructions, referenceChats } = c.req.valid('json');
 
     await harness.commit(async (tx) => {
-      const doc = await tx.doc(MemoryDoc);
+      const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       if (instructions !== undefined) {
         doc.instructions = instructions;
@@ -51,13 +51,13 @@ const memory = new Hono()
       }
     }, BACKGROUND_CONTEXT);
 
-    return c.json(await read());
+    return c.json(await read(c.get('user').id));
   })
   .post('/', addition, async (c) => {
     const { text } = c.req.valid('json');
 
     const added = await harness.commit(async (tx) => {
-      const doc = await tx.doc(MemoryDoc);
+      const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       if (doc.memories.length >= MEMORY_LIMIT) {
         return false;
@@ -76,13 +76,13 @@ const memory = new Hono()
       throw new HTTPException(400, { message: 'Memory is full' });
     }
 
-    return c.json(await read(), 201);
+    return c.json(await read(c.get('user').id), 201);
   })
   .delete('/:id', keyParam, async (c) => {
     const { id } = c.req.valid('param');
 
     const removed = await harness.commit(async (tx) => {
-      const doc = await tx.doc(MemoryDoc);
+      const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       const index = doc.memories.findIndex((entry) => entry.id === id);
 
@@ -95,7 +95,7 @@ const memory = new Hono()
 
     found(removed, 'Memory not found');
 
-    return c.json(await read());
+    return c.json(await read(c.get('user').id));
   });
 
 export default memory;

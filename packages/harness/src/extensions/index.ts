@@ -17,6 +17,7 @@ import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
 import { title } from './title';
+import type { Owner } from './users';
 import { type WebAccess, web } from './web';
 
 export {
@@ -95,6 +96,7 @@ export {
   trashKinds,
 } from './chats';
 export { PreferencesDoc } from './preferences';
+export { type Owner, userDoc } from './users';
 export { TitleDoc, plainTitle } from './title';
 export {
   type WebAccess,
@@ -106,6 +108,7 @@ export {
 
 export type ExtensionDeps = {
   chats: ChatsAccess;
+  owner: Owner;
   history: HistoryAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
@@ -140,15 +143,15 @@ export function extensions(deps: ExtensionDeps) {
     chats(deps.chats),
     codemode,
     output,
-    preferences,
+    preferences(deps.owner),
     compaction(deps.onHelperUsage),
-    history(deps.history),
+    history(deps.history, deps.owner),
     library(deps.library),
-    memory,
+    memory(deps.owner),
     project(deps.project),
-    sandbox(deps.sandbox),
-    schedule(deps.schedule),
-    skills,
+    sandbox(deps.sandbox, deps.owner),
+    schedule(deps.schedule, deps.owner),
+    skills(deps.owner),
     title(deps.onHelperUsage),
     web(deps.web),
   ].map(ownLimits);

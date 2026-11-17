@@ -188,6 +188,8 @@ test('conversations are listed by their latest message', async () => {
     content: 'bar',
   });
 
+  await idle(first);
+
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: {
       conversations: [

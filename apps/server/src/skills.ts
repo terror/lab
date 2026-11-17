@@ -45,19 +45,19 @@ function saved(result: SkillChange) {
   return result.skill;
 }
 
-async function read() {
-  const doc = await harness.snapshot(SkillsDoc, BACKGROUND_CONTEXT);
+async function read(ownerId: string) {
+  const doc = await harness.snapshot(SkillsDoc, ownerId, BACKGROUND_CONTEXT);
 
   return { skills: [...(doc?.skills ?? [])] };
 }
 
 const skills = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json(await read()))
+  .get('/', async (c) => c.json(await read(c.get('user').id)))
   .post('/', creation, async (c) => {
     const result = await harness.commit(
       async (tx) =>
-        createSkill(await tx.doc(SkillsDoc), {
+        createSkill(await tx.doc(SkillsDoc, c.get('user').id, null), {
           ...c.req.valid('json'),
           id: randomUUID().slice(0, 8),
           now: Date.now(),
@@ -67,12 +67,12 @@ const skills = new Hono()
 
     saved(result);
 
-    return c.json(await read(), 201);
+    return c.json(await read(c.get('user').id), 201);
   })
   .patch('/:id', keyParam, change, async (c) => {
     const result = await harness.commit(
       async (tx) =>
-        updateSkill(await tx.doc(SkillsDoc), {
+        updateSkill(await tx.doc(SkillsDoc, c.get('user').id, null), {
           ...c.req.valid('json'),
           id: c.req.valid('param').id,
           now: Date.now(),
@@ -82,18 +82,21 @@ const skills = new Hono()
 
     saved(result);
 
-    return c.json(await read());
+    return c.json(await read(c.get('user').id));
   })
   .delete('/:id', keyParam, async (c) => {
     const removed = await harness.commit(
       async (tx) =>
-        deleteSkill(await tx.doc(SkillsDoc), c.req.valid('param').id),
+        deleteSkill(
+          await tx.doc(SkillsDoc, c.get('user').id, null),
+          c.req.valid('param').id
+        ),
       BACKGROUND_CONTEXT
     );
 
     found(removed, 'Skill not found');
 
-    return c.json(await read());
+    return c.json(await read(c.get('user').id));
   });
 
 export default skills;

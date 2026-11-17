@@ -139,7 +139,8 @@ const schedules = new Hono()
   .get('/', async (c) => c.json({ tasks: await listTasks(c.get('user').id) }))
   .put('/timezone', timezone, async (c) => {
     await harness.commit(async (tx) => {
-      (await tx.doc(ProfileDoc)).timezone = c.req.valid('json').timezone;
+      (await tx.doc(ProfileDoc, c.get('user').id, null)).timezone =
+        c.req.valid('json').timezone;
     }, BACKGROUND_CONTEXT);
 
     return c.body(null, 204);

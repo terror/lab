@@ -61,7 +61,7 @@ test('the agent remembers and forgets facts', async () => {
 });
 
 test('instructions and memories are added to the prompt', async () => {
-  const [section] = memory.sections ?? [];
+  const [section] = memory(async () => 'foo').sections ?? [];
 
   const render = (doc: unknown) =>
     section?.render(

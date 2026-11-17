@@ -20,6 +20,7 @@ export {
   completeHelper,
   helperModel,
 } from './helper';
+export { adoptGlobalDocs } from './adopt';
 export { purgeConversations } from './purge';
 export { createRegistry } from '@earendil-works/pi-durable';
 export { createToolSearchExtension } from '@earendil-works/pi-durable/tool-search';

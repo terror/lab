@@ -254,7 +254,7 @@ async function applyNetwork(
 }
 
 async function computerFor(
-  readNetwork: () => Promise<NetworkMode>,
+  readNetwork: (ownerId: string) => Promise<NetworkMode>,
   conversationId: number
 ): Promise<Computer> {
   const provider = await activeProvider();
@@ -267,7 +267,7 @@ async function computerFor(
 
   const name = computerName(ownerId);
 
-  await applyNetwork(provider, name, await readNetwork());
+  await applyNetwork(provider, name, await readNetwork(ownerId));
 
   return { chat: `chats/${conversationId}`, name, ownerId, provider };
 }
@@ -325,7 +325,7 @@ async function run(
 }
 
 export function createSandboxAccess(
-  readNetwork: () => Promise<NetworkMode>
+  readNetwork: (ownerId: string) => Promise<NetworkMode>
 ): SandboxAccess {
   const computerOf = (conversationId: number) =>
     computerFor(readNetwork, conversationId);
