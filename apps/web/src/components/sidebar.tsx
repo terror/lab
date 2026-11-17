@@ -495,9 +495,7 @@ function SidebarPanel({
   selected,
   user,
 }: {
-  conversations:
-    | { id: number; pinned: boolean; running: boolean; title: string | null }[]
-    | undefined;
+  conversations: ReturnType<typeof useConversations>['data'];
   error: boolean;
   onLoadMore: (() => void) | undefined;
   onNavigate: (to: NavPath) => void;

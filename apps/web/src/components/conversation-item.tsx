@@ -2,12 +2,20 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -16,12 +24,16 @@ import {
   deleteConversation,
   updateConversation,
 } from '@/lib/conversations';
+import { projectsQueryOptions, useProjects } from '@/lib/projects';
 import { restoreFromTrash, useTrashAction } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Ellipsis,
+  Folder,
+  FolderInput,
+  FolderMinus,
   LoaderCircle,
   Pencil,
   Pin,
@@ -82,19 +94,84 @@ function RenameInput({
   );
 }
 
+const dropdownParts = {
+  Item: DropdownMenuItem,
+  Separator: DropdownMenuSeparator,
+  Sub: DropdownMenuSub,
+  SubContent: DropdownMenuSubContent,
+  SubTrigger: DropdownMenuSubTrigger,
+};
+
+const contextParts = {
+  Item: ContextMenuItem,
+  Separator: ContextMenuSeparator,
+  Sub: ContextMenuSub,
+  SubContent: ContextMenuSubContent,
+  SubTrigger: ContextMenuSubTrigger,
+};
+
+type MenuParts = typeof dropdownParts | typeof contextParts;
+
+function MoveItems({
+  onMove,
+  parts: { Item, Separator, Sub, SubContent, SubTrigger },
+  projectId,
+}: {
+  onMove: (projectId: number | null) => void;
+  parts: MenuParts;
+  projectId: number | null;
+}) {
+  const projects = useProjects();
+
+  const targets =
+    projects.data?.projects.filter((project) => project.id !== projectId) ?? [];
+
+  return (
+    <Sub>
+      <SubTrigger>
+        <FolderInput aria-hidden='true' />
+        Move to project
+      </SubTrigger>
+      <SubContent className='max-h-80 overflow-y-auto'>
+        {targets.map((project) => (
+          <Item key={project.id} onSelect={() => onMove(project.id)}>
+            <Folder aria-hidden='true' />
+            <span className='truncate'>{project.name}</span>
+          </Item>
+        ))}
+        {projectId !== null && (
+          <>
+            {targets.length > 0 && <Separator />}
+            <Item onSelect={() => onMove(null)}>
+              <FolderMinus aria-hidden='true' />
+              Remove from project
+            </Item>
+          </>
+        )}
+      </SubContent>
+    </Sub>
+  );
+}
+
 function MenuItems({
-  Item,
   onDelete,
+  onMove,
   onPin,
   onRename,
+  parts,
   pinned,
+  projectId,
 }: {
-  Item: typeof ContextMenuItem | typeof DropdownMenuItem;
   onDelete: () => void;
+  onMove: (projectId: number | null) => void;
   onPin: () => void;
   onRename: () => void;
+  parts: MenuParts;
   pinned: boolean;
+  projectId: number | null;
 }) {
+  const { Item } = parts;
+
   return (
     <>
       <Item onSelect={onPin}>
@@ -105,6 +182,7 @@ function MenuItems({
         <Pencil aria-hidden='true' />
         Rename
       </Item>
+      <MoveItems onMove={onMove} parts={parts} projectId={projectId} />
       <Item onSelect={onDelete} variant='destructive'>
         <Trash2 aria-hidden='true' />
         Delete
@@ -121,6 +199,7 @@ export function ConversationItem({
   conversation: {
     id: number;
     pinned: boolean;
+    projectId: number | null;
     running: boolean;
     title: string | null;
   };
@@ -145,9 +224,33 @@ export function ConversationItem({
     onSettled: refresh,
   });
 
+  const move = useMutation({
+    mutationFn: (projectId: number | null) =>
+      updateConversation(conversation.id, { projectId }),
+    onSettled: async () => {
+      await refresh();
+      await queryClient.invalidateQueries({
+        queryKey: projectsQueryOptions.queryKey,
+      });
+    },
+    onSuccess: (_, projectId) => {
+      const previous = conversation.projectId;
+
+      const name = queryClient
+        .getQueryData(projectsQueryOptions.queryKey)
+        ?.projects.find((project) => project.id === projectId)?.name;
+
+      toast(name ? `Moved to ${name}.` : 'Removed from project.', {
+        action: { label: 'Undo', onClick: () => move.mutate(previous) },
+      });
+    },
+  });
+
   const menuProps = {
+    onMove: (projectId: number | null) => move.mutate(projectId),
     onPin: () => update.mutate({ pinned: !conversation.pinned }),
     pinned: conversation.pinned,
+    projectId: conversation.projectId,
   };
 
   const restore = useTrashAction(() =>
@@ -244,7 +347,7 @@ export function ConversationItem({
                 >
                   <MenuItems
                     {...menuProps}
-                    Item={DropdownMenuItem}
+                    parts={dropdownParts}
                     onDelete={() => remove.mutate()}
                     onRename={startRename}
                   />
@@ -262,7 +365,7 @@ export function ConversationItem({
         <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
           <MenuItems
             {...menuProps}
-            Item={ContextMenuItem}
+            parts={contextParts}
             onDelete={() => remove.mutate()}
             onRename={startRename}
           />

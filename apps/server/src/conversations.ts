@@ -110,6 +110,7 @@ const update = validator(
   z
     .object({
       pinned: z.boolean().optional(),
+      projectId: z.number().int().positive().nullable().optional(),
       title: z.string().trim().min(1).max(200).optional(),
     })
     .refine(
@@ -469,7 +470,14 @@ const conversations = new Hono()
   .patch('/:id', params, owned, update, async (c) => {
     const { conversation } = c.var;
 
-    const { pinned, title } = c.req.valid('json');
+    const { pinned, projectId, title } = c.req.valid('json');
+
+    if (
+      projectId !== undefined &&
+      !(await moveChat(c.get('user').id, conversation.id, projectId))
+    ) {
+      throw new HTTPException(404, { message: 'Project not found' });
+    }
 
     if (title !== undefined) {
       await conversation.commit(async (tx) => {

@@ -140,7 +140,7 @@ export async function createConversation(
 
 export async function updateConversation(
   id: number,
-  json: { pinned?: boolean; title?: string }
+  json: { pinned?: boolean; projectId?: number | null; title?: string }
 ) {
   await call(
     client.conversations[':id'].$patch({ param: { id: String(id) }, json })
