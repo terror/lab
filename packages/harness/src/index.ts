@@ -13,7 +13,12 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { type ExtensionDeps, extensions } from './extensions';
 
 export * from './extensions';
-export { type HelperKind, type HelperUsage, helperModel } from './helper';
+export {
+  type HelperKind,
+  type HelperUsage,
+  completeHelper,
+  helperModel,
+} from './helper';
 export { purgeConversations } from './purge';
 
 export type HarnessOptions = ExtensionDeps & {

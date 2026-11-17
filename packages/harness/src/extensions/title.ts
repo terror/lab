@@ -8,7 +8,7 @@ import {
   runEndTask,
 } from '@earendil-works/pi-durable';
 
-import { type HelperUsage, helperModel } from '../helper';
+import { type HelperUsage, completeHelper, helperModel } from '../helper';
 
 const MESSAGE_LIMIT = 2_000;
 
@@ -80,22 +80,18 @@ function generateTitle(onHelperUsage: HelperUsage) {
           )
           .join('\n\n');
 
-        const answer = await runtime.models.completeSimple(
-          model,
-          {
-            systemPrompt: PROMPT,
-            messages: [
-              { role: 'user', content: transcript, timestamp: runtime.now() },
-            ],
-          },
-          { maxTokens: 32, signal: runtime.signal }
-        );
+        const answer = await completeHelper(runtime.models, model, {
+          input: transcript,
+          maxTokens: 32,
+          prompt: PROMPT,
+          signal: runtime.signal,
+        });
 
         runtime.signal.throwIfAborted();
 
-        onHelperUsage(runtime.conversationId, 'title', answer);
+        onHelperUsage(runtime.conversationId, 'title', answer.message);
 
-        return finish(text(answer).trim().replace(/^"|"$/g, ''));
+        return finish(answer.text.replace(/^"|"$/g, ''));
       },
     },
     abort: async (_task, runtime, context) => {
