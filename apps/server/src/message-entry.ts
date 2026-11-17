@@ -10,6 +10,7 @@ const messageDataSchema = z.object({
         name: z.string(),
         text: z.string().optional(),
         type: z.enum(['file', 'image']),
+        uploadId: z.string().optional(),
       })
     )
     .default([]),

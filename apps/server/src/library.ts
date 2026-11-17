@@ -1,6 +1,6 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -72,26 +72,29 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
       ];
     });
 
-  const fileItems = files.flatMap(({ name, position, text, type }) => {
-    if (type !== 'file' || text === undefined) {
-      return [];
+  const fileItems = files.flatMap(
+    ({ name, position, text, type, uploadId }) => {
+      if (type !== 'file' || text === undefined) {
+        return [];
+      }
+
+      const content = new TextEncoder().encode(text);
+
+      return [
+        {
+          ...base,
+          content,
+          kind: 'file' as const,
+          mimeType: 'text/plain',
+          name,
+          position,
+          preview: text.slice(0, PREVIEW_LENGTH),
+          size: content.byteLength,
+          uploadId,
+        },
+      ];
     }
-
-    const content = new TextEncoder().encode(text);
-
-    return [
-      {
-        ...base,
-        content,
-        kind: 'file' as const,
-        mimeType: 'text/plain',
-        name,
-        position,
-        preview: text.slice(0, PREVIEW_LENGTH),
-        size: content.byteLength,
-      },
-    ];
-  });
+  );
 
   return [...imageItems, ...fileItems];
 }
@@ -101,15 +104,40 @@ async function record(entries: readonly EntryRecord[]) {
     entries.map(({ conversationId }) => conversationId)
   );
 
+  const uploads = await uploadOwners(
+    entries.flatMap((entry) =>
+      attachments(entry).flatMap(({ uploadId }) => uploadId ?? [])
+    )
+  );
+
   for (const entry of entries) {
     const ownerId = owned.get(entry.conversationId);
 
-    const rows = ownerId ? items(entry, ownerId) : [];
+    const rows = (ownerId ? items(entry, ownerId) : []).map((row) => ({
+      ...row,
+      uploadId:
+        row.uploadId && uploads.get(row.uploadId) === row.ownerId
+          ? row.uploadId
+          : null,
+    }));
 
     if (rows.length > 0) {
       await db.insert(table).values(rows).onConflictDoNothing();
     }
   }
+}
+
+async function uploadOwners(ids: readonly string[]) {
+  if (ids.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const rows = await db
+    .select({ id: schema.upload.id, ownerId: schema.upload.ownerId })
+    .from(schema.upload)
+    .where(inArray(schema.upload.id, [...new Set(ids)]));
+
+  return new Map(rows.map(({ id, ownerId }) => [id, ownerId]));
 }
 
 function attached(entry: EntryRecord) {
@@ -129,6 +157,20 @@ export async function backfillLibrary() {
   for (const { id } of conversations) {
     await backfill('library', id, (page) => record(page.filter(attached)));
   }
+}
+
+async function uploadFor(id: number, ownerId: string) {
+  const [row] = await db
+    .select({
+      content: schema.upload.content,
+      mimeType: schema.upload.mimeType,
+      thumbnail: schema.upload.thumbnail,
+    })
+    .from(table)
+    .innerJoin(schema.upload, eq(schema.upload.id, table.uploadId))
+    .where(and(eq(table.id, id), eq(table.ownerId, ownerId)));
+
+  return row;
 }
 
 const listing = validator(
@@ -193,13 +235,16 @@ const library = new Hono()
         name: table.name,
         position: table.position,
         preview: table.preview,
-        size: table.size,
+        size: sql<number>`coalesce(octet_length(${schema.upload.content}), ${table.size})::int`,
+        thumbnail: sql<boolean>`${schema.upload.thumbnail} is not null`,
+        uploadId: table.uploadId,
       })
       .from(table)
       .innerJoin(
         schema.conversation,
         eq(schema.conversation.id, table.conversationId)
       )
+      .leftJoin(schema.upload, eq(schema.upload.id, table.uploadId))
       .where(
         and(
           eq(table.ownerId, user.id),
@@ -225,8 +270,37 @@ const library = new Hono()
         name: row.name,
         preview: row.preview,
         size: row.size,
+        upload: row.uploadId
+          ? { id: row.uploadId, thumbnail: row.thumbnail }
+          : null,
       })),
       next: last && rows.length > limit ? cursorFor(last) : null,
+    });
+  })
+  .get('/:id/original', params, async (c) => {
+    const upload = await uploadFor(c.req.valid('param').id, c.get('user').id);
+
+    if (!upload) {
+      throw new HTTPException(404, { message: 'File not found' });
+    }
+
+    return c.body(new Uint8Array(upload.content), 200, {
+      'cache-control': 'private, max-age=31536000, immutable',
+      'content-type': upload.mimeType,
+      'x-content-type-options': 'nosniff',
+    });
+  })
+  .get('/:id/thumbnail', params, async (c) => {
+    const upload = await uploadFor(c.req.valid('param').id, c.get('user').id);
+
+    if (!upload?.thumbnail) {
+      throw new HTTPException(404, { message: 'Thumbnail not found' });
+    }
+
+    return c.body(new Uint8Array(upload.thumbnail), 200, {
+      'cache-control': 'private, max-age=31536000, immutable',
+      'content-type': 'image/png',
+      'x-content-type-options': 'nosniff',
     });
   })
   .get('/:id', params, download, async (c) => {
@@ -248,14 +322,20 @@ const library = new Hono()
       throw new HTTPException(404, { message: 'File not found' });
     }
 
-    const disposition = c.req.valid('query').download ? 'attachment' : 'inline';
+    const { download: downloading } = c.req.valid('query');
+
+    const original = downloading ? await uploadFor(id, user.id) : undefined;
+
+    const disposition = downloading ? 'attachment' : 'inline';
 
     const type =
-      item.kind === 'file' ? 'text/plain; charset=utf-8' : item.mimeType;
+      original?.mimeType ??
+      (item.kind === 'file' ? 'text/plain; charset=utf-8' : item.mimeType);
 
-    const filename = /\.pdf$/i.test(item.name) ? `${item.name}.txt` : item.name;
+    const filename =
+      !original && /\.pdf$/i.test(item.name) ? `${item.name}.txt` : item.name;
 
-    return c.body(new Uint8Array(item.content), 200, {
+    return c.body(new Uint8Array(original?.content ?? item.content), 200, {
       'cache-control': 'private, max-age=31536000, immutable',
       'content-disposition': `${disposition}; filename*=UTF-8''${encodeURIComponent(filename)}`,
       'content-type': type,

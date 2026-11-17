@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { pdfText } from './pdf';
+import { readPdf } from './pdf';
 
 function pdf(lines: string[]) {
   const stream = lines
@@ -42,6 +42,11 @@ function pdf(lines: string[]) {
   return new Blob([header, ...bodies, xref], { type: 'application/pdf' });
 }
 
-test('text is extracted from a PDF', async () => {
-  expect(await pdfText(pdf(['foo', 'bar']))).toBe('foo\nbar');
+test('text and a first-page thumbnail are read from a PDF', async () => {
+  const { text, thumbnail } = await readPdf(pdf(['foo', 'bar']));
+
+  expect({ text, thumbnail: thumbnail?.type }).toEqual({
+    text: 'foo\nbar',
+    thumbnail: 'image/png',
+  });
 });

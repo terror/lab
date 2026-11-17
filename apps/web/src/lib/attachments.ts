@@ -5,6 +5,7 @@ import {
 } from '@lab/server/schemas';
 
 import { type LibraryItem, libraryItemUrl } from './library';
+import { uploadDocument } from './uploads';
 
 export type { Attachment };
 
@@ -42,9 +43,9 @@ async function readPdf(file: File, limit: TextLimit): Promise<Attachment> {
     throw new Error(`${file.name} is too large to attach`);
   }
 
-  const { pdfText } = await import('./pdf');
+  const { readPdf: parsePdf } = await import('./pdf');
 
-  const text = await pdfText(file);
+  const { text, thumbnail } = await parsePdf(file);
 
   if (!text) {
     throw new Error(`${file.name} has no text to read`);
@@ -52,7 +53,12 @@ async function readPdf(file: File, limit: TextLimit): Promise<Attachment> {
 
   checkText(file.name, text, limit);
 
-  return { name: file.name, text, type: 'file' };
+  const uploadId = await uploadDocument(
+    new File([file], file.name, { type: 'application/pdf' }),
+    thumbnail
+  );
+
+  return { name: file.name, text, type: 'file', uploadId };
 }
 
 function isImageType(type: string): type is ImageType {
@@ -160,7 +166,13 @@ export async function readLibraryItem(
 
     checkText(item.name, text, limit);
 
-    return { libraryId: item.id, name: item.name, text, type: 'file' };
+    return {
+      libraryId: item.id,
+      name: item.name,
+      text,
+      type: 'file',
+      ...(item.upload && { uploadId: item.upload.id }),
+    };
   }
 
   const attachment = await readAttachment(

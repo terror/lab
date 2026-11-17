@@ -23,6 +23,16 @@ export function libraryItemUrl(id: number, download = false) {
   }).href;
 }
 
+export function libraryOriginalUrl(id: number) {
+  return client.library[':id'].original.$url({ param: { id: String(id) } })
+    .href;
+}
+
+export function libraryThumbnailUrl(id: number) {
+  return client.library[':id'].thumbnail.$url({ param: { id: String(id) } })
+    .href;
+}
+
 function libraryQueryOptions(
   kind: LibraryKind | undefined,
   search: string | undefined
