@@ -1,19 +1,16 @@
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
 import { PROJECT_INSTRUCTIONS_LENGTH, PROJECT_NAME_LENGTH } from '@lab/harness';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
-import { harness } from './harness';
 import {
   PROJECT_LIMIT,
   createProject,
   listProjects,
-  trashProject,
   updateProject,
 } from './project-access';
+import { moveToTrash } from './trash';
 import { validator } from './validator';
 
 const params = validator(
@@ -71,19 +68,10 @@ const projects = new Hono()
     return c.json({ project });
   })
   .delete('/:id', params, async (c) => {
-    const chats = await trashProject(c.get('user').id, c.req.valid('param').id);
-
-    if (!chats) {
+    if (
+      !(await moveToTrash('project', c.get('user').id, c.req.valid('param').id))
+    ) {
       throw new HTTPException(404, { message: 'Project not found' });
-    }
-
-    for (const id of chats) {
-      const conversation = await harness.conversation(
-        id as ConversationId,
-        BACKGROUND_CONTEXT
-      );
-
-      await conversation?.abort(BACKGROUND_CONTEXT);
     }
 
     return c.body(null, 204);

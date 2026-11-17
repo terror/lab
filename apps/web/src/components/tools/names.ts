@@ -1,7 +1,10 @@
 export const toolNames = [
   'ask_user',
+  'chat_delete',
   'chat_move',
+  'chat_pin',
   'chat_read',
+  'chat_rename',
   'chat_search',
   'codemode',
   'forget',
@@ -28,6 +31,9 @@ export const toolNames = [
   'skill_read',
   'skill_update',
   'tool_output_read',
+  'trash_list',
+  'trash_purge',
+  'trash_restore',
   'web_fetch',
   'web_search',
 ] as const;

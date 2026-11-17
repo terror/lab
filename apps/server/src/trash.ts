@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { requireUser } from './auth';
 import { db } from './db';
 import { harness } from './harness';
-import { restoreProject } from './project-access';
+import { restoreProject, trashProject } from './project-access';
 import { removeChatFolder } from './sandbox';
 import { validator } from './validator';
 
@@ -19,6 +19,7 @@ type Trashable = {
   list: (ownerId: string) => Promise<Trashed[]>;
   purge: (ownerId: string, id: number) => Promise<boolean>;
   restore: (ownerId: string, id: number) => Promise<boolean>;
+  trash: (ownerId: string, id: number) => Promise<number[] | undefined>;
 };
 
 const table = schema.conversation;
@@ -57,6 +58,21 @@ async function purgeChat(ownerId: string, id: number) {
 }
 
 const conversations: Trashable = {
+  trash: async (ownerId, id) => {
+    const rows = await db
+      .update(table)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(table.id, id),
+          eq(table.ownerId, ownerId),
+          isNull(table.deletedAt)
+        )
+      )
+      .returning({ id: table.id });
+
+    return rows.length > 0 ? [id] : undefined;
+  },
   list: async (ownerId) => {
     const rows = await db
       .select({ deletedAt: table.deletedAt, id: table.id, title: table.title })
@@ -107,6 +123,7 @@ function trashedProject(ownerId: string, id: number) {
 }
 
 const projects: Trashable = {
+  trash: trashProject,
   list: async (ownerId) => {
     const rows = await db
       .select({
@@ -159,6 +176,38 @@ const trashables: Record<(typeof kinds)[number], Trashable> = {
   project: projects,
 };
 
+export type TrashKind = (typeof kinds)[number];
+
+export async function moveToTrash(
+  kind: TrashKind,
+  ownerId: string,
+  id: number,
+  { running }: { running?: number } = {}
+) {
+  const chats = await trashables[kind].trash(ownerId, id);
+
+  for (const chat of chats ?? []) {
+    if (chat !== running) {
+      const conversation = await harness.conversation(
+        chat as ConversationId,
+        BACKGROUND_CONTEXT
+      );
+
+      await conversation?.abort(BACKGROUND_CONTEXT);
+    }
+  }
+
+  return chats !== undefined;
+}
+
+export function restoreFromTrash(kind: TrashKind, ownerId: string, id: number) {
+  return trashables[kind].restore(ownerId, id);
+}
+
+export function purgeFromTrash(kind: TrashKind, ownerId: string, id: number) {
+  return trashables[kind].purge(ownerId, id);
+}
+
 const params = validator(
   'param',
   z.object({
@@ -167,7 +216,7 @@ const params = validator(
   })
 );
 
-async function items(ownerId: string) {
+export async function listTrash(ownerId: string) {
   const lists = await Promise.all(
     kinds.map(async (kind) =>
       (await trashables[kind].list(ownerId)).map((item) => ({ ...item, kind }))
@@ -189,7 +238,7 @@ const trash = new Hono()
   .use(requireUser)
   .get('/', async (c) =>
     c.json({
-      items: (await items(c.get('user').id)).map(
+      items: (await listTrash(c.get('user').id)).map(
         ({ deletedAt, id, kind, title }) => ({
           deletedAt: deletedAt.toISOString(),
           id,
@@ -216,7 +265,7 @@ const trash = new Hono()
   .delete('/', async (c) => {
     const ownerId = c.get('user').id;
 
-    for (const { id, kind } of await items(ownerId)) {
+    for (const { id, kind } of await listTrash(ownerId)) {
       await trashables[kind].purge(ownerId, id);
     }
 
