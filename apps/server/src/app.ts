@@ -63,7 +63,7 @@ const docsHeaders = secureHeaders({
 });
 
 app.use(async (c, next) => {
-  if (c.req.path === '/frame') {
+  if (c.req.path === '/frame' || c.req.path.startsWith('/frame/')) {
     return next();
   }
 

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { fileURLToPath } from 'node:url';
 
 import { env } from './env';
 
@@ -63,7 +64,7 @@ export function framePolicy(origin: string) {
   return [
     'sandbox allow-scripts allow-forms',
     "default-src 'none'",
-    "script-src 'unsafe-inline' 'unsafe-eval'",
+    `script-src 'unsafe-inline' 'unsafe-eval' ${origin}/frame/vendor/`,
     "style-src 'unsafe-inline'",
     'img-src data: blob:',
     'media-src data: blob:',
@@ -76,15 +77,41 @@ export function framePolicy(origin: string) {
   ].join('; ');
 }
 
-const frame = new Hono().get('/', (c) =>
-  c.html(page, 200, {
-    'cache-control': 'no-store',
-    'content-security-policy': framePolicy(new URL(env.LAB_ORIGIN).origin),
-    'permissions-policy':
-      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), clipboard-read=(), clipboard-write=()',
-    'referrer-policy': 'no-referrer',
-    'x-content-type-options': 'nosniff',
+const frameLibraries: Record<string, string> = {
+  'chart.js': 'chart.js/dist/chart.umd.min.js',
+  'd3.js': 'd3/dist/d3.min.js',
+};
+
+function libraryFile(path: string) {
+  return Bun.file(
+    fileURLToPath(new URL(`../node_modules/${path}`, import.meta.url))
+  );
+}
+
+const frame = new Hono()
+  .get('/vendor/:name', async (c) => {
+    const path = frameLibraries[c.req.param('name')];
+
+    if (!path) {
+      return c.notFound();
+    }
+
+    return c.body(await libraryFile(path).arrayBuffer(), 200, {
+      'cache-control': 'public, max-age=86400',
+      'content-type': 'text/javascript; charset=utf-8',
+      'cross-origin-resource-policy': 'cross-origin',
+      'x-content-type-options': 'nosniff',
+    });
   })
-);
+  .get('/', (c) =>
+    c.html(page, 200, {
+      'cache-control': 'no-store',
+      'content-security-policy': framePolicy(new URL(env.LAB_ORIGIN).origin),
+      'permissions-policy':
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), clipboard-read=(), clipboard-write=()',
+      'referrer-policy': 'no-referrer',
+      'x-content-type-options': 'nosniff',
+    })
+  );
 
 export default frame;
