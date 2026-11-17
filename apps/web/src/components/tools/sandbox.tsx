@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 import {
-  bytes,
+  formatBytes,
   count,
   field,
   pathTitle,
@@ -72,7 +72,7 @@ function SavedFile({ details }: ToolView) {
       <span className='truncate'>{name}</span>
       {size !== undefined && (
         <span className='text-xs text-muted-foreground'>
-          {bytes.format(size)}
+          {formatBytes(size)}
         </span>
       )}
     </a>
@@ -102,7 +102,7 @@ function filePreview({ details }: ToolView) {
         {
           key: filePath,
           label: filePath,
-          meta: size === undefined ? undefined : bytes.format(size),
+          meta: size === undefined ? undefined : formatBytes(size),
         },
       ]}
     />
@@ -172,7 +172,7 @@ export const sandboxRenderers = {
     summary: ({ details }) => {
       const size = count(field(details, 'size'));
 
-      return size === undefined ? undefined : bytes.format(size);
+      return size === undefined ? undefined : formatBytes(size);
     },
     title: pathTitle('Writing a file', 'Wrote'),
   },

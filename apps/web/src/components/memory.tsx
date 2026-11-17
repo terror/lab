@@ -105,7 +105,7 @@ function Memories({ memories }: { memories: MemoryState['memories'] }) {
         <h2 className='text-sm font-medium'>Memories</h2>
         <p className='text-sm text-muted-foreground'>
           Facts Lab remembers across chats. Ask it to remember or forget
-          something, or edit them here.
+          something, or forget them here.
         </p>
       </div>
       {memories.length === 0 && (

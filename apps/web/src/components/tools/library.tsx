@@ -1,7 +1,7 @@
 import { FileText, Search } from 'lucide-react';
 
 import {
-  bytes,
+  formatBytes,
   count,
   day,
   field,
@@ -53,7 +53,7 @@ export const libraryRenderers = {
           items={entries.map(({ createdAt, id, name, size }) => ({
             key: String(id),
             label: name,
-            meta: `${bytes.format(size)} · ${day.format(new Date(createdAt))}`,
+            meta: `${formatBytes(size)} · ${day.format(new Date(createdAt))}`,
           }))}
         />
       );

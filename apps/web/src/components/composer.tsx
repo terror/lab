@@ -30,8 +30,11 @@ import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import { useAdmin } from '@/lib/profile';
+import { selectSettingsSection } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import {
   ArrowUp,
   CornerDownRight,
@@ -109,6 +112,32 @@ function AttachmentPreview({
         <X aria-hidden='true' className='size-3' />
       </button>
     </div>
+  );
+}
+
+function NoModels() {
+  const admin = useAdmin();
+
+  if (!admin) {
+    return (
+      <p className='mt-2 px-4 text-sm text-muted-foreground'>
+        Lab doesn’t have any models yet. Ask the admin to add a provider.
+      </p>
+    );
+  }
+
+  return (
+    <p className='mt-2 px-4 text-sm text-muted-foreground'>
+      Add a model provider in{' '}
+      <Link
+        className='font-medium text-foreground underline-offset-4 hover:underline'
+        onClick={() => selectSettingsSection('providers')}
+        to='/settings'
+      >
+        Settings → Providers
+      </Link>{' '}
+      to start chatting.
+    </p>
   );
 }
 
@@ -569,6 +598,7 @@ export function Composer({
           {attachError ?? dictationError ?? error}
         </ErrorMessage>
       )}
+      {catalog?.length === 0 && <NoModels />}
     </form>
   );
 }

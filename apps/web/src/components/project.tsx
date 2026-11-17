@@ -8,6 +8,7 @@ import {
 } from '@/components/project-dialog';
 import { ProjectInstructions } from '@/components/project-instructions';
 import { ProjectMenu } from '@/components/project-menu';
+import { Unavailable } from '@/components/unavailable';
 import type { Attachment } from '@/lib/attachments';
 import {
   conversationsQueryKey,
@@ -18,7 +19,7 @@ import {
 import { useChatModel } from '@/lib/models';
 import { useProject } from '@/lib/projects';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { Folder } from 'lucide-react';
 import { useState } from 'react';
 
@@ -111,7 +112,7 @@ export function Project() {
   const [editing, setEditing] = useState<ProjectEditing>();
 
   if (project.isSuccess && !project.data) {
-    return <Navigate replace to='/' />;
+    return <Unavailable subject='project' />;
   }
 
   if (!project.data) {
@@ -124,7 +125,10 @@ export function Project() {
     <div className='min-h-0 flex-1 overflow-y-auto'>
       <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-8'>
         <div className='flex items-center gap-3'>
-          <Folder aria-hidden='true' className='size-6 text-muted-foreground' />
+          <Folder
+            aria-hidden='true'
+            className='size-6 shrink-0 text-muted-foreground'
+          />
           <h1 className='truncate text-2xl font-semibold tracking-tight'>
             {current.name}
           </h1>

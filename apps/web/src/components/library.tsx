@@ -2,6 +2,7 @@ import { Tile } from '@/components/library-tile';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
 import { PdfPages } from '@/components/pdf-pages';
+import { formatBytes } from '@/components/tools/format';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -47,14 +48,6 @@ const filters: { label: string; value: Filter }[] = [
 ];
 
 const fullDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
-
-const bytes = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 1,
-  notation: 'compact',
-  style: 'unit',
-  unit: 'byte',
-  unitDisplay: 'narrow',
-});
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();
@@ -178,7 +171,7 @@ function Viewer({
           <DialogTitle className='truncate pr-8'>{item.name}</DialogTitle>
           <DialogDescription>
             {fullDate.format(new Date(item.createdAt))} ·{' '}
-            {bytes.format(item.size)} · From{' '}
+            {formatBytes(item.size)} · From{' '}
             <Link
               className='text-foreground underline-offset-4 hover:underline'
               onClick={onClose}
@@ -191,7 +184,7 @@ function Viewer({
         </DialogHeader>
         <ItemPreview item={item} />
         <DialogFooter className='sm:justify-between'>
-          <div className='flex gap-1'>
+          <div className={cn('flex gap-1', !previous && !next && 'invisible')}>
             <Button
               aria-label='Previous'
               disabled={!previous}

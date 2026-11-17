@@ -146,8 +146,9 @@ export function YourData() {
       <div className='space-y-1'>
         <h2 className='text-sm font-medium'>Your data</h2>
         <p className='text-sm text-muted-foreground'>
-          Download your chats, settings, and memories, or delete your account
-          and everything in it.
+          {admin
+            ? 'Download your chats, settings, and memories.'
+            : 'Download your chats, settings, and memories, or delete your account and everything in it.'}
         </p>
       </div>
       <div className='flex gap-2'>

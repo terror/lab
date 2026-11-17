@@ -5,13 +5,18 @@ export const day = new Intl.DateTimeFormat('en-US', {
   month: 'short',
 });
 
-export const bytes = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 0,
-  notation: 'compact',
-  style: 'unit',
-  unit: 'byte',
-  unitDisplay: 'narrow',
-});
+const sizeUnits = ['B', 'KB', 'MB', 'GB'] as const;
+
+const sizeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+
+export function formatBytes(size: number) {
+  const power = Math.min(
+    sizeUnits.length - 1,
+    Math.floor(Math.log10(Math.max(size, 1)) / 3)
+  );
+
+  return `${sizeNumber.format(size / 1000 ** power)} ${sizeUnits[power]}`;
+}
 
 export function text(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;

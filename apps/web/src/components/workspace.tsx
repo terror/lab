@@ -16,12 +16,13 @@ import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
 import { useMediaQuery } from '@/lib/media';
+import { useProjects } from '@/lib/projects';
 import { useTimezoneReport } from '@/lib/schedules';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { PanelLeft, Search, SquarePen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import { z } from 'zod';
 
@@ -141,14 +142,8 @@ function MobileWorkspace({
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
-  const conversation = useConversationSummary(selected);
 
-  const path = usePath();
-
-  const title =
-    path === '/library'
-      ? 'Library'
-      : conversationTitle(conversation.data?.title);
+  const title = usePageTitle(selected);
 
   return (
     <div className='flex h-svh flex-col'>
@@ -210,6 +205,27 @@ function MobileWorkspace({
   );
 }
 
+const pageTitles: Record<string, string> = {
+  '/library': 'Library',
+  '/scheduled': 'Scheduled',
+};
+
+function usePageTitle(selected: number | undefined) {
+  const path = usePath();
+  const conversation = useConversationSummary(selected);
+  const projects = useProjects();
+
+  const projectId = Number(/^\/projects\/(\d+)$/.exec(path)?.[1]);
+
+  const project = projects.data?.projects.find(({ id }) => id === projectId);
+
+  return (
+    pageTitles[path] ??
+    project?.name ??
+    conversationTitle(conversation.data?.title)
+  );
+}
+
 function WorkspaceLayout({
   desktop,
   selected,
@@ -232,6 +248,16 @@ export function Workspace() {
   const desktop = useMediaQuery('(min-width: 768px)');
 
   useTimezoneReport();
+
+  const title = usePageTitle(selected);
+
+  useEffect(() => {
+    document.title = `${title} – Lab`;
+
+    return () => {
+      document.title = 'Lab';
+    };
+  }, [title]);
 
   return (
     <SearchProvider>
