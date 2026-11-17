@@ -1,8 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
+import { Scalar } from '@scalar/hono-api-reference';
 import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
+import { generateSpecs } from 'hono-openapi';
 import { compress } from 'hono/compress';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
@@ -15,12 +17,14 @@ import changelog from './changelog';
 import computer from './computer';
 import conversations from './conversations';
 import { db } from './db';
+import { env } from './env';
 import { harness } from './harness';
 import library from './library';
 import memory from './memory';
 import { defaultModel, listModels } from './models';
+import { errorResponse, errorResponses, tagByResource } from './openapi';
 import providers from './providers';
-import { contentSecurityPolicy } from './security';
+import { contentSecurityPolicy, docsSecurityPolicy } from './security';
 import skills from './skills';
 import trash from './trash';
 import uploads from './uploads';
@@ -36,13 +40,24 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(logger());
 }
 app.use('/api/*', compress());
-app.use(
-  secureHeaders({
-    contentSecurityPolicy: contentSecurityPolicy(shell),
-    referrerPolicy: 'strict-origin-when-cross-origin',
-    strictTransportSecurity: 'max-age=31536000; includeSubDomains',
-    xFrameOptions: 'DENY',
-  })
+const headers = {
+  referrerPolicy: 'strict-origin-when-cross-origin',
+  strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  xFrameOptions: 'DENY',
+};
+
+const appHeaders = secureHeaders({
+  ...headers,
+  contentSecurityPolicy: contentSecurityPolicy(shell),
+});
+
+const docsHeaders = secureHeaders({
+  ...headers,
+  contentSecurityPolicy: docsSecurityPolicy,
+});
+
+app.use((c, next) =>
+  c.req.path === '/api/docs' ? docsHeaders(c, next) : appHeaders(c, next)
 );
 
 const api = new Hono()
@@ -82,6 +97,38 @@ const api = new Hono()
 export type AppType = typeof api;
 
 app.route('/api', api);
+app.get('/api/openapi.json', requireUser, async (c) =>
+  c.json(
+    tagByResource(
+      await generateSpecs(app, {
+        documentation: {
+          info: {
+            description: 'The HTTP API behind the Lab web app.',
+            title: 'Lab API',
+            version: env.RAILWAY_GIT_COMMIT_SHA,
+          },
+        },
+        defaultOptions: { ALL: { responses: errorResponses } },
+        defaultValidationErrorResponse: errorResponse('Invalid request'),
+        includeEmptyPaths: true,
+        exclude: ['/api/openapi.json', '/api/docs', /^\/api\/auth\//],
+      })
+    )
+  )
+);
+
+app.get(
+  '/api/docs',
+  requireUser,
+  Scalar({
+    agent: { disabled: true },
+    hideClientButton: true,
+    pageTitle: 'Lab API',
+    showDeveloperTools: 'never',
+    url: '/api/openapi.json',
+  })
+);
+
 app.all('/api/*', (c) => c.notFound());
 
 app.use('/assets/*', async (c, next) => {
