@@ -1,8 +1,8 @@
-import { Archived } from '@/components/archived';
 import { Memory } from '@/components/memory';
 import { Personalization } from '@/components/personalization';
 import { Providers } from '@/components/providers';
 import { Skills } from '@/components/skills';
+import { Trash } from '@/components/trash';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import {
-  Archive,
   ArrowLeft,
   Brain,
   ChartColumn,
@@ -31,6 +30,7 @@ import {
   KeyRound,
   type LucideIcon,
   Palette,
+  Trash2,
   UserRound,
   WandSparkles,
 } from 'lucide-react';
@@ -109,7 +109,6 @@ const sections: Record<
   { icon: LucideIcon; label: string; panel: ComponentType }
 > = {
   appearance: { icon: Palette, label: 'Appearance', panel: Appearance },
-  archived: { icon: Archive, label: 'Archived', panel: Archived },
   memory: { icon: Brain, label: 'Memory', panel: Memory },
   personalization: {
     icon: UserRound,
@@ -118,6 +117,7 @@ const sections: Record<
   },
   providers: { icon: KeyRound, label: 'Providers', panel: Providers },
   skills: { icon: WandSparkles, label: 'Skills', panel: Skills },
+  trash: { icon: Trash2, label: 'Trash', panel: Trash },
   usage: { icon: ChartColumn, label: 'Usage', panel: UsagePanel },
 };
 

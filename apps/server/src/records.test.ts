@@ -18,6 +18,7 @@ test('deleted chats keep their owner for late usage', async () => {
     .where(eq(schema.conversation.id, id));
 
   await call(headers, 'DELETE', `/conversations/${id}`);
+  await call(headers, 'DELETE', `/trash/conversation/${id}`);
 
   expect(await owners([id])).toEqual(new Map([[id, row?.ownerId ?? '']]));
 });

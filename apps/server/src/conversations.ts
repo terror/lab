@@ -99,7 +99,6 @@ const update = validator(
   'json',
   z
     .object({
-      archived: z.boolean().optional(),
       pinned: z.boolean().optional(),
       title: z.string().trim().min(1).max(200).optional(),
     })
@@ -110,14 +109,6 @@ const update = validator(
       }
     )
 );
-
-function timestamp(value: boolean | undefined) {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return value ? new Date() : null;
-}
 
 type BunServer = {
   timeout(request: Request, seconds: number): void;
@@ -412,7 +403,7 @@ const conversations = new Hono()
   .patch('/:id', params, owned, update, async (c) => {
     const { conversation } = c.var;
 
-    const { archived, pinned, title } = c.req.valid('json');
+    const { pinned, title } = c.req.valid('json');
 
     if (title !== undefined) {
       await conversation.commit(async (tx) => {
@@ -420,10 +411,10 @@ const conversations = new Hono()
       }, BACKGROUND_CONTEXT);
     }
 
-    if (archived !== undefined || pinned !== undefined) {
+    if (pinned !== undefined) {
       await db
         .update(schema.conversation)
-        .set({ archivedAt: timestamp(archived), pinnedAt: timestamp(pinned) })
+        .set({ pinnedAt: pinned ? new Date() : null })
         .where(eq(schema.conversation.id, conversation.id));
     }
 
@@ -434,16 +425,10 @@ const conversations = new Hono()
 
     await conversation.abort(BACKGROUND_CONTEXT);
 
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(schema.conversation)
-        .where(eq(schema.conversation.id, conversation.id));
-
-      await tx
-        .insert(schema.conversationDeletion)
-        .values({ id: conversation.id, ownerId: c.get('user').id })
-        .onConflictDoNothing();
-    });
+    await db
+      .update(schema.conversation)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.conversation.id, conversation.id));
 
     return c.body(null, 204);
   });

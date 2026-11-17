@@ -1,0 +1,160 @@
+import { LoadError } from '@/components/load-error';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { conversationTitle } from '@/lib/conversations';
+import {
+  type TrashItem,
+  deleteForever,
+  emptyTrash,
+  restoreFromTrash,
+  trashQueryOptions,
+  useTrashAction,
+} from '@/lib/trash';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+
+const deletedOn = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+});
+
+const names: Record<TrashItem['kind'], (item: TrashItem) => string> = {
+  conversation: ({ title }) => conversationTitle(title),
+};
+
+function ConfirmDelete({
+  description,
+  onConfirm,
+  onOpenChange,
+  open,
+  title,
+}: {
+  description: string;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  title: string;
+}) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent size='sm'>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} variant='destructive'>
+            Delete forever
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function TrashRow({ item }: { item: TrashItem }) {
+  const [confirming, setConfirming] = useState(false);
+
+  const restore = useTrashAction(restoreFromTrash);
+  const remove = useTrashAction(deleteForever);
+
+  const name = names[item.kind](item);
+
+  return (
+    <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
+      <div className='min-w-0 flex-1'>
+        <p className='truncate text-sm font-medium'>{name}</p>
+        <p className='truncate text-sm text-muted-foreground'>
+          Deleted {deletedOn.format(new Date(item.deletedAt))}
+        </p>
+      </div>
+      <div className='flex shrink-0 items-center gap-1'>
+        <Button
+          aria-label={`Delete ${name} forever`}
+          disabled={remove.isPending}
+          onClick={() => setConfirming(true)}
+          size='sm'
+          variant='ghost'
+        >
+          Delete forever
+        </Button>
+        <Button
+          aria-label={`Restore ${name}`}
+          disabled={restore.isPending}
+          onClick={() => restore.mutate(item)}
+          size='sm'
+          variant='secondary'
+        >
+          Restore
+        </Button>
+      </div>
+      <ConfirmDelete
+        description={`“${name}” will be deleted permanently. This can't be undone.`}
+        onConfirm={() => remove.mutate(item)}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title='Delete forever?'
+      />
+    </li>
+  );
+}
+
+export function Trash() {
+  const trash = useQuery(trashQueryOptions);
+
+  const [confirming, setConfirming] = useState(false);
+
+  const empty = useTrashAction(emptyTrash);
+
+  const count = trash.data?.length ?? 0;
+
+  return (
+    <section className='space-y-8'>
+      <div className='flex items-start justify-between gap-4'>
+        <div className='space-y-1'>
+          <h1 className='text-2xl font-semibold tracking-tight'>Trash</h1>
+          <p className='text-sm text-muted-foreground'>
+            Deleted chats stay here until you restore them or delete them
+            forever.
+          </p>
+        </div>
+        <Button
+          disabled={count === 0 || empty.isPending}
+          onClick={() => setConfirming(true)}
+          size='sm'
+          variant='secondary'
+        >
+          Empty trash
+        </Button>
+      </div>
+      {trash.isError && <LoadError subject='the trash' />}
+      {trash.isSuccess && count === 0 && (
+        <p className='text-sm text-muted-foreground'>The trash is empty.</p>
+      )}
+      {count > 0 && (
+        <ul className='-mx-3 flex flex-col'>
+          {trash.data?.map((item) => (
+            <TrashRow key={`${item.kind}-${item.id}`} item={item} />
+          ))}
+        </ul>
+      )}
+      <ConfirmDelete
+        description={`${count} ${count === 1 ? 'item' : 'items'} will be deleted permanently. This can't be undone.`}
+        onConfirm={() => empty.mutate(undefined)}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title='Empty the trash?'
+      />
+    </section>
+  );
+}

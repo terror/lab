@@ -8,7 +8,7 @@ export const settingsSections = [
   'skills',
   'providers',
   'usage',
-  'archived',
+  'trash',
 ] as const;
 
 export type SettingsSection = (typeof settingsSections)[number];

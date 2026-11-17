@@ -1,14 +1,4 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -26,11 +16,11 @@ import {
   deleteConversation,
   updateConversation,
 } from '@/lib/conversations';
+import { restoreFromTrash, useTrashAction } from '@/lib/trash';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  Archive,
   Ellipsis,
   LoaderCircle,
   Pencil,
@@ -39,6 +29,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 function RenameInput({
   initial,
@@ -93,14 +84,12 @@ function RenameInput({
 
 function MenuItems({
   Item,
-  onArchive,
   onDelete,
   onPin,
   onRename,
   pinned,
 }: {
   Item: typeof ContextMenuItem | typeof DropdownMenuItem;
-  onArchive: () => void;
   onDelete: () => void;
   onPin: () => void;
   onRename: () => void;
@@ -115,10 +104,6 @@ function MenuItems({
       <Item onSelect={onRename}>
         <Pencil aria-hidden='true' />
         Rename
-      </Item>
-      <Item onSelect={onArchive}>
-        <Archive aria-hidden='true' />
-        Archive
       </Item>
       <Item onSelect={onDelete} variant='destructive'>
         <Trash2 aria-hidden='true' />
@@ -147,7 +132,6 @@ export function ConversationItem({
 
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const renaming = useRef(false);
 
   const title = conversationTitle(conversation.title);
@@ -162,14 +146,34 @@ export function ConversationItem({
   });
 
   const menuProps = {
-    onArchive: () => update.mutate({ archived: true }),
     onPin: () => update.mutate({ pinned: !conversation.pinned }),
     pinned: conversation.pinned,
   };
 
+  const restore = useTrashAction(() =>
+    restoreFromTrash({ id: conversation.id, kind: 'conversation' })
+  );
+
   const remove = useMutation({
     mutationFn: () => deleteConversation(conversation.id),
     onSuccess: async () => {
+      toast('Chat moved to Trash.', {
+        action: {
+          label: 'Undo',
+          onClick: () =>
+            restore.mutate(undefined, {
+              onSuccess: () => {
+                if (selected) {
+                  void navigate({
+                    params: { id: conversation.id },
+                    to: '/c/$id',
+                  });
+                }
+              },
+            }),
+        },
+      });
+
       if (selected) {
         await navigate({ to: '/' });
       }
@@ -182,8 +186,6 @@ export function ConversationItem({
     renaming.current = true;
     setEditing(true);
   };
-
-  const confirmDelete = () => setConfirming(true);
 
   const onCloseAutoFocus = (event: Event) => {
     if (renaming.current) {
@@ -243,7 +245,7 @@ export function ConversationItem({
                   <MenuItems
                     {...menuProps}
                     Item={DropdownMenuItem}
-                    onDelete={confirmDelete}
+                    onDelete={() => remove.mutate()}
                     onRename={startRename}
                   />
                 </DropdownMenuContent>
@@ -261,30 +263,11 @@ export function ConversationItem({
           <MenuItems
             {...menuProps}
             Item={ContextMenuItem}
-            onDelete={confirmDelete}
+            onDelete={() => remove.mutate()}
             onRename={startRename}
           />
         </ContextMenuContent>
       </ContextMenu>
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent size='sm'>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete “{title}”.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => remove.mutate()}
-              variant='destructive'
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

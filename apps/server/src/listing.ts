@@ -23,9 +23,7 @@ import { sortSchema } from './schemas';
 
 export const listSchema = z.object({
   cursor: z.string().min(1).max(2_000).optional(),
-  filter: z
-    .enum(['archived', 'pinned', 'recent', 'unarchived'])
-    .default('unarchived'),
+  filter: z.enum(['all', 'pinned', 'recent']).default('all'),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   search: z.string().trim().min(1).max(200).optional(),
   sort: sortSchema.default('activity'),
@@ -80,18 +78,17 @@ function decode(cursor: string) {
 }
 
 const filters = {
-  archived: () => isNotNull(schema.conversation.archivedAt),
+  all: () => isNull(schema.conversation.deletedAt),
   pinned: () =>
     and(
       isNotNull(schema.conversation.pinnedAt),
-      isNull(schema.conversation.archivedAt)
+      isNull(schema.conversation.deletedAt)
     ),
   recent: () =>
     and(
       isNull(schema.conversation.pinnedAt),
-      isNull(schema.conversation.archivedAt)
+      isNull(schema.conversation.deletedAt)
     ),
-  unarchived: () => isNull(schema.conversation.archivedAt),
 };
 
 function after(cursor: string, sort: Sort) {

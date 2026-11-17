@@ -1,6 +1,6 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -248,6 +248,7 @@ const library = new Hono()
       .where(
         and(
           eq(table.ownerId, user.id),
+          isNull(schema.conversation.deletedAt),
           kind === undefined ? undefined : eq(table.kind, kind),
           search === undefined ? undefined : contains(table.name, search),
           cursor === undefined ? undefined : after(cursor)
