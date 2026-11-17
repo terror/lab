@@ -39,11 +39,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
-const kindGroups = [
-  { kind: 'model', label: 'Models' },
-  { kind: 'search', label: 'Web search' },
-  { kind: 'computer', label: 'Computer' },
-] as const;
+function kindGroups(providers: readonly Provider[]) {
+  return [
+    ...new Map(
+      providers.map(({ kind, kindLabel }) => [kind, { kind, label: kindLabel }])
+    ).values(),
+  ];
+}
 
 const methodLabels: Record<Method, string> = {
   api_key: 'API key',
@@ -167,7 +169,7 @@ function ConnectDialog({
                   <SelectValue placeholder='Choose a provider' />
                 </SelectTrigger>
                 <SelectContent>
-                  {kindGroups.map(({ kind, label }) => (
+                  {kindGroups(providers).map(({ kind, label }) => (
                     <SelectGroup key={kind}>
                       <SelectLabel>{label}</SelectLabel>
                       {providers
