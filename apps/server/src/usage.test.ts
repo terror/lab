@@ -100,3 +100,17 @@ test('a monthly budget tracks spend this month', async () => {
     { body: { limit: null, spent: 1.5 }, status: 200 },
   ]);
 });
+
+test('trashed chats are left out of the most expensive chats', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+
+  await settle();
+
+  const { body } = await call(headers, 'GET', '/usage?days=7');
+
+  expect(body.conversations).toEqual([]);
+});
