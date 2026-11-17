@@ -28,6 +28,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
+import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
@@ -170,10 +171,15 @@ function ToolCards({ call, progress, result }: CallProps) {
   );
 }
 
-function CurrentStep({ call, progress, result }: CallProps) {
+function StepStatus({
+  activity,
+  call,
+  progress,
+  result,
+}: CallProps & { activity: string | undefined }) {
   const view = useToolView(call, progress, result);
 
-  return <Activity status={toolRenderer(call.name).title(view)} />;
+  return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
 }
 
 function plural(count: number, noun: string) {
@@ -344,7 +350,11 @@ function MessageActions({ latest, text }: { latest: boolean; text: string }) {
   );
 }
 
-export function Activity({ status: label }: { status: string }) {
+const STATUS_HOLD_MS = 800;
+
+export function Activity({ status }: { status: string }) {
+  const label = useSteady(status, STATUS_HOLD_MS);
+
   return (
     <output className='flex'>
       <AnimatePresence initial={false} mode='wait'>
@@ -451,14 +461,14 @@ export function AssistantMessage({
     <Message>
       <MessageContent className='gap-3 text-base'>
         <Segments segments={all.slice(0, split)} {...shared} />
-        {last && working && !replying && activity === undefined && (
-          <CurrentStep
+        {inSlot && (working || activity !== undefined) && (
+          <StepStatus
+            activity={activity}
             call={last}
             progress={progress.get(last.id)}
             result={results.get(last.id)}
           />
         )}
-        {activity !== undefined && inSlot && <Activity status={activity} />}
         {last && (!working || replying) && (
           <Worked
             failed={calls.filter(({ id }) => results.get(id)?.isError).length}
