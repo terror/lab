@@ -251,7 +251,7 @@ export const artifacts = defineExtension({
     section(
       'artifacts',
       () =>
-        "Use artifact_create when an interactive app, tool, chart, game, or visual would help more than text, and artifact_update with small edits to change one; use a ```mermaid code block for simple diagrams. Artifacts run in a sandbox with no network access, so put all data, CSS, and JavaScript inline and never load external scripts, fonts, or images. They sit on the chat background, so keep the background transparent and style with the CSS variables --background, --foreground, --muted, --muted-foreground, --border, and --primary, which follow the user's theme. Use semantic, labelled HTML and make it work at phone width."
+        "Use artifact_create when an interactive app, tool, chart, game, or visual would help more than text, and artifact_update with small edits to change one; use a ```mermaid code block for simple diagrams. Artifacts run in a sandbox with no network access, so put all data, CSS, and JavaScript inline and never load external scripts, fonts, or images. They sit on the chat background, so keep the background transparent and style with the CSS variables --background, --foreground, --muted, --muted-foreground, --border, and --primary, which follow the user's theme. Use semantic, labelled HTML and make it work at phone width. From a click handler, lab.send(text) puts a follow-up message in the user's message box, for example to ask about a selected item. From a click handler, lab.send(text) puts a follow-up message in the user's message box, for example to ask about a selected item."
     ),
   ],
   tools: [artifactCreate, artifactRead, artifactUpdate],
