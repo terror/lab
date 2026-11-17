@@ -120,3 +120,35 @@ test('project instructions follow the custom instructions in the prompt', async 
     project: `<project>\nThis chat is in the user's project [${body.project.id}] bar. You can list, create, rename, and change the instructions of projects and move chats between them with project_list, project_create, project_update, and chat_move.\n\nThe project's instructions apply to every chat in it and take precedence over the user's general custom instructions:\nbaz\n</project>`,
   });
 });
+
+test('chats can be moved into and out of projects', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/projects', { name: 'foo' });
+
+  const id = await create(headers);
+
+  const into = await call(headers, 'PATCH', `/conversations/${id}`, {
+    projectId: body.project.id,
+  });
+
+  const inside = await ids(headers, `filter=all&project=${body.project.id}`);
+
+  const missing = await call(headers, 'PATCH', `/conversations/${id}`, {
+    projectId: body.project.id + 1,
+  });
+
+  await call(headers, 'PATCH', `/conversations/${id}`, { projectId: null });
+
+  expect({
+    inside,
+    into,
+    missing,
+    recent: await ids(headers, 'filter=recent'),
+  }).toEqual({
+    inside: [id],
+    into: { body: null, status: 204 },
+    missing: { body: { error: 'Project not found' }, status: 404 },
+    recent: [id],
+  });
+});
