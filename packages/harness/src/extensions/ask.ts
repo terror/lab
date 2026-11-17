@@ -2,6 +2,7 @@ import { defineExtension, defineTool } from '@earendil-works/pi-durable';
 import { arr, obj, str } from '@earendil-works/pi-schema';
 
 import { waitForAnswer } from './host-input';
+import { failure, text } from './results';
 
 const askUser = defineTool({
   name: 'ask_user',
@@ -27,15 +28,12 @@ const askUser = defineTool({
     const answer = await waitForAnswer(api, context);
 
     if (answer === undefined) {
-      return {
-        isError: true,
-        output: [{ text: 'Unable to ask the user.', type: 'text' as const }],
-      };
+      return failure('Unable to ask the user.');
     }
 
     return {
       details: { answer, options, question },
-      output: [{ text: `The user answered: ${answer}`, type: 'text' as const }],
+      output: text(`The user answered: ${answer}`),
     };
   },
 });

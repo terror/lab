@@ -6,6 +6,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { arr, int, lit, obj, opt, str, union } from '@earendil-works/pi-schema';
 
+import { errorMessage, failure, once, text } from './results';
+
 export const WEB_READ_LENGTH = 100_000;
 
 export type WebRecency = 'day' | 'month' | 'week' | 'year';
@@ -31,17 +33,6 @@ export type WebAccess = {
   fetch(url: string): Promise<WebPage>;
   search(search: WebSearch): Promise<WebResult[]>;
 };
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(error: unknown): ToolExecutionResult {
-  return {
-    isError: true,
-    output: text(error instanceof Error ? error.message : String(error)),
-  };
-}
 
 function domain(url: string) {
   try {
@@ -114,13 +105,9 @@ export function web(access: WebAccess) {
       context
     ): Promise<ToolExecutionResult> => {
       try {
-        const results =
-          (await api.memo<WebResult[]>('results', context)) ??
-          (await api.memo(
-            'results',
-            await access.search({ domains, limit: limit ?? 5, query, recency }),
-            context
-          ));
+        const results = await once(api, 'results', context, () =>
+          access.search({ domains, limit: limit ?? 5, query, recency })
+        );
 
         return {
           details: {
@@ -133,7 +120,7 @@ export function web(access: WebAccess) {
           output: text(listing(results)),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });
@@ -156,9 +143,9 @@ export function web(access: WebAccess) {
       context
     ): Promise<ToolExecutionResult> => {
       try {
-        const fetched =
-          (await api.memo<WebPage>('page', context)) ??
-          (await api.memo('page', await access.fetch(url), context));
+        const fetched = await once(api, 'page', context, () =>
+          access.fetch(url)
+        );
 
         const start = Math.min(offset ?? 0, fetched.text.length);
 
@@ -177,7 +164,7 @@ export function web(access: WebAccess) {
           output: text(page(fetched, start)),
         };
       } catch (error) {
-        return failure(error);
+        return failure(errorMessage(error));
       }
     },
   });

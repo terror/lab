@@ -6,6 +6,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str, union, lit } from '@earendil-works/pi-schema';
 
+import { failure, text } from './results';
+
 export const READ_LENGTH = 100_000;
 
 export type LibraryEntry = {
@@ -31,10 +33,6 @@ export type LibraryAccess = {
     query: { kind?: 'file' | 'image'; search?: string }
   ): Promise<LibraryEntry[]>;
 };
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
 
 function listing(entries: readonly LibraryEntry[]) {
   if (entries.length === 0) {
@@ -99,10 +97,7 @@ export function library(access: LibraryAccess) {
       const content = await access.read(api.conversationId, id);
 
       if (!content) {
-        return {
-          isError: true,
-          output: text(`No library item has the id ${id}.`),
-        };
+        return failure(`No library item has the id ${id}.`);
       }
 
       if (content.kind === 'image') {

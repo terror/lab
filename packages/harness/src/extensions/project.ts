@@ -7,6 +7,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { failure, text } from './results';
+
 export const PROJECT_INSTRUCTIONS_LENGTH = 8_000;
 
 export const PROJECT_NAME_LENGTH = 80;
@@ -42,14 +44,6 @@ export type ProjectAccess = {
     change: ProjectChange
   ): Promise<Project | undefined>;
 };
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(message: string): ToolExecutionResult {
-  return { isError: true, output: text(message) };
-}
 
 function line({ id, name: projectName }: Project) {
   return `[${id}] ${projectName}`;

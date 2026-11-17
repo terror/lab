@@ -7,6 +7,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { arr, int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { failure, text } from './results';
+
 export const ARTIFACT_LENGTH = 300_000;
 
 const ARTIFACT_LIMIT = 50;
@@ -27,14 +29,6 @@ export const ArtifactsDoc = defineDoc<{ artifacts: Record<string, Artifact> }>({
   initial: () => ({ artifacts: {} }),
   checkpointWhen: () => true,
 });
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(message: string): ToolExecutionResult {
-  return { isError: true, output: text(message) };
-}
 
 const artifactCreate = defineTool({
   name: 'artifact_create',

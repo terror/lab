@@ -7,6 +7,8 @@ import {
 import { obj, opt, str } from '@earendil-works/pi-schema';
 import { randomUUID } from 'node:crypto';
 
+import { failure, text } from './results';
+
 export const SKILL_LIMIT = 50;
 
 export const SKILL_NAME_LENGTH = 64;
@@ -108,10 +110,6 @@ export function deleteSkill(state: SkillsState, id: string) {
   return removed && { ...removed };
 }
 
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
 const failures = {
   duplicate: 'A skill with that name already exists. Pick another name.',
   full: `Skills are full (${SKILL_LIMIT}). Ask the user which skill to delete.`,
@@ -126,7 +124,7 @@ const notes = {
 
 function result(change: SkillChange, verb: keyof typeof notes) {
   if (change.kind !== 'saved') {
-    return { isError: true, output: text(failures[change.kind]) };
+    return failure(failures[change.kind]);
   }
 
   const { skill } = change;
@@ -187,7 +185,7 @@ const skillRead = defineTool({
     const skill = doc?.skills.find((entry) => entry.id === args.id);
 
     if (!skill) {
-      return { isError: true, output: text(failures.missing) };
+      return failure(failures.missing);
     }
 
     return {
@@ -251,7 +249,7 @@ const skillDelete = defineTool({
     );
 
     if (!removed) {
-      return { isError: true, output: text(failures.missing) };
+      return failure(failures.missing);
     }
 
     return {

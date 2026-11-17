@@ -7,6 +7,8 @@ import {
 import { obj, str } from '@earendil-works/pi-schema';
 import { randomUUID } from 'node:crypto';
 
+import { failure, text } from './results';
+
 export const MEMORY_LIMIT = 100;
 
 export const MEMORY_LENGTH = 500;
@@ -24,10 +26,6 @@ export const MemoryDoc = defineDoc<{
   initial: () => ({ instructions: '', memories: [] }),
   checkpointWhen: () => true,
 });
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
 
 function render({
   instructions,
@@ -84,12 +82,9 @@ const remember = defineTool({
     }, context);
 
     if (!saved) {
-      return {
-        isError: true,
-        output: text(
-          `Memory is full (${MEMORY_LIMIT} entries). Ask the user what to forget.`
-        ),
-      };
+      return failure(
+        `Memory is full (${MEMORY_LIMIT} entries). Ask the user what to forget.`
+      );
     }
 
     return {
@@ -118,7 +113,7 @@ const forget = defineTool({
     }, context);
 
     if (removed === undefined) {
-      return { isError: true, output: text(`No memory has the id ${id}.`) };
+      return failure(`No memory has the id ${id}.`);
     }
 
     return { details: { id, text: removed }, output: text(`Forgot [${id}].`) };

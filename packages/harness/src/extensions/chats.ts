@@ -15,6 +15,7 @@ import {
 } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
+import { failure, once, text } from './results';
 
 export type ChatSummary = { id: number; pinned: boolean; title: string | null };
 
@@ -54,14 +55,6 @@ export type ChatsAccess = {
   ): Promise<ChatSummary | undefined>;
   trashed(conversationId: ConversationId): Promise<TrashEntry[]>;
 };
-
-function text(value: string) {
-  return [{ text: value, type: 'text' as const }];
-}
-
-function failure(message: string): ToolExecutionResult {
-  return { isError: true, output: text(message) };
-}
 
 function name(title: string | null) {
   return title ?? 'Untitled chat';
@@ -219,13 +212,9 @@ export function chats(access: ChatsAccess) {
         };
       }
 
-      const purged =
-        (await api.memo<boolean>('purged', context)) ??
-        (await api.memo(
-          'purged',
-          await access.purge(api.conversationId, args.kind, args.id),
-          context
-        ));
+      const purged = await once(api, 'purged', context, () =>
+        access.purge(api.conversationId, args.kind, args.id)
+      );
 
       return purged
         ? {

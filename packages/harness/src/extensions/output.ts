@@ -8,6 +8,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { failure } from './results';
+
 export const TOOL_OUTPUT_LENGTH = 100_000;
 
 const OUTPUT_LIMIT = 120_000;
@@ -98,15 +100,7 @@ const toolOutputRead = defineTool({
     const text = doc?.outputs[args.call_id];
 
     if (text === undefined) {
-      return {
-        isError: true,
-        output: [
-          {
-            text: 'No stored output has that call id.',
-            type: 'text' as const,
-          },
-        ],
-      };
+      return failure('No stored output has that call id.');
     }
 
     const start = Math.min(args.offset ?? 0, text.length);
