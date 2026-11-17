@@ -1,5 +1,7 @@
 import { schema } from '@lab/db';
+import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
@@ -34,20 +36,66 @@ async function bytes(file: File) {
   return new Uint8Array(await file.arrayBuffer());
 }
 
-const uploads = new Hono().use(requireUser).post('/', form, async (c) => {
-  const { document, thumbnail } = c.req.valid('form');
+const params = validator('param', z.object({ id: z.uuid() }));
 
-  const [created] = await db
-    .insert(schema.upload)
-    .values({
-      content: await bytes(document),
-      mimeType: document.type,
-      ownerId: c.get('user').id,
-      thumbnail: thumbnail ? await bytes(thumbnail) : null,
+async function owned(id: string, ownerId: string) {
+  const [row] = await db
+    .select({
+      content: schema.upload.content,
+      mimeType: schema.upload.mimeType,
+      thumbnail: schema.upload.thumbnail,
     })
-    .returning({ id: schema.upload.id });
+    .from(schema.upload)
+    .where(and(eq(schema.upload.id, id), eq(schema.upload.ownerId, ownerId)));
 
-  return c.json({ id: created?.id ?? '' }, 201);
-});
+  return row;
+}
+
+const cached = {
+  'cache-control': 'private, max-age=31536000, immutable',
+  'x-content-type-options': 'nosniff',
+};
+
+const uploads = new Hono()
+  .use(requireUser)
+  .get('/:id', params, async (c) => {
+    const upload = await owned(c.req.valid('param').id, c.get('user').id);
+
+    if (!upload) {
+      throw new HTTPException(404, { message: 'Upload not found' });
+    }
+
+    return c.body(new Uint8Array(upload.content), 200, {
+      ...cached,
+      'content-type': upload.mimeType,
+    });
+  })
+  .get('/:id/thumbnail', params, async (c) => {
+    const upload = await owned(c.req.valid('param').id, c.get('user').id);
+
+    if (!upload?.thumbnail) {
+      throw new HTTPException(404, { message: 'Thumbnail not found' });
+    }
+
+    return c.body(new Uint8Array(upload.thumbnail), 200, {
+      ...cached,
+      'content-type': 'image/png',
+    });
+  })
+  .post('/', form, async (c) => {
+    const { document, thumbnail } = c.req.valid('form');
+
+    const [created] = await db
+      .insert(schema.upload)
+      .values({
+        content: await bytes(document),
+        mimeType: document.type,
+        ownerId: c.get('user').id,
+        thumbnail: thumbnail ? await bytes(thumbnail) : null,
+      })
+      .returning({ id: schema.upload.id });
+
+    return c.json({ id: created?.id ?? '' }, 201);
+  });
 
 export default uploads;

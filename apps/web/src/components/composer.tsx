@@ -1,3 +1,4 @@
+import { DocumentThumbnail } from '@/components/document-card';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -81,7 +82,16 @@ function AttachmentPreview({
           src={imageSource(attachment)}
         />
       )}
-      {attachment.type === 'file' && (
+      {attachment.type === 'file' && attachment.uploadId && (
+        <div className='flex h-16 max-w-56 items-center gap-3 overflow-hidden rounded-xl border pr-3 text-sm'>
+          <DocumentThumbnail
+            className='flex h-full w-12 shrink-0 items-center justify-center border-r bg-white object-cover object-top'
+            uploadId={attachment.uploadId}
+          />
+          <span className='truncate'>{attachment.name}</span>
+        </div>
+      )}
+      {attachment.type === 'file' && !attachment.uploadId && (
         <div className='flex h-16 max-w-48 items-center gap-2 rounded-xl border px-3 text-sm'>
           <FileText aria-hidden='true' className='size-4 shrink-0' />
           <span className='truncate'>{attachment.name}</span>
