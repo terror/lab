@@ -163,7 +163,7 @@ function FilterMenu({
           <ChevronDown aria-hidden='true' className='size-3.5' />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-auto min-w-32'>
+      <DropdownMenuContent align='end'>
         <DropdownMenuRadioGroup
           onValueChange={(value) => {
             if (isFilter(value)) {

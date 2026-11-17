@@ -164,7 +164,7 @@ function SortMenu() {
         </TooltipTrigger>
         <TooltipContent>Sort chats</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align='end' className='w-auto min-w-44'>
+      <DropdownMenuContent align='end' className='min-w-44'>
         <DropdownMenuLabel>Sort by</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           onValueChange={(value) => {
