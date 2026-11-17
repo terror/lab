@@ -147,13 +147,13 @@ export async function updateConversation(
   );
 }
 
-function listQueryOptions(filter: 'pinned') {
+function listQueryOptions(filter: 'pinned', sort: ConversationSort) {
   return queryOptions({
-    queryKey: [...conversationsQueryKey, filter],
+    queryKey: [...conversationsQueryKey, filter, sort],
     queryFn: async ({ signal }) => {
       const { conversations } = await call(
         client.conversations.$get(
-          { query: { filter, limit: '100' } },
+          { query: { filter, limit: '100', sort } },
           { init: { signal } }
         )
       );
@@ -166,7 +166,9 @@ function listQueryOptions(filter: 'pinned') {
 }
 
 export function usePinnedConversations() {
-  return useQuery(listQueryOptions('pinned'));
+  const [sort] = useConversationSort();
+
+  return useQuery(listQueryOptions('pinned', sort));
 }
 
 export async function answerQuestion(

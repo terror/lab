@@ -157,6 +157,39 @@ function CollapseButton({
   );
 }
 
+function SectionHeader({
+  children,
+  collapsed,
+  controls,
+  onToggle,
+  subject,
+  title,
+}: {
+  children?: ReactNode;
+  collapsed: boolean;
+  controls: string;
+  onToggle: () => void;
+  subject: string;
+  title: string;
+}) {
+  return (
+    <div className='flex items-center gap-1 px-2'>
+      <h2 className='text-xs font-medium text-muted-foreground'>{title}</h2>
+      <CollapseButton
+        collapsed={collapsed}
+        controls={controls}
+        onToggle={onToggle}
+        subject={subject}
+      />
+      {children}
+    </div>
+  );
+}
+
+function useCollapsed(key: string) {
+  return usePersistentState(key, collapsedSchema, false);
+}
+
 function SortMenu() {
   const [sort, setSort] = useConversationSort();
 
@@ -297,11 +330,7 @@ function ProjectsSection({
   const projects = useProjects();
   const summary = useConversationSummary(selected);
 
-  const [collapsed, setCollapsed] = usePersistentState(
-    'projects-collapsed',
-    collapsedSchema,
-    false
-  );
+  const [collapsed, setCollapsed] = useCollapsed('projects-collapsed');
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
@@ -316,14 +345,13 @@ function ProjectsSection({
 
   return (
     <div className='flex flex-col gap-1'>
-      <div className='flex items-center gap-1 px-2'>
-        <h2 className='text-xs font-medium text-muted-foreground'>Projects</h2>
-        <CollapseButton
-          collapsed={collapsed}
-          controls={list}
-          onToggle={() => setCollapsed(!collapsed)}
-          subject='projects'
-        />
+      <SectionHeader
+        collapsed={collapsed}
+        controls={list}
+        onToggle={() => setCollapsed(!collapsed)}
+        subject='projects'
+        title='Projects'
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -337,7 +365,7 @@ function ProjectsSection({
           </TooltipTrigger>
           <TooltipContent>New project</TooltipContent>
         </Tooltip>
-      </div>
+      </SectionHeader>
       <nav
         aria-label='Projects'
         className='flex flex-col gap-0.5'
@@ -383,6 +411,52 @@ function ProjectsSection({
         onClose={() => setEditing(undefined)}
         onCreated={(project) => onProject(project.id)}
       />
+    </div>
+  );
+}
+
+function PinnedSection({
+  onSelect,
+  selected,
+}: {
+  onSelect: (id: number) => void;
+  selected: number | undefined;
+}) {
+  const list = useId();
+  const pinned = usePinnedConversations();
+
+  const [collapsed, setCollapsed] = useCollapsed('pinned-collapsed');
+
+  if ((pinned.data?.length ?? 0) === 0) {
+    return null;
+  }
+
+  return (
+    <div className='flex flex-col gap-1'>
+      <SectionHeader
+        collapsed={collapsed}
+        controls={list}
+        onToggle={() => setCollapsed(!collapsed)}
+        subject='pinned chats'
+        title='Pinned'
+      >
+        <SortMenu />
+      </SectionHeader>
+      <nav
+        aria-label='Pinned chats'
+        className='flex flex-col gap-1'
+        hidden={collapsed}
+        id={list}
+      >
+        {pinned.data?.map((conversation) => (
+          <ConversationItem
+            key={conversation.id}
+            conversation={conversation}
+            onSelect={onSelect}
+            selected={conversation.id === selected}
+          />
+        ))}
+      </nav>
     </div>
   );
 }
@@ -515,13 +589,8 @@ function SidebarPanel({
 }) {
   const list = useId();
   const path = usePath();
-  const pinned = usePinnedConversations();
 
-  const [collapsed, setCollapsed] = usePersistentState(
-    'recents-collapsed',
-    collapsedSchema,
-    false
-  );
+  const [collapsed, setCollapsed] = useCollapsed('recents-collapsed');
 
   return (
     <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
@@ -560,37 +629,18 @@ function SidebarPanel({
         onSelect={onSelect}
         selected={selected}
       />
-      {(pinned.data?.length ?? 0) > 0 && (
-        <div className='flex flex-col gap-1'>
-          <h2 className='px-2 text-xs font-medium text-muted-foreground'>
-            Pinned
-          </h2>
-          <nav aria-label='Pinned chats' className='flex flex-col gap-1'>
-            {pinned.data?.map((conversation) => (
-              <ConversationItem
-                key={conversation.id}
-                conversation={conversation}
-                onSelect={onSelect}
-                selected={conversation.id === selected}
-              />
-            ))}
-          </nav>
-        </div>
-      )}
+      <PinnedSection onSelect={onSelect} selected={selected} />
       <div className='flex min-h-0 flex-col gap-1'>
         {(error || (conversations?.length ?? 0) > 0) && (
-          <div className='flex items-center gap-1 px-2'>
-            <h2 className='text-xs font-medium text-muted-foreground'>
-              Recents
-            </h2>
-            <CollapseButton
-              collapsed={collapsed}
-              controls={list}
-              onToggle={() => setCollapsed(!collapsed)}
-              subject='chats'
-            />
+          <SectionHeader
+            collapsed={collapsed}
+            controls={list}
+            onToggle={() => setCollapsed(!collapsed)}
+            subject='chats'
+            title='Recents'
+          >
             <SortMenu />
-          </div>
+          </SectionHeader>
         )}
         <nav
           aria-label='Chats'
