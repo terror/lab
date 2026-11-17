@@ -3,14 +3,14 @@ import { schema } from '@lab/db';
 import type { HelperKind } from '@lab/harness';
 
 import { db } from './db';
-import { owners, serial } from './records';
+import { conversationOwner, serial } from './records';
 
 async function record(
   conversationId: number,
   kind: HelperKind,
   { model, provider, timestamp, usage }: AssistantMessage
 ) {
-  const ownerId = (await owners([conversationId])).get(conversationId);
+  const ownerId = await conversationOwner(conversationId);
 
   if (!ownerId) {
     return;

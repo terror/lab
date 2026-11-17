@@ -3,19 +3,15 @@ import type { HistoryAccess } from '@lab/harness';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 
 import { db } from './db';
-import { owners } from './records';
+import { conversationOwner } from './records';
 
 const table = schema.messageText;
 
 const SEARCH_LIMIT = 8;
 
-async function owner(conversationId: number) {
-  return (await owners([conversationId])).get(conversationId);
-}
-
 export const historyAccess: HistoryAccess = {
   read: async (conversationId, id) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await conversationOwner(conversationId);
 
     if (!ownerId) {
       return undefined;
@@ -48,7 +44,7 @@ export const historyAccess: HistoryAccess = {
     };
   },
   search: async (conversationId, query) => {
-    const ownerId = await owner(conversationId);
+    const ownerId = await conversationOwner(conversationId);
 
     if (!ownerId) {
       return [];

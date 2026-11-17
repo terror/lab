@@ -66,3 +66,7 @@ export function contains(column: AnyPgColumn, search: string) {
 
   return ilike(column, `%${pattern}%`);
 }
+
+export async function conversationOwner(conversationId: number) {
+  return (await owners([conversationId])).get(conversationId);
+}
