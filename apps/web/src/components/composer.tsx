@@ -326,7 +326,9 @@ export function Composer({
 
   const menu = matches.length > 0 && dismissed !== draft;
 
-  const selected = matches[Math.min(active, matches.length - 1)];
+  const current = Math.min(active, matches.length - 1);
+
+  const selected = matches[current];
 
   const runCommand = async (command: SlashCommand) => {
     onDraftChange('');
@@ -348,8 +350,8 @@ export function Composer({
 
   const onMenuKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const keys: Record<string, () => void> = {
-      ArrowDown: () => setActive((active + 1) % matches.length),
-      ArrowUp: () => setActive((active - 1 + matches.length) % matches.length),
+      ArrowDown: () => setActive((current + 1) % matches.length),
+      ArrowUp: () => setActive((current - 1 + matches.length) % matches.length),
       Enter: () => selected && void runCommand(selected),
       Escape: () => setDismissed(draft),
       Tab: () => selected && void runCommand(selected),

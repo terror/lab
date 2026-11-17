@@ -36,18 +36,18 @@ export function StartComposer({
         setDraft(value);
       }}
       onModelChange={setModel}
-      onSubmit={(content) =>
-        start.mutate(
-          { attachments, content: prompt(content), model },
-          {
-            onSuccess: () => {
-              if (draft.trim() === content) {
-                setDraft('');
-              }
-            },
-          }
-        )
-      }
+      onSubmit={async (content) => {
+        const sent = await start
+          .mutateAsync({ attachments, content: prompt(content), model })
+          .then(
+            () => true,
+            () => false
+          );
+
+        if (sent && draft.trim() === content) {
+          setDraft('');
+        }
+      }}
       placeholder={placeholder}
       submitting={start.isPending}
     />

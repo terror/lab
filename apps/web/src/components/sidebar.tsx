@@ -400,6 +400,7 @@ function ProjectsSection({
         hidden={collapsed}
         id={list}
       >
+        {projects.isError && <LoadError className='px-2' subject='projects' />}
         {shown.map((project) => {
           const Icon = project.id === showing ? FolderOpen : Folder;
 
@@ -457,6 +458,10 @@ function PinnedSection({
   const pinned = usePinnedConversations();
 
   const [collapsed, setCollapsed] = useCollapsed('pinned-collapsed');
+
+  if (pinned.isError) {
+    return <LoadError className='px-2' subject='pinned chats' />;
+  }
 
   if ((pinned.data?.length ?? 0) === 0) {
     return null;

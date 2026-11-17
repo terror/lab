@@ -3,6 +3,7 @@ import { Conversation } from '@/components/conversation';
 import { ErrorPage } from '@/components/error-page';
 import { loadMarkdown } from '@/components/markdown';
 import { NewChat } from '@/components/new-chat';
+import { SearchProvider } from '@/components/search';
 import { SignIn } from '@/components/sign-in';
 import { Updates } from '@/components/updates';
 import { Workspace } from '@/components/workspace';
@@ -39,11 +40,11 @@ function Root() {
   }
 
   return (
-    <>
+    <SearchProvider>
       <Outlet />
       <Updates />
       <BudgetAlert />
-    </>
+    </SearchProvider>
   );
 }
 
