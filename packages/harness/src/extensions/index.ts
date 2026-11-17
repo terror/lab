@@ -7,6 +7,7 @@ import { assistant } from './assistant';
 import { type ChatsAccess, chats } from './chats';
 import { codemode } from './codemode';
 import { compaction } from './compaction';
+import { type ConnectorAccess, connectorSettings } from './connector-settings';
 import { type HistoryAccess, history } from './history';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
@@ -20,6 +21,11 @@ import { title } from './title';
 import type { Owner } from './users';
 import { type WebAccess, web } from './web';
 
+export {
+  type ConnectorAccess,
+  type ConnectorChange,
+  type ConnectorSummary,
+} from './connector-settings';
 export {
   type Connector,
   type ConnectorResult,
@@ -108,6 +114,7 @@ export {
 
 export type ExtensionDeps = {
   chats: ChatsAccess;
+  connectors: ConnectorAccess;
   owner: Owner;
   history: HistoryAccess;
   library: LibraryAccess;
@@ -142,6 +149,7 @@ export function extensions(deps: ExtensionDeps) {
     assistant,
     chats(deps.chats),
     codemode,
+    connectorSettings(deps.connectors),
     output,
     preferences(deps.owner),
     compaction(deps.onHelperUsage),

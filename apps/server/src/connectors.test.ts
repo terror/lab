@@ -208,3 +208,59 @@ test('only the admin can connect to private addresses', async () => {
     status: 400,
   });
 });
+
+test('the agent manages connectors with the user’s approval', async () => {
+  const headers = await signInAdmin();
+
+  const url = mcp();
+
+  script(
+    toolCall('connector_add', { name: 'Foo', url }, 'foo'),
+    toolCall('connector_list', {}),
+    fauxAssistantMessage('bar')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'foo',
+  });
+
+  await settle(body.id);
+
+  const [connector] = (await call(headers, 'GET', '/connectors')).body
+    .connectors;
+
+  script(
+    toolCall('connector_update', { id: connector.id, name: 'Bar' }),
+    toolCall('connector_remove', { id: connector.id }, 'baz'),
+    fauxAssistantMessage('bar')
+  );
+
+  await call(headers, 'POST', `/conversations/${body.id}/messages`, {
+    content: 'bar',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  expect({
+    connectors: (await call(headers, 'GET', '/connectors')).body.connectors,
+    outputs: await toolOutputs(headers, body.id),
+  }).toEqual({
+    connectors: [],
+    outputs: [
+      `Added the connector.\n- [${connector.id}] Foo (${url}): connected, 2 tools`,
+      `- [${connector.id}] Foo (${url}): connected, 2 tools`,
+      `Updated the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
+      `Removed the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
+    ],
+  });
+});

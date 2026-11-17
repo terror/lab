@@ -1,6 +1,7 @@
 import type { ExtensionDeps } from '@lab/harness';
 
 import { chatsAccess } from '../src/chat-access';
+import { connectorAccess } from '../src/connector-access';
 import { projectAccess } from '../src/project-access';
 import { requireOwner } from '../src/records';
 import { createSandboxAccess } from '../src/sandbox';
@@ -13,6 +14,7 @@ export function emptyDeps(): ExtensionDeps {
     onHelperUsage: () => undefined,
     sandbox: createSandboxAccess(async () => 'full'),
     chats: chatsAccess,
+    connectors: connectorAccess,
     owner: requireOwner,
     project: projectAccess,
     schedule: scheduleAccess,
