@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { conversationTitle } from '@/lib/conversations';
+import { shortDate } from '@/lib/format';
 import {
   type TrashItem,
   deleteForever,
@@ -22,11 +23,6 @@ import {
 } from '@/lib/trash';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-
-const deletedOn = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-});
 
 const names: Record<TrashItem['kind'], (item: TrashItem) => string> = {
   conversation: ({ title }) => conversationTitle(title),
@@ -77,7 +73,7 @@ function TrashRow({ item }: { item: TrashItem }) {
       <div className='min-w-0 flex-1'>
         <p className='truncate text-sm font-medium'>{name}</p>
         <p className='truncate text-sm text-muted-foreground'>
-          Deleted {deletedOn.format(new Date(item.deletedAt))}
+          Deleted {shortDate(item.deletedAt)}
         </p>
       </div>
       <div className='flex shrink-0 items-center gap-1'>

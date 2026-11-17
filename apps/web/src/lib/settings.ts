@@ -30,26 +30,24 @@ export type SettingsSection = (typeof settingsSections)[number];
 
 export const settingsSectionInfo: Record<
   SettingsSection,
-  { icon: LucideIcon; label: string }
+  { admin?: true; icon: LucideIcon; label: string }
 > = {
   appearance: { icon: Palette, label: 'Appearance' },
   computer: { icon: Monitor, label: 'Computer' },
   connectors: { icon: Plug, label: 'Connectors' },
   memory: { icon: Brain, label: 'Memory' },
   profile: { icon: UserRound, label: 'Profile' },
-  providers: { icon: KeyRound, label: 'Providers' },
+  providers: { admin: true, icon: KeyRound, label: 'Providers' },
   skills: { icon: WandSparkles, label: 'Skills' },
   trash: { icon: Trash2, label: 'Trash' },
   usage: { icon: Gauge, label: 'Usage' },
 };
 
-const adminSections = new Set<SettingsSection>(['providers']);
-
 export function useSettingsSections() {
   const admin = useAdmin();
 
   return settingsSections.filter(
-    (section) => admin || !adminSections.has(section)
+    (section) => admin || !settingsSectionInfo[section].admin
   );
 }
 

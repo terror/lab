@@ -1,15 +1,7 @@
+import { formatBytes, plural, shortDate } from '@/lib/format';
 import { FileText, Search } from 'lucide-react';
 
-import {
-  formatBytes,
-  count,
-  day,
-  field,
-  plural,
-  quoted,
-  readRange,
-  text,
-} from './format';
+import { count, field, quoted, readRange, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -53,7 +45,7 @@ export const libraryRenderers = {
           items={entries.map(({ createdAt, id, name, size }) => ({
             key: String(id),
             label: name,
-            meta: `${formatBytes(size)} · ${day.format(new Date(createdAt))}`,
+            meta: `${formatBytes(size)} · ${shortDate(createdAt)}`,
           }))}
         />
       );

@@ -9,11 +9,15 @@ export function useTheme() {
   return usePreference('theme');
 }
 
-export function useThemeClass() {
+export function useDark() {
   const [theme] = useTheme();
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
-  const dark = theme === 'dark' || (theme === 'system' && prefersDark);
+  return theme === 'dark' || (theme === 'system' && prefersDark);
+}
+
+export function useThemeClass() {
+  const dark = useDark();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);

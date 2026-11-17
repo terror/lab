@@ -1,22 +1,6 @@
+import { plural } from '@/lib/format';
+
 import { type ToolView } from './types';
-
-export const day = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-});
-
-const sizeUnits = ['B', 'KB', 'MB', 'GB'] as const;
-
-const sizeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
-
-export function formatBytes(size: number) {
-  const power = Math.min(
-    sizeUnits.length - 1,
-    Math.floor(Math.log10(Math.max(size, 1)) / 3)
-  );
-
-  return `${sizeNumber.format(size / 1000 ** power)} ${sizeUnits[power]}`;
-}
 
 export function text(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
@@ -30,10 +14,6 @@ export function field(value: unknown, key: string) {
 
 export function count(value: unknown) {
   return typeof value === 'number' ? value : undefined;
-}
-
-export function plural(amount: number, noun: string) {
-  return `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 }
 
 export function quoted(value: unknown) {

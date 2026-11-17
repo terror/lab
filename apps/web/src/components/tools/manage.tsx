@@ -1,7 +1,8 @@
 import { conversationTitle } from '@/lib/conversations';
+import { shortDate } from '@/lib/format';
 import { ArchiveRestore, Pencil, Pin, Trash2 } from 'lucide-react';
 
-import { count, day, field, text } from './format';
+import { count, field, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 
@@ -45,7 +46,7 @@ function trashItem(item: unknown, index: number) {
         : conversationTitle(title),
     meta: [
       kind === 'project' ? 'Project' : 'Chat',
-      deletedAt && day.format(new Date(deletedAt)),
+      deletedAt && shortDate(deletedAt),
     ]
       .filter(Boolean)
       .join(' · '),

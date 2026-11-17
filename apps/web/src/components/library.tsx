@@ -2,7 +2,6 @@ import { Tile } from '@/components/library-tile';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
 import { PdfPages } from '@/components/pdf-pages';
-import { formatBytes } from '@/components/tools/format';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
   InputGroupInput,
 } from '@/components/ui/input-group';
 import { conversationTitle } from '@/lib/conversations';
+import { formatBytes } from '@/lib/format';
 import {
   type LibraryItem,
   type LibraryKind,

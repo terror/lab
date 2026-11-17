@@ -1,7 +1,8 @@
+import { plural } from '@/lib/format';
 import { untilRun } from '@/lib/time';
 import { CalendarClock } from 'lucide-react';
 
-import { count, field, namedTitle, plural, text } from './format';
+import { count, field, namedTitle, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 

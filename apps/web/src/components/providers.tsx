@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/select';
 import { modelsQueryOptions } from '@/lib/models';
 import {
-  type Method,
   type Provider,
   connectProvider,
   providersQueryOptions,
@@ -46,10 +45,6 @@ function kindGroups(providers: readonly Provider[]) {
     ).values(),
   ];
 }
-
-const methodLabels: Record<Method, string> = {
-  api_key: 'API key',
-};
 
 function useRefresh() {
   const queryClient = useQueryClient();
@@ -113,11 +108,9 @@ function ConnectDialog({
 }) {
   const refresh = useRefresh();
   const [selected, setSelected] = useState(initial);
-  const [method, setMethod] = useState<Method>('api_key');
   const [values, setValues] = useState<Record<string, string>>({});
 
   const provider = providers.find(({ id }) => id === selected);
-  const methods = provider?.methods ?? [];
 
   const connect = useMutation({
     meta: { inlineError: true },
@@ -185,35 +178,7 @@ function ConnectDialog({
                 </SelectContent>
               </Select>
             </Field>
-            {provider && methods.length > 1 && (
-              <Field>
-                <FieldLabel htmlFor='method'>Connect with</FieldLabel>
-                <Select
-                  onValueChange={(value) => {
-                    const next = methods.find(
-                      (candidate) => candidate === value
-                    );
-
-                    if (next) {
-                      setMethod(next);
-                    }
-                  }}
-                  value={method}
-                >
-                  <SelectTrigger className='w-full' id='method'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {methods.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {methodLabels[option]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            )}
-            {provider && method === 'api_key' && (
+            {provider && (
               <ProviderFields
                 onChange={(id, value) =>
                   setValues((current) => ({ ...current, [id]: value }))
@@ -268,9 +233,7 @@ function ConnectedProvider({
       <ProviderLogo id={provider.id} name={provider.name} />
       <div className='flex min-w-0 flex-col'>
         <span className='truncate text-sm font-medium'>{provider.name}</span>
-        <span className='truncate text-xs text-muted-foreground'>
-          {methodLabels.api_key}
-        </span>
+        <span className='truncate text-xs text-muted-foreground'>API key</span>
       </div>
       <div className='ml-auto flex shrink-0 items-center gap-1'>
         <Button

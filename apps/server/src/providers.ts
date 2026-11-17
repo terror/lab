@@ -67,7 +67,6 @@ const providers = new Hono()
         id,
         kind,
         kindLabel,
-        methods: ['api_key' as const],
         name,
       })
     );

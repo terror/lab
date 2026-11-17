@@ -1,6 +1,7 @@
+import { plural } from '@/lib/format';
 import { Check, Code, LoaderCircle, X } from 'lucide-react';
 
-import { field, parse, plural, text } from './format';
+import { field, parse, text } from './format';
 import { Block } from './previews';
 import { toolRenderer } from './registry';
 import { type ToolRenderer, type ToolView } from './types';

@@ -1,7 +1,8 @@
 import { conversationTitle } from '@/lib/conversations';
+import { plural } from '@/lib/format';
 import { Folder } from 'lucide-react';
 
-import { count, field, namedTitle, plural, text } from './format';
+import { count, field, namedTitle, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 

@@ -1,6 +1,7 @@
+import { plural } from '@/lib/format';
 import { Globe } from 'lucide-react';
 
-import { count, field, plural, quoted, text } from './format';
+import { count, field, quoted, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 

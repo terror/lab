@@ -31,7 +31,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       kind: 'model',
       kindLabel: 'Models',
-      methods: ['api_key'],
       name: 'Groq',
     },
   });
@@ -51,7 +50,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       kind: 'model',
       kindLabel: 'Models',
-      methods: ['api_key'],
       name: 'Groq',
     },
   });
@@ -76,7 +74,6 @@ test('provider keys can be added and removed', async () => {
       id: 'groq',
       kind: 'model',
       kindLabel: 'Models',
-      methods: ['api_key'],
       name: 'Groq',
     },
   });
@@ -113,7 +110,6 @@ test('environment variables do not configure providers', async () => {
         id: 'groq',
         kind: 'model',
         kindLabel: 'Models',
-        methods: ['api_key'],
         name: 'Groq',
       },
       models: false,
@@ -147,7 +143,6 @@ test('keys that cannot be decrypted count as disconnected', async () => {
         id: 'mistral',
         kind: 'model',
         kindLabel: 'Models',
-        methods: ['api_key'],
         name: 'Mistral',
       },
       models: 200,
