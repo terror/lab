@@ -41,13 +41,23 @@ export function useConversationSort() {
 
 export const conversationsQueryKey = ['conversations'];
 
-function conversationsQueryOptions(sort: ConversationSort) {
+export type ChatScope = { filter: 'recent' } | { project: number };
+
+const recent: ChatScope = { filter: 'recent' };
+
+function scopeQuery(scope: ChatScope) {
+  return 'project' in scope
+    ? { filter: 'all' as const, project: String(scope.project) }
+    : { filter: scope.filter };
+}
+
+function conversationsQueryOptions(scope: ChatScope, sort: ConversationSort) {
   return infiniteQueryOptions({
-    queryKey: [...conversationsQueryKey, sort],
+    queryKey: [...conversationsQueryKey, scope, sort],
     queryFn: ({ pageParam, signal }) =>
       call(
         client.conversations.$get(
-          { query: { cursor: pageParam, filter: 'recent', sort } },
+          { query: { cursor: pageParam, ...scopeQuery(scope), sort } },
           { init: { signal } }
         )
       ),
@@ -101,16 +111,17 @@ export function useConversationSummary(id: number | undefined) {
   });
 }
 
-export function useConversations() {
+export function useConversations(scope = recent) {
   const [sort] = useConversationSort();
 
-  return useInfiniteQuery(conversationsQueryOptions(sort));
+  return useInfiniteQuery(conversationsQueryOptions(scope, sort));
 }
 
 export async function createConversation(
   content: string,
   attachments: Attachment[],
-  model: ModelChoice | undefined
+  model: ModelChoice | undefined,
+  projectId?: number
 ) {
   const { id } = await call(
     client.conversations.$post({
@@ -118,6 +129,7 @@ export async function createConversation(
         attachments,
         content,
         model: model && { id: model.id, provider: model.provider },
+        projectId,
         thinkingLevel: model?.thinkingLevel,
       },
     })
@@ -177,7 +189,7 @@ export async function deleteConversation(id: number) {
 
 const draftSchema = z.string();
 
-type DraftId = number | 'new' | 'scheduled';
+type DraftId = number | 'new' | 'scheduled' | `project:${number}`;
 
 function draftKey(id: DraftId) {
   return `draft:${id}`;

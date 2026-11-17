@@ -84,6 +84,15 @@ const scheduledRoute = createRoute({
   path: '/scheduled',
 });
 
+const projectRoute = createRoute({
+  component: lazyRouteComponent(
+    () => import('@/components/project'),
+    'Project'
+  ),
+  getParentRoute: () => chatRoute,
+  path: '/projects/$projectId',
+});
+
 const conversationRoute = createRoute({
   component: ConversationPage,
   getParentRoute: () => chatRoute,
@@ -116,6 +125,7 @@ const routeTree = rootRoute.addChildren([
     newChatRoute,
     libraryRoute,
     scheduledRoute,
+    projectRoute,
     conversationRoute,
   ]),
   settingsRoute,

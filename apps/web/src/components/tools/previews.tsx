@@ -12,6 +12,7 @@ export function Label({ children }: { children: string }) {
 export type PreviewItem = {
   chatId?: number;
   href?: string;
+  projectId?: number;
   key: string;
   label: string;
   meta?: string;
@@ -20,7 +21,13 @@ export type PreviewItem = {
 export const linkClass =
   'group flex min-w-0 flex-1 items-baseline justify-between gap-4 outline-none focus-visible:underline';
 
-export function PreviewRow({ chatId, href, label, meta }: PreviewItem) {
+export function PreviewRow({
+  chatId,
+  href,
+  label,
+  meta,
+  projectId,
+}: PreviewItem) {
   const content = (
     <>
       <span className='min-w-0 truncate text-foreground/90 underline-offset-4 group-hover:underline'>
@@ -39,6 +46,18 @@ export function PreviewRow({ chatId, href, label, meta }: PreviewItem) {
       <a className={linkClass} href={href} rel='noreferrer' target='_blank'>
         {content}
       </a>
+    );
+  }
+
+  if (projectId !== undefined) {
+    return (
+      <Link
+        className={linkClass}
+        params={{ projectId: String(projectId) }}
+        to='/projects/$projectId'
+      >
+        {content}
+      </Link>
     );
   }
 

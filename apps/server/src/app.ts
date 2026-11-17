@@ -24,6 +24,7 @@ import memory from './memory';
 import { defaultModel, listModels } from './models';
 import { errorResponse, errorResponses, tagByResource } from './openapi';
 import preferences from './preferences';
+import projects from './projects';
 import providers from './providers';
 import schedules from './schedules';
 import { contentSecurityPolicy, docsSecurityPolicy } from './security';
@@ -89,6 +90,7 @@ const api = new Hono()
   .route('/computer', computer)
   .route('/conversations', conversations)
   .route('/preferences', preferences)
+  .route('/projects', projects)
   .route('/providers', providers)
   .route('/library', library)
   .route('/memory', memory)

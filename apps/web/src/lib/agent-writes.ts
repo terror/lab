@@ -4,6 +4,7 @@ import { conversationsQueryKey } from './conversations';
 import { libraryQueryKey } from './library';
 import { memoryQueryOptions } from './memory';
 import { preferencesQueryOptions } from './preferences';
+import { projectsQueryOptions } from './projects';
 import { schedulesQueryOptions } from './schedules';
 import { skillsQueryOptions } from './skills';
 
@@ -12,6 +13,7 @@ const agentWritable = [
   libraryQueryKey,
   memoryQueryOptions.queryKey,
   preferencesQueryOptions.queryKey,
+  projectsQueryOptions.queryKey,
   schedulesQueryOptions.queryKey,
   skillsQueryOptions.queryKey,
 ];
