@@ -96,7 +96,7 @@ function ProjectChats({ id }: { id: number }) {
           selected={false}
         />
       ))}
-      {chats.hasNextPage && (
+      {chats.hasNextPage && !chats.isFetchingNextPage && (
         <LoadMore onLoadMore={() => void chats.fetchNextPage()} />
       )}
     </nav>

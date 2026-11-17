@@ -111,5 +111,13 @@ export function useDictation({
 
   const stop = () => recognition.current?.stop();
 
-  return { start, state, stop, supported: recognizer() !== undefined };
+  const cancel = () => recognition.current?.abort();
+
+  return {
+    cancel,
+    start,
+    state,
+    stop,
+    supported: recognizer() !== undefined,
+  };
 }

@@ -2,6 +2,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { useState } from 'react';
 import { expect, test, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 
 import { Composer } from './composer';
 
@@ -19,7 +20,8 @@ class FakeRecognition extends EventTarget {
   }
 
   abort() {
-    this.stop();
+    this.listening = false;
+    this.emit('end');
   }
 
   emit(type: string, fields: object = {}) {
@@ -32,7 +34,11 @@ class FakeRecognition extends EventTarget {
 
   stop() {
     this.listening = false;
-    this.emit('end');
+
+    setTimeout(() => {
+      this.emit('result', { results: [[{ transcript: 'bar' }]] });
+      this.emit('end');
+    });
   }
 }
 
@@ -104,4 +110,21 @@ test('dictation is hidden where the browser cannot recognize speech', async () =
   await expect.element(screen.getByLabelText('Message')).toBeVisible();
 
   expect(screen.getByRole('button', { name: 'Dictate' }).query()).toBeNull();
+});
+
+test('typing while dictating keeps what you type', async () => {
+  const screen = await render(FakeRecognition);
+
+  await screen.getByRole('button', { name: 'Dictate' }).click();
+
+  FakeRecognition.current?.emit('result', {
+    results: [[{ transcript: 'bar' }]],
+  });
+
+  await screen.getByLabelText('Message').click();
+  await userEvent.keyboard('{End}x');
+
+  await expect
+    .element(screen.getByLabelText('Message'))
+    .toHaveValue('foo barx');
 });

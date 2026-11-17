@@ -284,7 +284,7 @@ export function Composer({
       return;
     }
 
-    dictation.stop();
+    dictation.cancel();
 
     if (steer && onSteer) {
       onSteer(content);
@@ -448,7 +448,7 @@ export function Composer({
           minRows={1}
           onChange={(event) => {
             if (listening) {
-              dictation.stop();
+              dictation.cancel();
             }
 
             onDraftChange(event.target.value);

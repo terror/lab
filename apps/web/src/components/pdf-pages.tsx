@@ -40,7 +40,15 @@ export function PdfPages({
 
       const task = await openPdf(new Uint8Array(await response.arrayBuffer()));
 
-      signal.addEventListener('abort', () => void task.destroy());
+      const destroy = () => void task.destroy();
+
+      if (signal.aborted) {
+        destroy();
+
+        return;
+      }
+
+      signal.addEventListener('abort', destroy, { once: true });
 
       const document = await task.promise;
 

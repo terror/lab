@@ -26,3 +26,19 @@ test('mermaid code blocks render as diagrams', async () => {
     )
     .toEqual(['foo', 'bar']);
 });
+
+test('finished messages are not patched as if they were cut off', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>{'**foo** *bar'}</Markdown>
+  );
+
+  await expect.element(screen.getByText('foo')).toBeVisible();
+
+  expect(screen.container.textContent).toBe('foo *bar');
+});
