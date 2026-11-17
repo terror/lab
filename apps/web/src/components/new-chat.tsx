@@ -6,12 +6,8 @@ import {
   createConversation,
   useDraft,
 } from '@/lib/conversations';
-import {
-  type ModelChoice,
-  modelsQueryOptions,
-  usePreferredModel,
-} from '@/lib/models';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useChatModel } from '@/lib/models';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -34,37 +30,12 @@ function greeting(name: string) {
   return `Good evening, ${first}`;
 }
 
-function preferredOrDefault(
-  catalog:
-    | {
-        default: { id: string; provider: string } | null;
-        models: { id: string; provider: string }[];
-      }
-    | undefined,
-  preferred: ModelChoice | undefined
-) {
-  const available = catalog?.models.some(
-    ({ id, provider }) =>
-      id === preferred?.id && provider === preferred.provider
-  );
-
-  if (available) {
-    return preferred;
-  }
-
-  return catalog?.default ?? undefined;
-}
-
 export function NewChat({ user }: { user: { name: string } }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const models = useQuery(modelsQueryOptions);
-
   const [draft, setDraft] = useDraft('new');
-  const [model, setModel] = usePreferredModel();
+  const [selectedModel, setModel] = useChatModel();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  const selectedModel = preferredOrDefault(models.data, model);
 
   const create = useMutation({
     meta: { inlineError: true },

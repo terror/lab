@@ -1,5 +1,5 @@
 import { thinkingLevelSchema } from '@lab/server/schemas';
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 import { z } from 'zod';
 
@@ -57,4 +57,33 @@ export function useRecentModels() {
 
 export function useFavoriteModels() {
   return usePersistentState('favorite-models', modelKeysSchema, noModels);
+}
+
+function preferredOrDefault(
+  catalog:
+    | {
+        default: { id: string; provider: string } | null;
+        models: { id: string; provider: string }[];
+      }
+    | undefined,
+  preferred: ModelChoice | undefined
+) {
+  const available = catalog?.models.some(
+    ({ id, provider }) =>
+      id === preferred?.id && provider === preferred.provider
+  );
+
+  if (available) {
+    return preferred;
+  }
+
+  return catalog?.default ?? undefined;
+}
+
+export function useChatModel() {
+  const models = useQuery(modelsQueryOptions);
+
+  const [model, setModel] = usePreferredModel();
+
+  return [preferredOrDefault(models.data, model), setModel] as const;
 }

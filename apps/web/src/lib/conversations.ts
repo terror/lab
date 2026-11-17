@@ -176,7 +176,9 @@ export async function deleteConversation(id: number) {
 
 const draftSchema = z.string();
 
-function draftKey(id: number | 'new') {
+type DraftId = number | 'new' | 'scheduled';
+
+function draftKey(id: DraftId) {
   return `draft:${id}`;
 }
 
@@ -184,7 +186,7 @@ export function clearDraft(id: number) {
   removeStored(draftKey(id));
 }
 
-export function useDraft(id: number | 'new') {
+export function useDraft(id: DraftId) {
   return usePersistentState(draftKey(id), draftSchema, '');
 }
 

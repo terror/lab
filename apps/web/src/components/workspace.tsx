@@ -1,5 +1,5 @@
 import { SearchProvider, useSearch } from '@/components/search';
-import { Sidebar } from '@/components/sidebar';
+import { type NavPath, Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import {
   ResizableHandle,
@@ -16,6 +16,7 @@ import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
 import { useMediaQuery } from '@/lib/media';
+import { useTimezoneReport } from '@/lib/schedules';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
@@ -42,11 +43,8 @@ function useNavigation() {
   const navigate = useNavigate();
 
   return {
-    openLibrary: () => {
-      void navigate({ to: '/library' });
-    },
-    openNewChat: () => {
-      void navigate({ to: '/' });
+    navigateTo: (to: NavPath) => {
+      void navigate({ to });
     },
     selectConversation: (id: number) => {
       void navigate({ params: { id }, to: '/c/$id' });
@@ -61,7 +59,7 @@ function DesktopWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openLibrary, openNewChat, selectConversation } = useNavigation();
+  const { navigateTo, selectConversation } = useNavigation();
   const panel = usePanelRef();
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -110,8 +108,7 @@ function DesktopWorkspace({
           <Sidebar
             collapsed={collapsed}
             selected={selected}
-            onLibrary={openLibrary}
-            onNewChat={openNewChat}
+            onNavigate={navigateTo}
             onSelect={selectConversation}
             onToggle={toggle}
             user={user}
@@ -133,7 +130,7 @@ function MobileWorkspace({
   selected: number | undefined;
   user: User;
 }) {
-  const { openLibrary, openNewChat, selectConversation } = useNavigation();
+  const { navigateTo, selectConversation } = useNavigation();
   const { openSearch } = useSearch();
 
   const [open, setOpen] = useState(false);
@@ -170,7 +167,7 @@ function MobileWorkspace({
         </Button>
         <Button
           aria-label='New chat'
-          onClick={openNewChat}
+          onClick={() => navigateTo('/')}
           size='icon'
           variant='ghost'
         >
@@ -185,13 +182,9 @@ function MobileWorkspace({
           </SheetDescription>
           <Sidebar
             selected={selected}
-            onLibrary={() => {
+            onNavigate={(to) => {
               setOpen(false);
-              openLibrary();
-            }}
-            onNewChat={() => {
-              setOpen(false);
-              openNewChat();
+              navigateTo(to);
             }}
             onSelect={(id) => {
               setOpen(false);
@@ -226,6 +219,8 @@ export function Workspace() {
   const user = useUser();
   const selected = useParams({ strict: false }).id;
   const desktop = useMediaQuery('(min-width: 768px)');
+
+  useTimezoneReport();
 
   return (
     <SearchProvider>
