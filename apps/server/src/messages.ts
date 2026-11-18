@@ -1,11 +1,15 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { AgentDoc, type Conversation } from '@earendil-works/pi-durable';
+import {
+  AgentDoc,
+  type Conversation,
+  type EntryRecord,
+} from '@earendil-works/pi-durable';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { connectorsExtensionName } from './connections';
 import { harness } from './harness';
-import { MESSAGE_KIND, type MessageData } from './message-entry';
+import { MESSAGE_KIND, type MessageData, messageData } from './message-entry';
 import { acceptsImages } from './models';
 import { requireOwner } from './records';
 import {
@@ -99,6 +103,29 @@ function entryFile(attachment: Attachment): MessageData['files'][number] {
   }
 
   return { name: attachment.name, type: 'image' };
+}
+
+export function entryAttachments(entry: EntryRecord) {
+  const message = entry.model?.[0];
+
+  const images =
+    message?.role === 'user' && typeof message.content !== 'string'
+      ? message.content.flatMap((part) => (part.type === 'image' ? [part] : []))
+      : [];
+
+  const files = messageData(entry)?.files ?? [];
+
+  const pictures = files.filter(({ type }) => type === 'image');
+
+  return files.flatMap((file) => {
+    const attachment = attachmentSchema.safeParse(
+      file.type === 'image'
+        ? { ...images[pictures.indexOf(file)], name: file.name, type: 'image' }
+        : file
+    );
+
+    return attachment.success ? [attachment.data] : [];
+  });
 }
 
 function attachmentBytes(attachments: readonly Attachment[]) {

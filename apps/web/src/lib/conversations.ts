@@ -23,6 +23,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import type { InferRequestType, InferResponseType } from 'hono/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -155,6 +156,37 @@ export function useStartChat({
     }) => createConversation(content, attachments, model, projectId),
     onSuccess: async (id) => {
       await navigate({ params: { id }, to: '/c/$id' });
+      await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+    },
+  });
+}
+
+export type Fork = InferResponseType<
+  (typeof client.conversations)[':id']['$get'],
+  200
+>['forks'][number];
+
+export type BranchRequest = InferRequestType<
+  (typeof client.conversations)[':id']['branches']['$post']
+>['json'];
+
+export function useBranch(id: number) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: async (json: BranchRequest) => {
+      const branch = await call(
+        client.conversations[':id'].branches.$post({
+          json,
+          param: { id: String(id) },
+        })
+      );
+
+      return branch.id;
+    },
+    onSuccess: async (branch) => {
+      await navigate({ params: { id: branch }, to: '/c/$id' });
       await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
   });

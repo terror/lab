@@ -1,4 +1,5 @@
 import {
+  Action,
   Activity,
   AssistantMessage,
   replyText,
@@ -12,7 +13,11 @@ import { LoadMore } from '@/components/load-more';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
-import { Message, MessageContent } from '@/components/ui/message';
+import {
+  Message,
+  MessageContent,
+  MessageFooter,
+} from '@/components/ui/message';
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -28,18 +33,23 @@ import { type Attachment, imageSource } from '@/lib/attachments';
 import { client } from '@/lib/client';
 import {
   abortConversation,
+  type BranchRequest,
   cancelSubmission,
   contentText,
   conversationsQueryKey,
+  type Fork,
   type Gap,
   readConversation,
   sendMessage,
+  useBranch,
   useConversation,
   useConversationSummary,
   useDraft,
 } from '@/lib/conversations';
+import { useMediaQuery } from '@/lib/media';
 import {
   type ModelChoice,
+  type ModelKey,
   setConversationModel,
   usePreferredModel,
 } from '@/lib/models';
@@ -55,9 +65,26 @@ import {
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { FileText, LoaderCircle, X } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LoaderCircle,
+  Pencil,
+  X,
+} from 'lucide-react';
+import {
+  type KeyboardEvent,
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import TextareaAutosize from 'react-textarea-autosize';
 import { z } from 'zod';
 
 type BubbleFile = { name: string; uploadId?: string };
@@ -90,7 +117,135 @@ const messageDataSchema = z.object({
   text: z.string().optional(),
 });
 
-function UserMessage({ bubble }: { bubble: Bubble }) {
+function focusAtEnd(element: HTMLTextAreaElement | null) {
+  element?.focus();
+  element?.setSelectionRange(element.value.length, element.value.length);
+}
+
+function EditMessage({
+  initial,
+  onCancel,
+  onSubmit,
+}: {
+  initial: string;
+  onCancel: () => void;
+  onSubmit: ((content: string) => void) | undefined;
+}) {
+  const [value, setValue] = useState(initial);
+  const touch = useMediaQuery('(pointer: coarse)');
+
+  const content = value.trim();
+
+  const send = () => {
+    if (content && onSubmit) {
+      onSubmit(content);
+    }
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Escape') {
+      onCancel();
+    }
+
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing &&
+      !touch
+    ) {
+      event.preventDefault();
+      send();
+    }
+  };
+
+  return (
+    <form
+      aria-label='Edit message'
+      className='flex w-full flex-col gap-2 rounded-2xl bg-muted p-3'
+      onSubmit={(event) => {
+        event.preventDefault();
+        send();
+      }}
+    >
+      <TextareaAutosize
+        aria-label='Message'
+        className='resize-none bg-transparent px-1 text-base leading-relaxed outline-none'
+        maxRows={12}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={onKeyDown}
+        ref={focusAtEnd}
+        value={value}
+      />
+      <div className='flex justify-end gap-2'>
+        <Button onClick={onCancel} size='sm' type='button' variant='ghost'>
+          Cancel
+        </Button>
+        <Button disabled={!content || !onSubmit} size='sm' type='submit'>
+          Send
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+type Versions = { chats: readonly number[]; index: number };
+
+function VersionLink({
+  children,
+  id,
+  label,
+}: {
+  children: ReactNode;
+  id: number | undefined;
+  label: string;
+}) {
+  if (id === undefined) {
+    return (
+      <Button aria-label={label} disabled size='icon-xs' variant='ghost'>
+        {children}
+      </Button>
+    );
+  }
+
+  return (
+    <Button asChild size='icon-xs' variant='ghost'>
+      <Link aria-label={label} params={{ id }} to='/c/$id'>
+        {children}
+      </Link>
+    </Button>
+  );
+}
+
+function VersionSwitcher({ chats, index }: Versions) {
+  return (
+    <nav
+      aria-label='Versions'
+      className='flex items-center gap-0.5 text-xs text-muted-foreground tabular-nums'
+    >
+      <VersionLink id={chats[index - 1]} label='Previous version'>
+        <ChevronLeft aria-hidden='true' />
+      </VersionLink>
+      <span>
+        {index + 1} / {chats.length}
+      </span>
+      <VersionLink id={chats[index + 1]} label='Next version'>
+        <ChevronRight aria-hidden='true' />
+      </VersionLink>
+    </nav>
+  );
+}
+
+function UserMessage({
+  bubble,
+  onEdit,
+  versions,
+}: {
+  bubble: Bubble;
+  onEdit?: (content: string) => void;
+  versions?: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+
   return (
     <Message align='end'>
       <MessageContent>
@@ -123,12 +278,31 @@ function UserMessage({ bubble }: { bubble: Bubble }) {
             )}
           </div>
         )}
-        {bubble.text && (
+        {editing && (
+          <EditMessage
+            initial={bubble.text}
+            onCancel={() => setEditing(false)}
+            onSubmit={onEdit}
+          />
+        )}
+        {!editing && bubble.text && (
           <Bubble align='end' variant='muted'>
             <BubbleContent className='rounded-2xl px-4 text-base whitespace-pre-wrap'>
               {bubble.text}
             </BubbleContent>
           </Bubble>
+        )}
+        {!editing && (onEdit || versions) && (
+          <MessageFooter className='gap-0.5 px-0'>
+            {onEdit && (
+              <div className='opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'>
+                <Action label='Edit' onClick={() => setEditing(true)}>
+                  <Pencil aria-hidden='true' className='size-4' />
+                </Action>
+              </div>
+            )}
+            {versions}
+          </MessageFooter>
         )}
       </MessageContent>
     </Message>
@@ -242,13 +416,15 @@ export type Row =
   | { key: string; kind: 'earlier' }
   | { gap: Gap; key: string; kind: 'gap' }
   | {
+      entryId?: number;
       key: string;
       kind: 'assistant';
+      model?: ModelKey;
       parts: Parameters<typeof AssistantMessage>[0]['parts'];
       span?: Span;
       streaming?: boolean;
     }
-  | { bubble: Bubble; key: string; kind: 'user' }
+  | { bubble: Bubble; entryId: number; key: string; kind: 'user' }
   | { key: string; kind: 'compaction' };
 
 export type Span = { end: number; start: number };
@@ -289,8 +465,19 @@ function rowsFor(item: TranscriptItem): Row[] {
       start: message.timestamp,
     };
 
+    const model = { id: message.model, provider: message.provider };
+
     return visible(message.content)
-      ? [{ key, kind: 'assistant', parts: message.content, span }]
+      ? [
+          {
+            entryId: item.entry.id,
+            key,
+            kind: 'assistant',
+            model,
+            parts: message.content,
+            span,
+          },
+        ]
       : [];
   }
 
@@ -314,7 +501,14 @@ function rowsFor(item: TranscriptItem): Row[] {
     return [];
   }
 
-  return [{ bubble: { files, id: key, images, text }, key, kind: 'user' }];
+  return [
+    {
+      bubble: { files, id: key, images, text },
+      entryId: item.entry.id,
+      key,
+      kind: 'user',
+    },
+  ];
 }
 
 function ownsPlan(row: Row, callId: string | null | undefined) {
@@ -387,29 +581,59 @@ function replyKeys(rows: readonly Row[]) {
   );
 }
 
+function versionRows(
+  rows: readonly Row[],
+  forks: readonly Fork[],
+  current: number
+) {
+  const placed = new Map<Row, Versions>();
+
+  for (const { after, chats } of forks) {
+    const index = rows.findIndex(
+      (row) =>
+        (row.kind === 'assistant' || row.kind === 'user') &&
+        row.entryId !== undefined &&
+        row.entryId > (after ?? 0)
+    );
+
+    const row = rows[index];
+    const previous = rows[index - 1];
+
+    if (row && previous?.kind !== 'earlier' && previous?.kind !== 'gap') {
+      placed.set(row, { chats, index: chats.indexOf(current) });
+    }
+  }
+
+  return placed;
+}
+
 const TranscriptRow = memo(function TranscriptRow({
   activity,
   failed,
   latest,
   loading,
+  onBranch,
   onEarlier,
   onGap,
   plan,
   progress,
   results,
   row,
+  versions,
   working,
 }: {
   activity: string | undefined;
   failed: boolean;
   latest: boolean;
   loading: boolean;
+  onBranch: ((request: BranchRequest) => void) | undefined;
   onEarlier: () => void;
   onGap: (gap: Gap) => void;
   plan: ShownPlan | undefined;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   row: Row;
+  versions: Versions | undefined;
   working: boolean;
 }) {
   if (row.kind === 'compaction') {
@@ -451,23 +675,44 @@ const TranscriptRow = memo(function TranscriptRow({
     );
   }
 
+  const switcher = versions && <VersionSwitcher {...versions} />;
+
   if (row.kind === 'assistant') {
+    const { entryId } = row;
+
+    const retry =
+      onBranch && entryId !== undefined
+        ? (model?: ModelChoice) => onBranch({ entryId, kind: 'retry', model })
+        : undefined;
+
     return (
       <AssistantMessage
         activity={activity}
         latest={latest}
+        model={row.model}
+        onRetry={retry}
         parts={row.parts}
         plan={plan}
         progress={progress}
         results={results}
         span={row.span}
         streaming={row.streaming ?? false}
+        versions={switcher}
         working={working}
       />
     );
   }
 
-  return <UserMessage bubble={row.bubble} />;
+  return (
+    <UserMessage
+      bubble={row.bubble}
+      onEdit={
+        onBranch &&
+        ((content) => onBranch({ content, entryId: row.entryId, kind: 'edit' }))
+      }
+      versions={switcher}
+    />
+  );
 });
 
 export function Conversation({ id }: { id: number }) {
@@ -486,6 +731,8 @@ export function Conversation({ id }: { id: number }) {
 
 const EAGER_ROWS = 6;
 
+const noForks: Fork[] = [];
+
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
   const {
@@ -495,6 +742,7 @@ function ConversationView({ id }: { id: number }) {
     loadEarlier,
     fillGap,
   } = useConversation(id);
+  const summary = useConversationSummary(id);
   const [draft, setDraft] = useDraft(id);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
@@ -525,6 +773,8 @@ function ConversationView({ id }: { id: number }) {
   });
 
   const abort = useMutation({ mutationFn: () => abortConversation(id) });
+
+  const branch = useBranch(id);
 
   const cancel = useMutation({
     mutationFn: (submission: number) => cancelSubmission(id, submission),
@@ -576,6 +826,13 @@ function ConversationView({ id }: { id: number }) {
   );
 
   const keyed = useMemo(() => replyKeys(committed), [committed]);
+
+  const forks = summary.data?.forks ?? noForks;
+
+  const versions = useMemo(
+    () => versionRows(committed, forks, id),
+    [committed, forks, id]
+  );
 
   const rows = useMemo(() => {
     const base = committed.map((row, index) => ({
@@ -674,6 +931,8 @@ function ConversationView({ id }: { id: number }) {
     [plan, running]
   );
 
+  const onBranch = running || branch.isPending ? undefined : branch.mutate;
+
   const wasRunning = useRef(running);
 
   useEffect(() => {
@@ -727,12 +986,14 @@ function ConversationView({ id }: { id: number }) {
                       latest={row === latest && !running}
                       failed={earlier.isError || gap.isError}
                       loading={earlier.isPending || gap.isPending}
+                      onBranch={onBranch}
                       onEarlier={onEarlier}
                       onGap={onGap}
                       plan={ownsPlan(row, plan?.callId) ? shownPlan : undefined}
                       progress={progress}
                       results={results}
                       row={row}
+                      versions={versions.get(row)}
                       working={running && row === last}
                     />
                   </MessageScrollerItem>

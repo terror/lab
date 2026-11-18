@@ -14,6 +14,7 @@ function reply(key: string, text: string, span?: Span): Row {
 function user(key: string): Row {
   return {
     bubble: { id: key, text: 'foo' },
+    entryId: 1,
     key,
     kind: 'user',
   };
