@@ -1,9 +1,7 @@
-import { apiKey } from '@better-auth/api-key';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
-import { eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
@@ -43,10 +41,7 @@ export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
   database: drizzleAdapter(db, { provider: 'pg', schema }),
-  plugins: [
-    apiKey({ defaultPrefix: 'lab_', rateLimit: { enabled: false } }),
-    expo(),
-  ],
+  plugins: [expo()],
   secret: env.BETTER_AUTH_SECRET,
   socialProviders: {
     google: {
@@ -76,49 +71,6 @@ export const requireAdmin = createMiddleware<{ Variables: { user: User } }>(
     if (!isAdmin(c.get('user'))) {
       throw new HTTPException(403, { message: 'Only the admin can do this' });
     }
-
-    await next();
-  }
-);
-
-async function keyOwner(authorization: string | undefined) {
-  const secret = /^Bearer (.+)$/i.exec(authorization ?? '')?.[1];
-
-  if (!secret) {
-    return undefined;
-  }
-
-  const { key } = await auth.api.verifyApiKey({ body: { key: secret } });
-
-  if (!key) {
-    return undefined;
-  }
-
-  const [owner] = await db
-    .select()
-    .from(schema.user)
-    .where(eq(schema.user.id, key.referenceId));
-
-  return owner;
-}
-
-export const requireKey = createMiddleware<{ Variables: { user: User } }>(
-  async (c, next) => {
-    const owner = await keyOwner(c.req.header('authorization'));
-
-    if (!owner) {
-      c.header('WWW-Authenticate', 'Bearer');
-
-      throw new HTTPException(401, {
-        message: 'Connect with a key from Settings → MCP',
-      });
-    }
-
-    if (!allowed(owner)) {
-      throw new HTTPException(403, { message: NOT_ALLOWED });
-    }
-
-    c.set('user', owner);
 
     await next();
   }
