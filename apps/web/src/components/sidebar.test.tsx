@@ -6,11 +6,19 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { Sidebar } from './sidebar';
 
-function renderSidebar() {
+function renderSidebar({
+  onProject = () => undefined,
+  path = '/projects/7',
+  selected,
+}: {
+  onProject?: (id: number) => void;
+  path?: string;
+  selected?: number;
+} = {}) {
   stubFetch(({ pathname, searchParams }) => {
     if (pathname === '/api/projects') {
       return Response.json({
@@ -32,6 +40,10 @@ function renderSidebar() {
       });
     }
 
+    if (pathname === '/api/conversations/1') {
+      return Response.json({ projectId: 7 });
+    }
+
     const conversations =
       searchParams.get('project') === '7'
         ? [
@@ -50,15 +62,15 @@ function renderSidebar() {
   });
 
   const router = createRouter({
-    history: createMemoryHistory({ initialEntries: ['/projects/7'] }),
+    history: createMemoryHistory({ initialEntries: [path] }),
     routeTree: createRootRoute({
       component: () => (
         <TooltipProvider>
           <Sidebar
             onNavigate={() => undefined}
-            onProject={() => undefined}
+            onProject={onProject}
             onSelect={() => undefined}
-            selected={undefined}
+            selected={selected}
             user={{
               createdAt: new Date(0),
               email: 'foo@bar.com',
@@ -89,6 +101,24 @@ test('clicking the open project collapses and expands its chats', async () => {
   await expect.element(project).toHaveAttribute('aria-expanded', 'false');
 
   await project.click();
+
+  await expect.element(screen.getByText('bar')).toBeVisible();
+});
+
+test('clicking a project from one of its chats opens the project', async () => {
+  const onProject = vi.fn();
+
+  const { screen } = await renderSidebar({
+    onProject,
+    path: '/c/1',
+    selected: 1,
+  });
+
+  await expect.element(screen.getByText('bar')).toBeVisible();
+
+  await screen.getByRole('button', { name: 'foo', exact: true }).click();
+
+  expect(onProject.mock.calls).toEqual([[7]]);
 
   await expect.element(screen.getByText('bar')).toBeVisible();
 });
