@@ -145,6 +145,8 @@ async function createConversation(
   return id;
 }
 
+export const startChatKey = [...conversationsQueryKey, 'start'];
+
 export function useStartChat({
   inlineError = true,
   projectId,
@@ -157,6 +159,7 @@ export function useStartChat({
 
   return useMutation({
     meta: { inlineError },
+    mutationKey: startChatKey,
     mutationFn: ({
       attachments,
       content,

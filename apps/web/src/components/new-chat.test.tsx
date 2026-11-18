@@ -1,4 +1,6 @@
+import '@/index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { glideOrigin } from '@/lib/glide';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
@@ -16,10 +18,12 @@ const DAY = 86_400_000;
 async function renderHome({
   chats = [],
   projects = [],
+  start = () => Response.json({ id: 1 }, { status: 201 }),
   tasks = [],
 }: {
   chats?: object[];
   projects?: object[];
+  start?: () => Response | Promise<Response>;
   tasks?: object[];
 } = {}) {
   const responses: Record<string, unknown> = {
@@ -31,11 +35,15 @@ async function renderHome({
     '/api/schedules': { tasks },
   };
 
-  stubFetch(({ pathname }) =>
-    pathname in responses
+  stubFetch(({ pathname }, init) => {
+    if (init?.method === 'POST' && pathname === '/api/conversations') {
+      return start();
+    }
+
+    return pathname in responses
       ? Response.json(responses[pathname])
-      : new Response(null, { status: 204 })
-  );
+      : new Response(null, { status: 204 });
+  });
 
   const rootRoute = createRootRoute();
 
@@ -131,4 +139,25 @@ test('a returning user gets their latest chat, its project, and the next task', 
   await screen.getByRole('button', { name: 'qux' }).click();
 
   await expect.poll(() => router.state.location.pathname).toBe('/projects/3');
+});
+
+test('home steps aside and holds the composer in place while a chat starts', async () => {
+  const started = Promise.withResolvers<Response>();
+
+  const { screen } = await renderHome({ start: () => started.promise });
+
+  await screen.getByLabelText('Message').fill('foo');
+  await screen.getByRole('button', { name: 'Send' }).click();
+
+  const greeting = screen.getByRole('heading').element().parentElement;
+
+  await expect
+    .poll(() => greeting && getComputedStyle(greeting).opacity)
+    .toBe('0');
+
+  expect(glideOrigin()).toBeTypeOf('number');
+
+  started.resolve(new Response(null, { status: 500 }));
+
+  await expect.poll(glideOrigin).toBeUndefined();
 });

@@ -9,6 +9,7 @@ import {
   type ToolResult,
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
+import { ComposerDock } from '@/components/composer-dock';
 import { DocumentCard } from '@/components/document-card';
 import { LoadMore } from '@/components/load-more';
 import { ToolConversation, ToolHistory } from '@/components/tools';
@@ -47,6 +48,7 @@ import {
   useConversationSummary,
   useDraft,
 } from '@/lib/conversations';
+import { useArrivals } from '@/lib/glide';
 import { useMediaQuery } from '@/lib/media';
 import {
   type ModelChoice,
@@ -943,6 +945,11 @@ function ConversationView({ id }: { id: number }) {
 
   const anchor = committed.findLast(({ kind }) => kind === 'user');
 
+  const arrived = useArrivals(
+    rows.map(({ key }) => key),
+    view !== undefined
+  );
+
   const progress = useMemo(() => toolProgress(live?.tools), [live?.tools]);
 
   const queued = (inbox?.items ?? []).flatMap((item) => {
@@ -1018,6 +1025,11 @@ function ConversationView({ id }: { id: number }) {
                 {rows.map(({ key, row }, index) => (
                   <MessageScrollerItem
                     key={key}
+                    className={cn(
+                      row === anchor &&
+                        arrived(key) &&
+                        'animate-in duration-base fade-in slide-in-from-bottom-1'
+                    )}
                     eager={index >= rows.length - EAGER_ROWS}
                     messageId={key}
                     scrollAnchor={row === anchor}
@@ -1068,7 +1080,7 @@ function ConversationView({ id }: { id: number }) {
           size='icon'
         />
       </MessageScroller>
-      <div className='mx-auto w-full max-w-3xl px-6 pb-6'>
+      <ComposerDock className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <Composer
           attachments={attachments}
           commandContext={commandContext}
@@ -1103,7 +1115,7 @@ function ConversationView({ id }: { id: number }) {
           running={running}
           submitting={send.isPending}
         />
-      </div>
+      </ComposerDock>
     </div>
   );
 }
