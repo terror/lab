@@ -1,4 +1,4 @@
-import { cn } from 'cn';
+import { cn } from '@/lib/utils';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { contrast } from './contrast';

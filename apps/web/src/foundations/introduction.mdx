@@ -73,5 +73,6 @@ after a pointer press.
 - `components/ui` holds shadcn components. Edit them in place; don't wrap them
   to restyle.
 - Variants live in `cva` definitions next to the component, and `cn` merges
-  overrides.
+  overrides. Import `cn` from `@/lib/utils`. That one knows the radius and
+  duration tokens, so `rounded-full` on a `Button` replaces `rounded-control`.
 - App components live in `components/` and get a story under **Patterns**.

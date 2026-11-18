@@ -27,6 +27,17 @@
   ],
   "rules": {
     "eslint/no-nested-ternary": "error",
+    "eslint/no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "message": "Import cn from @/lib/utils. That one merges the radius and duration tokens.",
+            "name": "cn"
+          }
+        ]
+      }
+    ],
     "import/no-unassigned-import": [
       "error",
       {
