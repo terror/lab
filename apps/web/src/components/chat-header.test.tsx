@@ -2,13 +2,13 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { queryClient } from '@/lib/query-client';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import type { QueryClient } from '@tanstack/react-query';
 import {
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
-import type { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
