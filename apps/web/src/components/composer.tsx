@@ -27,6 +27,8 @@ import { Link } from '@tanstack/react-router';
 import { ArrowUp, CornerDownRight, Mic, Square } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import {
+  useLayoutEffect,
+  useRef,
   useState,
   type Dispatch,
   type KeyboardEvent,
@@ -148,8 +150,17 @@ function SendOrStop({
 
   const { glyph, label, type } = actions[mode];
 
+  const button = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    if (!stopping && document.activeElement === button.current) {
+      button.current?.form?.querySelector('textarea')?.focus();
+    }
+  }, [stopping]);
+
   return (
     <Button
+      ref={button}
       aria-label={label}
       className='rounded-full'
       disabled={!stopping && disabled}
