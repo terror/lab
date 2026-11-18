@@ -1,5 +1,6 @@
 import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { answerQuestion } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
@@ -75,7 +76,7 @@ export function ApprovalCard({
     approval.decision ?? (send.isSuccess ? send.variables : undefined);
 
   return (
-    <div className='flex flex-col gap-3 rounded-2xl border p-4'>
+    <Card className='gap-3' variant='outline'>
       <div className='flex flex-col gap-1'>
         <p className='text-sm font-medium'>{approval.action}</p>
         {approval.summary.map((line) => (
@@ -111,6 +112,6 @@ export function ApprovalCard({
         </p>
       )}
       {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
-    </div>
+    </Card>
   );
 }

@@ -1,5 +1,6 @@
 import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { answerQuestion } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
@@ -42,15 +43,15 @@ export function QuestionCard({
   };
 
   return (
-    <div className='flex flex-col gap-3 rounded-2xl border p-4'>
+    <Card className='gap-3' variant='outline'>
       <p className='text-sm font-medium'>{question}</p>
       <div className='flex flex-col gap-1.5'>
         {options.map((option) => (
-          <button
+          <Button
             key={option}
             aria-pressed={chosen === option}
             className={cn(
-              'flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left text-sm transition-colors enabled:hover:bg-muted/50 disabled:cursor-default',
+              'h-auto min-h-9 justify-between gap-3 py-1.5 text-left font-normal whitespace-normal disabled:opacity-100',
               chosen === option && 'border-foreground/40 bg-muted',
               chosen !== undefined &&
                 chosen !== option &&
@@ -58,13 +59,11 @@ export function QuestionCard({
             )}
             disabled={locked}
             onClick={() => send.mutate(option)}
-            type='button'
+            variant='outline'
           >
             {option}
-            {chosen === option && (
-              <Check aria-hidden='true' className='size-4 shrink-0' />
-            )}
-          </button>
+            {chosen === option && <Check aria-hidden='true' />}
+          </Button>
         ))}
       </div>
       {typed && (
@@ -82,17 +81,12 @@ export function QuestionCard({
             placeholder='Something else…'
             value={other}
           />
-          <Button
-            disabled={locked || !other.trim()}
-            size='sm'
-            type='submit'
-            variant='secondary'
-          >
+          <Button disabled={locked || !other.trim()} size='sm' type='submit'>
             Send
           </Button>
         </form>
       )}
       {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
-    </div>
+    </Card>
   );
 }

@@ -104,7 +104,7 @@ export function PreviewPassage({ children }: { children: string }) {
 
 export function PreviewCode({ children }: { children: string }) {
   return (
-    <pre className='max-h-64 overflow-auto rounded-xl bg-muted/40 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
+    <pre className='max-h-64 overflow-auto rounded-card bg-foreground/4 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
       {children}
     </pre>
   );

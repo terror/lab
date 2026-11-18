@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card';
 import { Plug } from 'lucide-react';
 
 import { field, namedTitle, text } from './format';
@@ -18,10 +19,10 @@ function ConnectorCard({ connector }: { connector: unknown }) {
   }
 
   return (
-    <div className='flex flex-col gap-0.5 rounded-xl bg-muted/40 px-3.5 py-3 text-sm'>
+    <Card className='gap-0.5 text-sm' variant='inset'>
       <span className='font-medium'>{name}</span>
       {url && <span className='truncate text-muted-foreground'>{url}</span>}
-    </div>
+    </Card>
   );
 }
 

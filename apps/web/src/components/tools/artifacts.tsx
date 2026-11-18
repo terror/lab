@@ -1,5 +1,7 @@
 import { PinMenu } from '@/components/artifact-apps';
 import { type FrameCall, SandboxFrame } from '@/components/sandbox-frame';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -45,9 +47,6 @@ function download(title: string, html: string) {
 
   URL.revokeObjectURL(url);
 }
-
-const action =
-  'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 
 type Shown = { html: string; id: string; title: string; version: number };
 
@@ -111,7 +110,7 @@ function Building({ html, title }: { html: string; title: string }) {
   const partial = useThrottled(html);
 
   return (
-    <div className='flex flex-col overflow-hidden rounded-xl bg-muted/40'>
+    <Card className='gap-0 overflow-hidden p-0' variant='inset'>
       <div className='flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground'>
         <LayoutTemplate aria-hidden='true' className='size-4' />
         <span className='truncate'>Building {title}</span>
@@ -129,7 +128,7 @@ function Building({ html, title }: { html: string; title: string }) {
           />
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -143,14 +142,14 @@ function Superseded({ artifact }: { artifact: Shown }) {
         <span className='truncate'>
           {artifact.title} · version {artifact.version} · updated below
         </span>
-        <button
+        <Button
           aria-label={showCode ? 'Hide code' : 'Show code'}
-          className={action}
           onClick={() => setShowCode(!showCode)}
-          type='button'
+          size='icon-sm'
+          variant='quiet'
         >
-          <Code aria-hidden='true' className='size-4' />
-        </button>
+          <Code aria-hidden='true' />
+        </Button>
       </div>
       {showCode && <PreviewCode>{artifact.html}</PreviewCode>}
     </div>
@@ -217,13 +216,9 @@ function Errors({
         <span>
           {errors.length === 1 ? '1 error' : `${errors.length} errors`}
         </span>
-        <button
-          className='ml-auto rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground'
-          onClick={onFix}
-          type='button'
-        >
+        <Button className='ml-auto' onClick={onFix} size='sm' variant='quiet'>
           Fix with Lab
-        </button>
+        </Button>
       </div>
       <ul className='flex flex-col gap-1 font-mono text-xs text-muted-foreground'>
         {errors.map((error) => (
@@ -268,94 +263,97 @@ function Live({ artifact }: { artifact: Shown }) {
   const html = useLibraryImages(artifact.html);
 
   return (
-    <section
-      aria-label={title}
-      className='group/artifact flex flex-col overflow-hidden rounded-xl bg-muted/40'
-    >
-      <header className='flex items-center gap-2 px-4 py-2'>
-        <LayoutTemplate
-          aria-hidden='true'
-          className='size-4 text-muted-foreground'
-        />
-        <h3 className='truncate text-sm font-medium'>{title}</h3>
-        {version > 1 && (
-          <span className='text-xs text-muted-foreground'>v{version}</span>
-        )}
-        <div className='ml-auto flex items-center gap-1 opacity-0 transition-opacity group-focus-within/artifact:opacity-100 group-hover/artifact:opacity-100 has-[[data-state=open]]:opacity-100 pointer-coarse:opacity-100'>
-          <button
-            aria-label={showCode ? 'Show preview' : 'Show code'}
-            className={action}
-            onClick={() => setShowCode(!showCode)}
-            type='button'
-          >
-            {showCode ? (
-              <Eye aria-hidden='true' className='size-4' />
-            ) : (
-              <Code aria-hidden='true' className='size-4' />
+    <section aria-label={title} className='group/artifact'>
+      <Card className='gap-0 overflow-hidden p-0' variant='inset'>
+        <header className='flex items-center gap-2 px-4 py-2'>
+          <LayoutTemplate
+            aria-hidden='true'
+            className='size-4 text-muted-foreground'
+          />
+          <h3 className='truncate text-sm font-medium'>{title}</h3>
+          {version > 1 && (
+            <span className='text-xs text-muted-foreground'>v{version}</span>
+          )}
+          <div className='ml-auto flex items-center gap-1 hover-reveal group-focus-within/artifact:opacity-100 group-hover/artifact:opacity-100'>
+            <Button
+              aria-label={showCode ? 'Show preview' : 'Show code'}
+              onClick={() => setShowCode(!showCode)}
+              size='icon-sm'
+              variant='quiet'
+            >
+              {showCode ? (
+                <Eye aria-hidden='true' />
+              ) : (
+                <Code aria-hidden='true' />
+              )}
+            </Button>
+            <Button
+              aria-label='Download'
+              onClick={() => download(title, html ?? artifact.html)}
+              size='icon-sm'
+              variant='quiet'
+            >
+              <Download aria-hidden='true' />
+            </Button>
+            <Button
+              aria-label='Full screen'
+              onClick={() => setFullScreen(true)}
+              size='icon-sm'
+              variant='quiet'
+            >
+              <Maximize2 aria-hidden='true' />
+            </Button>
+            {conversationId !== undefined && (
+              <>
+                <Button asChild size='icon-sm' variant='quiet'>
+                  <Link
+                    aria-label='Open as page'
+                    params={{ artifactId: artifact.id, conversationId }}
+                    to='/apps/$conversationId/$artifactId'
+                  >
+                    <AppWindow aria-hidden='true' />
+                  </Link>
+                </Button>
+                <PinMenu
+                  artifactId={artifact.id}
+                  className={buttonVariants({
+                    size: 'icon-sm',
+                    variant: 'quiet',
+                  })}
+                  conversationId={conversationId}
+                />
+              </>
             )}
-          </button>
-          <button
-            aria-label='Download'
-            className={action}
-            onClick={() => download(title, html ?? artifact.html)}
-            type='button'
-          >
-            <Download aria-hidden='true' className='size-4' />
-          </button>
-          <button
-            aria-label='Full screen'
-            className={action}
-            onClick={() => setFullScreen(true)}
-            type='button'
-          >
-            <Maximize2 aria-hidden='true' className='size-4' />
-          </button>
-          {conversationId !== undefined && (
-            <>
-              <Link
-                aria-label='Open as page'
-                className={action}
-                params={{ artifactId: artifact.id, conversationId }}
-                to='/apps/$conversationId/$artifactId'
-              >
-                <AppWindow aria-hidden='true' className='size-4' />
-              </Link>
-              <PinMenu
-                artifactId={artifact.id}
-                className={action}
-                conversationId={conversationId}
+          </div>
+        </header>
+        <div className='px-4 pb-4'>
+          {showCode && <PreviewCode>{artifact.html}</PreviewCode>}
+          <div hidden={showCode}>
+            {html !== undefined && (
+              <SandboxFrame
+                html={html}
+                onCall={onCall}
+                onError={onError}
+                onSend={addToDraft}
+                title={title}
               />
-            </>
-          )}
+            )}
+          </div>
         </div>
-      </header>
-      <div className='px-4 pb-4'>
-        {showCode && <PreviewCode>{artifact.html}</PreviewCode>}
-        <div hidden={showCode}>
-          {html !== undefined && (
-            <SandboxFrame
-              html={html}
-              onCall={onCall}
-              onError={onError}
-              onSend={addToDraft}
-              title={title}
-            />
-          )}
-        </div>
-      </div>
-      {errors.length > 0 && (
-        <Errors
-          errors={errors}
-          onFix={() => addToDraft(fixRequest(title, errors))}
-        />
-      )}
-      {fullScreen && (
-        <FullScreen
-          artifact={artifact}
-          onCall={onCall}
-          onClose={() => setFullScreen(false)}
-        />
-      )}
+        {errors.length > 0 && (
+          <Errors
+            errors={errors}
+            onFix={() => addToDraft(fixRequest(title, errors))}
+          />
+        )}
+        {fullScreen && (
+          <FullScreen
+            artifact={artifact}
+            onCall={onCall}
+            onClose={() => setFullScreen(false)}
+          />
+        )}
+      </Card>
     </section>
   );
 }
