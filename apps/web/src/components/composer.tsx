@@ -1,66 +1,33 @@
 import { CommandMenu, useCommandMenu } from '@/components/command-menu';
-import { DocumentThumbnail } from '@/components/document-card';
+import {
+  AttachMenu,
+  AttachmentPreviews,
+  useAttachmentIntake,
+} from '@/components/composer-attachments';
 import { ErrorMessage } from '@/components/error-message';
 import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { IconButton } from '@/components/ui/icon-button';
 import { Kbd } from '@/components/ui/kbd';
-import { ListRow } from '@/components/ui/list-row';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  type Attachment,
-  imageSource,
-  readAttachment,
-  readLibraryItem,
-  textLimit,
-} from '@/lib/attachments';
+import type { Attachment } from '@/lib/attachments';
 import { type CommandContext, type SlashCommand } from '@/lib/commands';
 import { useDictation } from '@/lib/dictation';
-import type { LibraryItem } from '@/lib/library';
-import { useMediaQuery, usePhone } from '@/lib/media';
+import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
 import { useAdmin } from '@/lib/profile';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  ArrowUp,
-  CornerDownRight,
-  FileText,
-  LibraryBig,
-  type LucideIcon,
-  Mic,
-  Paperclip,
-  Plus,
-  Square,
-  X,
-} from 'lucide-react';
+import { ArrowUp, CornerDownRight, Mic, Square } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import {
-  lazy,
-  Suspense,
-  useRef,
   useState,
-  type ClipboardEvent,
   type Dispatch,
   type KeyboardEvent,
   type Ref,
@@ -70,151 +37,19 @@ import {
 import TextareaAutosize from 'react-textarea-autosize';
 import { toast } from 'sonner';
 
-const LibraryPicker = lazy(async () => ({
-  default: (await import('@/components/library-picker')).LibraryPicker,
-}));
-
-const MAX_ATTACHMENTS = 8;
-
 const noCommandContext: CommandContext = {
   conversationId: undefined,
   lastReply: undefined,
   newChat: undefined,
 };
 
-function AttachmentPreview({
-  attachment,
-  onRemove,
-}: {
-  attachment: Attachment;
-  onRemove: () => void;
-}) {
-  return (
-    <div className='group relative'>
-      {attachment.type === 'image' && (
-        <img
-          alt={attachment.name}
-          className='size-16 rounded-xl border object-cover'
-          src={imageSource(attachment)}
-        />
-      )}
-      {attachment.type === 'file' && attachment.uploadId && (
-        <div className='flex h-16 max-w-56 items-center gap-3 overflow-hidden rounded-xl border pr-3 text-sm'>
-          <DocumentThumbnail
-            className='flex h-full w-12 shrink-0 items-center justify-center border-r bg-white object-cover object-top'
-            uploadId={attachment.uploadId}
-          />
-          <span className='truncate'>{attachment.name}</span>
-        </div>
-      )}
-      {attachment.type === 'file' && !attachment.uploadId && (
-        <div className='flex h-16 max-w-48 items-center gap-2 rounded-xl border px-3 text-sm'>
-          <FileText aria-hidden='true' className='size-4 shrink-0' />
-          <span className='truncate'>{attachment.name}</span>
-        </div>
-      )}
-      <Button
-        aria-label={`Remove ${attachment.name}`}
-        className='absolute -top-2 -right-2 rounded-full shadow-xs'
-        onClick={onRemove}
-        size='icon-xs'
-        type='button'
-        variant='secondary'
-      >
-        <X aria-hidden='true' />
-      </Button>
-    </div>
-  );
-}
-
-type Source = { icon: LucideIcon; label: string; run: () => void };
-
-function AttachMenu({
-  disabled,
-  onCloseAutoFocus,
-  sources,
-}: {
-  disabled: boolean;
-  onCloseAutoFocus: (event: Event) => void;
-  sources: Source[];
-}) {
-  const phone = usePhone();
-  const [open, setOpen] = useState(false);
-
-  const trigger = (
-    <Button
-      aria-label='Add photos and files'
-      className='rounded-full'
-      disabled={disabled}
-      size='icon'
-      type='button'
-      variant='quiet'
-    >
-      <Plus aria-hidden='true' />
-    </Button>
-  );
-
-  if (!phone) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-        <DropdownMenuContent
-          align='start'
-          onCloseAutoFocus={onCloseAutoFocus}
-          side='top'
-        >
-          {sources.map(({ icon: Icon, label, run }) => (
-            <DropdownMenuItem key={label} onSelect={run}>
-              <Icon aria-hidden='true' />
-              {label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  return (
-    <Sheet onOpenChange={setOpen} open={open}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent
-        className='gap-0 rounded-t-dialog'
-        onCloseAutoFocus={onCloseAutoFocus}
-        showCloseButton={false}
-        side='bottom'
-      >
-        <SheetHeader className='pb-2'>
-          <SheetTitle>Add to your message</SheetTitle>
-          <SheetDescription className='sr-only'>
-            Attach photos and files
-          </SheetDescription>
-        </SheetHeader>
-        <ul className='px-4 pb-4'>
-          {sources.map(({ icon: Icon, label, run }) => (
-            <ListRow key={label} asChild>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  run();
-                }}
-                type='button'
-              >
-                <Icon
-                  aria-hidden='true'
-                  className='size-4 text-muted-foreground'
-                />
-                {label}
-              </button>
-            </ListRow>
-          ))}
-        </ul>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 function NoModels() {
   const admin = useAdmin();
+  const catalog = useQuery(modelsQueryOptions).data?.models;
+
+  if (catalog?.length !== 0) {
+    return null;
+  }
 
   if (!admin) {
     return (
@@ -373,12 +208,8 @@ export function Composer({
   running?: boolean;
   submitting?: boolean;
 }) {
-  const input = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string>();
-  const [picking, setPicking] = useState(false);
-  const [pickerOpened, setPickerOpened] = useState(false);
   const touch = useMediaQuery('(pointer: coarse)');
-  const openingPicker = useRef(false);
 
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
@@ -394,46 +225,12 @@ export function Composer({
 
   const stoppable = running === true && onStop !== undefined;
 
-  const room = MAX_ATTACHMENTS - attachments.length;
-
-  const catalog = useQuery(modelsQueryOptions).data?.models;
-
-  const limit = textLimit(
-    catalog?.find(
-      ({ id, provider }) => id === model?.id && provider === model.provider
-    )
-  );
-
-  const attach = async <T,>(
-    sources: T[],
-    read: (source: T) => Promise<Attachment>
-  ) => {
-    setAttachError(undefined);
-
-    const results = await Promise.allSettled(sources.slice(0, room).map(read));
-
-    const added = results.flatMap((result) =>
-      result.status === 'fulfilled' ? [result.value] : []
-    );
-
-    const failed = results.find((result) => result.status === 'rejected');
-
-    if (failed) {
-      setAttachError(
-        String(
-          failed.reason instanceof Error ? failed.reason.message : failed.reason
-        )
-      );
-    }
-
-    if (sources.length > room) {
-      setAttachError(`You can attach up to ${MAX_ATTACHMENTS} files`);
-    }
-
-    onAttachmentsChange((current) =>
-      [...current, ...added].slice(0, MAX_ATTACHMENTS)
-    );
-  };
+  const intake = useAttachmentIntake({
+    attachments,
+    model,
+    onAttachmentsChange,
+    onError: setAttachError,
+  });
 
   const submit = (steer: boolean) => {
     if (empty || submitting) {
@@ -491,32 +288,6 @@ export function Composer({
     }
   };
 
-  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const files = [...event.clipboardData.files];
-
-    if (files.length > 0) {
-      event.preventDefault();
-      void attach(files, (file) => readAttachment(file, limit));
-    }
-  };
-
-  const attached = new Set(
-    attachments.flatMap(({ libraryId }) =>
-      libraryId === undefined ? [] : [libraryId]
-    )
-  );
-
-  const openPicker = () => {
-    openingPicker.current = true;
-    setPickerOpened(true);
-    setPicking(true);
-  };
-
-  const addFromLibrary = async (items: LibraryItem[]) => {
-    await attach(items, (item) => readLibraryItem(item, limit));
-    setPicking(false);
-  };
-
   const onFormSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     submit(false);
@@ -533,21 +304,10 @@ export function Composer({
         />
       )}
       <div className='flex flex-col rounded-3xl border bg-background shadow-sm focus-ring-within'>
-        {attachments.length > 0 && (
-          <div className='flex flex-wrap gap-2 px-4 pt-4'>
-            {attachments.map((attachment, index) => (
-              <AttachmentPreview
-                key={`${attachment.name}-${index}`}
-                attachment={attachment}
-                onRemove={() =>
-                  onAttachmentsChange(
-                    attachments.filter((_, other) => other !== index)
-                  )
-                }
-              />
-            ))}
-          </div>
-        )}
+        <AttachmentPreviews
+          attachments={attachments}
+          onAttachmentsChange={onAttachmentsChange}
+        />
         <TextareaAutosize
           {...commands.textbox}
           aria-label='Message'
@@ -563,52 +323,13 @@ export function Composer({
             onDraftChange(event.target.value);
           }}
           onKeyDown={onKeyDown}
-          onPaste={onPaste}
+          onPaste={intake.onPaste}
           placeholder={placeholder}
           ref={inputRef}
           value={draft}
         />
         <div className='flex items-center gap-2 px-3 pb-3'>
-          <input
-            className='hidden'
-            multiple
-            onChange={(event) => {
-              void attach([...(event.target.files ?? [])], (file) =>
-                readAttachment(file, limit)
-              );
-              event.target.value = '';
-            }}
-            ref={input}
-            type='file'
-          />
-          <AttachMenu
-            disabled={disabled || room <= 0}
-            onCloseAutoFocus={(event) => {
-              if (openingPicker.current) {
-                openingPicker.current = false;
-                event.preventDefault();
-              }
-            }}
-            sources={[
-              {
-                icon: Paperclip,
-                label: 'Add photos & files',
-                run: () => input.current?.click(),
-              },
-              { icon: LibraryBig, label: 'Add from library', run: openPicker },
-            ]}
-          />
-          {pickerOpened && (
-            <Suspense fallback={null}>
-              <LibraryPicker
-                attached={attached}
-                limit={room}
-                onAdd={addFromLibrary}
-                onOpenChange={setPicking}
-                open={picking}
-              />
-            </Suspense>
-          )}
+          <AttachMenu disabled={disabled} intake={intake} />
           <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>
             <ModelPicker
               disabled={disabled}
@@ -660,7 +381,7 @@ export function Composer({
           {attachError ?? dictationError ?? error}
         </ErrorMessage>
       )}
-      {catalog?.length === 0 && <NoModels />}
+      <NoModels />
     </form>
   );
 }
