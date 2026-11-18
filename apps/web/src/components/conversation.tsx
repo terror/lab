@@ -402,15 +402,28 @@ function resultStatus(isError: boolean, data: unknown): ToolResult['status'] {
 }
 
 export function toolResults(items: readonly TranscriptItem[]) {
+  const issued = new Map<string, number>();
   const results = new Map<string, ToolResult>();
 
   for (const item of items) {
     const message = item.kind === 'entry' ? item.entry.model?.[0] : undefined;
 
+    if (message?.role === 'assistant') {
+      for (const part of message.content) {
+        if (part.type === 'toolCall') {
+          issued.set(part.id, message.timestamp + (message.durationMs ?? 0));
+        }
+      }
+    }
+
     if (item.kind === 'entry' && message?.role === 'toolResult') {
+      const start = issued.get(message.toolCallId);
+
       results.set(message.toolCallId, {
         details: message.details,
         output: contentText(message.content),
+        span:
+          start === undefined ? undefined : { end: message.timestamp, start },
         status: resultStatus(message.isError, item.entry.data),
       });
     }

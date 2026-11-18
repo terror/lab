@@ -4,6 +4,7 @@ import { createContext, type ReactNode } from 'react';
 export type ToolResult = {
   details?: unknown;
   output: string;
+  span?: { end: number; start: number };
   status: 'done' | 'failed' | 'stopped';
 };
 

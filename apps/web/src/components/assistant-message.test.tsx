@@ -111,6 +111,49 @@ test('a turn shows how long it worked as soon as its reply starts', async () => 
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument();
 });
 
+test('time spent waiting for an answer is not counted as work', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <AssistantMessage
+        parts={[
+          {
+            arguments: { options: ['foo', 'bar'], question: 'baz' },
+            id: 'a',
+            name: 'ask_user',
+            type: 'toolCall',
+          },
+          { text: 'qux', type: 'text' },
+        ]}
+        progress={new Map()}
+        results={
+          new Map([
+            [
+              'a',
+              {
+                output: 'foo',
+                span: { end: 61_000, start: 1_000 },
+                status: 'done',
+              },
+            ],
+          ])
+        }
+        span={{ end: 65_000, start: 0 }}
+        streaming={false}
+      />
+    </TooltipProvider>
+  );
+
+  await expect
+    .element(screen.getByRole('button', { name: 'Worked for 5s · 1 action' }))
+    .toBeVisible();
+});
+
 test('unfinished actions settle as stopped once the turn ends', async () => {
   stubFetch(() =>
     Response.json({

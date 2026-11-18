@@ -21,24 +21,25 @@ function user(key: string): Row {
   };
 }
 
-function toolResult(toolCallId: string, extra: object, data?: object) {
+function entry(message: object, data?: object) {
   return {
-    entry: {
-      data,
-      model: [
-        {
-          content: [{ text: 'foo', type: 'text' }],
-          isError: false,
-          role: 'toolResult',
-          timestamp: 9,
-          toolCallId,
-          toolName: 'bar',
-          ...extra,
-        },
-      ],
-    },
+    entry: { data, model: [message] },
     kind: 'entry',
   } as unknown as TranscriptItem;
+}
+
+function toolResult(toolCallId: string, isError: boolean, data?: object) {
+  return entry(
+    {
+      content: [{ text: 'foo', type: 'text' }],
+      isError,
+      role: 'toolResult',
+      timestamp: 9,
+      toolCallId,
+      toolName: 'bar',
+    },
+    data
+  );
 }
 
 test('consecutive replies merge into one row per turn', () => {
@@ -84,25 +85,25 @@ test('merged replies span the whole turn', () => {
   ]);
 });
 
-test('tool results tell failed from stopped', () => {
+test('tool results carry when they ran and whether they were stopped', () => {
   expect(
     Object.fromEntries(
       toolResults([
-        toolResult('a', {}),
-        toolResult('b', { isError: true }),
-        toolResult(
-          'c',
-          { isError: true },
-          {
-            diagnostics: [
-              { code: 'aborted', message: 'baz', severity: 'error' },
-            ],
-          }
-        ),
+        entry({
+          content: [{ arguments: {}, id: 'a', name: 'bar', type: 'toolCall' }],
+          durationMs: 2,
+          role: 'assistant',
+          timestamp: 1,
+        }),
+        toolResult('a', false),
+        toolResult('b', true),
+        toolResult('c', true, {
+          diagnostics: [{ code: 'aborted', message: 'baz', severity: 'error' }],
+        }),
       ])
     )
   ).toEqual({
-    a: { output: 'foo', status: 'done' },
+    a: { output: 'foo', span: { end: 9, start: 3 }, status: 'done' },
     b: { output: 'foo', status: 'failed' },
     c: { output: 'foo', status: 'stopped' },
   });

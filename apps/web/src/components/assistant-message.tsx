@@ -231,14 +231,48 @@ function StepStatus({
   return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
 }
 
+function waited(span: Span, waits: readonly Span[]) {
+  return waits
+    .toSorted((first, second) => first.start - second.start)
+    .reduce(
+      (counted, wait) => {
+        const start = Math.max(wait.start, counted.from);
+        const end = Math.min(wait.end, span.end);
+
+        if (end <= start) {
+          return counted;
+        }
+
+        return { from: end, total: counted.total + end - start };
+      },
+      { from: span.start, total: 0 }
+    ).total;
+}
+
+function waitingSpans(
+  calls: readonly Call[],
+  results: ReadonlyMap<string, ToolResult>
+) {
+  return calls.flatMap((call) => {
+    const result = results.get(call.id);
+
+    const asked =
+      call.name === 'ask_user' || approvalOf(result?.details) !== undefined;
+
+    return asked && result?.span ? [result.span] : [];
+  });
+}
+
 export function Worked({
   children,
   span,
   statuses,
+  waits,
 }: {
   children: ReactNode;
   span: Span | undefined;
   statuses: readonly CallStatus[];
+  waits: readonly Span[];
 }) {
   const failed = statuses.filter((status) => status === 'failed').length;
 
@@ -257,7 +291,7 @@ export function Worked({
           <TraceLine className='h-6.5'>
             <TraceTitle>
               {span
-                ? `Worked for ${duration(span.end - span.start)}`
+                ? `Worked for ${duration(span.end - span.start - waited(span, waits))}`
                 : 'Worked'}
             </TraceTitle>
             <TraceDescription className='text-muted-foreground'>
@@ -576,6 +610,7 @@ export function AssistantMessage({
             statuses={calls.map(({ id }) =>
               callStatus(results.get(id), working)
             )}
+            waits={waitingSpans(calls, results)}
           >
             {calls.map((call) => (
               <ToolStep
