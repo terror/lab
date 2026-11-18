@@ -152,7 +152,6 @@
         "apps/web/src/components/project-instructions.tsx",
         "apps/web/src/components/project-menu.tsx",
         "apps/web/src/components/question-card.tsx",
-        "apps/web/src/components/scheduled.tsx",
         "apps/web/src/components/search.tsx",
         "apps/web/src/components/settings.tsx",
         "apps/web/src/components/sidebar.tsx",

@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { StartComposer } from '@/components/start-composer';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListRow } from '@/components/ui/list-row';
+import { Page, PageHeader } from '@/components/ui/page';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { conversationsQueryKey } from '@/lib/conversations';
 import {
   type ScheduledTask,
@@ -21,7 +27,7 @@ import {
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Clock, Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 
@@ -29,20 +35,33 @@ type Filter = 'active' | 'all' | 'paused';
 
 const filters: Record<
   Filter,
-  { empty: string; keep: (task: ScheduledTask) => boolean; label: string }
+  {
+    empty: { description: string; title: string };
+    keep: (task: ScheduledTask) => boolean;
+    label: string;
+  }
 > = {
   active: {
-    empty: 'No active tasks. Describe one above and Lab will set it up.',
+    empty: {
+      description: 'Describe one above and Lab will set it up.',
+      title: 'No active tasks',
+    },
     keep: (task) => task.enabled,
     label: 'Active',
   },
   paused: {
-    empty: 'No paused tasks.',
+    empty: {
+      description: 'A task you pause waits here until you resume it.',
+      title: 'No paused tasks',
+    },
     keep: (task) => !task.enabled,
     label: 'Paused',
   },
   all: {
-    empty: 'No scheduled tasks yet. Describe one above and Lab will set it up.',
+    empty: {
+      description: 'Describe one above and Lab will set it up.',
+      title: 'No scheduled tasks yet',
+    },
     keep: () => true,
     label: 'All',
   },
@@ -64,6 +83,21 @@ function schedule(task: ScheduledTask) {
   return `${task.description} · Next run ${untilRun(task.nextRunAt)}`;
 }
 
+function TaskSummary({ task }: { task: ScheduledTask }) {
+  return (
+    <>
+      <Clock
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground'
+      />
+      <span className='flex min-w-0 flex-col'>
+        <span className='truncate font-medium'>{task.title}</span>
+        <span className='truncate text-muted-foreground'>{schedule(task)}</span>
+      </span>
+    </>
+  );
+}
+
 function TaskRow({ task }: { task: ScheduledTask }) {
   const navigate = useNavigate();
 
@@ -81,42 +115,17 @@ function TaskRow({ task }: { task: ScheduledTask }) {
 
   const [confirming, setConfirming] = useState(false);
 
-  const open = () => {
-    if (task.conversationId !== null) {
-      void navigate({
-        params: { id: task.conversationId },
-        to: '/c/$id',
-      });
-    }
-  };
-
-  return (
-    <li className='group flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-muted/50'>
-      <button
-        className='flex min-w-0 flex-1 items-center gap-3 rounded-control text-left disabled:cursor-default'
-        disabled={task.conversationId === null}
-        onClick={open}
-        type='button'
-      >
-        <span className='flex size-9 shrink-0 items-center justify-center rounded-full bg-muted'>
-          <Clock aria-hidden='true' className='size-4 text-muted-foreground' />
-        </span>
-        <span className='flex min-w-0 flex-col'>
-          <span className='truncate text-sm font-medium'>{task.title}</span>
-          <span className='truncate text-sm text-muted-foreground'>
-            {schedule(task)}
-          </span>
-        </span>
-      </button>
+  const actions = (
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
             aria-label={`Actions for ${task.title}`}
-            className='flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground'
-            type='button'
+            size='icon-sm'
+            variant='quiet'
           >
-            <Ellipsis aria-hidden='true' className='size-4' />
-          </button>
+            <Ellipsis aria-hidden='true' />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end'>
           <DropdownMenuItem onSelect={() => run.mutate(task.id)}>
@@ -146,6 +155,34 @@ function TaskRow({ task }: { task: ScheduledTask }) {
         open={confirming}
         title={`Delete ${task.title}?`}
       />
+    </>
+  );
+
+  if (task.conversationId === null) {
+    return (
+      <ListRow actions={actions}>
+        <TaskSummary task={task} />
+      </ListRow>
+    );
+  }
+
+  return (
+    <ListRow actions={actions} asChild>
+      <Link params={{ id: task.conversationId }} to='/c/$id'>
+        <TaskSummary task={task} />
+      </Link>
+    </ListRow>
+  );
+}
+
+function TaskSkeleton() {
+  return (
+    <li className='flex min-h-11 items-center gap-3 py-1.5'>
+      <Skeleton className='size-4 rounded-full' />
+      <div className='flex flex-1 flex-col gap-2'>
+        <Skeleton className='w-2/5' />
+        <Skeleton className='w-3/5' />
+      </div>
     </li>
   );
 }
@@ -160,13 +197,10 @@ function FilterMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          className='flex items-center gap-1 rounded-full border px-3 py-1 text-sm hover:bg-muted'
-          type='button'
-        >
+        <Button size='sm' variant='outline'>
           {filters[filter].label}
-          <ChevronDown aria-hidden='true' className='size-3.5' />
-        </button>
+          <ChevronDown aria-hidden='true' />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
         <DropdownMenuRadioGroup
@@ -207,34 +241,31 @@ export function Scheduled() {
 
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
-      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-8'>
-        <div className='flex flex-col gap-1'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Scheduled</h1>
-          <p className='text-sm text-muted-foreground'>
-            Lab runs these on a schedule in the chat where you set them up.
-          </p>
-        </div>
+      <Page>
+        <PageHeader
+          description='Lab runs these on a schedule in the chat where you set them up.'
+          title='Scheduled'
+        />
         <SchedulePrompt />
         <section className='flex flex-col gap-2'>
-          <div className='flex items-center justify-between px-3'>
-            <h2 className='text-sm font-medium text-muted-foreground'>Tasks</h2>
-            <FilterMenu filter={filter} onChange={setFilter} />
-          </div>
-          {schedules.isError && (
-            <LoadError className='px-3' subject='scheduled tasks' />
-          )}
+          <SectionHeading
+            actions={<FilterMenu filter={filter} onChange={setFilter} />}
+          >
+            Tasks
+          </SectionHeading>
+          {schedules.isError && <LoadError subject='scheduled tasks' />}
           {schedules.isSuccess && tasks.length === 0 && (
-            <p className='px-3 py-6 text-sm text-muted-foreground'>
-              {filters[filter].empty}
-            </p>
+            <EmptyState {...filters[filter].empty} />
           )}
-          <ul className='flex flex-col'>
+          <ul aria-busy={schedules.isPending} className='flex flex-col gap-0.5'>
+            {schedules.isPending &&
+              [0, 1, 2].map((row) => <TaskSkeleton key={row} />)}
             {tasks.map((task) => (
               <TaskRow key={task.id} task={task} />
             ))}
           </ul>
         </section>
-      </div>
+      </Page>
     </div>
   );
 }
