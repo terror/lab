@@ -4,47 +4,80 @@ import { LiveMark } from '@/components/ui/live-mark';
 import { UnreadChips } from '@/components/unread-chips';
 import { startChatKey, useDraft } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
+import { stagger } from '@/lib/motion';
+import { readStored, writeStored } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
+import { say, useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { z } from 'zod';
 
 const greetedKey = 'lab:greeted';
 
-function greeting(name: string) {
-  const hour = new Date().getHours();
-  const first = name.split(' ')[0] || name;
+const DAY = 86_400_000;
 
-  if (hour < 5) {
-    return `Up late, ${first}?`;
+const visitSchema = z.object({ absent: z.number(), at: z.number() });
+
+function storedVisit() {
+  try {
+    return visitSchema.safeParse(
+      JSON.parse(window.sessionStorage.getItem(greetedKey) ?? 'null')
+    ).data;
+  } catch {
+    return undefined;
   }
-
-  if (hour < 12) {
-    return `Good morning, ${first}`;
-  }
-
-  if (hour < 18) {
-    return `Good afternoon, ${first}`;
-  }
-
-  return `Good evening, ${first}`;
 }
 
-function useFirstVisit() {
-  const [first] = useState(
-    () => window.sessionStorage.getItem(greetedKey) === null
-  );
+function useVisit() {
+  const [visit] = useState(() => {
+    const stored = storedVisit();
+
+    if (stored) {
+      return { ...stored, first: false };
+    }
+
+    const at = Date.now();
+
+    return {
+      absent: (at - readStored('last-seen', z.number(), at)) / DAY,
+      at,
+      first: true,
+    };
+  });
 
   useEffect(() => {
-    window.sessionStorage.setItem(greetedKey, 'true');
-  }, []);
+    window.sessionStorage.setItem(
+      greetedKey,
+      JSON.stringify({ absent: visit.absent, at: visit.at })
+    );
+    writeStored('last-seen', Date.now());
+  }, [visit]);
 
-  return first;
+  return visit;
 }
 
-export function NewChat({ user }: { user: { name: string } }) {
-  const first = useFirstVisit();
+function Words({ text }: { text: string }) {
+  return text.split(' ').map((word, index) => (
+    <Fragment key={index}>
+      {index > 0 && ' '}
+      <span
+        className='motion-safe:animate-word-in'
+        style={{ animationDelay: `${Math.min(index, 5) * stagger}s` }}
+      >
+        {word}
+      </span>
+    </Fragment>
+  ));
+}
+
+export function NewChat({ user }: { user: { id: string; name: string } }) {
+  const { absent, at, first } = useVisit();
   const quiet = useQuiet();
+  const greeting = say(
+    'greeting',
+    { absent, at: new Date(at), name: user.name },
+    { quiet, seed: `${user.id}:${new Date(at).toDateString()}` }
+  );
   const [, setDraft] = useDraft('new');
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);
@@ -82,7 +115,7 @@ export function NewChat({ user }: { user: { name: string } }) {
             state={first && !quiet ? 'assemble' : 'idle'}
           />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
-            {greeting(user.name)}
+            {first && !quiet ? <Words text={greeting} /> : greeting}
           </h1>
         </div>
         <div ref={composer} className='relative w-full'>

@@ -62,7 +62,7 @@ async function renderHome({
         createRoute({
           component: () => (
             <TooltipProvider>
-              <NewChat user={{ name: 'Foo Bar' }} />
+              <NewChat user={{ id: 'foo', name: 'Foo Bar' }} />
             </TooltipProvider>
           ),
           getParentRoute: () => rootRoute,
@@ -95,6 +95,41 @@ test('the mark assembles on the first visit of a session and rests after', async
   }
 
   expect(states).toEqual(['assemble', 'idle']);
+});
+
+test('the greeting is picked once a session and notices a long absence', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+
+  window.localStorage.setItem(
+    'lab:last-seen',
+    JSON.stringify(new Date(2026, 10, 1).getTime())
+  );
+
+  const greetings = [];
+
+  try {
+    for (const hour of [14, 20]) {
+      vi.setSystemTime(new Date(2026, 10, 18, hour));
+
+      const { screen } = await renderHome();
+
+      await expect.element(screen.getByRole('heading')).toBeVisible();
+
+      greetings.push(screen.getByRole('heading').element().textContent);
+
+      await screen.unmount();
+    }
+  } finally {
+    vi.useRealTimers();
+  }
+
+  expect({
+    greetings,
+    lastSeen: window.localStorage.getItem('lab:last-seen'),
+  }).toEqual({
+    greetings: ['Welcome back, Foo', 'Welcome back, Foo'],
+    lastSeen: String(new Date(2026, 10, 18, 20).getTime()),
+  });
 });
 
 test('a quiet home shows the mark at rest on the first visit', async () => {
