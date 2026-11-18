@@ -229,23 +229,24 @@ export function useChatActions(
   });
 
   const move = useMutation({
-    mutationFn: (projectId: number | null) =>
-      updateConversation(chat.id, { projectId }),
+    mutationFn: ({ to }: { from: number | null; to: number | null }) =>
+      updateConversation(chat.id, { projectId: to }),
     onSettled: async () => {
       await refresh();
       await queryClient.invalidateQueries({
         queryKey: projectsQueryOptions.queryKey,
       });
     },
-    onSuccess: (_, projectId) => {
-      const previous = chat.projectId;
-
+    onSuccess: (_, { from, to }) => {
       const name = queryClient
         .getQueryData(projectsQueryOptions.queryKey)
-        ?.projects.find((project) => project.id === projectId)?.name;
+        ?.projects.find((project) => project.id === to)?.name;
 
       toast(name ? `Moved to ${name}.` : 'Removed from project.', {
-        action: { label: 'Undo', onClick: () => move.mutate(previous) },
+        action: {
+          label: 'Undo',
+          onClick: () => move.mutate({ from: to, to: from }),
+        },
       });
     },
   });
@@ -274,7 +275,8 @@ export function useChatActions(
   return {
     menu: {
       onDelete: () => remove.mutate(),
-      onMove: (projectId: number | null) => move.mutate(projectId),
+      onMove: (projectId: number | null) =>
+        move.mutate({ from: chat.projectId, to: projectId }),
       onPin: () => update.mutate({ pinned: !chat.pinned }),
       pinned: chat.pinned,
       projectId: chat.projectId,
