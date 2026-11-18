@@ -101,8 +101,13 @@ export function SandboxFrame({
 
   useEffect(() => {
     latest.current = content;
-    port.current?.postMessage({ html: content, scripts, type: 'render' });
-  }, [content, scripts]);
+    port.current?.postMessage({
+      html: content,
+      scripts,
+      title,
+      type: 'render',
+    });
+  }, [content, scripts, title]);
 
   useEffect(() => () => port.current?.close(), []);
 
@@ -128,6 +133,7 @@ export function SandboxFrame({
         channel.port1.postMessage({
           html: latest.current,
           scripts,
+          title,
           type: 'render',
         });
       }
