@@ -9,9 +9,12 @@ export const chatsAccess: ChatsAccess = {
     return pinChat(await requireOwner(conversationId), chatId, pinned);
   },
   purge: async (conversationId, kind, id) => {
-    const { purgeFromTrash } = await import('./trash');
+    const { purgeFromTrash } = await import('./trash-items');
 
-    return purgeFromTrash(kind, await requireOwner(conversationId), id);
+    return (
+      (await purgeFromTrash(kind, await requireOwner(conversationId), id)) !==
+      undefined
+    );
   },
   rename: async (conversationId, chatId, title) => {
     const { renameChat } = await import('./chat-actions');
@@ -19,7 +22,7 @@ export const chatsAccess: ChatsAccess = {
     return renameChat(await requireOwner(conversationId), chatId, title);
   },
   restore: async (conversationId, kind, id) => {
-    const { restoreFromTrash } = await import('./trash');
+    const { restoreFromTrash } = await import('./trash-items');
 
     return restoreFromTrash(kind, await requireOwner(conversationId), id);
   },
@@ -27,7 +30,7 @@ export const chatsAccess: ChatsAccess = {
     const ownerId = await requireOwner(conversationId);
 
     const { chatSummary } = await import('./chat-actions');
-    const { moveToTrash } = await import('./trash');
+    const { moveToTrash } = await import('./trash-items');
 
     const chat = await chatSummary(ownerId, chatId);
 
@@ -40,7 +43,7 @@ export const chatsAccess: ChatsAccess = {
     return trashed ? chat : undefined;
   },
   trashed: async (conversationId) => {
-    const { listTrash } = await import('./trash');
+    const { listTrash } = await import('./trash-items');
 
     return listTrash(await requireOwner(conversationId));
   },

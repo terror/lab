@@ -50,7 +50,7 @@ import { registry } from './registry';
 import { modelSchema, planStepsSchema, thinkingLevelSchema } from './schemas';
 import { checkSpend } from './spend';
 import { subscribeStatus } from './status';
-import { moveToTrash } from './trash';
+import { moveToTrash } from './trash-items';
 import { idParam, positiveId, validator } from './validator';
 
 const imageParams = validator(
