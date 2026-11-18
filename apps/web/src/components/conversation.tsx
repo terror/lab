@@ -360,6 +360,7 @@ const TranscriptRow = memo(function TranscriptRow({
   plan,
   progress,
   results,
+  retrying,
   row,
   versions,
   working,
@@ -375,6 +376,7 @@ const TranscriptRow = memo(function TranscriptRow({
   plan: ShownPlan | undefined;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
+  retrying: boolean;
   row: Row;
   versions: Versions | undefined;
   working: boolean;
@@ -439,6 +441,7 @@ const TranscriptRow = memo(function TranscriptRow({
         plan={plan}
         progress={progress}
         results={results}
+        retrying={retrying}
         span={row.span}
         streaming={row.streaming ?? false}
         versions={switcher}
@@ -648,6 +651,11 @@ function ConversationView({ id }: { id: number }) {
 
   const onBranch = running || branch.isPending ? undefined : branch.mutate;
 
+  const retried =
+    branch.isPending && branch.variables.kind === 'retry'
+      ? branch.variables.entryId
+      : undefined;
+
   const wasRunning = useRef(running);
 
   useEffect(() => {
@@ -666,9 +674,26 @@ function ConversationView({ id }: { id: number }) {
   });
 
   useEffect(() => {
-    if (!running) {
-      markRead();
+    if (running) {
+      return undefined;
     }
+
+    if (!document.hidden) {
+      markRead();
+
+      return undefined;
+    }
+
+    const read = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', read);
+        markRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', read);
+
+    return () => document.removeEventListener('visibilitychange', read);
   }, [markRead, running]);
 
   const thinking =
@@ -718,6 +743,11 @@ function ConversationView({ id }: { id: number }) {
                       plan={ownsPlan(row, plan?.callId) ? shownPlan : undefined}
                       progress={progress}
                       results={results}
+                      retrying={
+                        row.kind === 'assistant' &&
+                        row.entryId !== undefined &&
+                        row.entryId === retried
+                      }
                       row={row}
                       versions={versions.get(row)}
                       working={running && row === last}

@@ -31,6 +31,8 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'gulp',
     'drift',
     'error',
+    'broken',
+    'recover',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -42,6 +44,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
   expect(Object.fromEntries(seen)).toEqual({
     ahem: ['live-mark-ahem', 'live-mark-ping-ahem'],
     assemble: ['live-mark-assemble', 'live-mark-fade'],
+    broken: [],
     done: ['live-mark-hop', 'live-mark-sparkle'],
     drift: ['live-mark-ping-away'],
     error: ['live-mark-slip', 'live-mark-slip-coral'],
@@ -54,6 +57,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
     ],
     idle: [],
     proud: ['live-mark-hop-big', 'live-mark-lid', 'live-mark-sparkle'],
+    recover: ['live-mark-assemble', 'live-mark-mend'],
     thinking: [
       'live-mark-bubble',
       'live-mark-slosh-blue',
@@ -103,6 +107,8 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     'gulp',
     'drift',
     'error',
+    'broken',
+    'recover',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -132,6 +138,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     animations: {
       ahem: [],
       assemble: ['live-mark-fade'],
+      broken: [],
       done: [],
       dot: [],
       drift: [],
@@ -139,6 +146,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       gulp: [],
       handoff: ['live-mark-hide', 'live-mark-show'],
       proud: [],
+      recover: [],
       thinking: ['live-mark-dim'],
       waiting: [],
     },
@@ -148,6 +156,24 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       'matrix(1, 0, 0, 1, 4, 2)',
     ],
   });
+});
+
+test('a broken mark holds the slipped pose without playing the slip', async () => {
+  const screen = await render(<LiveMark data-testid='foo' state='broken' />);
+
+  const mark = screen.getByTestId('foo').element();
+
+  expect(
+    ['coral', 'blue', 'yellow'].map(
+      (part) =>
+        getComputedStyle(mark.querySelector(`[data-part='${part}']`) ?? mark)
+          .transform
+    )
+  ).toEqual([
+    'matrix(0.990268, -0.139173, 0.139173, 0.990268, -2, 1)',
+    'matrix(1, 0, 0, 1, -1, 1)',
+    'matrix(1, 0, 0, 1, 4, 2)',
+  ]);
 });
 
 test('the pop curve of the mark follows the pop spring preset', async () => {

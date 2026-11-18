@@ -1,6 +1,6 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -15,6 +15,7 @@ import {
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
+import { models } from './models';
 import { runDueTasks } from './scheduler';
 
 const task = {
@@ -269,5 +270,25 @@ test('changing what a task does asks first, and removed users’ tasks stop', as
   expect({ declined, stored }).toEqual({
     declined: ['The user declined to change this task.'],
     stored: { lastRunAt: null, prompt: 'bar' },
+  });
+});
+
+test('running a task with no provider asks for one', async () => {
+  const headers = await signIn();
+
+  await ask(headers, 'approved');
+
+  const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+  await db
+    .update(schema.scheduledTask)
+    .set({ conversationId: null })
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  spyOn(models, 'getAvailable').mockResolvedValue([]);
+
+  expect(await call(headers, 'POST', `/schedules/${created.id}/run`)).toEqual({
+    body: { error: 'Add a provider in settings to start chatting' },
+    status: 400,
   });
 });

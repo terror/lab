@@ -4,7 +4,7 @@ import { expect, spyOn, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 
 import { signInAdmin } from '../test/auth';
-import { call, chat, toolOutputs } from '../test/client';
+import { call, chat, settle, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 
@@ -125,4 +125,55 @@ test('web searches count toward the user’s usage', async () => {
         )
       )
   ).toEqual([{ cost: 0.005, model: 'search', provider: 'exa' }]);
+});
+
+test('stopping a chat cancels its web request', async () => {
+  const headers = await signInAdmin();
+
+  await call(headers, 'PUT', '/providers/exa', {
+    apiKey: 'qux',
+    method: 'api_key',
+  });
+
+  const started = Promise.withResolvers<AbortSignal | null | undefined>();
+
+  spyOn(globalThis, 'fetch').mockImplementation(
+    Object.assign(
+      (_input: string | Request | URL, init?: RequestInit) => {
+        started.resolve(init?.signal);
+
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(init.signal?.reason)
+          );
+        });
+      },
+      { preconnect: fetch.preconnect }
+    )
+  );
+
+  try {
+    script(toolCall('web_fetch', { url: 'https://foo.example/a' }));
+
+    const { body: created } = await call(headers, 'POST', '/conversations', {
+      content: 'foo',
+    });
+
+    const signal = await started.promise;
+
+    const stopped = call(headers, 'POST', `/conversations/${created.id}/abort`);
+
+    expect(
+      await Promise.race([
+        stopped.then(({ status }) => status),
+        Bun.sleep(1_000).then(() => 'still running'),
+      ])
+    ).toBe(204);
+
+    await settle(created.id);
+
+    expect(signal?.aborted).toBe(true);
+  } finally {
+    await call(headers, 'DELETE', '/providers/exa');
+  }
 });

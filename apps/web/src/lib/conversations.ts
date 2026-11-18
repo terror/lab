@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type { Attachment } from './attachments';
 import { call, callIfFound, client } from './client';
 import type { ModelChoice } from './models';
+import { useRefreshMutation } from './mutations';
 import { usePreference } from './preferences';
 import { removeStored, usePersistentState } from './storage';
 
@@ -88,13 +89,15 @@ export function useConversationSummary(id: number | undefined) {
   });
 }
 
+export const unreadChatsQueryOptions = queryOptions({
+  queryKey: [...conversationsQueryKey, 'unread'],
+  queryFn: ({ signal }) =>
+    call(client.conversations.unread.$get(undefined, { init: { signal } })),
+  refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 30_000),
+});
+
 export function useUnreadChats() {
-  return useQuery({
-    queryKey: [...conversationsQueryKey, 'unread'],
-    queryFn: ({ signal }) =>
-      call(client.conversations.unread.$get(undefined, { init: { signal } })),
-    refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 30_000),
-  });
+  return useQuery(unreadChatsQueryOptions);
 }
 
 export function useConversations(scope = recent) {
@@ -226,15 +229,20 @@ export function usePinnedConversations() {
   return useQuery(listQueryOptions('pinned', sort));
 }
 
-export async function answerQuestion(
-  id: number,
-  json: { answer: string; callId: string }
+export function useAnswer<T extends string>(
+  id: number | undefined,
+  callId: string
 ) {
-  await call(
-    client.conversations[':id'].answers.$post({
-      json,
-      param: { id: String(id) },
-    })
+  return useRefreshMutation(
+    async (answer: T) => {
+      await call(
+        client.conversations[':id'].answers.$post({
+          json: { answer, callId },
+          param: { id: String(id ?? 0) },
+        })
+      );
+    },
+    { inlineError: true, invalidate: [conversationsQueryKey] }
   );
 }
 

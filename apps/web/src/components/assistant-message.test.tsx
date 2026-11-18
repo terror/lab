@@ -456,3 +456,106 @@ test('a pending approval keeps its plain dot when Lab is quiet', async () => {
     )
   ).toEqual(['trace-line', 'trace-icon', 'dot', 'trace-title']);
 });
+
+test('a finished turn shows no mark when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const { screen } = await renderWithQuery(reply(false), client);
+
+  await expect
+    .element(
+      screen.getByRole('button', {
+        name: 'Worked for 2m 31s · 2 actions · 1 failed',
+      })
+    )
+    .toBeVisible();
+
+  expect(screen.container.querySelector('[data-slot=live-mark]')).toBeNull();
+});
+
+const attempts = {
+  failed: { failure: 'model_error', retrying: false, working: false },
+  retrying: { failure: 'model_error', retrying: true, working: false },
+  worked: { failure: undefined, retrying: false, working: false },
+  working: { failure: undefined, retrying: false, working: true },
+} as const;
+
+function attempt(state: keyof typeof attempts) {
+  const { failure, retrying, working } = attempts[state];
+
+  return (
+    <TooltipProvider>
+      <AssistantMessage
+        failure={failure}
+        latest={!working}
+        parts={parts}
+        progress={new Map()}
+        results={results}
+        retrying={retrying}
+        span={{ end: 5_000, start: 0 }}
+        streaming={working}
+        working={working}
+      />
+    </TooltipProvider>
+  );
+}
+
+function failureMark() {
+  return document
+    .querySelector('[role=alert] [data-slot=live-mark]')
+    ?.getAttribute('data-state');
+}
+
+test('a failed run slips once, mends on Retry, and holds still when it fails again', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const seen = [];
+
+  const first = await renderWithQuery(attempt('working'));
+
+  await first.screen.rerender(attempt('worked'));
+  await first.screen.rerender(attempt('working'));
+  await first.screen.rerender(attempt('failed'));
+
+  seen.push(failureMark());
+
+  await first.screen.rerender(attempt('retrying'));
+
+  seen.push(failureMark());
+
+  await first.screen.unmount();
+
+  const second = await renderWithQuery(attempt('working'));
+
+  await second.screen.rerender(attempt('failed'));
+
+  seen.push(failureMark());
+
+  expect(seen).toEqual(['error', 'recover', 'broken']);
+});
+
+test('a failed run keeps its plain icon when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const { screen } = await renderWithQuery(attempt('failed'), client);
+
+  expect(
+    [
+      ...screen.getByRole('alert').element().querySelectorAll('[data-slot]'),
+    ].map((part) => part.getAttribute('data-slot'))
+  ).toEqual(['trace-icon', 'status-icon', 'trace-title']);
+});

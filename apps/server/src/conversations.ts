@@ -321,7 +321,7 @@ const conversations = new Hono()
       await watch.closed;
 
       clearInterval(heartbeat);
-      status.unsubscribe();
+      stop();
     });
   })
   .post(

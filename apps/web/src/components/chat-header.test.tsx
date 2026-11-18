@@ -129,6 +129,10 @@ test('the chat header renames the chat from its menu', async () => {
         .map(([input, init]) => [requestUrl(input).pathname, init?.body])
     )
     .toEqual([['/api/conversations/1', JSON.stringify({ title: 'baz' })]]);
+
+  await expect
+    .element(screen.getByRole('button', { name: 'Chat options' }))
+    .toHaveFocus();
 });
 
 test('an undo that fails says why', async () => {

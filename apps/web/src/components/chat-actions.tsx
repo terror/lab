@@ -32,7 +32,13 @@ import {
   PinOff,
   Trash2,
 } from 'lucide-react';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 
 export function RenameInput({
@@ -65,6 +71,10 @@ export function RenameInput({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
     if (event.key === 'Enter') {
       event.preventDefault();
       commit();
@@ -192,9 +202,20 @@ export function ChatMenuItems({
   );
 }
 
-export function useRenaming() {
+export function useRenaming(trigger: RefObject<HTMLElement | null>) {
   const [editing, setEditing] = useState(false);
   const renaming = useRef(false);
+  const restoring = useRef(false);
+
+  useEffect(() => {
+    if (!editing && restoring.current) {
+      restoring.current = false;
+
+      if (document.activeElement === document.body) {
+        trigger.current?.focus();
+      }
+    }
+  }, [editing, trigger]);
 
   return {
     editing,
@@ -208,7 +229,10 @@ export function useRenaming() {
     start: () => {
       renaming.current = true;
     },
-    stop: () => setEditing(false),
+    stop: () => {
+      restoring.current = true;
+      setEditing(false);
+    },
   };
 }
 

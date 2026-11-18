@@ -69,7 +69,12 @@ async function record(conversationId: number, model: string, cost: number) {
   }
 }
 
-async function exa(conversationId: number, path: string, body: object) {
+async function exa(
+  conversationId: number,
+  path: string,
+  body: object,
+  signal: AbortSignal | undefined
+) {
   const key = await exaKey();
 
   if (!key) {
@@ -80,7 +85,10 @@ async function exa(conversationId: number, path: string, body: object) {
     body: JSON.stringify(body),
     headers: { 'content-type': 'application/json', 'x-api-key': key },
     method: 'POST',
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.any([
+      AbortSignal.timeout(20_000),
+      ...(signal ? [signal] : []),
+    ]),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -105,12 +113,14 @@ async function exa(conversationId: number, path: string, body: object) {
 export function webAccess(): WebAccess {
   return {
     available: async () => (await exaKey()) !== undefined,
-    fetch: async (conversationId, url) => {
+    fetch: async (conversationId, url, signal) => {
       const { results } = contentsSchema.parse(
-        await exa(conversationId, '/contents', {
-          text: { maxCharacters: MAX_PAGE_LENGTH },
-          urls: [url],
-        })
+        await exa(
+          conversationId,
+          '/contents',
+          { text: { maxCharacters: MAX_PAGE_LENGTH }, urls: [url] },
+          signal
+        )
       );
 
       const [page] = results;
@@ -121,20 +131,29 @@ export function webAccess(): WebAccess {
 
       return { text: page.text, title: page.title ?? url, url: page.url };
     },
-    search: async (conversationId, { domains, limit, query, recency }) => {
+    search: async (
+      conversationId,
+      { domains, limit, query, recency },
+      signal
+    ) => {
       const { results } = searchSchema.parse(
-        await exa(conversationId, '/search', {
-          contents: { highlights: { highlightsPerUrl: 1, numSentences: 3 } },
-          numResults: limit,
-          query,
-          type: 'auto',
-          ...(domains?.length && { includeDomains: domains }),
-          ...(recency && {
-            startPublishedDate: new Date(
-              Date.now() - recencyDays[recency] * DAY
-            ).toISOString(),
-          }),
-        })
+        await exa(
+          conversationId,
+          '/search',
+          {
+            contents: { highlights: { highlightsPerUrl: 1, numSentences: 3 } },
+            numResults: limit,
+            query,
+            type: 'auto',
+            ...(domains?.length && { includeDomains: domains }),
+            ...(recency && {
+              startPublishedDate: new Date(
+                Date.now() - recencyDays[recency] * DAY
+              ).toISOString(),
+            }),
+          },
+          signal
+        )
       );
 
       return results.map(({ highlights, publishedDate, title, url }) => ({
