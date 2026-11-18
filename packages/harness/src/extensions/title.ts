@@ -1,6 +1,9 @@
+import type { Context } from '@earendil-works/chord/context';
 import type { Message } from '@earendil-works/pi-ai';
 import {
+  type Conversation,
   GenerationTask,
+  type RegistryReader,
   defineDoc,
   defineExtension,
   defineTask,
@@ -11,6 +14,8 @@ import {
 import { type HelperUsage, completeHelper, helperModel } from '../helper';
 
 const MESSAGE_LIMIT = 2_000;
+
+const TITLE_TASK = 'lab.title.generate';
 
 const PROMPT =
   'Write a title of at most six words for the conversation below. Reply with only the title, without quotes or punctuation at the end.';
@@ -48,7 +53,7 @@ function text(message: Message) {
 
 function generateTitle(onHelperUsage: HelperUsage) {
   return defineTask<Record<string, never>, { phase: 'generate' }, null>({
-    name: 'lab.title.generate',
+    name: TITLE_TASK,
     version: 1,
     initial: () => ({ phase: 'generate' }),
     phases: {
@@ -134,4 +139,26 @@ export function title(onHelperUsage: HelperUsage) {
       }),
     ],
   });
+}
+
+export async function titleChat(
+  conversation: Conversation,
+  registry: RegistryReader,
+  context: Context
+) {
+  const task = registry.snapshot().task(TITLE_TASK) as
+    | ReturnType<typeof generateTitle>
+    | undefined;
+
+  if (!task) {
+    return;
+  }
+
+  await conversation.commit(async (tx) => {
+    const doc = await tx.doc(TitleDoc, conversation.id);
+
+    if (!doc.title) {
+      await tx.createTask(task, {}, { ownership: { kind: 'conversation' } });
+    }
+  }, context);
 }
