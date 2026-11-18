@@ -259,6 +259,6 @@ test('uploaded pdfs keep their original and thumbnail', async () => {
       [200, 'image/png', 'bar'],
       404,
     ],
-    upload: { id: mine.body.id, thumbnail: true },
+    upload: { id: mine.body.id, mimeType: 'application/pdf', thumbnail: true },
   });
 });

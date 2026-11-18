@@ -17,7 +17,13 @@ test('pdfs with a thumbnail show their first page', async () => {
 
   const tile = async (upload: { id: string; thumbnail: boolean } | null) => {
     const screen = await render(
-      <Tile item={{ ...item, upload }} onOpen={() => undefined} />
+      <Tile
+        item={{
+          ...item,
+          upload: upload && { ...upload, mimeType: 'application/pdf' },
+        }}
+        onOpen={() => undefined}
+      />
     );
 
     const image = screen.container.querySelector('img')?.getAttribute('src');

@@ -87,6 +87,7 @@ const library = new Hono()
         size: sql<number>`coalesce(octet_length(${schema.upload.content}), ${table.size})::int`,
         thumbnail: sql<boolean>`${schema.upload.thumbnail} is not null`,
         uploadId: table.uploadId,
+        uploadType: schema.upload.mimeType,
       })
       .from(table)
       .innerJoin(
@@ -121,7 +122,11 @@ const library = new Hono()
         preview: row.preview,
         size: row.size,
         upload: row.uploadId
-          ? { id: row.uploadId, thumbnail: row.thumbnail }
+          ? {
+              id: row.uploadId,
+              mimeType: row.uploadType,
+              thumbnail: row.thumbnail,
+            }
           : null,
       })),
       next: last && rows.length > limit ? cursorFor(last) : null,
