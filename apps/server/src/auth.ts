@@ -37,6 +37,25 @@ export function allowed(user: {
 
 const NOT_ALLOWED = 'This account is not allowed to use Lab.';
 
+const origin = new URL(env.LAB_ORIGIN).origin;
+
+const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function fromElsewhere(request: Request) {
+  if (safeMethods.has(request.method)) {
+    return false;
+  }
+
+  const site = request.headers.get('sec-fetch-site');
+
+  const sender = request.headers.get('origin');
+
+  return (
+    (site !== null && site !== 'same-origin') ||
+    (sender !== null && sender !== origin)
+  );
+}
+
 export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
@@ -78,6 +97,12 @@ export const requireAdmin = createMiddleware<{ Variables: { user: User } }>(
 
 export const requireUser = createMiddleware<{ Variables: { user: User } }>(
   async (c, next) => {
+    if (fromElsewhere(c.req.raw)) {
+      throw new HTTPException(403, {
+        message: 'This request came from another site',
+      });
+    }
+
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
     if (!session) {
