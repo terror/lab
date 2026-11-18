@@ -30,7 +30,7 @@ createRoot(root, {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <RouterProvider router={router} />
-            <Toaster position='bottom-center' />
+            <Toaster position='top-center' />
           </TooltipProvider>
         </QueryClientProvider>
       </MotionConfig>
