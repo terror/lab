@@ -192,6 +192,7 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
 
   const scheduleUpdate = defineTool({
     name: 'schedule_update',
+    callers: ['model'],
     description:
       "Change a scheduled task's title, prompt, schedule, or pause and resume it. Only the fields you pass change.",
     parameters: obj({

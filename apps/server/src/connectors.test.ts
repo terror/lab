@@ -240,6 +240,30 @@ test('only the admin can connect to private addresses', async () => {
   });
 });
 
+test('tools that ask the user are only offered to the model', async () => {
+  const headers = await signInAdmin();
+
+  await call(headers, 'POST', '/connectors', { name: 'Foo', url: mcp() });
+
+  script(
+    toolCall('codemode', {
+      code: 'const names = new Set(ALL_TOOLS.map(({ name }) => name)); return ["connector_add", "connector_remove", "connector_update", "mcp__foo__read", "mcp__foo__write", "schedule_update"].filter((name) => names.has(name));',
+    }),
+    fauxAssistantMessage('bar')
+  );
+
+  const outputs = await toolOutputs(
+    headers,
+    await chat(headers, { content: 'foo' })
+  );
+
+  expect(outputs).toHaveLength(1);
+
+  expect(outputs[0]).toMatch(
+    /^Script completed\nWall time \d+\.\d seconds\nOutput:\n\["mcp__foo__read"\]$/
+  );
+});
+
 test('the agent manages connectors with the user’s approval', async () => {
   const headers = await signInAdmin();
 

@@ -81,6 +81,7 @@ function connectorParts({ call, name, slug, tools }: Connector) {
     ],
     tools: namedTools(slug, tools).map(([toolName, tool]) =>
       defineTool({
+        callers: tool.readOnly ? undefined : ['model'],
         deferred: true,
         description: tool.description,
         name: toolName,
