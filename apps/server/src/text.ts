@@ -7,3 +7,7 @@ export function decodeText(content: Uint8Array) {
     return undefined;
   }
 }
+
+export function storable(text: string) {
+  return text.replaceAll('\0', '');
+}

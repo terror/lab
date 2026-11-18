@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { db } from './db';
 import { messageData } from './message-entry';
 import { entryPipeline } from './pipeline';
-import { decodeText } from './text';
+import { decodeText, storable } from './text';
 
 const table = schema.libraryItem;
 
@@ -64,7 +64,7 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
           content,
           kind: 'image' as const,
           mimeType: image.mimeType,
-          name,
+          name: storable(name),
           position,
           size: content.byteLength,
         },
@@ -85,9 +85,9 @@ function items(entry: EntryRecord, ownerId: string): Item[] {
           content,
           kind: 'file' as const,
           mimeType: 'text/plain',
-          name,
+          name: storable(name),
           position,
-          preview: text.slice(0, PREVIEW_LENGTH),
+          preview: storable(text.slice(0, PREVIEW_LENGTH)),
           size: content.byteLength,
           uploadId,
         },
@@ -204,7 +204,7 @@ async function savedItems(
     createdAt: new Date(entry.model?.[0]?.timestamp ?? Date.now()),
     entryId: entry.id,
     id: saved.libraryId,
-    name: saved.name,
+    name: storable(saved.name),
     ownerId,
     position: 0,
     uploadId: saved.uploadId,
