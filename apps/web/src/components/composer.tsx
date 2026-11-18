@@ -30,6 +30,7 @@ import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import { fade, spring } from '@/lib/motion';
 import { useAdmin } from '@/lib/profile';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import {
   lazy,
   Suspense,
@@ -178,37 +180,76 @@ function DictateButton({
   );
 }
 
-function SendButton({
-  disabled,
-  queueing,
-}: {
-  disabled: boolean;
-  queueing: boolean;
-}) {
-  const button = (
-    <Button
-      aria-label='Send'
-      className='rounded-full'
-      disabled={disabled}
-      size='icon'
-      type='submit'
-    >
-      <ArrowUp aria-hidden='true' />
-    </Button>
-  );
-
-  if (!queueing) {
-    return button;
-  }
-
+function QueueButton({ disabled }: { disabled: boolean }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <Button
+          aria-label='Send'
+          className='rounded-full'
+          disabled={disabled}
+          size='icon'
+          type='submit'
+        >
+          <ArrowUp aria-hidden='true' />
+        </Button>
+      </TooltipTrigger>
       <TooltipContent>
         Send after this answer
         <Kbd>↵</Kbd>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+const actions = {
+  send: {
+    glyph: <ArrowUp aria-hidden='true' />,
+    label: 'Send',
+    type: 'submit',
+  },
+  stop: {
+    glyph: <Square aria-hidden='true' className='size-3 fill-current' />,
+    label: 'Stop',
+    type: 'button',
+  },
+} as const;
+
+function SendOrStop({
+  disabled,
+  onStop,
+  stopping,
+}: {
+  disabled: boolean;
+  onStop: (() => void) | undefined;
+  stopping: boolean;
+}) {
+  const mode = stopping ? 'stop' : 'send';
+
+  const { glyph, label, type } = actions[mode];
+
+  return (
+    <Button
+      aria-label={label}
+      className='rounded-full'
+      disabled={!stopping && disabled}
+      onClick={stopping ? onStop : undefined}
+      size='icon'
+      type={type}
+    >
+      <AnimatePresence initial={false}>
+        <m.span
+          key={mode}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className='absolute inset-0 grid place-items-center'
+          exit={{ opacity: 0, scale: 0.4, transition: fade.leave, y: -4 }}
+          initial={{ opacity: 0, scale: 0.4 }}
+          transition={{ ...spring.snap, opacity: fade.fast }}
+        >
+          {glyph}
+        </m.span>
+      </AnimatePresence>
+    </Button>
   );
 }
 
@@ -592,23 +633,14 @@ export function Composer({
                 onClick={listening ? dictation.stop : dictation.start}
               />
             )}
-            {(!stoppable || !empty) && (
-              <SendButton
-                disabled={disabled || empty || submitting === true}
-                queueing={stoppable}
-              />
+            {stoppable && !empty && (
+              <QueueButton disabled={disabled || submitting === true} />
             )}
-            {stoppable && (
-              <Button
-                aria-label='Stop'
-                className='rounded-full'
-                onClick={onStop}
-                size='icon'
-                type='button'
-              >
-                <Square aria-hidden='true' className='size-3 fill-current' />
-              </Button>
-            )}
+            <SendOrStop
+              disabled={disabled || empty || submitting === true}
+              onStop={onStop}
+              stopping={stoppable}
+            />
           </div>
         </div>
       </div>

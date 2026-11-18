@@ -137,6 +137,36 @@ test('slash commands run from the composer', async () => {
   });
 });
 
+function composer(running: boolean) {
+  return (
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft='foo'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onStop={() => undefined}
+        onSubmit={() => undefined}
+        running={running}
+      />
+    </TooltipProvider>
+  );
+}
+
+test('the send arrow turns into the stop square when a run starts', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const { screen } = await renderWithQuery(composer(false));
+
+  const send = screen.getByRole('button', { name: 'Send' }).element();
+
+  await screen.rerender(composer(true));
+
+  expect(screen.getByRole('button', { name: 'Stop' }).element()).toBe(send);
+});
+
 test('on a touch screen the buttons sit far enough apart that their hit areas never overlap', async ({
   onTestFinished,
 }) => {
