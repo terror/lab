@@ -2,7 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { Conversation, ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type ChatSummary, TitleDoc } from '@lab/harness';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
@@ -14,16 +14,9 @@ import { submitMessage } from './messages';
 import type { modelChange } from './models';
 import { moveChat } from './project-access';
 import { flushProjections } from './projections';
+import { liveChat } from './records';
 
 const table = schema.conversation;
-
-function live(ownerId: string, id: number) {
-  return and(
-    eq(table.id, id),
-    eq(table.ownerId, ownerId),
-    isNull(table.deletedAt)
-  );
-}
 
 export const ownedChat = createMiddleware<{
   Variables: {
@@ -35,7 +28,7 @@ export const ownedChat = createMiddleware<{
   const [record] = await db
     .select({ id: table.id, projectId: table.projectId })
     .from(table)
-    .where(live(c.get('user').id, Number(c.req.param('id'))));
+    .where(liveChat(c.get('user').id, Number(c.req.param('id'))));
 
   const conversation =
     record &&
@@ -61,7 +54,7 @@ export async function chatSummary(
   const [row] = await db
     .select({ id: table.id, pinnedAt: table.pinnedAt, title: table.title })
     .from(table)
-    .where(live(ownerId, id));
+    .where(liveChat(ownerId, id));
 
   return row && { id: row.id, pinned: row.pinnedAt !== null, title: row.title };
 }
@@ -96,7 +89,7 @@ export async function pinChat(
   const [row] = await db
     .update(table)
     .set({ pinnedAt: pinned ? new Date() : null })
-    .where(live(ownerId, id))
+    .where(liveChat(ownerId, id))
     .returning({ id: table.id, title: table.title });
 
   return row && { ...row, pinned };
@@ -108,7 +101,7 @@ export async function readChat(ownerId: string, id: number) {
   await db
     .update(table)
     .set({ readAt: sql`${table.lastMessageAt}` })
-    .where(live(ownerId, id));
+    .where(liveChat(ownerId, id));
 }
 
 export async function startChat(

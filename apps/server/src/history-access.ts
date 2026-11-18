@@ -1,10 +1,10 @@
 import { schema } from '@lab/db';
 import type { HistoryAccess } from '@lab/harness';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 import { db } from './db';
 import { markedSnippet, searchMessages } from './message-search';
-import { chatOf, conversationOwner } from './records';
+import { chatOf, conversationOwner, liveChat } from './records';
 
 const table = schema.messageText;
 
@@ -21,13 +21,7 @@ export const historyAccess: HistoryAccess = {
     const [chat] = await db
       .select({ title: schema.conversation.title })
       .from(schema.conversation)
-      .where(
-        and(
-          eq(schema.conversation.id, id),
-          eq(schema.conversation.ownerId, ownerId),
-          isNull(schema.conversation.deletedAt)
-        )
-      );
+      .where(liveChat(ownerId, id));
 
     if (!chat) {
       return undefined;
