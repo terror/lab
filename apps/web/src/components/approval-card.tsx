@@ -2,9 +2,8 @@ import { Answered } from '@/components/answered';
 import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { answerQuestion } from '@/lib/conversations';
+import { useAnswer } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
-import { useMutation } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
@@ -74,11 +73,7 @@ export function ApprovalCard({
   callId: string;
   conversationId: number | undefined;
 }) {
-  const send = useMutation({
-    meta: { inlineError: true },
-    mutationFn: (answer: 'approved' | 'denied') =>
-      answerQuestion(conversationId ?? 0, { answer, callId }),
-  });
+  const send = useAnswer<'approved' | 'denied'>(conversationId, callId);
 
   const decision =
     approval.decision ?? (send.isSuccess ? send.variables : undefined);
