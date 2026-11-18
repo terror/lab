@@ -5,6 +5,7 @@ import type { DiagramPlugin, StreamdownProps } from 'streamdown';
 
 type Modules = {
   plugins: Record<'dark' | 'light', StreamdownProps['plugins']>;
+  remarkPlugins: StreamdownProps['remarkPlugins'];
   streamdown: typeof import('streamdown');
 };
 
@@ -39,13 +40,18 @@ export function loadMarkdown() {
   loading ??= Promise.all([
     import('streamdown'),
     import('@streamdown/code'),
+    import('remark-breaks'),
   ]).then(
-    ([streamdown, { code }]) => {
+    ([streamdown, { code }, { default: remarkBreaks }]) => {
       loaded = {
         plugins: {
           dark: { code, mermaid: diagrams('dark') },
           light: { code, mermaid: diagrams('neutral') },
         },
+        remarkPlugins: [
+          ...Object.values(streamdown.defaultRemarkPlugins),
+          remarkBreaks,
+        ],
         streamdown,
       };
 
@@ -64,13 +70,14 @@ export function loadMarkdown() {
 const linkSafety = { enabled: false };
 
 function Streamdown(props: StreamdownProps) {
-  const { plugins, streamdown } = loaded ?? use(loadMarkdown());
+  const { plugins, remarkPlugins, streamdown } = loaded ?? use(loadMarkdown());
   const dark = useDark();
 
   return (
     <streamdown.Streamdown
       linkSafety={linkSafety}
       plugins={plugins[dark ? 'dark' : 'light']}
+      remarkPlugins={remarkPlugins}
       {...props}
     />
   );

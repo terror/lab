@@ -70,3 +70,19 @@ test('finished messages are not patched as if they were cut off', async () => {
 
   expect(screen.container.textContent).toBe('foo *bar');
 });
+
+test('single line breaks are kept', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>{'foo\nbar'}</Markdown>
+  );
+
+  await expect
+    .poll(() => screen.container.querySelector('p')?.innerHTML)
+    .toBe('foo<br>\nbar');
+});
