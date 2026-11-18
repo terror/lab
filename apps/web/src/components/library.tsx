@@ -86,7 +86,7 @@ function ItemPreview({ item }: { item: LibraryItem }) {
     );
   }
 
-  if (item.upload) {
+  if (item.upload?.mimeType === 'application/pdf') {
     return (
       <PdfPages
         className='max-h-128 overflow-y-auto rounded-xl bg-muted p-3'
