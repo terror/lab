@@ -1,5 +1,6 @@
 import { ErrorMessage } from '@/components/error-message';
 import { ToolConversation } from '@/components/tools';
+import { Checkbox } from '@/components/ui/checkbox';
 import { editPlan } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { PLAN_LIMIT, type PlanStep, STEP_LENGTH } from '@lab/server/schemas';
@@ -124,15 +125,13 @@ function Step({
 
   return (
     <li className='group/step flex min-h-8 items-center gap-2.5 text-sm'>
-      <input
+      <Checkbox
         checked={done}
-        className='size-4 shrink-0 accent-primary'
         disabled={!editable}
         id={id}
-        onChange={() =>
+        onCheckedChange={() =>
           onChange({ ...step, status: done ? 'pending' : 'done' })
         }
-        type='checkbox'
       />
       {editing ? (
         <StepText
