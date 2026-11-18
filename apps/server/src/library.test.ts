@@ -293,3 +293,25 @@ test('text with null characters still reaches the library and search', async () 
     search: [id],
   });
 });
+
+test('deleting a chat forever deletes the files uploaded to it', async () => {
+  const headers = await signIn();
+
+  const { body } = await upload(
+    headers,
+    new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
+  );
+
+  const id = await chat(headers, {
+    attachments: [
+      { name: 'foo.pdf', text: 'bar', type: 'file', uploadId: body.id },
+    ],
+    content: 'baz',
+  });
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+
+  await call(headers, 'DELETE', `/trash/conversation/${id}`);
+
+  expect((await raw(headers, `/uploads/${body.id}`)).status).toBe(404);
+});
