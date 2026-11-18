@@ -6,14 +6,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListRow } from '@/components/ui/list-row';
 import { Page, PageHeader } from '@/components/ui/page';
+import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { conversationsQueryKey } from '@/lib/conversations';
@@ -28,7 +27,7 @@ import {
 import { untilRun } from '@/lib/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, Clock, Ellipsis } from 'lucide-react';
+import { Clock, Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 
 type Filter = 'active' | 'all' | 'paused';
@@ -67,9 +66,10 @@ const filters: Record<
   },
 };
 
-function isFilter(value: string): value is Filter {
-  return value in filters;
-}
+const filterOptions = (['active', 'paused', 'all'] as const).map((value) => ({
+  label: filters[value].label,
+  value,
+}));
 
 function schedule(task: ScheduledTask) {
   if (!task.enabled) {
@@ -187,41 +187,6 @@ function TaskSkeleton() {
   );
 }
 
-function FilterMenu({
-  filter,
-  onChange,
-}: {
-  filter: Filter;
-  onChange: (filter: Filter) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size='sm' variant='outline'>
-          {filters[filter].label}
-          <ChevronDown aria-hidden='true' />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
-        <DropdownMenuRadioGroup
-          onValueChange={(value) => {
-            if (isFilter(value)) {
-              onChange(value);
-            }
-          }}
-          value={filter}
-        >
-          {Object.entries(filters).map(([value, { label }]) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              {label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function SchedulePrompt() {
   return (
     <StartComposer
@@ -249,7 +214,14 @@ export function Scheduled() {
         <SchedulePrompt />
         <section className='flex flex-col gap-2'>
           <SectionHeading
-            actions={<FilterMenu filter={filter} onChange={setFilter} />}
+            actions={
+              <Pills
+                label='Filter'
+                onValueChange={setFilter}
+                options={filterOptions}
+                value={filter}
+              />
+            }
           >
             Tasks
           </SectionHeading>
