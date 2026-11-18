@@ -1,21 +1,55 @@
-import { Meta } from '@storybook/addon-docs/blocks';
+import { Meta, Unstyled } from '@storybook/addon-docs/blocks';
+
+import { TokenTable } from './token-table';
 
 <Meta title='Foundations/Shape and elevation' />
 
 # Shape and elevation
 
 Radii scale from `--radius` (0.625rem). Larger containers get rounder corners.
+Four role tokens name the steps that components share. The values below are read
+from the stylesheet.
 
-| Token          | Use                             |
-| -------------- | ------------------------------- |
-| `rounded-md`   | Menu and list items             |
-| `rounded-lg`   | Buttons, inputs, small tiles    |
-| `rounded-xl`   | Popovers, menus, the chat shell |
-| `rounded-2xl`  | Message bubbles, settings rows  |
-| `rounded-3xl`  | The composer                    |
-| `rounded-full` | Icon buttons, avatars           |
+<Unstyled>
+  <TokenTable
+    property='borderTopLeftRadius'
+    rows={[
+      {
+        name: 'rounded-control',
+        use: 'Buttons, inputs, selects, tooltips.',
+      },
+      { name: 'rounded-menu', use: 'Menus, popovers, hover cards.' },
+      { name: 'rounded-card', use: 'Cards.' },
+      { name: 'rounded-dialog', use: 'Dialogs and the search palette.' },
+    ]}
+  />
+</Unstyled>
 
-Elevation is rare. Popovers and menus use `shadow-md` with a
-`ring-1 ring-foreground/10` edge, the composer uses `shadow-sm`, and everything
-else is flat. Separate surfaces with background color before reaching for a
-border or shadow.
+A few shapes keep their own step.
+
+<Unstyled>
+  <TokenTable
+    property='borderTopLeftRadius'
+    rows={[
+      { name: 'rounded-sm', use: 'Menu items.' },
+      { name: 'rounded-2xl', use: 'Message bubbles.' },
+      { name: 'rounded-3xl', use: 'The composer.' },
+      {
+        name: 'rounded-full',
+        use: "Avatars and the composer's round buttons.",
+        value: 'Half the height',
+      },
+    ]}
+  />
+</Unstyled>
+
+Nested corners are concentric: the inner radius is the outer radius minus the
+padding between them. A menu is `rounded-menu` with 4px of padding, so its items
+are `rounded-sm`.
+
+## Elevation
+
+Elevation is rare. Menus, popovers, and hover cards use `shadow-md` with a
+`ring-1 ring-foreground/10` edge. Dialogs and sheets use `shadow-lg`. The
+composer uses `shadow-sm`. Everything else is flat. Separate surfaces with
+background color before reaching for a border or shadow.
