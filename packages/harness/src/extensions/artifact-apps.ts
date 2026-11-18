@@ -67,7 +67,7 @@ export function artifactApps(access: ArtifactStateAccess) {
       section(
         'artifact_apps',
         () =>
-          `Artifacts can save data on the server that survives reloads; use it instead of localStorage, which artifacts cannot use. await lab.store.get(key) returns a saved JSON value or null, await lab.store.set(key, value) saves one, and await lab.store.delete(key) removes one, with up to ${STORE_KEY_LIMIT} keys of up to ${STORE_VALUE_LENGTH.toLocaleString('en-US')} characters each per artifact. Use artifact_state_read to see what an artifact saved, for example to answer questions about what the user tracked in it.`
+          `Artifacts can save data on the server that survives reloads; use it instead of localStorage, which artifacts cannot use. await lab.store.get(key) returns a saved JSON value or null, await lab.store.set(key, value) saves one, and await lab.store.delete(key) removes one, with up to ${STORE_KEY_LIMIT} keys of up to ${STORE_VALUE_LENGTH.toLocaleString('en-US')} characters each per artifact. Use artifact_state_read to see what an artifact saved, for example to answer questions about what the user tracked in it. From a click handler, await lab.ask(prompt) sends a prompt to a fast model in the background and returns its text reply; that model sees only the prompt, not the chat, and each call costs the user money, so use it for things the user asks for, like a hint, feedback, or generated content.`
       ),
     ],
     tools: [stateRead],

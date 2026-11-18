@@ -3,31 +3,18 @@ import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, chat, settle, toolOutputs } from '../test/client';
+import { artifactChat, call, settle, toolOutputs } from '../test/client';
 import { prompts, script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
 import { conversationOwner } from './records';
 
-async function artifactChat(headers: Headers) {
-  script(
-    toolCall('artifact_create', {
-      content: '<p>foo</p>',
-      id: 'bar',
-      title: 'Baz',
-    }),
-    fauxAssistantMessage('qux')
-  );
-
-  const id = await chat(headers, { content: 'foo' });
-
-  return { id, state: `/conversations/${id}/artifacts/bar/state` };
-}
-
 test('artifact state is saved for its owner and read by the agent', async () => {
   const headers = await signIn();
 
-  const { id, state } = await artifactChat(headers);
+  const id = await artifactChat(headers);
+
+  const state = `/conversations/${id}/artifacts/bar/state`;
 
   await call(headers, 'PUT', `${state}?key=foo`, { value: '{"done":true}' });
   await call(headers, 'PUT', `${state}?key=bar`, { value: '1' });
@@ -67,7 +54,7 @@ test('artifact state is saved for its owner and read by the agent', async () => 
     missing: { body: { error: 'Artifact not found' }, status: 404 },
     other: { body: { error: 'Conversation not found' }, status: 404 },
     prompt:
-      '<artifact_apps>\nArtifacts can save data on the server that survives reloads; use it instead of localStorage, which artifacts cannot use. await lab.store.get(key) returns a saved JSON value or null, await lab.store.set(key, value) saves one, and await lab.store.delete(key) removes one, with up to 100 keys of up to 100,000 characters each per artifact. Use artifact_state_read to see what an artifact saved, for example to answer questions about what the user tracked in it.\n</artifact_apps>',
+      '<artifact_apps>\nArtifacts can save data on the server that survives reloads; use it instead of localStorage, which artifacts cannot use. await lab.store.get(key) returns a saved JSON value or null, await lab.store.set(key, value) saves one, and await lab.store.delete(key) removes one, with up to 100 keys of up to 100,000 characters each per artifact. Use artifact_state_read to see what an artifact saved, for example to answer questions about what the user tracked in it. From a click handler, await lab.ask(prompt) sends a prompt to a fast model in the background and returns its text reply; that model sees only the prompt, not the chat, and each call costs the user money, so use it for things the user asks for, like a hint, feedback, or generated content.\n</artifact_apps>',
     saved: { body: { value: '2' }, status: 200 },
   });
 });
@@ -75,7 +62,9 @@ test('artifact state is saved for its owner and read by the agent', async () => 
 test('artifact state stops at its key, length, and storage limits', async () => {
   const headers = await signIn();
 
-  const { id, state } = await artifactChat(headers);
+  const id = await artifactChat(headers);
+
+  const state = `/conversations/${id}/artifacts/bar/state`;
 
   const ownerId = (await conversationOwner(id)) ?? '';
 

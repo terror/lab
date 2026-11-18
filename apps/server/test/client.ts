@@ -1,9 +1,11 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import type { ConversationId } from '@earendil-works/pi-durable';
 
 import app from '../src/app';
 import { harness } from '../src/harness';
 import { flushAll } from '../src/pipelines';
+import { script, toolCall } from './models';
 
 export async function call(
   headers: Headers,
@@ -58,6 +60,19 @@ export async function chat(headers: Headers, body: object) {
   await settle(created.id);
 
   return created.id as number;
+}
+
+export function artifactChat(headers: Headers) {
+  script(
+    toolCall('artifact_create', {
+      content: '<p>foo</p>',
+      id: 'bar',
+      title: 'Baz',
+    }),
+    fauxAssistantMessage('qux')
+  );
+
+  return chat(headers, { content: 'foo' });
 }
 
 export function raw(headers: Headers, path: string) {

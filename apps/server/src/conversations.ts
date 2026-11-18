@@ -27,6 +27,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
+import { ASK_PROMPT_LENGTH, askModel } from './artifact-ask';
 import { deleteValue, readValue, saveValue } from './artifact-state';
 import { type User, requireUser } from './auth';
 import { type Parent, branchPoint, chatForks } from './branches';
@@ -119,6 +120,11 @@ const stateKey = validator(
 const stateValue = validator(
   'json',
   z.object({ value: z.string().max(STORE_VALUE_LENGTH) })
+);
+
+const asking = validator(
+  'json',
+  z.object({ prompt: z.string().trim().min(1).max(ASK_PROMPT_LENGTH) })
 );
 
 const answering = validator(
@@ -777,6 +783,25 @@ const conversations = new Hono()
       );
 
       return c.body(null, 204);
+    }
+  )
+  .post(
+    '/:id/artifacts/:artifactId/ask',
+    rateLimit('asks'),
+    artifactParams,
+    owned,
+    artifact,
+    asking,
+    async (c) => {
+      await checkSpend(c.get('user').id);
+
+      return c.json({
+        text: await askModel(
+          c.var.conversation.id,
+          c.req.valid('json').prompt,
+          c.req.raw.signal
+        ),
+      });
     }
   )
   .patch('/:id', idParam, owned, update, async (c) => {
