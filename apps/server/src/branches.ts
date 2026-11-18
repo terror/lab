@@ -8,7 +8,7 @@ import {
   type EntryRecord,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { TitleDoc, rewindPlan } from '@lab/harness';
+import { TitleDoc, rewindArtifacts, rewindPlan } from '@lab/harness';
 import { and, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -265,7 +265,10 @@ async function openBranch(parent: Parent, agent: AgentChange | undefined) {
     BACKGROUND_CONTEXT
   );
 
-  await branch.commit((tx) => rewindPlan(tx, branch.id), BACKGROUND_CONTEXT);
+  await branch.commit(async (tx) => {
+    await rewindPlan(tx, branch.id);
+    await rewindArtifacts(tx, branch.id);
+  }, BACKGROUND_CONTEXT);
 
   return branch;
 }
