@@ -33,6 +33,8 @@ type Entry = { ownerId: string } & (
 
 const TIMEOUT = 15_000;
 
+const TOOL_PAGES = 20;
+
 const entries = new Map<number, Entry>();
 
 const queues = new Map<number, Promise<void>>();
@@ -90,14 +92,19 @@ function resultText({ content, structuredContent }: CallToolResult) {
 
 async function listTools(
   client: Client,
-  cursor?: string
+  cursor?: string,
+  page = 1
 ): Promise<ConnectorTool[]> {
+  if (page > TOOL_PAGES) {
+    throw new Error('The server lists too many tools');
+  }
+
   const { nextCursor, tools } = await client.listTools(
     { cursor },
     { timeout: TIMEOUT }
   );
 
-  const page = tools.map((tool): ConnectorTool => ({
+  const listed = tools.map((tool): ConnectorTool => ({
     description: tool.description ?? tool.title ?? tool.name,
     name: tool.name,
     parameters: tool.inputSchema,
@@ -106,8 +113,8 @@ async function listTools(
   }));
 
   return nextCursor === undefined
-    ? page
-    : [...page, ...(await listTools(client, nextCursor))];
+    ? listed
+    : [...listed, ...(await listTools(client, nextCursor, page + 1))];
 }
 
 export function connectorsExtensionName(ownerId: string) {

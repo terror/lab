@@ -12,7 +12,7 @@ import {
   toolDetails,
   toolOutputs,
 } from '../test/client';
-import { serveMcp, serveProtectedMcp } from '../test/mcp';
+import { serveEndlessMcp, serveMcp, serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
 import { refreshConnector } from './connections';
 import { db } from './db';
@@ -129,6 +129,24 @@ test('unreachable connectors report why', async () => {
   expect([body.connectors[0].status, body.connectors[0].error]).toEqual([
     'error',
     'ECONNREFUSED: Unable to connect. Is the computer able to access the url?',
+  ]);
+});
+
+test('servers that keep paging their tools fail to connect', async () => {
+  const headers = await signInAdmin();
+
+  const server = serveEndlessMcp();
+
+  servers.push(server);
+
+  const { body } = await call(headers, 'POST', '/connectors', {
+    name: 'Foo',
+    url: server.url,
+  });
+
+  expect([body.connectors[0].status, body.connectors[0].error]).toEqual([
+    'error',
+    'The server lists too many tools',
   ]);
 });
 
