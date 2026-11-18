@@ -12,25 +12,27 @@ import { useIsMutating } from '@tanstack/react-query';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
-const greetedKey = 'lab:greeted';
-
 const DAY = 86_400_000;
 
 const visitSchema = z.object({ absent: z.number(), at: z.number() });
 
-function storedVisit() {
+function greetedKey(user: string) {
+  return `lab:${user}:greeted`;
+}
+
+function storedVisit(user: string) {
   try {
     return visitSchema.safeParse(
-      JSON.parse(window.sessionStorage.getItem(greetedKey) ?? 'null')
+      JSON.parse(window.sessionStorage.getItem(greetedKey(user)) ?? 'null')
     ).data;
   } catch {
     return undefined;
   }
 }
 
-function useVisit() {
+function useVisit(user: string) {
   const [visit] = useState(() => {
-    const stored = storedVisit();
+    const stored = storedVisit(user);
 
     if (stored) {
       return { ...stored, first: false };
@@ -47,11 +49,11 @@ function useVisit() {
 
   useEffect(() => {
     window.sessionStorage.setItem(
-      greetedKey,
+      greetedKey(user),
       JSON.stringify({ absent: visit.absent, at: visit.at })
     );
     writeStored('last-seen', Date.now());
-  }, [visit]);
+  }, [user, visit]);
 
   return visit;
 }
@@ -71,7 +73,7 @@ function Words({ text }: { text: string }) {
 }
 
 export function NewChat({ user }: { user: { id: string; name: string } }) {
-  const { absent, at, first } = useVisit();
+  const { absent, at, first } = useVisit(user.id);
   const quiet = useQuiet();
   const chats = useLatestChats();
   const fresh = chats.data?.length === 0;
