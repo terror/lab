@@ -10,18 +10,8 @@ import { storable } from './text';
 export function serial() {
   let pending = Promise.resolve();
 
-  const flush = async (): Promise<void> => {
-    const current = pending;
-
-    await current;
-
-    if (current !== pending) {
-      await flush();
-    }
-  };
-
   return {
-    flush,
+    flush: () => pending,
     run: (task: () => Promise<void>) => {
       pending = pending.then(() => task().catch(console.error));
     },
