@@ -1,8 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import type { WatchHandle } from '@earendil-works/chord/watch';
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
-import type { ConversationId } from '@earendil-works/pi-durable';
+import type { Conversation, ConversationId } from '@earendil-works/pi-durable';
 import { PlanDoc } from '@lab/harness';
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import { call, chat, create, raw, settle, toolOutputs } from '../test/client';
@@ -229,4 +230,65 @@ test('a retried reply starts from the plan it had before it', async () => {
     },
     prompts: [`<plan>\n${guidance}\n\nThe plan:\n1. [pending] foo\n</plan>`],
   });
+});
+
+function watches(results: { value: unknown }[]) {
+  return Promise.all(
+    results.map(({ value }) => value as Promise<WatchHandle<unknown>>)
+  );
+}
+
+test('the event stream stops following the plan when it stops following the chat', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall(
+      'plan_update',
+      { steps: [{ status: 'pending', text: 'foo' }] },
+      'bar'
+    ),
+    fauxAssistantMessage('baz')
+  );
+
+  const id = await chat(headers, { content: 'foo' });
+
+  const conversation = await harness.conversation(
+    id as ConversationId,
+    BACKGROUND_CONTEXT
+  );
+
+  if (!conversation) {
+    throw new Error('missing conversation');
+  }
+
+  const views = spyOn(
+    Object.getPrototypeOf(conversation) as Conversation,
+    'watch'
+  );
+
+  const plans = spyOn(harness, 'watchDoc');
+
+  const response = await raw(headers, `/conversations/${id}/events`);
+
+  const reader = readEvents(response);
+
+  if (!reader) {
+    throw new Error('missing event stream');
+  }
+
+  await nextPlan(reader);
+
+  for (const view of await watches(views.mock.results)) {
+    await view.stop();
+  }
+
+  const ends = Promise.all(
+    (await watches(plans.mock.results)).map(({ closed }) => closed)
+  );
+
+  expect(
+    await Promise.race([ends, Bun.sleep(1_000).then(() => 'open')])
+  ).toEqual([{ kind: 'stopped' }]);
+
+  await reader.cancel();
 });
