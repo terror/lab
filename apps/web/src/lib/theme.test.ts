@@ -2,19 +2,9 @@ import { renderHookWithQuery, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
 
 import page from '../../index.html?raw';
-import { usePreference } from './preferences';
+import { useStoredPreferences } from './preferences';
 
-test('the page paints with the theme saved in preferences', async () => {
-  stubFetch(() =>
-    Response.json({
-      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
-    })
-  );
-
-  const { result } = await renderHookWithQuery(() => usePreference('theme'));
-
-  await expect.poll(() => result.current[0]).toBe('dark');
-
+function paint() {
   const script = document.createElement('script');
 
   script.textContent =
@@ -24,7 +14,19 @@ test('the page paints with the theme saved in preferences', async () => {
   document.head.append(script);
   script.remove();
 
-  expect(document.documentElement.className).toBe('dark');
+  return document.documentElement.className;
+}
+
+test('the page paints with the theme saved in preferences', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  await renderHookWithQuery(() => useStoredPreferences());
+
+  await expect.poll(paint).toBe('dark');
 
   document.documentElement.className = '';
 });

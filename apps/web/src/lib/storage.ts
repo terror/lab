@@ -3,6 +3,10 @@ import type { z } from 'zod';
 
 const prefix = 'lab:';
 
+const userKey = `${prefix}user`;
+
+let user: string | undefined;
+
 const listeners = new Set<() => void>();
 
 function subscribeStorage(listener: () => void) {
@@ -27,6 +31,23 @@ function parse<T>(raw: string | null, schema: z.ZodType<T>, fallback: T) {
   }
 }
 
+function scoped(key: string) {
+  return `${prefix}${user}:${key}`;
+}
+
+function getItem(key: string) {
+  return user === undefined ? null : window.localStorage.getItem(scoped(key));
+}
+
+export function setStorageUser(id: string) {
+  if (window.localStorage.getItem(userKey) === null) {
+    clearStored();
+  }
+
+  window.localStorage.setItem(userKey, JSON.stringify(id));
+  user = id;
+}
+
 function notify() {
   for (const listener of listeners) {
     listener();
@@ -34,11 +55,15 @@ function notify() {
 }
 
 export function readStored<T>(key: string, schema: z.ZodType<T>, fallback: T) {
-  return parse(window.localStorage.getItem(prefix + key), schema, fallback);
+  return parse(getItem(key), schema, fallback);
 }
 
 export function writeStored(key: string, value: unknown) {
-  window.localStorage.setItem(prefix + key, JSON.stringify(value));
+  if (user === undefined) {
+    return;
+  }
+
+  window.localStorage.setItem(scoped(key), JSON.stringify(value));
   notify();
 }
 
@@ -53,7 +78,7 @@ export function clearStored() {
 }
 
 export function removeStored(key: string) {
-  window.localStorage.removeItem(prefix + key);
+  window.localStorage.removeItem(scoped(key));
   notify();
 }
 
@@ -62,9 +87,7 @@ export function usePersistentState<T>(
   schema: z.ZodType<T>,
   fallback: T
 ) {
-  const raw = useSyncExternalStore(subscribeStorage, () =>
-    window.localStorage.getItem(prefix + key)
-  );
+  const raw = useSyncExternalStore(subscribeStorage, () => getItem(key));
 
   const value = useMemo(
     () => parse(raw, schema, fallback),

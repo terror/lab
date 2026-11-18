@@ -64,6 +64,6 @@ test('starting a chat sends the prompt and clears the draft', async () => {
   );
 
   await expect
-    .poll(() => window.localStorage.getItem('lab:draft:scheduled'))
+    .poll(() => window.localStorage.getItem('lab:foo:draft:scheduled'))
     .toBeNull();
 });

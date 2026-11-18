@@ -10,10 +10,14 @@ import { Workspace } from '@/components/workspace';
 import { authClient, useUser } from '@/lib/auth';
 import { prefetchSidebar } from '@/lib/conversations';
 import { modelsQueryOptions } from '@/lib/models';
-import { preferencesQueryOptions } from '@/lib/preferences';
+import {
+  preferencesQueryOptions,
+  useStoredPreferences,
+} from '@/lib/preferences';
 import { projectsQueryOptions } from '@/lib/projects';
 import { queryClient } from '@/lib/query-client';
 import { settingsSearchSchema } from '@/lib/settings';
+import { setStorageUser } from '@/lib/storage';
 import { useThemeClass } from '@/lib/theme';
 import { defaultPreferences } from '@lab/server/schemas';
 import {
@@ -29,8 +33,6 @@ import {
 function Root() {
   const session = authClient.useSession();
 
-  useThemeClass();
-
   if (session.isPending) {
     return null;
   }
@@ -38,6 +40,17 @@ function Root() {
   if (!session.data) {
     return <SignIn />;
   }
+
+  const { id } = session.data.user;
+
+  return <SignedIn key={id} userId={id} />;
+}
+
+function SignedIn({ userId }: { userId: string }) {
+  setStorageUser(userId);
+
+  useStoredPreferences();
+  useThemeClass();
 
   return (
     <SearchProvider>
