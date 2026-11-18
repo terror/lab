@@ -1,3 +1,4 @@
+import { apiKey } from '@better-auth/api-key';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
@@ -41,7 +42,10 @@ export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
   database: drizzleAdapter(db, { provider: 'pg', schema }),
-  plugins: [expo()],
+  plugins: [
+    apiKey({ defaultPrefix: 'lab_', rateLimit: { enabled: false } }),
+    expo(),
+  ],
   secret: env.BETTER_AUTH_SECRET,
   socialProviders: {
     google: {
