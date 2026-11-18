@@ -34,6 +34,7 @@ const granted: Record<string, readonly string[]> = {
   'lab.library': ['library_read', 'library_search'],
   'lab.output': ['tool_output_read'],
   'lab.sandbox': ['sandbox_list', 'sandbox_read'],
+  'lab.spend': [],
   'lab.web': ['web_fetch', 'web_search'],
 };
 
