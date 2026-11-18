@@ -6,7 +6,7 @@ import { signIn } from '../test/auth';
 import { call, chat, idle, raw, settle } from '../test/client';
 import app from './app';
 import { db } from './db';
-import { libraryPipeline } from './library';
+import { libraryPipeline } from './library-items';
 
 type Item = Record<string, unknown> & { id: number; name: string };
 
