@@ -150,14 +150,14 @@ test('servers that keep paging their tools fail to connect', async () => {
   ]);
 });
 
-test('the agent finds connector tools and asks before ones that change things', async () => {
+test('the agent finds connector tools and asks before using them, even ones that say they only read', async () => {
   const headers = await signInAdmin();
 
   await call(headers, 'POST', '/connectors', { name: 'Foo', url: mcp() });
 
   script(
     toolCall('tool_search', { query: 'foo' }),
-    toolCall('mcp__foo__read', { value: 'qux' }),
+    toolCall('mcp__foo__read', { value: 'qux' }, 'foo'),
     toolCall('mcp__foo__write', { value: 'qux' }, 'baz'),
     fauxAssistantMessage('bar')
   );
@@ -166,10 +166,12 @@ test('the agent finds connector tools and asks before ones that change things', 
     content: 'foo',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'approved',
-    callId: 'baz',
-  });
+  for (const callId of ['foo', 'baz']) {
+    await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+      answer: 'approved',
+      callId,
+    });
+  }
 
   await settle(body.id);
 
@@ -178,7 +180,13 @@ test('the agent finds connector tools and asks before ones that change things', 
     outputs: await toolOutputs(headers, body.id),
   }).toEqual({
     details: [
-      undefined,
+      {
+        approval: {
+          action: 'Use read from Foo',
+          decision: 'approved',
+          summary: ['value: "qux"'],
+        },
+      },
       {
         approval: {
           action: 'Use write from Foo',
@@ -208,11 +216,16 @@ test('stopping a chat stops its connector call', async () => {
 
   script(
     toolCall('tool_search', { query: 'wait' }),
-    toolCall('mcp__foo__wait', {})
+    toolCall('mcp__foo__wait', {}, 'bar')
   );
 
   const { body } = await call(headers, 'POST', '/conversations', {
     content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'bar',
   });
 
   await waiting.promise;
@@ -292,7 +305,7 @@ test('tools that ask the user are only offered to the model', async () => {
   expect(outputs).toHaveLength(1);
 
   expect(outputs[0]).toMatch(
-    /^Script completed\nWall time \d+\.\d seconds\nOutput:\n\["mcp__foo__read"\]$/
+    /^Script completed\nWall time \d+\.\d seconds\nOutput:\n\[\]$/
   );
 });
 
