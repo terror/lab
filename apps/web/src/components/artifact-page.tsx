@@ -23,7 +23,7 @@ export function ArtifactPage() {
     [artifactId, conversationId]
   );
 
-  if (artifact.isError) {
+  if (artifact.data === null || artifact.isLoadingError) {
     return <Unavailable subject='app' />;
   }
 

@@ -37,3 +37,21 @@ export async function call<T extends ClientResponse<unknown>>(
     });
   }
 }
+
+export async function callIfFound<T extends ClientResponse<unknown>>(
+  response: Promise<T>
+) {
+  try {
+    return await call(response);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.cause instanceof DetailedError &&
+      error.cause.statusCode === 404
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+}
