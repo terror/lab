@@ -39,9 +39,10 @@ function stubWorkspace() {
     }
 
     if (pathname === '/api/conversations') {
+      const lists: Record<string, typeof recent> = { all: recent, pinned };
+
       return Response.json({
-        conversations:
-          searchParams.get('filter') === 'pinned' ? pinned : recent,
+        conversations: lists[searchParams.get('filter') ?? ''] ?? [],
         next: null,
       });
     }
