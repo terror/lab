@@ -111,7 +111,10 @@ test('conversations are not listed when their first message fails', async () => 
 
   expect(
     await call(headers, 'POST', '/conversations', { content: 'foo' })
-  ).toEqual({ body: { error: 'Internal server error' }, status: 500 });
+  ).toEqual({
+    body: { error: 'Couldn’t finish that. Try again.' },
+    status: 500,
+  });
 
   expect(await call(headers, 'GET', '/conversations')).toEqual({
     body: { conversations: [], next: null },

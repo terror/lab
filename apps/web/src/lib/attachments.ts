@@ -34,13 +34,17 @@ export function textLimit(
 
 function checkText(name: string, text: string, limit: TextLimit) {
   if (text.length > limit.chars) {
-    throw new Error(`${name} has too much text for ${limit.model}`);
+    throw new Error(
+      `Couldn’t attach ${name} because it has too much text for ${limit.model}. Try a shorter file.`
+    );
   }
 }
 
 async function readPdf(file: File, limit: TextLimit): Promise<Attachment> {
   if (file.size > MAX_PDF_BYTES) {
-    throw new Error(`${file.name} is too large to attach`);
+    throw new Error(
+      `Couldn’t attach ${file.name} because it’s too large. Try a smaller file.`
+    );
   }
 
   const { readPdf: parsePdf } = await import('./pdf');
@@ -48,7 +52,9 @@ async function readPdf(file: File, limit: TextLimit): Promise<Attachment> {
   const { text, thumbnail } = await parsePdf(file);
 
   if (!text) {
-    throw new Error(`${file.name} has no text to read`);
+    throw new Error(
+      `Couldn’t read any text in ${file.name}. Try a PDF with selectable text.`
+    );
   }
 
   checkText(file.name, text, limit);
@@ -117,11 +123,15 @@ export async function readAttachment(
     const blob = await shrink(file);
 
     if (!isImageType(blob.type)) {
-      throw new Error(`${file.name} could not be converted`);
+      throw new Error(
+        `Couldn’t convert ${file.name}. Try a PNG or JPEG instead.`
+      );
     }
 
     if (blob.size > MAX_IMAGE_BYTES) {
-      throw new Error(`${file.name} is too large to attach`);
+      throw new Error(
+        `Couldn’t attach ${file.name} because it’s too large. Try a smaller image.`
+      );
     }
 
     return {
@@ -137,13 +147,17 @@ export async function readAttachment(
   }
 
   if (file.size > limit.chars * 4) {
-    throw new Error(`${file.name} has too much text for ${limit.model}`);
+    throw new Error(
+      `Couldn’t attach ${file.name} because it has too much text for ${limit.model}. Try a shorter file.`
+    );
   }
 
   const text = await file.text();
 
   if (text.includes('\u0000')) {
-    throw new Error(`${file.name} is not a text file`);
+    throw new Error(
+      `Couldn’t read ${file.name} as text. Attach text files, PDFs, or images.`
+    );
   }
 
   checkText(file.name, text, limit);
@@ -158,7 +172,7 @@ export async function readLibraryItem(
   const response = await fetch(libraryItemUrl(item.id));
 
   if (!response.ok) {
-    throw new Error(`${item.name} could not be loaded`);
+    throw new Error(`Couldn’t load ${item.name}. Try again.`);
   }
 
   if (item.kind === 'file') {

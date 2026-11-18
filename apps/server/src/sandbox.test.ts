@@ -450,8 +450,14 @@ test('a chat or account whose computer cannot be cleaned up is kept', async () =
     purged,
     trash: trash.body.items?.map((item: { id: number }) => item.id),
   }).toEqual({
-    deleted: { body: { error: 'Internal server error' }, status: 500 },
-    purged: { body: { error: 'Internal server error' }, status: 500 },
+    deleted: {
+      body: { error: 'Couldn’t finish that. Try again.' },
+      status: 500,
+    },
+    purged: {
+      body: { error: 'Couldn’t finish that. Try again.' },
+      status: 500,
+    },
     trash: [id],
   });
 });

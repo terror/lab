@@ -100,7 +100,9 @@ test('dictation explains why it stopped', async () => {
   FakeRecognition.current?.emit('end');
 
   await expect
-    .element(screen.getByText('Allow microphone access to dictate'))
+    .element(
+      screen.getByText('Couldn’t use the microphone. Allow access to dictate.')
+    )
     .toBeVisible();
 });
 

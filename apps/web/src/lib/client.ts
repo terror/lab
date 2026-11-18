@@ -32,7 +32,7 @@ export async function call<T extends ClientResponse<unknown>>(
 
     const body = errorSchema.safeParse(error.detail?.data);
 
-    throw new Error(body.data?.error ?? 'Something went wrong. Try again.', {
+    throw new Error(body.data?.error ?? 'Couldn’t finish that. Try again.', {
       cause: error,
     });
   }

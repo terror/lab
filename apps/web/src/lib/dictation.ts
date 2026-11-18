@@ -36,10 +36,11 @@ const idle: DictationState = { kind: 'idle' };
 const quiet = new Set<string>(['aborted', 'no-speech']);
 
 const failures: Record<string, string> = {
-  'audio-capture': 'No microphone was found',
-  network: 'Dictation needs an internet connection',
-  'not-allowed': 'Allow microphone access to dictate',
-  'service-not-allowed': 'Allow microphone access to dictate',
+  'audio-capture': 'Couldn’t find a microphone. Connect one to dictate.',
+  network: 'Couldn’t reach dictation. Check your connection and try again.',
+  'not-allowed': 'Couldn’t use the microphone. Allow access to dictate.',
+  'service-not-allowed':
+    'Couldn’t use the microphone. Allow access to dictate.',
 };
 
 function recognizer() {
@@ -94,7 +95,8 @@ export function useDictation({
       if (!quiet.has(event.error)) {
         setState({
           kind: 'failed',
-          message: failures[event.error] ?? 'Dictation stopped unexpectedly',
+          message:
+            failures[event.error] ?? 'Couldn’t keep dictating. Try again.',
         });
       }
     });
