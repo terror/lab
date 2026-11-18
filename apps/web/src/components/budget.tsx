@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
@@ -41,7 +42,7 @@ function Meter({ limit, spent }: { limit: number; spent: number }) {
           {Math.round((spent / limit) * 100)}%
         </span>
       </div>
-      <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
+      <div className='h-1.5 overflow-hidden rounded-full bg-foreground/10'>
         <div
           className={cn(
             'h-full rounded-full bg-foreground transition-all',
@@ -139,8 +140,8 @@ export function BudgetPanel() {
   }
 
   return (
-    <section className='flex flex-col gap-4 rounded-2xl bg-muted/50 p-4'>
-      <div className='space-y-1'>
+    <Card className='gap-4' variant='outline'>
+      <div className='flex flex-col gap-1'>
         <h2 className='text-sm font-medium'>Monthly budget</h2>
         <p className='text-sm text-muted-foreground'>
           Get an alert at 80% and 100% of a monthly spend limit.
@@ -150,7 +151,7 @@ export function BudgetPanel() {
         <Meter limit={budget.data.limit} spent={budget.data.spent} />
       )}
       <BudgetForm budget={budget.data} />
-    </section>
+    </Card>
   );
 }
 
