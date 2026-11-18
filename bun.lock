@@ -33,7 +33,7 @@
         "expo-secure-store": "58.0.3",
         "expo-system-ui": "58.0.7",
         "expo-web-browser": "58.1.0",
-        "hono": "^4.13.13",
+        "hono": "^4.13.19",
         "react": "19.3.0",
         "react-native": "0.88.1",
         "react-native-safe-area-context": "5.11.1",
@@ -66,7 +66,7 @@
         "croner": "11.0.1",
         "d3": "^7.9.2",
         "drizzle-orm": "0.45.4",
-        "hono": "^4.13.13",
+        "hono": "^4.13.19",
         "hono-openapi": "1.6.0",
         "zod": "^4.6.7",
       },
@@ -91,7 +91,7 @@
         "class-variance-authority": "^0.7.1",
         "cmdk": "^1.1.1",
         "cn": "^0.5.0",
-        "hono": "^4.13.13",
+        "hono": "^4.13.19",
         "lucide-react": "^1.61.0",
         "mermaid": "^12.3.0",
         "motion": "^14.14.0",
@@ -1992,7 +1992,7 @@
 
     "hermes-parser": ["hermes-parser@0.36.1", "", { "dependencies": { "hermes-estree": "0.36.1" } }, "sha512-GApNk4zLHi2UWoWZZkx7LNCOSzLSc5lB55pZ/PhK7ycFeg7u5LcF88p/WbpIi1XUDtE0MpHE3uRR3u3KB7TjSQ=="],
 
-    "hono": ["hono@4.13.13", "", {}, "sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA=="],
+    "hono": ["hono@4.13.19", "", {}, "sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA=="],
 
     "hono-openapi": ["hono-openapi@1.6.0", "", { "dependencies": { "@hono/standard-validator": "^0.4.0", "@standard-community/standard-json": "^0.4.1", "@standard-community/standard-openapi": "^0.2.12", "@standard-schema/spec": "^1.0.0", "@types/json-schema": "^7.0.15", "openapi-types": "^12.1.3" }, "peerDependencies": { "hono": "^4.11.2" } }, "sha512-KeJlG8IcpLk0jDFFbHUBrTs4v4fom1dCYpD5O3gPwJ1Sga63e6NOtT5Gmm0oVfNOLtwwHXcHBpk91MksLm0qZw=="],
 
