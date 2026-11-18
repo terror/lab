@@ -3,8 +3,24 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 
-async function handleMcp(request: Request, extra: readonly string[] = []) {
+async function handleMcp(
+  request: Request,
+  extra: readonly string[] = [],
+  waiting?: () => void
+) {
   const mcp = new McpServer({ name: 'foo', version: '1.0.0' });
+
+  if (waiting) {
+    mcp.registerTool(
+      'wait',
+      { annotations: { readOnlyHint: true }, description: 'qux' },
+      () => {
+        waiting();
+
+        return new Promise(() => {});
+      }
+    );
+  }
 
   for (const name of extra) {
     mcp.registerTool(
@@ -44,9 +60,9 @@ async function handleMcp(request: Request, extra: readonly string[] = []) {
   return transport.handleRequest(request);
 }
 
-export function serveMcp(tools: readonly string[] = []) {
+export function serveMcp(tools: readonly string[] = [], waiting?: () => void) {
   const server = Bun.serve({
-    fetch: (request) => handleMcp(request, tools),
+    fetch: (request) => handleMcp(request, tools, waiting),
     hostname: '127.0.0.1',
     port: 0,
   });

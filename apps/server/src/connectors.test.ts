@@ -195,6 +195,38 @@ test('the agent finds connector tools and asks before ones that change things', 
   });
 });
 
+test('stopping a chat stops its connector call', async () => {
+  const headers = await signInAdmin();
+
+  const waiting = Promise.withResolvers<void>();
+
+  const server = serveMcp([], waiting.resolve);
+
+  servers.push(server);
+
+  await call(headers, 'POST', '/connectors', { name: 'Foo', url: server.url });
+
+  script(
+    toolCall('tool_search', { query: 'wait' }),
+    toolCall('mcp__foo__wait', {})
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await waiting.promise;
+
+  const stopped = call(headers, 'POST', `/conversations/${body.id}/abort`);
+
+  expect(
+    await Promise.race([
+      stopped.then(({ status }) => status),
+      Bun.sleep(1_000).then(() => 'still running'),
+    ])
+  ).toBe(204);
+});
+
 test('connectors belong to the user who added them', async () => {
   const admin = await signInAdmin();
   const other = await signIn();
