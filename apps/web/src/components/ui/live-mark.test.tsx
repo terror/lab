@@ -33,6 +33,8 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'error',
     'broken',
     'recover',
+    'doze',
+    'wake',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -46,6 +48,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
     assemble: ['live-mark-assemble', 'live-mark-fade'],
     broken: [],
     done: ['live-mark-hop', 'live-mark-sparkle'],
+    doze: ['live-mark-doze', 'live-mark-doze-lid', 'live-mark-z'],
     drift: ['live-mark-ping-away'],
     error: ['live-mark-slip', 'live-mark-slip-coral'],
     gulp: ['live-mark-gulp', 'live-mark-ping-drop'],
@@ -64,6 +67,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
       'live-mark-slosh-yellow',
     ],
     waiting: ['live-mark-ping-bob', 'live-mark-ping-in'],
+    wake: ['live-mark-wake'],
   });
 });
 
@@ -109,6 +113,8 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     'error',
     'broken',
     'recover',
+    'doze',
+    'wake',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -141,6 +147,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       broken: [],
       done: [],
       dot: [],
+      doze: [],
       drift: [],
       error: [],
       gulp: [],
@@ -149,6 +156,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       recover: [],
       thinking: ['live-mark-dim'],
       waiting: [],
+      wake: [],
     },
     pose: [
       'matrix(0.990268, -0.139173, 0.139173, 0.990268, -2, 1)',
