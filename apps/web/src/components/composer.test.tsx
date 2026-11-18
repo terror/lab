@@ -334,3 +334,35 @@ test('on a phone the attach menu opens as a sheet', async () => {
     )
   ).toEqual(['Add photos & files', 'Add from library']);
 });
+
+function stoppable(value: boolean) {
+  return (
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft=''
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onStop={() => undefined}
+        onSubmit={() => undefined}
+        running={value}
+      />
+    </TooltipProvider>
+  );
+}
+
+test('focus moves to the message box when a stopped run ends', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const { screen } = await renderWithQuery(stoppable(true));
+
+  await screen.getByRole('button', { name: 'Stop' }).click();
+
+  await screen.rerender(stoppable(false));
+
+  expect(document.activeElement).toBe(
+    screen.getByLabelText('Message').element()
+  );
+});
