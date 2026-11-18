@@ -1,3 +1,4 @@
+import { ToolConversation } from '@/components/tools';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
@@ -108,6 +109,56 @@ test('a pending question waits for an answer instead of working', async () => {
   await expect
     .element(screen.getByRole('status'))
     .toHaveTextContent('Waiting for your answer');
+});
+
+test('a stopped question or approval can no longer be answered', async () => {
+  const { screen } = await renderWithQuery(
+    <ToolConversation value={7}>
+      <AssistantMessage
+        parts={[
+          {
+            arguments: { options: ['foo'], question: 'bar' },
+            id: 'a',
+            name: 'ask_user',
+            type: 'toolCall',
+          },
+          { arguments: {}, id: 'b', name: 'trash_purge', type: 'toolCall' },
+        ]}
+        progress={new Map()}
+        results={
+          new Map([
+            [
+              'a',
+              {
+                details: { options: ['foo'], question: 'bar' },
+                output: '',
+                status: 'stopped',
+              },
+            ],
+            [
+              'b',
+              {
+                details: { approval: { action: 'baz', summary: ['qux'] } },
+                output: '',
+                status: 'stopped',
+              },
+            ],
+          ])
+        }
+        streaming={false}
+      />
+    </ToolConversation>
+  );
+
+  await expect
+    .element(screen.getByRole('button', { name: 'foo' }))
+    .toBeDisabled();
+  await expect
+    .element(screen.getByRole('button', { name: 'Approve' }))
+    .toBeDisabled();
+  await expect
+    .element(screen.getByRole('button', { name: 'Deny' }))
+    .toBeDisabled();
 });
 
 function turn(finished: readonly string[]) {

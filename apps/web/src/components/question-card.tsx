@@ -9,12 +9,14 @@ import { Check } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
 export function QuestionCard({
+  active,
   answer,
   callId,
   conversationId,
   options,
   question,
 }: {
+  active: boolean;
   answer: string | undefined;
   callId: string;
   conversationId: number | undefined;
@@ -32,7 +34,10 @@ export function QuestionCard({
   const chosen = answer ?? (send.isSuccess ? send.variables : undefined);
 
   const locked =
-    chosen !== undefined || send.isPending || conversationId === undefined;
+    !active ||
+    chosen !== undefined ||
+    send.isPending ||
+    conversationId === undefined;
 
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();

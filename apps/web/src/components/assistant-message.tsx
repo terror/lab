@@ -206,6 +206,7 @@ function ToolCards({ call, progress, result, working }: CallProps) {
       {approval && (
         <div className='mt-1.5 mb-2'>
           <ApprovalCard
+            active={view.active}
             approval={approval}
             callId={call.id}
             conversationId={conversationId}

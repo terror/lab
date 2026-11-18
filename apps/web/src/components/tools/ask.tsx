@@ -5,7 +5,7 @@ import { useContext } from 'react';
 import { field, text } from './format';
 import { ToolConversation, type ToolRenderer, type ToolView } from './types';
 
-function AskUser({ args, callId, details }: ToolView) {
+function AskUser({ active, args, callId, details }: ToolView) {
   const conversationId = useContext(ToolConversation);
 
   const question = text(field(details, 'question')) ?? text(args.question);
@@ -18,6 +18,7 @@ function AskUser({ args, callId, details }: ToolView) {
 
   return (
     <QuestionCard
+      active={active}
       answer={text(field(details, 'answer'))}
       callId={callId}
       conversationId={conversationId}
