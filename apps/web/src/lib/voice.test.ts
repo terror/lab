@@ -2,23 +2,19 @@ import { expect, test } from 'vitest';
 
 import { say } from './voice';
 
+function check(at: Date, absent: number, expected: string[]) {
+  const greetings = Array.from({ length: 40 }, (_, index) =>
+    say(
+      'greeting',
+      { absent, at, name: 'Foo Bar' },
+      { quiet: false, seed: `bar${index}` }
+    )
+  );
+
+  expect(new Set(greetings)).toEqual(new Set(expected));
+}
+
 test('the greeting reads the calendar, the clock, and time away', () => {
-  function greetings(at: Date, absent: number) {
-    return new Set(
-      Array.from({ length: 40 }, (_, index) =>
-        say(
-          'greeting',
-          { absent, at, name: 'Foo Bar' },
-          { quiet: false, seed: `bar${index}` }
-        )
-      )
-    );
-  }
-
-  function check(at: Date, absent: number, expected: string[]) {
-    expect(greetings(at, absent)).toEqual(new Set(expected));
-  }
-
   check(new Date(2027, 0, 1, 10), 20, [
     'Happy new year, Foo',
     'New year, Foo. Clean notebook.',
