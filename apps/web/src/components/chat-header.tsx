@@ -11,11 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { IconButton } from '@/components/ui/icon-button';
 import {
   conversationTitle,
   useConversationSummary,
@@ -89,20 +85,14 @@ export function ChatHeader({ id }: { id: number }) {
           {summary.data && title}
         </h1>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            aria-label={pin}
-            aria-pressed={pinned}
-            onClick={actions.menu.onPin}
-            size='icon-sm'
-            variant='quiet'
-          >
-            <Pin aria-hidden='true' className={cn(pinned && 'fill-current')} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{pin}</TooltipContent>
-      </Tooltip>
+      <IconButton
+        aria-pressed={pinned}
+        label={pin}
+        onClick={actions.menu.onPin}
+        size='icon-sm'
+      >
+        <Pin aria-hidden='true' className={cn(pinned && 'fill-current')} />
+      </IconButton>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button aria-label='Chat options' size='icon-sm' variant='quiet'>
