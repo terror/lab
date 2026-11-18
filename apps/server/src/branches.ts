@@ -1,10 +1,25 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { Conversation, EntryId } from '@earendil-works/pi-durable';
+import {
+  type AgentChange,
+  AgentDoc,
+  type Conversation,
+  type ConversationId,
+  type EntryId,
+  type EntryRecord,
+} from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
+import { TitleDoc } from '@lab/harness';
 import { and, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { z } from 'zod';
 
+import { startChat } from './chat-actions';
 import { db } from './db';
 import { found } from './found';
+import { harness } from './harness';
+import { checkAttachments, entryAttachments, submitMessage } from './messages';
+import { findModel, modelChange, models } from './models';
+import { modelSchema } from './schemas';
+import { checkSpend } from './spend';
 
 const table = schema.conversation;
 
@@ -197,4 +212,113 @@ export async function chatForks(ownerId: string, id: number): Promise<Fork[]> {
     })
     .filter(({ chats }) => chats.length > 1)
     .toSorted((a, b) => (a.after ?? 0) - (b.after ?? 0));
+}
+
+export const branchSchema = z.discriminatedUnion('kind', [
+  z.object({
+    content: z.string().trim().min(1, 'A message needs text'),
+    entryId: z.number().int().positive(),
+    kind: z.literal('edit'),
+  }),
+  z.object({
+    entryId: z.number().int().positive(),
+    kind: z.literal('retry'),
+    model: modelSchema.optional(),
+  }),
+]);
+
+async function resend(
+  source: Conversation,
+  entry: EntryRecord,
+  content: string
+) {
+  const agent = await harness.snapshot(AgentDoc, source.id, BACKGROUND_CONTEXT);
+
+  const draft = { attachments: entryAttachments(entry), content };
+
+  checkAttachments(
+    agent?.model && models.getModel(agent.model.provider, agent.model.modelId),
+    draft.attachments
+  );
+
+  return {
+    change: agent?.model && {
+      model: agent.model,
+      thinkingLevel: agent.thinkingLevel,
+    },
+    start: (conversation: Conversation) => submitMessage(conversation, draft),
+  };
+}
+
+async function regenerate(
+  ownerId: string,
+  model: z.infer<typeof modelSchema> | undefined
+) {
+  return {
+    change:
+      model &&
+      modelChange(
+        await findModel(model.provider, model.id),
+        model.thinkingLevel
+      ),
+    start: async (conversation: Conversation) => {
+      await checkSpend(ownerId);
+
+      await conversation.submit({ type: 'continue' }, BACKGROUND_CONTEXT);
+    },
+  };
+}
+
+async function openBranch(parent: Parent, agent: AgentChange | undefined) {
+  if (parent.entryId === null) {
+    return harness.createConversation(
+      { agent, ownership: { kind: 'ownerless' } },
+      BACKGROUND_CONTEXT
+    );
+  }
+
+  const origin = found(
+    await harness.conversation(
+      parent.conversationId as ConversationId,
+      BACKGROUND_CONTEXT
+    ),
+    'Conversation not found'
+  );
+
+  return origin.fork(
+    parent.entryId as EntryId,
+    { agent, ownership: { kind: 'ownerless' } },
+    BACKGROUND_CONTEXT
+  );
+}
+
+const roles = { edit: 'user', retry: 'assistant' } as const;
+
+export async function branchChat(
+  ownerId: string,
+  source: Conversation,
+  projectId: number | undefined,
+  request: z.infer<typeof branchSchema>
+) {
+  const { entry, parent } = await branchPoint(
+    source,
+    request.entryId,
+    roles[request.kind]
+  );
+
+  const plan =
+    request.kind === 'edit'
+      ? await resend(source, entry, request.content)
+      : await regenerate(ownerId, request.model);
+
+  const title = await harness.snapshot(TitleDoc, source.id, BACKGROUND_CONTEXT);
+
+  const conversation = await openBranch(parent, plan.change);
+
+  return startChat(
+    ownerId,
+    conversation,
+    { parent, projectId, title: title?.title ?? undefined },
+    () => plan.start(conversation)
+  );
 }

@@ -1,11 +1,16 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
+import type { Conversation, ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type ChatSummary, TitleDoc } from '@lab/harness';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { HTTPException } from 'hono/http-exception';
 
+import type { Parent } from './branches';
 import { db } from './db';
 import { harness } from './harness';
+import { submitMessage } from './messages';
+import type { modelChange } from './models';
+import { moveChat } from './project-access';
 import { flushProjections } from './projections';
 
 const table = schema.conversation;
@@ -73,4 +78,79 @@ export async function readChat(ownerId: string, id: number) {
     .update(table)
     .set({ readAt: sql`${table.lastMessageAt}` })
     .where(live(ownerId, id));
+}
+
+export async function startChat(
+  ownerId: string,
+  conversation: Conversation,
+  {
+    parent,
+    projectId,
+    title,
+  }: { parent?: Parent; projectId?: number; title?: string },
+  start: () => Promise<unknown>
+) {
+  await db.insert(schema.conversation).values({
+    id: conversation.id,
+    ownerId,
+    parentEntryId: parent?.entryId,
+    parentId: parent?.conversationId,
+    title,
+  });
+
+  try {
+    if (
+      projectId !== undefined &&
+      !(await moveChat(ownerId, conversation.id, projectId))
+    ) {
+      throw new HTTPException(404, { message: 'Project not found' });
+    }
+
+    if (title) {
+      await conversation.commit(async (tx) => {
+        (await tx.doc(TitleDoc, conversation.id)).title = title;
+      }, BACKGROUND_CONTEXT);
+    }
+
+    await start();
+  } catch (error) {
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(schema.conversation)
+        .where(eq(schema.conversation.id, conversation.id));
+
+      await tx
+        .insert(schema.conversationDeletion)
+        .values({ id: conversation.id })
+        .onConflictDoNothing();
+    });
+
+    throw error;
+  }
+
+  return conversation.id;
+}
+
+export async function createChat(
+  ownerId: string,
+  {
+    change,
+    draft,
+    projectId,
+    title,
+  }: {
+    change: ReturnType<typeof modelChange>;
+    draft: Parameters<typeof submitMessage>[1];
+    projectId?: number;
+    title?: string;
+  }
+) {
+  const conversation = await harness.createConversation(
+    { agent: change, ownership: { kind: 'ownerless' } },
+    BACKGROUND_CONTEXT
+  );
+
+  return startChat(ownerId, conversation, { projectId, title }, () =>
+    submitMessage(conversation, draft)
+  );
 }
