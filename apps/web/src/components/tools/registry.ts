@@ -5,6 +5,7 @@ import { askRenderers } from './ask';
 import { chatRenderers } from './chats';
 import { codemodeRenderers } from './codemode';
 import { connectorRenderers } from './connectors';
+import { delegateRenderers } from './delegate';
 import { imageRenderers } from './images';
 import { libraryRenderers } from './library';
 import { manageRenderers } from './manage';
@@ -26,6 +27,7 @@ const renderers = {
   ...chatRenderers,
   ...codemodeRenderers,
   ...connectorRenderers,
+  ...delegateRenderers,
   ...imageRenderers,
   ...libraryRenderers,
   ...manageRenderers,

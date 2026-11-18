@@ -9,7 +9,7 @@ import { credentials } from './credentials';
 import { db } from './db';
 import { env } from './env';
 import { policy } from './policy';
-import { requireOwner } from './records';
+import { requireChat, requireOwner } from './records';
 import { storeUpload } from './storage';
 import { decodeText } from './text';
 
@@ -259,7 +259,7 @@ async function computerFor(
   readNetwork: (ownerId: string) => Promise<NetworkMode>,
   conversationId: number
 ): Promise<Computer> {
-  const ownerId = await requireOwner(conversationId);
+  const { id, ownerId } = await requireChat(conversationId);
 
   const provider = await requireProvider(ownerId);
 
@@ -267,7 +267,7 @@ async function computerFor(
 
   await applyNetwork(provider, name, await readNetwork(ownerId));
 
-  return { chat: `chats/${conversationId}`, name, ownerId, provider };
+  return { chat: `chats/${id}`, name, ownerId, provider };
 }
 
 function resolvePath({ chat }: Computer, path: string) {

@@ -22,6 +22,7 @@ import { requireOwner } from './records';
 import { registry } from './registry';
 import { createSandboxAccess } from './sandbox';
 import { scheduleAccess } from './schedule-access';
+import { checkSpend } from './spend';
 import { webAccess } from './web-access';
 
 export async function purgeDeleted(path: string) {
@@ -46,6 +47,8 @@ export async function purgeDeleted(path: string) {
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
 export const harness = await openHarness({
+  admit: async (conversationId) =>
+    checkSpend(await requireOwner(conversationId)),
   history: historyAccess,
   images: imageAccess,
   library: libraryAccess,

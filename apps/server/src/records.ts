@@ -1,3 +1,5 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, ilike, inArray, isNotNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -67,28 +69,59 @@ export function contains(column: AnyPgColumn, search: string) {
   return ilike(column, `%${pattern}%`);
 }
 
-export async function conversationOwner(conversationId: number) {
-  return (await owners([conversationId])).get(conversationId);
+type Chat = { id: number; ownerId: string };
+
+async function delegator(conversationId: number) {
+  const { harness } = await import('./harness');
+
+  const record = await harness.commit(
+    (tx) => tx.conversation(conversationId as ConversationId),
+    BACKGROUND_CONTEXT
+  );
+
+  return record?.owner?.conversationId;
 }
 
-async function lookupOwner(conversationId: number) {
-  const ownerId = await conversationOwner(conversationId);
+export async function chatOf(
+  conversationId: number
+): Promise<Chat | undefined> {
+  const ownerId = (await owners([conversationId])).get(conversationId);
 
-  if (!ownerId) {
+  if (ownerId) {
+    return { id: conversationId, ownerId };
+  }
+
+  const parent = await delegator(conversationId);
+
+  return parent === undefined ? undefined : chatOf(parent);
+}
+
+export async function conversationOwner(conversationId: number) {
+  return (await chatOf(conversationId))?.ownerId;
+}
+
+async function lookupChat(conversationId: number) {
+  const chat = await chatOf(conversationId);
+
+  if (!chat) {
     throw new Error('This chat has no owner.');
   }
 
-  return ownerId;
+  return chat;
 }
 
-const knownOwners = new Map<number, Promise<string>>();
+const knownChats = new Map<number, Promise<Chat>>();
 
-export function requireOwner(conversationId: number) {
-  const known = knownOwners.get(conversationId) ?? lookupOwner(conversationId);
+export function requireChat(conversationId: number) {
+  const known = knownChats.get(conversationId) ?? lookupChat(conversationId);
 
-  knownOwners.set(conversationId, known);
+  knownChats.set(conversationId, known);
 
-  known.catch(() => knownOwners.delete(conversationId));
+  known.catch(() => knownChats.delete(conversationId));
 
   return known;
+}
+
+export async function requireOwner(conversationId: number) {
+  return (await requireChat(conversationId)).ownerId;
 }

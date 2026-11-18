@@ -22,6 +22,13 @@ test('tools describe themselves while running and when done', () => {
     line('chat_search', false, { query: 'foo' }, { count: 2 }),
     line('chat_read', false, {}, { end: 3, start: 0, title: 'foo', total: 3 }),
     line('codemode', false, {}, { calls: [{}] }),
+    line('delegate', true, { tasks: [{ title: 'foo' }, { title: 'bar' }] }),
+    line(
+      'delegate',
+      false,
+      {},
+      { subagents: [{ status: 'done' }, { status: 'failed' }] }
+    ),
     line('library_search', false, { query: 'foo' }, { count: 1 }),
     line(
       'library_read',
@@ -63,6 +70,8 @@ test('tools describe themselves while running and when done', () => {
     ['Searched your chats for “foo”', '2 chats'],
     ['Read “foo”', '3 characters'],
     ['Ran a script', '1 tool call'],
+    ['Delegating 2 tasks', '0 of 2 done'],
+    ['Delegated 2 tasks', '1 of 2 done'],
     ['Searched your library for “foo”', '1 file'],
     ['Read foo', 'characters 2–4 of 9'],
     ['Remembered “foo”', undefined],

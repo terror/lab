@@ -9,6 +9,7 @@ import { scheduleAccess } from '../src/schedule-access';
 
 export function emptyDeps(): ExtensionDeps {
   return {
+    admit: async () => undefined,
     history: { read: async () => undefined, search: async () => [] },
     images: {
       available: async () => false,
