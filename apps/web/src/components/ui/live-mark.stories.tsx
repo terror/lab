@@ -14,6 +14,10 @@ const meta = preview.meta({
         'done',
         'proud',
         'handoff',
+        'waiting',
+        'ahem',
+        'gulp',
+        'drift',
         'error',
       ],
     },
@@ -60,6 +64,22 @@ export const Proud = meta.story({
 
 export const Handoff = meta.story({
   args: { className: 'size-10', state: 'handoff' },
+});
+
+export const Waiting = meta.story({
+  args: { className: 'size-10', state: 'waiting' },
+});
+
+export const Ahem = meta.story({
+  args: { className: 'size-10', state: 'ahem' },
+});
+
+export const Gulp = meta.story({
+  args: { className: 'size-10', state: 'gulp' },
+});
+
+export const Drift = meta.story({
+  args: { className: 'size-10', state: 'drift' },
 });
 
 export const Error = meta.story({

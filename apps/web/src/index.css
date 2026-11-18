@@ -530,8 +530,18 @@
 }
 
 [data-slot='live-mark']
-  :where([data-part='bubble'], [data-part='dot'], [data-part^='sparkle']) {
+  :where(
+    [data-part='bubble'],
+    [data-part='dot'],
+    [data-part='ping'],
+    [data-part^='sparkle']
+  ) {
   opacity: 0;
+}
+
+[data-slot='live-mark']:where([data-state='waiting'], [data-state='ahem'])
+  [data-part='ping'] {
+  opacity: 1;
 }
 
 @keyframes live-mark-fade {
@@ -691,6 +701,72 @@
   }
 }
 
+@keyframes live-mark-ping-in {
+  from {
+    transform: translateY(7px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes live-mark-ping-bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes live-mark-ahem {
+  30% {
+    transform: translateY(-1.5px) scale(0.97, 1.06);
+  }
+  62% {
+    transform: scale(1.03, 0.97);
+  }
+}
+
+@keyframes live-mark-ping-ahem {
+  25%,
+  75% {
+    transform: translateY(-3px);
+  }
+  50% {
+    transform: none;
+  }
+}
+
+@keyframes live-mark-ping-drop {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(9px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(13px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes live-mark-gulp {
+  45% {
+    transform: scale(1.06, 0.93);
+  }
+  72% {
+    transform: scale(0.97, 1.04);
+  }
+}
+
+@keyframes live-mark-ping-away {
+  from {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+}
+
 @keyframes live-mark-slip-coral {
   0%,
   36% {
@@ -756,6 +832,10 @@
 
 [data-slot='live-mark'] [data-part='all'] {
   transform-origin: 16px 30px;
+}
+
+[data-slot='live-mark'] [data-part='ping'] {
+  transform-origin: 16px -3px;
 }
 
 [data-slot='live-mark'] [data-part='coral'] {
@@ -874,6 +954,32 @@
   [data-slot='live-mark'][data-state='handoff'] [data-part='dot'] {
     animation: live-mark-dot 240ms var(--ease-out)
       calc(var(--live-mark-delay, 0ms) + 710ms) both;
+  }
+
+  [data-slot='live-mark'][data-state='waiting'] [data-part='ping'] {
+    animation:
+      live-mark-ping-in var(--pop-duration) var(--pop) both,
+      live-mark-ping-bob 2.4s ease-in-out 0.8s 2;
+  }
+
+  [data-slot='live-mark'][data-state='ahem'] [data-part='all'] {
+    animation: live-mark-ahem 560ms var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='ahem'] [data-part='ping'] {
+    animation: live-mark-ping-ahem 560ms var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='gulp'] [data-part='ping'] {
+    animation: live-mark-ping-drop 280ms var(--ease-in) both;
+  }
+
+  [data-slot='live-mark'][data-state='gulp'] [data-part='all'] {
+    animation: live-mark-gulp 360ms var(--ease-out) 240ms both;
+  }
+
+  [data-slot='live-mark'][data-state='drift'] [data-part='ping'] {
+    animation: live-mark-ping-away 320ms var(--ease-in) both;
   }
 
   [data-slot='live-mark'][data-state='error'] [data-part='coral'] {

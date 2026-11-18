@@ -21,11 +21,13 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
+import { useAhem, useAnswer } from '@/lib/asking';
 import { plural } from '@/lib/format';
 import { fade, spring } from '@/lib/motion';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import type { Part, Span } from '@/lib/transcript';
+import { useQuiet } from '@/lib/voice';
 import { AnimatePresence, m } from 'motion/react';
 import { type ComponentProps, useContext, useState } from 'react';
 
@@ -209,12 +211,27 @@ export function StepStatus({
     call.name === 'ask_user' ||
     (approval !== undefined && approval.decision === undefined);
 
-  if (view.active && asking) {
+  const quiet = useQuiet();
+
+  const waiting = view.active && asking;
+
+  const ahem = useAhem(call.id, waiting && !quiet);
+
+  const answer = useAnswer(waiting && !quiet, approval?.decision === 'denied');
+
+  if (waiting) {
     return (
       <output className='flex'>
         <TraceLine>
           <TraceIcon>
-            <Dot tone='attention' />
+            {quiet ? (
+              <Dot tone='attention' />
+            ) : (
+              <LiveMark
+                className='size-3.5'
+                state={ahem ? 'ahem' : 'waiting'}
+              />
+            )}
           </TraceIcon>
           <TraceTitle>Waiting for your answer</TraceTitle>
         </TraceLine>
@@ -224,7 +241,7 @@ export function StepStatus({
 
   const status = view.active ? toolRenderer(call.name).title(view) : 'Thinking';
 
-  return <Activity status={activity ?? status} />;
+  return <Activity mark={answer} status={activity ?? status} />;
 }
 
 function waited(span: Span, waits: readonly Span[]) {
@@ -335,13 +352,19 @@ export function Worked({
 
 const STATUS_HOLD_MS = 800;
 
-export function Activity({ status }: { status: string }) {
+export function Activity({
+  mark = 'thinking',
+  status,
+}: {
+  mark?: 'drift' | 'gulp' | 'thinking';
+  status: string;
+}) {
   const label = useSteady(status, STATUS_HOLD_MS);
 
   return (
     <output className='flex items-center gap-2'>
       <TraceIcon>
-        <LiveMark className='size-3.5' state='thinking' />
+        <LiveMark className='size-3.5' state={mark} />
       </TraceIcon>
       <AnimatePresence initial={false} mode='wait'>
         <m.span

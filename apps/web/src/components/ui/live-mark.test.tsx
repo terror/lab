@@ -26,6 +26,10 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'done',
     'proud',
     'handoff',
+    'waiting',
+    'ahem',
+    'gulp',
+    'drift',
     'error',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
@@ -36,9 +40,12 @@ test('each state of the mark runs its own animation and idle runs none', async (
   }
 
   expect(Object.fromEntries(seen)).toEqual({
+    ahem: ['live-mark-ahem', 'live-mark-ping-ahem'],
     assemble: ['live-mark-assemble', 'live-mark-fade'],
     done: ['live-mark-hop', 'live-mark-sparkle'],
+    drift: ['live-mark-ping-away'],
     error: ['live-mark-slip', 'live-mark-slip-coral'],
+    gulp: ['live-mark-gulp', 'live-mark-ping-drop'],
     handoff: [
       'live-mark-dot',
       'live-mark-drop',
@@ -52,6 +59,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
       'live-mark-slosh-blue',
       'live-mark-slosh-yellow',
     ],
+    waiting: ['live-mark-ping-bob', 'live-mark-ping-in'],
   });
 });
 
@@ -90,6 +98,10 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     'done',
     'proud',
     'handoff',
+    'waiting',
+    'ahem',
+    'gulp',
+    'drift',
     'error',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
@@ -118,13 +130,17 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
 
   expect({ animations: Object.fromEntries(seen), pose }).toEqual({
     animations: {
+      ahem: [],
       assemble: ['live-mark-fade'],
       done: [],
       dot: [],
+      drift: [],
       error: [],
+      gulp: [],
       handoff: ['live-mark-hide', 'live-mark-show'],
       proud: [],
       thinking: ['live-mark-dim'],
+      waiting: [],
     },
     pose: [
       'matrix(0.990268, -0.139173, 0.139173, 0.990268, -2, 1)',

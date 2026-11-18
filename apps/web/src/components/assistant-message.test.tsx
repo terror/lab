@@ -1,6 +1,9 @@
 import { ToolConversation } from '@/components/tools';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
+import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 
 import { AssistantMessage, type ToolResult } from './assistant-message';
@@ -373,4 +376,83 @@ test('a turn that finishes in a hidden tab hops once the tab is back', async () 
   await expect.poll(mark).toBe('proud');
 
   expect([working, held]).toEqual(['thinking', 'idle']);
+});
+
+function approval(decision?: 'approved') {
+  return (
+    <AssistantMessage
+      parts={[
+        { arguments: {}, id: 'a', name: 'trash_purge', type: 'toolCall' },
+      ]}
+      progress={
+        new Map([
+          [
+            'a',
+            {
+              details: { approval: { action: 'foo', decision, summary: [] } },
+              output: '',
+              status: 'running',
+            },
+          ],
+        ])
+      }
+      results={new Map()}
+      streaming
+      working
+    />
+  );
+}
+
+test('a pending approval clears its throat once, then swallows the answer', async ({
+  onTestFinished,
+}) => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  const { screen } = await renderWithQuery(approval());
+
+  const mark = () =>
+    screen.container
+      .querySelector('output [data-slot=live-mark]')
+      ?.getAttribute('data-state');
+
+  const seen = [mark()];
+
+  vi.advanceTimersByTime(8_000);
+
+  await screen.rerender(approval());
+
+  seen.push(mark());
+
+  await screen.rerender(approval('approved'));
+
+  seen.push(mark());
+
+  vi.advanceTimersByTime(640);
+
+  await screen.rerender(approval('approved'));
+
+  seen.push(mark());
+
+  expect(seen).toEqual(['waiting', 'ahem', 'gulp', 'thinking']);
+});
+
+test('a pending approval keeps its plain dot when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const { screen } = await renderWithQuery(approval(), client);
+
+  expect(
+    [...screen.container.querySelectorAll('output [data-slot]')].map((mark) =>
+      mark.getAttribute('data-slot')
+    )
+  ).toEqual(['trace-line', 'trace-icon', 'dot', 'trace-title']);
 });

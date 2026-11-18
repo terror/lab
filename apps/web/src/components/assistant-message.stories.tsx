@@ -5,6 +5,7 @@ import preview from '../../.storybook/preview';
 import { themes } from '../../.storybook/themes';
 import { AssistantMessage } from './assistant-message';
 import { Activity } from './tool-steps';
+import { ToolConversation } from './tools';
 
 const answer = `Here is a **three day** plan.
 
@@ -204,4 +205,61 @@ function Finishes() {
 export const Finishing = meta.story({
   decorators: [themes],
   render: () => <Finishes />,
+});
+
+const asks = [
+  { decision: undefined, id: 'a', until: 9.5 },
+  { decision: 'approved', id: 'a', until: 12 },
+  { decision: undefined, id: 'b', until: 15 },
+  { decision: 'denied', id: 'b', until: 18 },
+] as const;
+
+function Asks() {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((current) => current + 1), 500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const round = Math.floor(tick / 36);
+
+  const ask = asks.find(({ until }) => (tick % 36) / 2 < until) ?? asks[0];
+
+  const id = `${round}-${ask.id}`;
+
+  const details = {
+    approval: {
+      action: 'Schedule “Monday motivation”',
+      decision: ask.decision,
+      summary: ['Every Monday at 9:00'],
+    },
+  };
+
+  return (
+    <ToolConversation value={1}>
+      <AssistantMessage
+        key={id}
+        parts={[
+          { arguments: {}, id, name: 'schedule_create', type: 'toolCall' },
+        ]}
+        progress={new Map([[id, { details, output: '', status: 'running' }]])}
+        results={
+          new Map(
+            ask.decision === 'denied'
+              ? [[id, { details, output: '', status: 'done' } as const]]
+              : []
+          )
+        }
+        streaming
+        working
+      />
+    </ToolConversation>
+  );
+}
+
+export const Asking = meta.story({
+  decorators: [themes],
+  render: () => <Asks />,
 });
