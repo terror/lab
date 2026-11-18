@@ -40,13 +40,25 @@ export const clientMetadata = {
   token_endpoint_auth_method: 'none',
 };
 
+function opened(
+  connectorId: number,
+  row: { state: string } | undefined
+): AuthState {
+  return (
+    (row &&
+      stateSchema.safeParse(openSecret(row.state, `connector:${connectorId}`))
+        .data) ??
+    {}
+  );
+}
+
 async function load(connectorId: number): Promise<AuthState> {
   const [row] = await db
     .select({ state: table.state })
     .from(table)
     .where(eq(table.connectorId, connectorId));
 
-  return (row && stateSchema.safeParse(openSecret(row.state)).data) ?? {};
+  return opened(connectorId, row);
 }
 
 async function save(connectorId: number, change: AuthState) {
@@ -57,10 +69,12 @@ async function save(connectorId: number, change: AuthState) {
       .where(eq(table.connectorId, connectorId))
       .for('update');
 
-    const current =
-      (row && stateSchema.safeParse(openSecret(row.state)).data) ?? {};
+    const current = opened(connectorId, row);
 
-    const state = sealSecret({ ...current, ...change });
+    const state = sealSecret(
+      { ...current, ...change },
+      `connector:${connectorId}`
+    );
 
     await tx
       .insert(table)
