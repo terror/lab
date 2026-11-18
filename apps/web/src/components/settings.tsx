@@ -13,7 +13,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PageHeader } from '@/components/ui/page';
+import { ListRow } from '@/components/ui/list-row';
+import { Page, PageHeader } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
 import { usePreference } from '@/lib/preferences';
@@ -24,16 +25,9 @@ import {
   useSettingsSections,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
-import { useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
-import {
-  Link,
-  useCanGoBack,
-  useNavigate,
-  useRouter,
-  useSearch,
-} from '@tanstack/react-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { Link, useSearch } from '@tanstack/react-router';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 const themes: { label: string; value: Theme }[] = [
@@ -114,6 +108,73 @@ const panels: Record<SettingsSection, ComponentType> = {
   usage: UsagePanel,
 };
 
+function SettingsNav({
+  current,
+  sections,
+}: {
+  current: SettingsSection;
+  sections: SettingsSection[];
+}) {
+  return (
+    <nav
+      aria-label='Settings'
+      className='sticky top-0 hidden w-48 shrink-0 flex-col gap-0.5 self-start py-8 pl-4 @2xl:flex'
+    >
+      {sections.map((id) => {
+        const { icon: Icon, label } = settingsSectionInfo[id];
+
+        return (
+          <Link
+            key={id}
+            aria-current={current === id ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-2 rounded-menu px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              current === id && 'bg-muted font-medium text-foreground'
+            )}
+            replace
+            search={{ section: id }}
+            to='/settings'
+          >
+            <Icon aria-hidden='true' className='size-4' />
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function SettingsList({ sections }: { sections: SettingsSection[] }) {
+  return (
+    <Page className='@2xl:hidden'>
+      <PageHeader title='Settings' />
+      <nav aria-label='Settings'>
+        <ul className='flex flex-col gap-0.5'>
+          {sections.map((id) => {
+            const { icon: Icon, label } = settingsSectionInfo[id];
+
+            return (
+              <ListRow key={id} asChild>
+                <Link replace search={{ section: id }} to='/settings'>
+                  <Icon
+                    aria-hidden='true'
+                    className='size-4 shrink-0 text-muted-foreground'
+                  />
+                  <span className='flex-1 truncate'>{label}</span>
+                  <ChevronRight
+                    aria-hidden='true'
+                    className='size-4 shrink-0 text-muted-foreground'
+                  />
+                </Link>
+              </ListRow>
+            );
+          })}
+        </ul>
+      </nav>
+    </Page>
+  );
+}
+
 export function Settings() {
   const requested = settingsSearchSchema.parse(
     useSearch({ strict: false })
@@ -121,62 +182,30 @@ export function Settings() {
 
   const sections = useSettingsSections();
 
-  useDocumentTitle('Settings');
-
   const section =
-    requested && sections.includes(requested) ? requested : 'appearance';
+    requested && sections.includes(requested) ? requested : undefined;
 
-  const Panel = panels[section];
-  const router = useRouter();
-  const navigate = useNavigate();
-  const canGoBack = useCanGoBack();
-
-  const back = () => {
-    if (canGoBack) {
-      router.history.back();
-    } else {
-      void navigate({ to: '/' });
-    }
-  };
+  const Panel = panels[section ?? 'appearance'];
 
   return (
-    <div className='flex min-h-svh flex-col'>
-      <header className='px-4 py-3'>
-        <Button onClick={back} variant='ghost'>
-          <ArrowLeft aria-hidden='true' />
-          Back to chat
-        </Button>
-      </header>
-      <div className='flex w-full flex-1 flex-col gap-8 px-4 pb-8 sm:flex-row sm:gap-12'>
-        <nav
-          aria-label='Settings'
-          className='flex shrink-0 flex-col gap-1 pt-4 sm:w-56'
-        >
-          {sections.map((id) => {
-            const { icon: Icon, label } = settingsSectionInfo[id];
-
-            return (
-              <Link
-                key={id}
-                aria-current={section === id ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm focus-ring-inset transition-colors hover:bg-accent',
-                  section === id &&
-                    'bg-accent font-medium text-accent-foreground'
-                )}
-                replace
-                search={{ section: id }}
-                to='/settings'
-              >
-                <Icon aria-hidden='true' className='size-4' />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-        <main className='flex max-w-3xl min-w-0 flex-1 flex-col gap-8 px-2 pt-4 sm:px-0'>
+    <div className='@container min-h-0 flex-1 overflow-y-auto'>
+      <div className='flex'>
+        <SettingsNav current={section ?? 'appearance'} sections={sections} />
+        {!section && <SettingsList sections={sections} />}
+        <Page className={cn(!section && 'hidden @2xl:flex')}>
+          <Button
+            asChild
+            className='-mb-4 -ml-2 self-start @2xl:hidden'
+            size='sm'
+            variant='quiet'
+          >
+            <Link replace to='/settings'>
+              <ChevronLeft aria-hidden='true' />
+              Settings
+            </Link>
+          </Button>
           <Panel />
-        </main>
+        </Page>
       </div>
     </div>
   );
