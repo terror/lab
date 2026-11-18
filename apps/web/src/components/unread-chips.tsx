@@ -145,7 +145,7 @@ export function UnreadChips() {
 
   const running = unread.data?.running ?? 0;
 
-  if (chats.length === 0) {
+  if (chats.length === 0 && running === 0) {
     return null;
   }
 
