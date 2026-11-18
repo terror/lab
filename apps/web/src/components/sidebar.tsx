@@ -43,6 +43,7 @@ import {
   useUnreadChats,
 } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
+import { spring } from '@/lib/motion';
 import { useProjects } from '@/lib/projects';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
@@ -60,8 +61,14 @@ import {
   Search,
   SquarePen,
 } from 'lucide-react';
-import { AnimatePresence, m } from 'motion/react';
-import { Fragment, type ReactNode, useId, useState } from 'react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
+import {
+  type AnimationEvent,
+  Fragment,
+  type ReactNode,
+  useId,
+  useState,
+} from 'react';
 import { z } from 'zod';
 
 type Side = 'bottom' | 'right';
@@ -534,13 +541,56 @@ function PinnedSection({
   );
 }
 
-function RailMark({ onToggle }: { onToggle: () => void }) {
+function newestFinish(
+  chats: readonly { finishedAt: string; id: number }[] | undefined,
+  selected: number | undefined
+) {
+  return chats && (chats.find(({ id }) => id !== selected)?.finishedAt ?? '');
+}
+
+function railState(hop: boolean, working: boolean) {
+  if (hop) {
+    return 'done';
+  }
+
+  return working ? 'thinking' : 'idle';
+}
+
+function RailMark({
+  onToggle,
+  selected,
+}: {
+  onToggle: () => void;
+  selected: number | undefined;
+}) {
   const unread = useUnreadChats();
+  const reduced = useReducedMotion();
 
   const working = (unread.data?.running ?? 0) > 0;
 
   const attention =
     (unread.data?.chats.length ?? 0) + (unread.data?.waiting.length ?? 0) > 0;
+
+  const newest = newestFinish(unread.data?.chats, selected);
+
+  const [seen, setSeen] = useState(newest);
+  const [hop, setHop] = useState(false);
+
+  if (seen !== newest) {
+    setSeen(newest);
+    setHop(
+      !reduced && seen !== undefined && newest !== undefined && newest > seen
+    );
+  }
+
+  const landed = (event: AnimationEvent) => {
+    if (
+      event.target instanceof Element &&
+      event.target.matches('[data-part=sparkle]')
+    ) {
+      setHop(false);
+    }
+  };
 
   return (
     <Tooltip>
@@ -553,15 +603,25 @@ function RailMark({ onToggle }: { onToggle: () => void }) {
         >
           <LiveMark
             className='size-6 transition-opacity group-hover/mark:opacity-0 group-focus-visible/mark:opacity-0'
-            state={working ? 'thinking' : 'idle'}
+            onAnimationEnd={landed}
+            state={railState(hop, working)}
           />
           <PanelLeftOpen
             aria-hidden='true'
             className='absolute size-4 opacity-0 transition-opacity group-hover/mark:opacity-100 group-focus-visible/mark:opacity-100'
           />
-          {attention && (
-            <Dot className='absolute top-1 right-1' tone='attention' />
-          )}
+          <AnimatePresence initial={false}>
+            {attention && (
+              <m.span
+                animate={{ scale: 1 }}
+                className='absolute top-1 right-1 flex'
+                initial={{ scale: 0 }}
+                transition={{ ...spring.pop, delay: hop ? 0.74 : 0 }}
+              >
+                <Dot tone='attention' />
+              </m.span>
+            )}
+          </AnimatePresence>
         </button>
       </TooltipTrigger>
       <TooltipContent side='right'>Expand sidebar</TooltipContent>
@@ -572,17 +632,19 @@ function RailMark({ onToggle }: { onToggle: () => void }) {
 function SidebarRail({
   onNavigate,
   onToggle,
+  selected,
   user,
 }: {
   onNavigate: (to: NavPath) => void;
   onToggle: () => void;
+  selected: number | undefined;
   user: User;
 }) {
   const path = usePath();
 
   return (
     <aside className='flex h-full w-14 flex-col items-center gap-2 bg-sidebar py-3 text-sidebar-foreground'>
-      <RailMark onToggle={onToggle} />
+      <RailMark onToggle={onToggle} selected={selected} />
       <SearchButton side='right' />
       {navPages.map(({ icon: Icon, label, to }) => (
         <RailButton
@@ -664,6 +726,7 @@ function SidebarContent({
       <SidebarRail
         onNavigate={props.onNavigate}
         onToggle={props.onToggle}
+        selected={props.selected}
         user={props.user}
       />
     );

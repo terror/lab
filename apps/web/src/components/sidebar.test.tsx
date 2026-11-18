@@ -13,11 +13,13 @@ import { expect, test, vi } from 'vitest';
 import { Sidebar } from './sidebar';
 
 function renderSidebar({
+  chats = [],
   collapsed = false,
   onProject = () => undefined,
   path = '/projects/7',
   pending,
 }: {
+  chats?: unknown[];
   collapsed?: boolean;
   onProject?: (id: number) => void;
   path?: string;
@@ -46,7 +48,7 @@ function renderSidebar({
 
     if (pathname === '/api/conversations/unread') {
       return Response.json({
-        chats: [],
+        chats,
         running: 1,
         waiting: [{ id: 2, title: 'baz' }],
       });
@@ -255,4 +257,39 @@ test('the collapsed rail shows the mark at work and a dot when a chat needs you'
       ['live-mark', 'thinking'],
       ['dot', 'attention'],
     ]);
+});
+
+test('the collapsed rail hops once when a chat finishes in the background', async () => {
+  const chats: unknown[] = [];
+
+  const { client, screen } = await renderSidebar({ chats, collapsed: true });
+
+  const mark = screen.getByRole('button', { name: 'Expand sidebar' });
+
+  const state = () =>
+    mark
+      .element()
+      .querySelector('[data-slot=live-mark]')
+      ?.getAttribute('data-state');
+
+  await expect.poll(state).toBe('thinking');
+
+  chats.push({
+    finishedAt: '2026-01-01T00:00:00.000Z',
+    id: 3,
+    preview: 'foo',
+    scheduled: false,
+    title: 'bar',
+  });
+
+  await client.invalidateQueries();
+
+  await expect.poll(state).toBe('done');
+
+  mark
+    .element()
+    .querySelector('[data-part=sparkle]')
+    ?.dispatchEvent(new AnimationEvent('animationend', { bubbles: true }));
+
+  await expect.poll(state).toBe('thinking');
 });

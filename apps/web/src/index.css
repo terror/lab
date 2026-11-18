@@ -529,7 +529,8 @@
   transform-box: view-box;
 }
 
-[data-slot='live-mark'] :where([data-part='bubble'], [data-part^='sparkle']) {
+[data-slot='live-mark']
+  :where([data-part='bubble'], [data-part='dot'], [data-part^='sparkle']) {
   opacity: 0;
 }
 
@@ -659,6 +660,34 @@
   100% {
     transform: translate(var(--dx), var(--dy));
     opacity: 0;
+  }
+}
+
+@keyframes live-mark-drop {
+  to {
+    transform: translateY(var(--drop));
+    opacity: 0;
+  }
+}
+
+@keyframes live-mark-dot {
+  from {
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes live-mark-hide {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes live-mark-show {
+  to {
+    opacity: 1;
   }
 }
 
@@ -815,6 +844,38 @@
     animation: live-mark-sparkle 480ms var(--ease-out) 380ms both;
   }
 
+  [data-slot='live-mark'][data-state='handoff'] [data-part='all'] {
+    animation: live-mark-hop 560ms var(--ease-out) var(--live-mark-delay, 0ms)
+      both;
+  }
+
+  [data-slot='live-mark'][data-state='handoff'] [data-part='sparkle'] {
+    animation: live-mark-sparkle 420ms var(--ease-out)
+      calc(var(--live-mark-delay, 0ms) + 240ms) both;
+  }
+
+  [data-slot='live-mark'][data-state='handoff']
+    :where([data-part='blue'], [data-part='yellow']) {
+    --drop: 5px;
+    animation: live-mark-drop 220ms var(--ease-in)
+      calc(var(--live-mark-delay, 0ms) + 620ms) both;
+  }
+
+  [data-slot='live-mark'][data-state='handoff'] [data-part='yellow'] {
+    animation-delay: calc(var(--live-mark-delay, 0ms) + 660ms);
+  }
+
+  [data-slot='live-mark'][data-state='handoff'] [data-part='coral'] {
+    --drop: 6px;
+    animation: live-mark-drop 240ms var(--ease-out)
+      calc(var(--live-mark-delay, 0ms) + 710ms) both;
+  }
+
+  [data-slot='live-mark'][data-state='handoff'] [data-part='dot'] {
+    animation: live-mark-dot 240ms var(--ease-out)
+      calc(var(--live-mark-delay, 0ms) + 710ms) both;
+  }
+
   [data-slot='live-mark'][data-state='error'] [data-part='coral'] {
     animation: live-mark-slip-coral 620ms var(--ease-out) both;
   }
@@ -840,6 +901,15 @@
   [data-slot='live-mark'][data-state='thinking']
     :where([data-part='blue'], [data-part='yellow']) {
     animation: live-mark-dim 2.4s ease-in-out infinite;
+  }
+
+  [data-slot='live-mark'][data-state='handoff']
+    :where([data-part='coral'], [data-part='blue'], [data-part='yellow']) {
+    animation: live-mark-hide var(--motion-base) linear both;
+  }
+
+  [data-slot='live-mark'][data-state='handoff'] [data-part='dot'] {
+    animation: live-mark-show var(--motion-base) linear both;
   }
 
   [data-slot='live-mark'][data-state='error'] [data-part='coral'] {

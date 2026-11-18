@@ -63,7 +63,7 @@ function ListRow({
             <span
               data-slot='list-row-status'
               className={cn(
-                'pointer-events-none flex items-center justify-center transition-opacity',
+                'pointer-events-none flex min-w-3.5 items-center justify-center transition-opacity',
                 actions &&
                   'pointer-fine:absolute pointer-fine:inset-0 pointer-fine:group-hover/list-row:opacity-0 pointer-fine:group-has-focus-visible/list-row:opacity-0 pointer-fine:group-has-data-[state=open]/list-row:opacity-0'
               )}

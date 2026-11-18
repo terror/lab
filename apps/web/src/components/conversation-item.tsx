@@ -24,11 +24,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LiveMark } from '@/components/ui/live-mark';
 import { conversationTitle } from '@/lib/conversations';
+import { useHandoff } from '@/lib/handoff';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
-import { Fragment, type ReactNode, useState } from 'react';
+import {
+  type AnimationEvent,
+  type CSSProperties,
+  Fragment,
+  type ReactNode,
+  useState,
+} from 'react';
 
 type Activity = 'idle' | 'running' | 'unread' | 'waiting';
 
@@ -112,6 +119,9 @@ export function ConversationItem({
   const renaming = useRenaming();
   const actions = useChatActions(conversation, selected);
 
+  const current = activity(conversation, selected);
+
+  const [order, settle] = useHandoff(current);
   const [named, setNamed] = useState(conversation.title);
   const [arrived, setArrived] = useState(false);
 
@@ -137,7 +147,28 @@ export function ConversationItem({
     );
   }
 
-  const indicator = indicators[activity(conversation, selected)];
+  const indicator = indicators[current];
+
+  const landed = (event: AnimationEvent) => {
+    if (
+      event.target instanceof Element &&
+      event.target.matches('[data-part=dot]')
+    ) {
+      settle();
+    }
+  };
+
+  const mark =
+    order === undefined ? (
+      indicator?.mark
+    ) : (
+      <LiveMark
+        className='size-3.5'
+        onAnimationEnd={landed}
+        state='handoff'
+        style={{ '--live-mark-delay': `${order * stagger}s` } as CSSProperties}
+      />
+    );
 
   return (
     <ContextMenu>
@@ -173,7 +204,7 @@ export function ConversationItem({
             indicator?.attention && 'font-medium'
           )}
           selected={selected}
-          status={indicator?.mark}
+          status={mark}
         >
           <Link
             aria-current={selected ? 'page' : undefined}
