@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/bun';
 import { expect, test } from 'bun:test';
+import { DrizzleQueryError } from 'drizzle-orm';
 
 import { sentryOptions } from './instrument';
 
@@ -57,4 +58,35 @@ test('error reports leave out request bodies, queries, addresses and console out
       user: undefined,
     },
   ]);
+});
+
+test('database error reports leave out query parameters', async () => {
+  const sent = new Array<Sentry.ErrorEvent>();
+
+  Sentry.init({
+    ...sentryOptions,
+    dsn: 'http://foo@127.0.0.1/1',
+    transport: (options) =>
+      Sentry.createTransport(options, async ({ body }) => {
+        const [, header, item] = String(body)
+          .split('\n')
+          .map((line) => JSON.parse(line));
+
+        if (header.type === 'event') {
+          sent.push(item);
+        }
+
+        return {};
+      }),
+  });
+
+  Sentry.captureException(
+    new DrizzleQueryError('select $1', ['foo'], new Error('bar'))
+  );
+
+  await Sentry.close();
+
+  expect(
+    sent.map(({ exception }) => exception?.values?.map(({ value }) => value))
+  ).toEqual([['bar', 'Failed query: select $1']]);
 });

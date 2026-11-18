@@ -2,7 +2,16 @@ import * as Sentry from '@sentry/bun';
 
 import { env } from './env';
 
+const failedQuery = /^(Failed query: [\s\S]*?)\nparams: [\s\S]*$/;
+
 export const sentryOptions = {
+  beforeSend: (event) => {
+    for (const exception of event.exception?.values ?? []) {
+      exception.value = exception.value?.replace(failedQuery, '$1');
+    }
+
+    return event;
+  },
   dataCollection: { httpBodies: [], urlQueryParams: false, userInfo: false },
   environment: process.env.NODE_ENV ?? 'production',
   integrations: (integrations) =>
