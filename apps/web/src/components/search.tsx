@@ -27,6 +27,7 @@ import {
 import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
 import { useNavigate } from '@tanstack/react-router';
+import { Command as CommandPrimitive } from 'cmdk';
 import {
   Clock,
   File,
@@ -467,24 +468,24 @@ function Palette({
 
   return (
     <Command
+      label='Search Lab'
       onKeyDown={onKeyDown}
       onValueChange={setSelected}
       shouldFilter={false}
       value={query ? current : undefined}
     >
-      <label className='flex h-12 items-center gap-3 px-4'>
+      <div className='flex h-12 items-center gap-3 px-4'>
         <Search aria-hidden='true' className='size-4 text-muted-foreground' />
-        <input
-          aria-label='Search Lab'
+        <CommandPrimitive.Input
           className='flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground'
-          onChange={(event) => {
-            setSearch(event.target.value);
+          onValueChange={(value) => {
+            setSearch(value);
             setScope('all');
           }}
           placeholder='Search Lab'
           value={search}
         />
-      </label>
+      </div>
       <div className='h-px bg-border' />
       {query && <ScopePills counts={counts} onScope={setScope} scope={scope} />}
       <CommandList className='max-h-96 px-1.5 pb-1.5'>
