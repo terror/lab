@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { spring } from '@/lib/motion';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
@@ -9,8 +10,11 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
+import * as motion from 'motion/react';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
+import { render } from 'vitest-browser-react';
+import { cdp } from 'vitest/browser';
 import '@/index.css';
 
 import { ToolCards } from './tool-steps';
@@ -22,7 +26,7 @@ const saved = {
   status: 'done',
 } as const;
 
-function Remember({ live }: { live: boolean }) {
+function Remember({ live, name }: { live: boolean; name: string }) {
   const [result, setResult] = useState(live ? undefined : saved);
 
   return (
@@ -30,9 +34,9 @@ function Remember({ live }: { live: boolean }) {
       <Button onClick={() => setResult(saved)}>baz</Button>
       <ToolCards
         call={{
-          arguments: { text: 'foo' },
+          arguments: { id: 'baz', text: 'foo' },
           id: 'bar',
-          name: 'remember',
+          name,
           type: 'toolCall',
         }}
         progress={undefined}
@@ -43,7 +47,11 @@ function Remember({ live }: { live: boolean }) {
   );
 }
 
-async function remember(personality: 'default' | 'quiet', live: boolean) {
+async function remember(
+  personality: 'default' | 'quiet',
+  live: boolean,
+  name = 'remember'
+) {
   const client = new QueryClient();
 
   client.setQueryData(preferencesQueryOptions.queryKey, {
@@ -53,7 +61,9 @@ async function remember(personality: 'default' | 'quiet', live: boolean) {
 
   const router = createRouter({
     history: createMemoryHistory(),
-    routeTree: createRootRoute({ component: () => <Remember live={live} /> }),
+    routeTree: createRootRoute({
+      component: () => <Remember live={live} name={name} />,
+    }),
   });
 
   const { screen } = await renderWithQuery(
@@ -112,6 +122,53 @@ test('a memory saved while the chat is open drops its ribbon and sweeps a highli
     { ribbon: 'none', sweep: 'none' },
     { ribbon: 'none', sweep: 'none' },
   ]);
+});
+
+test('a forgotten memory and reduced motion skip the ribbon, and reduced motion only fades the highlight', async ({
+  onTestFinished,
+}) => {
+  const forgotten = await remember('default', true, 'forget');
+
+  await cdp().send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+  });
+
+  onTestFinished(async () => {
+    await cdp().send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: '' }],
+    });
+  });
+
+  expect([forgotten, await remember('default', true)]).toEqual([
+    { ribbon: 'none', sweep: 'none' },
+    { ribbon: 'none', sweep: 'highlight-show, highlight-fade' },
+  ]);
+});
+
+test('the ribbon drops on a curve that follows the lively spring preset', async () => {
+  const screen = await render(<span data-ribbon data-testid='foo' />);
+
+  const style = getComputedStyle(screen.getByTestId('foo').element());
+
+  const duration = Number.parseFloat(
+    style.getPropertyValue('--lively-duration')
+  );
+
+  const generator = motion.spring({ ...spring.lively, keyframes: [0, 1] });
+
+  const stops =
+    style.getPropertyValue('--lively').match(/[\d.]+ [\d.]+%/g) ?? [];
+
+  const drift = stops.map((stop) => {
+    const [value = 0, at = 0] = stop.split(' ').map(Number.parseFloat);
+
+    return Math.abs(generator.next((at / 100) * duration).value - value);
+  });
+
+  expect({ drift: Math.max(...drift) < 0.01, stops: stops.length }).toEqual({
+    drift: true,
+    stops: 60,
+  });
 });
 
 test('a forget that failed shows no chip', () => {

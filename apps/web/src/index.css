@@ -1288,7 +1288,7 @@
   [data-arrived] [data-highlight]::before {
     animation:
       highlight-show 120ms linear 320ms backwards,
-      highlight-fade 900ms var(--ease-out) 1900ms forwards;
+      highlight-fade 900ms linear 1900ms forwards;
   }
 
   [data-slot='live-mark'][data-state='assemble']

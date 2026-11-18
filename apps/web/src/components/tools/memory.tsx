@@ -41,7 +41,7 @@ function MemoryChip({
   const flourish = !forgotten && !quiet;
 
   return (
-    <div className='flex min-w-0 animate-in items-center gap-2 text-sm duration-base fade-in slide-in-from-bottom-1'>
+    <div className='flex min-w-0 animate-in items-center gap-2 text-sm duration-base fade-in'>
       <Chip tone={forgotten ? 'neutral' : 'done'}>
         {forgotten ? (
           <BookmarkX aria-hidden='true' />
