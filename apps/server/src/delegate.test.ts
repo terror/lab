@@ -22,7 +22,7 @@ import {
   toolOutputs,
 } from '../test/client';
 import { emptyDeps } from '../test/harness';
-import { script, toolCall } from '../test/models';
+import { prompts, script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
 import { harness } from './harness';
@@ -489,4 +489,46 @@ test('delegating stops at the monthly limit', async () => {
     outputs: ['You’ve used this month’s $1.00 limit'],
     subagents: [],
   });
+});
+
+test('subagents stop once the chat reaches the monthly limit', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: id,
+    cost: 2,
+    createdAt: new Date(),
+    input: 0,
+    model: 'foo',
+    output: 0,
+    ownerId: (await conversationOwner(id)) ?? '',
+    provider: 'foo',
+  });
+
+  const before = prompts.length;
+
+  script(
+    toolCall('delegate', { tasks: [{ prompt: 'foo', title: 'bar' }] }),
+    () => {
+      env.LAB_MONTHLY_LIMIT = 1;
+
+      return toolCall('chat_search', { query: 'foo' });
+    }
+  );
+
+  try {
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      content: 'foo',
+    });
+
+    await settle(id);
+  } finally {
+    env.LAB_MONTHLY_LIMIT = undefined;
+  }
+
+  expect(prompts.length - before).toBe(2);
 });
