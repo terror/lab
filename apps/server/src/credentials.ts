@@ -84,6 +84,8 @@ export function openSecret(sealed: string): unknown {
   return undefined;
 }
 
+export async function resealSecrets() {}
+
 export function unsealWith(sealed: string, candidates: readonly Buffer[]) {
   for (const [index, key] of candidates.entries()) {
     try {
