@@ -1,6 +1,6 @@
 import type { Credential, CredentialStore } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   createCipheriv,
   createDecipheriv,
@@ -82,6 +82,51 @@ export function openSecret(sealed: string): unknown {
   }
 
   return undefined;
+}
+
+function resealed(sealed: string) {
+  for (const [index, key] of keys.entries()) {
+    try {
+      const text = decrypt(sealed, key);
+
+      return index > 0 ? encrypt(text, current) : undefined;
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+
+export async function resealSecrets() {
+  const auth = schema.connectorAuth;
+
+  const [providers, connectors] = await Promise.all([
+    db.select({ id: table.providerId, sealed: table.credential }).from(table),
+    db.select({ id: auth.connectorId, sealed: auth.state }).from(auth),
+  ]);
+
+  for (const { id, sealed } of providers) {
+    const credential = resealed(sealed);
+
+    if (credential) {
+      await db
+        .update(table)
+        .set({ credential })
+        .where(and(eq(table.providerId, id), eq(table.credential, sealed)));
+    }
+  }
+
+  for (const { id, sealed } of connectors) {
+    const state = resealed(sealed);
+
+    if (state) {
+      await db
+        .update(auth)
+        .set({ state })
+        .where(and(eq(auth.connectorId, id), eq(auth.state, sealed)));
+    }
+  }
 }
 
 export function unsealWith(sealed: string, candidates: readonly Buffer[]) {

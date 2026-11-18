@@ -63,6 +63,7 @@ Object.assign(process.env, {
   GOOGLE_CLIENT_ID: 'foo',
   GOOGLE_CLIENT_SECRET: 'foo',
   LAB_ADMIN_EMAIL: 'foo@example.com',
+  LAB_CREDENTIALS_KEY: 'bar'.repeat(11),
   LAB_ALLOWED_EMAILS: '*',
   LAB_COMPUTER_USERS: 'everyone',
   LAB_ORIGIN: 'http://localhost:3000',
