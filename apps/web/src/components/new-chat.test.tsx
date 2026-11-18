@@ -1,0 +1,134 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { renderWithQuery, stubFetch } from '@/test/helpers';
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
+import { expect, test } from 'vitest';
+
+import { NewChat } from './new-chat';
+
+const DAY = 86_400_000;
+
+async function renderHome({
+  chats = [],
+  projects = [],
+  tasks = [],
+}: {
+  chats?: object[];
+  projects?: object[];
+  tasks?: object[];
+} = {}) {
+  const responses: Record<string, unknown> = {
+    '/api/conversations': { conversations: chats, next: null },
+    '/api/conversations/unread': { chats: [], running: 0 },
+    '/api/models': { default: null, models: [] },
+    '/api/profile': {},
+    '/api/projects': { projects },
+    '/api/schedules': { tasks },
+  };
+
+  stubFetch(({ pathname }) =>
+    pathname in responses
+      ? Response.json(responses[pathname])
+      : new Response(null, { status: 204 })
+  );
+
+  const rootRoute = createRootRoute();
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: rootRoute.addChildren(
+      ['/', '/c/$id', '/projects/$projectId', '/scheduled'].map((path) =>
+        createRoute({
+          component: () => (
+            <TooltipProvider>
+              <NewChat user={{ name: 'Foo Bar' }} />
+            </TooltipProvider>
+          ),
+          getParentRoute: () => rootRoute,
+          path,
+        })
+      )
+    ),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  return { router, screen };
+}
+
+test('the mark assembles on the first visit of a session and rests after', async () => {
+  const states = [];
+
+  for (const _ of [1, 2]) {
+    const { screen } = await renderHome();
+
+    await expect.element(screen.getByRole('heading')).toBeVisible();
+
+    states.push(
+      screen.container
+        .querySelector('[data-slot=live-mark]')
+        ?.getAttribute('data-state')
+    );
+
+    await screen.unmount();
+  }
+
+  expect(states).toEqual(['assemble', 'idle']);
+});
+
+test('a new user gets starters that fill the message box', async () => {
+  const { screen } = await renderHome();
+
+  await screen.getByRole('button', { name: 'Plan a trip' }).click();
+
+  const message = screen.getByLabelText('Message');
+
+  await expect.element(message).toHaveValue('Plan a three-day trip to ');
+  await expect.element(message).toHaveFocus();
+});
+
+test('a returning user gets their latest chat, its project, and the next task', async () => {
+  const { router, screen } = await renderHome({
+    chats: [
+      { id: 1, projectId: null, title: 'foo', unread: true },
+      { id: 2, projectId: 3, title: 'bar', unread: false },
+    ],
+    projects: [
+      { id: 4, name: 'baz' },
+      { id: 3, name: 'qux' },
+    ],
+    tasks: [
+      {
+        conversationId: 5,
+        enabled: false,
+        nextRunAt: new Date(Date.now() + DAY).toISOString(),
+        title: 'quux',
+      },
+      {
+        conversationId: null,
+        enabled: true,
+        nextRunAt: new Date(Date.now() + 2 * DAY + 60_000).toISOString(),
+        title: 'corge',
+      },
+    ],
+  });
+
+  const list = screen.getByRole('list', { name: 'Suggestions' });
+
+  await expect
+    .poll(() => list.element().textContent)
+    .toBe('bar qux corge in 2 days');
+
+  await screen.getByRole('button', { name: 'corge in 2 days' }).click();
+
+  await expect.poll(() => router.state.location.pathname).toBe('/scheduled');
+
+  await screen.getByRole('button', { name: 'qux' }).click();
+
+  await expect.poll(() => router.state.location.pathname).toBe('/projects/3');
+});

@@ -53,6 +53,7 @@ import {
   type ClipboardEvent,
   type Dispatch,
   type KeyboardEvent,
+  type Ref,
   type SetStateAction,
   type SubmitEvent,
 } from 'react';
@@ -216,6 +217,7 @@ export function Composer({
   disabled,
   draft,
   error,
+  inputRef,
   model,
   onAttachmentsChange,
   onDraftChange,
@@ -232,6 +234,7 @@ export function Composer({
   disabled?: boolean;
   draft: string;
   error?: string;
+  inputRef?: Ref<HTMLTextAreaElement>;
   model: ModelChoice | undefined;
   onAttachmentsChange: Dispatch<SetStateAction<Attachment[]>>;
   onDraftChange: (draft: string) => void;
@@ -486,6 +489,7 @@ export function Composer({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           placeholder={placeholder}
+          ref={inputRef}
           value={draft}
         />
         <div className='flex items-center gap-2 px-3 pb-3'>

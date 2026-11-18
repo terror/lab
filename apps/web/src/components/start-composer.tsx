@@ -2,15 +2,17 @@ import { Composer } from '@/components/composer';
 import type { Attachment } from '@/lib/attachments';
 import { useDraft, useStartChat } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 
 export function StartComposer({
   draft: draftKey,
+  inputRef,
   placeholder,
   projectId,
   prompt = (content) => content,
 }: {
   draft: Parameters<typeof useDraft>[0];
+  inputRef?: Ref<HTMLTextAreaElement>;
   placeholder?: string;
   projectId?: number;
   prompt?: (content: string) => string;
@@ -26,6 +28,7 @@ export function StartComposer({
       attachments={attachments}
       draft={draft}
       error={start.error?.message}
+      inputRef={inputRef}
       model={model}
       onAttachmentsChange={setAttachments}
       onDraftChange={(value) => {
