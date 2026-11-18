@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import './index.css';
+import { spring } from './lib/motion';
 import { queryClient } from './lib/query-client';
 import { initSentry, reportReactError } from './lib/sentry';
 import { router } from './router';
@@ -26,7 +27,7 @@ createRoot(root, {
 }).render(
   <StrictMode>
     <LazyMotion features={domAnimation} strict>
-      <MotionConfig reducedMotion='user'>
+      <MotionConfig reducedMotion='user' transition={spring.glide}>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <RouterProvider router={router} />

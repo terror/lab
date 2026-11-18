@@ -8,6 +8,7 @@ import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { TooltipProvider } from '../src/components/ui/tooltip';
 import '../src/index.css';
 import { modelsQueryOptions } from '../src/lib/models';
+import { spring } from '../src/lib/motion';
 import { catalog } from './fixtures';
 
 export default definePreview({
@@ -27,7 +28,7 @@ export default definePreview({
       return (
         <QueryClientProvider client={queryClient}>
           <LazyMotion features={domAnimation} strict>
-            <MotionConfig reducedMotion='user'>
+            <MotionConfig reducedMotion='user' transition={spring.glide}>
               <TooltipProvider>
                 <Story />
               </TooltipProvider>
