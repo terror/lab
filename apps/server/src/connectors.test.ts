@@ -267,7 +267,9 @@ test('tools that ask the user are only offered to the model', async () => {
 test('the agent manages connectors with the user’s approval', async () => {
   const headers = await signInAdmin();
 
-  const url = mcp();
+  const url = `${mcp()}?key=foo`;
+
+  const { host } = new URL(url);
 
   script(
     toolCall('connector_add', { name: 'Foo', url }, 'foo'),
@@ -312,10 +314,10 @@ test('the agent manages connectors with the user’s approval', async () => {
   }).toEqual({
     connectors: [],
     outputs: [
-      `Added the connector.\n- [${connector.id}] Foo (${url}): connected, 2 tools`,
-      `- [${connector.id}] Foo (${url}): connected, 2 tools`,
-      `Updated the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
-      `Removed the connector.\n- [${connector.id}] Bar (${url}): connected, 2 tools`,
+      `Added the connector.\n- [${connector.id}] Foo (${host}): connected, 2 tools`,
+      `- [${connector.id}] Foo (${host}): connected, 2 tools`,
+      `Updated the connector.\n- [${connector.id}] Bar (${host}): connected, 2 tools`,
+      `Removed the connector.\n- [${connector.id}] Bar (${host}): connected, 2 tools`,
     ],
   });
 });
