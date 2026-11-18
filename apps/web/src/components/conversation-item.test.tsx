@@ -1,6 +1,7 @@
 import '@/index.css';
 import { Button } from '@/components/ui/button';
-import { renderWithQuery } from '@/test/helpers';
+import { Toaster } from '@/components/ui/sonner';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -9,6 +10,7 @@ import {
 } from '@tanstack/react-router';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
+import { render } from 'vitest-browser-react';
 
 import { ConversationItem } from './conversation-item';
 
@@ -127,4 +129,77 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
       ['baz', '0.06s'],
     ],
   });
+});
+
+test('undoing an undone move puts the chat back in the project', async () => {
+  const fetch = stubFetch(({ pathname }) => {
+    if (pathname === '/api/projects') {
+      return Response.json({
+        projects: [{ chats: 0, id: 7, instructions: '', name: 'bar' }],
+      });
+    }
+
+    return new Response(null, { status: 204 });
+  });
+
+  const toasts = await render(<Toaster />);
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => (
+        <ul>
+          <ConversationItem
+            conversation={{
+              id: 1,
+              pinned: false,
+              projectId: null,
+              running: false,
+              title: 'foo',
+              unread: false,
+              waiting: false,
+            }}
+            selected={false}
+          />
+        </ul>
+      ),
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('button', { name: 'Options for foo' }).click();
+  await screen.getByRole('menuitem', { name: 'Move to project' }).click();
+  await screen.getByRole('menuitem', { name: 'bar' }).click();
+
+  const undo = (text: string) =>
+    toasts
+      .getByRole('listitem')
+      .filter({ hasText: text })
+      .getByRole('button', { name: 'Undo' })
+      .click();
+
+  await expect.element(toasts.getByText('Moved to bar.')).toBeVisible();
+
+  await screen.unmount();
+
+  await undo('Moved to bar.');
+
+  await expect.element(toasts.getByText('Removed from project.')).toBeVisible();
+
+  await undo('Removed from project.');
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'PATCH'
+          ? [[requestUrl(input).pathname, init.body]]
+          : []
+      )
+    )
+    .toEqual([
+      ['/api/conversations/1', JSON.stringify({ projectId: 7 })],
+      ['/api/conversations/1', JSON.stringify({ projectId: null })],
+      ['/api/conversations/1', JSON.stringify({ projectId: 7 })],
+    ]);
 });
