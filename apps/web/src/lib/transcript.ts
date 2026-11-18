@@ -309,11 +309,21 @@ export function mergeReplies(rows: readonly Row[]) {
   return merged;
 }
 
-export function replyKeys(rows: readonly Row[]) {
-  return rows.reduce<{ count: number; keys: string[]; user: string }>(
+type KeyedRow = { key: string; row: Row };
+
+export function keyRows(rows: readonly Row[]) {
+  const keyed = rows.reduce<{
+    count: number;
+    rows: KeyedRow[];
+    user: string;
+  }>(
     (state, row) => {
       if (row.kind === 'user') {
-        return { count: 0, keys: [...state.keys, row.key], user: row.key };
+        return {
+          count: 0,
+          rows: [...state.rows, { key: row.key, row }],
+          user: row.key,
+        };
       }
 
       if (row.kind === 'assistant') {
@@ -321,15 +331,68 @@ export function replyKeys(rows: readonly Row[]) {
 
         return {
           count,
-          keys: [...state.keys, `reply-${state.user}-${count}`],
+          rows: [...state.rows, { key: `reply-${state.user}-${count}`, row }],
           user: state.user,
         };
       }
 
-      return { ...state, keys: [...state.keys, row.key] };
+      return { ...state, rows: [...state.rows, { key: row.key, row }] };
     },
-    { count: 0, keys: [], user: 'start' }
+    { count: 0, rows: [], user: 'start' }
   );
+
+  return { next: `reply-${keyed.user}-${keyed.count + 1}`, rows: keyed.rows };
+}
+
+export function streamRows(
+  { next, rows }: ReturnType<typeof keyRows>,
+  partial: readonly Part[]
+) {
+  if (!visible(partial)) {
+    return rows;
+  }
+
+  const last = rows.at(-1);
+
+  if (last?.row.kind === 'assistant') {
+    const row: Row = {
+      key: last.key,
+      kind: 'assistant',
+      parts: [...last.row.parts, ...partial],
+      span: last.row.span,
+      streaming: true,
+    };
+
+    return [...rows.slice(0, -1), { key: last.key, row }];
+  }
+
+  const row: Row = {
+    key: next,
+    kind: 'assistant',
+    parts: partial,
+    streaming: true,
+  };
+
+  return [...rows, { key: next, row }];
+}
+
+export function toolHistory(
+  rows: readonly Row[],
+  results: ReadonlyMap<string, ToolResult>
+) {
+  return rows
+    .flatMap((row) => (row.kind === 'assistant' ? row.parts : []))
+    .flatMap((part) =>
+      part.type === 'toolCall'
+        ? [
+            {
+              args: part.arguments,
+              details: results.get(part.id)?.details,
+              name: part.name,
+            },
+          ]
+        : []
+    );
 }
 
 export function versionRows(
