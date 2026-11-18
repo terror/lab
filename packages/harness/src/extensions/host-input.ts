@@ -89,8 +89,12 @@ export async function requestApproval(
 ) {
   const answer = await waitForAnswer(api, context, { approval: request });
 
-  return {
-    approval: { ...request, decision: answer === APPROVED ? APPROVED : DENIED },
-    approved: answer === APPROVED,
+  const approval = {
+    ...request,
+    decision: answer === APPROVED ? APPROVED : DENIED,
   };
+
+  await api.details({ approval }, context);
+
+  return { approval, approved: answer === APPROVED };
 }
