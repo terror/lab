@@ -65,6 +65,18 @@ test('the frame runner relays calls and returns each reply to the frame that cal
   });
 });
 
+test('the frame runner unloads the content it replaces', async () => {
+  const frame = await runner();
+
+  frame.render('foo', false);
+  frame.render('bar', false);
+
+  expect(frame.documents()).toEqual([
+    '<meta http-equiv="x-dns-prefetch-control" content="off">bar',
+    '',
+  ]);
+});
+
 test('frame content stores JSON values and asks the model through calls to its runner', async () => {
   const { lab, posted, reply } = await bridge();
 
