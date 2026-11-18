@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { conversationTitle } from '@/lib/conversations';
-import { formatSpend } from '@/lib/format';
+import { calendarDate, formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
 import { type Usage, usageQueryOptions } from '@/lib/usage';
 import { cn } from '@/lib/utils';
@@ -33,16 +33,6 @@ const compact = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
   notation: 'compact',
 });
-
-const day = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-});
-
-function date(value: string) {
-  return day.format(new Date(`${value}T00:00:00Z`));
-}
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -70,7 +60,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
         {peak && max > 0 && (
           <span className='text-muted-foreground tabular-nums'>
             {formatSpend(total)} in total · peak {formatSpend(max)} on{' '}
-            {date(peak.date)}
+            {calendarDate(peak.date)}
           </span>
         )}
       </figcaption>
@@ -79,7 +69,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
           <Tooltip key={entry.date}>
             <TooltipTrigger asChild>
               <button
-                aria-label={`${date(entry.date)}: ${formatSpend(entry.cost)}`}
+                aria-label={`${calendarDate(entry.date)}: ${formatSpend(entry.cost)}`}
                 className='group flex h-full min-w-0 flex-1 items-end focus-ring-inset'
                 type='button'
               >
@@ -97,7 +87,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              {date(entry.date)} · {formatSpend(entry.cost)} ·{' '}
+              {calendarDate(entry.date)} · {formatSpend(entry.cost)} ·{' '}
               {compact.format(entry.tokens)} tokens
             </TooltipContent>
           </Tooltip>
@@ -105,8 +95,8 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
       </div>
       {first && last && (
         <div className='flex justify-between text-xs text-muted-foreground tabular-nums'>
-          <span>{date(first.date)}</span>
-          <span>{date(last.date)}</span>
+          <span>{calendarDate(first.date)}</span>
+          <span>{calendarDate(last.date)}</span>
         </div>
       )}
     </figure>

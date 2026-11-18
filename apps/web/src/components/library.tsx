@@ -22,7 +22,7 @@ import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { conversationTitle } from '@/lib/conversations';
-import { formatBytes } from '@/lib/format';
+import { formatBytes, shortDate } from '@/lib/format';
 import {
   type LibraryItem,
   type LibraryKind,
@@ -45,8 +45,6 @@ const filters: { label: string; value: Filter }[] = [
   { label: 'Images', value: 'image' },
   { label: 'Files', value: 'file' },
 ];
-
-const fullDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 
 const grid =
   'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
@@ -172,8 +170,7 @@ function Viewer({
         <DialogHeader>
           <DialogTitle className='truncate pr-8'>{item.name}</DialogTitle>
           <DialogDescription>
-            {fullDate.format(new Date(item.createdAt))} ·{' '}
-            {formatBytes(item.size)} · From{' '}
+            {shortDate(item.createdAt)} · {formatBytes(item.size)} · From{' '}
             <Link
               className='text-foreground underline-offset-4 hover:underline'
               onClick={onClose}

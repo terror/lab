@@ -12,6 +12,7 @@ import {
   useComputerAction,
   useNetworkMode,
 } from '@/lib/computer';
+import { shortDate } from '@/lib/format';
 import { useAdmin } from '@/lib/profile';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -95,12 +96,6 @@ function NoComputer() {
   );
 }
 
-const created = new Intl.DateTimeFormat('en-US', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className='flex items-center justify-between gap-4 text-sm'>
@@ -132,10 +127,7 @@ function Details({ status }: { status: ComputerStatus }) {
           value={computer ? states[computer.state] : 'Not created yet'}
         />
         {computer && (
-          <Row
-            label='Created'
-            value={created.format(new Date(computer.createdAt))}
-          />
+          <Row label='Created' value={shortDate(computer.createdAt)} />
         )}
       </div>
       <div className='flex gap-2'>
