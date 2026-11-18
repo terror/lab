@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
 import { SettingsPage } from '@/components/settings-page';
@@ -222,6 +223,7 @@ function ConnectedProvider({
   provider: Provider;
 }) {
   const refresh = useRefresh();
+  const [confirming, setConfirming] = useState(false);
 
   const remove = useMutation({
     mutationFn: () => removeProviderKey(provider.id),
@@ -237,13 +239,13 @@ function ConnectedProvider({
       </div>
       <div className='ml-auto flex shrink-0 items-center gap-1'>
         <Button
-          aria-label={`Remove ${provider.name}`}
+          aria-label={`Delete ${provider.name}`}
           disabled={remove.isPending}
-          onClick={() => remove.mutate()}
+          onClick={() => setConfirming(true)}
           size='sm'
           variant='ghost'
         >
-          Remove
+          Delete
         </Button>
         <Button
           aria-label={`Edit ${provider.name}`}
@@ -254,6 +256,14 @@ function ConnectedProvider({
           Edit
         </Button>
       </div>
+      <ConfirmDialog
+        action='Delete'
+        description={`Lab will delete the saved API key for ${provider.name}. This can’t be undone.`}
+        onConfirm={() => remove.mutate()}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title={`Delete ${provider.name}?`}
+      />
     </li>
   );
 }

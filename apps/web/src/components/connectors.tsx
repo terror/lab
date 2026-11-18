@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
@@ -148,6 +149,8 @@ function ConnectorRow({ connector }: { connector: Connector }) {
   const reconnect = useConnectorsUpdate(reconnectConnector);
   const remove = useConnectorsUpdate(deleteConnector);
 
+  const [confirming, setConfirming] = useState(false);
+
   return (
     <li className='rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
       <Collapsible>
@@ -190,7 +193,7 @@ function ConnectorRow({ connector }: { connector: Connector }) {
                 Reconnect
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => remove.mutate(connector.id)}
+                onSelect={() => setConfirming(true)}
                 variant='destructive'
               >
                 Delete
@@ -211,6 +214,14 @@ function ConnectorRow({ connector }: { connector: Connector }) {
           </ul>
         </CollapsibleContent>
       </Collapsible>
+      <ConfirmDialog
+        action='Delete'
+        description={`Lab will disconnect from ${connector.name} and forget its sign-in. This can’t be undone.`}
+        onConfirm={() => remove.mutate(connector.id)}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title={`Delete ${connector.name}?`}
+      />
     </li>
   );
 }

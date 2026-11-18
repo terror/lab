@@ -71,6 +71,8 @@ function Picture() {
   const upload = usePictureUpdate(setPicture);
   const remove = usePictureUpdate(removePicture);
 
+  const [confirming, setConfirming] = useState(false);
+
   const error = upload.error ?? remove.error;
 
   return (
@@ -107,7 +109,7 @@ function Picture() {
           {user.image && (
             <Button
               disabled={remove.isPending}
-              onClick={() => remove.mutate(undefined)}
+              onClick={() => setConfirming(true)}
               size='sm'
               variant='ghost'
             >
@@ -117,6 +119,14 @@ function Picture() {
         </div>
       </div>
       {error && <ErrorMessage>{error.message}</ErrorMessage>}
+      <ConfirmDialog
+        action='Remove'
+        description='Lab will delete your picture and show your initials instead. This can’t be undone.'
+        onConfirm={() => remove.mutate(undefined)}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title='Remove your picture?'
+      />
     </section>
   );
 }
