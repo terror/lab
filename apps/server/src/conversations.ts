@@ -35,9 +35,9 @@ import {
 import { defaultModel, findModel, modelChange, models } from './models';
 import { moveChat } from './project-access';
 import { thinkingLevelSchema } from './schemas';
+import { checkSpend } from './spend';
 import { subscribeStatus } from './status';
 import { moveToTrash } from './trash';
-import { checkSpend } from './usage';
 import { idParam, positiveId, validator } from './validator';
 
 const imageParams = validator(

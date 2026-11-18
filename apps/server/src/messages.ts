@@ -13,8 +13,8 @@ import {
   attachmentSchema,
   attachmentTextLimit,
 } from './schemas';
+import { checkSpend } from './spend';
 import { checkStorage } from './storage';
-import { checkSpend } from './usage';
 
 export const draftSchema = z.object({
   attachments: z.array(attachmentSchema).max(8).default([]),
