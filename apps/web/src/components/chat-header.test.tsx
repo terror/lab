@@ -1,4 +1,6 @@
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { queryClient } from '@/lib/query-client';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
@@ -6,13 +8,22 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 import { ChatHeader } from './chat-header';
 
-async function renderHeader(title: string | null, pinned: boolean) {
+async function renderHeader(
+  title: string | null,
+  pinned: boolean,
+  client?: QueryClient
+) {
   const fetch = stubFetch(({ pathname, searchParams }) => {
+    if (pathname === '/api/trash/conversation/1/restore') {
+      return Response.json({ error: 'Not in the trash' }, { status: 404 });
+    }
+
     if (pathname === '/api/conversations/1') {
       return Response.json({
         forks: [],
@@ -57,12 +68,16 @@ async function renderHeader(title: string | null, pinned: boolean) {
       component: () => (
         <TooltipProvider>
           <ChatHeader id={1} />
+          <Toaster />
         </TooltipProvider>
       ),
     }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    client
+  );
 
   return { fetch, screen };
 }
@@ -111,4 +126,14 @@ test('the chat header renames the chat from its menu', async () => {
         .map(([input, init]) => [requestUrl(input).pathname, init?.body])
     )
     .toEqual([['/api/conversations/1', JSON.stringify({ title: 'baz' })]]);
+});
+
+test('an undo that fails says why', async () => {
+  const { screen } = await renderHeader('foo', false, queryClient);
+
+  await screen.getByRole('button', { name: 'Chat options' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete' }).click();
+  await screen.getByRole('button', { name: 'Undo' }).click();
+
+  await expect.element(screen.getByText('Not in the trash')).toBeVisible();
 });
