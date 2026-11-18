@@ -1,5 +1,4 @@
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,6 +14,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import { PageHeader } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -174,16 +174,17 @@ export function Memory() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <SettingsPage
-      action={
-        <Button onClick={() => setAdding(true)} size='sm'>
-          <Plus aria-hidden='true' />
-          Add memory
-        </Button>
-      }
-      description='What Lab remembers about you across chats.'
-      title='Memory'
-    >
+    <>
+      <PageHeader
+        actions={
+          <Button onClick={() => setAdding(true)} size='sm'>
+            <Plus aria-hidden='true' />
+            Add memory
+          </Button>
+        }
+        description='What Lab remembers about you across chats.'
+        title='Memory'
+      />
       {memory.isError && <LoadError subject='memory' />}
       {memory.data && (
         <>
@@ -192,6 +193,6 @@ export function Memory() {
         </>
       )}
       <AddMemoryDialog onOpenChange={setAdding} open={adding} />
-    </SettingsPage>
+    </>
   );
 }

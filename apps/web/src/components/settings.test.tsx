@@ -1,3 +1,4 @@
+import '@/index.css';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
@@ -6,6 +7,7 @@ import {
   createRouter,
 } from '@tanstack/react-router';
 import { expect, test } from 'vitest';
+import { page } from 'vitest/browser';
 
 import { Settings } from './settings';
 
@@ -38,6 +40,8 @@ test('only the admin sees provider settings', async () => {
 });
 
 test('a settings section can be linked to directly', async () => {
+  await page.viewport(414, 896);
+
   stubFetch(({ pathname }) =>
     Response.json(
       pathname === '/api/profile'
@@ -55,5 +59,58 @@ test('a settings section can be linked to directly', async () => {
 
   await expect
     .element(screen.getByRole('heading', { level: 1, name: 'Memory' }))
+    .toBeVisible();
+
+  await expect
+    .element(screen.getByRole('link', { name: 'Settings' }))
+    .toHaveAttribute('href', '/settings');
+});
+
+test('on a narrow screen the section list opens a section', async () => {
+  await page.viewport(414, 896);
+
+  stubFetch(({ pathname }) =>
+    Response.json(
+      pathname === '/api/profile'
+        ? { admin: false }
+        : { instructions: '', memories: [], referenceChats: false }
+    )
+  );
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Settings }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('link', { name: 'Memory' }).click();
+
+  await expect
+    .element(screen.getByRole('heading', { level: 1, name: 'Memory' }))
+    .toBeVisible();
+});
+
+test('on a wide screen Settings opens on Appearance beside the nav', async () => {
+  await page.viewport(1280, 800);
+
+  stubFetch(() => Response.json({ admin: false }));
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Settings }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await expect
+    .element(
+      screen
+        .getByRole('navigation', { name: 'Settings' })
+        .getByRole('link', { name: 'Appearance' })
+    )
+    .toHaveAttribute('aria-current', 'page');
+  await expect
+    .element(screen.getByRole('heading', { level: 1, name: 'Appearance' }))
     .toBeVisible();
 });

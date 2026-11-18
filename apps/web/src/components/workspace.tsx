@@ -203,6 +203,7 @@ function MobileWorkspace({
 const pageTitles: Record<string, string> = {
   '/library': 'Library',
   '/scheduled': 'Scheduled',
+  '/settings': 'Settings',
 };
 
 function usePageTitle(selected: number | undefined) {

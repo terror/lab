@@ -1,7 +1,7 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page';
 import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
 import {
@@ -78,24 +78,25 @@ export function Trash() {
   const count = trash.data?.length ?? 0;
 
   return (
-    <SettingsPage
-      action={
-        count > 0 && (
-          <Button
-            disabled={empty.isPending}
-            onClick={() => setConfirming(true)}
-            size='sm'
-            variant='secondary'
-          >
-            Empty trash
-          </Button>
-        )
-      }
-      description={
-        'Deleted chats and projects stay here until you restore them or delete them forever.'
-      }
-      title='Trash'
-    >
+    <>
+      <PageHeader
+        actions={
+          count > 0 && (
+            <Button
+              disabled={empty.isPending}
+              onClick={() => setConfirming(true)}
+              size='sm'
+              variant='secondary'
+            >
+              Empty trash
+            </Button>
+          )
+        }
+        description={
+          'Deleted chats and projects stay here until you restore them or delete them forever.'
+        }
+        title='Trash'
+      />
       {trash.isError && <LoadError subject='the trash' />}
       {trash.isSuccess && count === 0 && (
         <p className='text-sm text-muted-foreground'>The trash is empty.</p>
@@ -115,6 +116,6 @@ export function Trash() {
         open={confirming}
         title='Empty the trash?'
       />
-    </SettingsPage>
+    </>
   );
 }

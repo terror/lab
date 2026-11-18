@@ -1,6 +1,6 @@
 import { BudgetPanel } from '@/components/budget';
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
+import { PageHeader } from '@/components/ui/page';
 import {
   Select,
   SelectContent,
@@ -160,31 +160,32 @@ export function UsagePanel() {
   const usage = useQuery(usageQueryOptions(days));
 
   return (
-    <SettingsPage
-      action={
-        <Select
-          onValueChange={(value) => setDays(Number(value))}
-          value={String(days)}
-        >
-          <SelectTrigger
-            aria-label='Range'
-            className='h-auto gap-1 border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-transparent'
-            size='sm'
+    <>
+      <PageHeader
+        actions={
+          <Select
+            onValueChange={(value) => setDays(Number(value))}
+            value={String(days)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align='end'>
-            {ranges.map((range) => (
-              <SelectItem key={range.days} value={String(range.days)}>
-                {range.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      }
-      description='Spend and tokens across your chats, from provider prices.'
-      title='Usage'
-    >
+            <SelectTrigger
+              aria-label='Range'
+              className='h-auto gap-1 border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-transparent'
+              size='sm'
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align='end'>
+              {ranges.map((range) => (
+                <SelectItem key={range.days} value={String(range.days)}>
+                  {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+        description='Spend and tokens across your chats, from provider prices.'
+        title='Usage'
+      />
       <BudgetPanel />
       {usage.isError && <LoadError subject='usage' />}
       {usage.data && (
@@ -216,6 +217,6 @@ export function UsagePanel() {
           )}
         </>
       )}
-    </SettingsPage>
+    </>
   );
 }

@@ -1,5 +1,4 @@
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +15,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type Skill,
@@ -219,18 +219,19 @@ export function Skills() {
     });
 
   return (
-    <SettingsPage
-      action={
-        <Button onClick={() => setEditing({ kind: 'new' })} size='sm'>
-          <Plus aria-hidden='true' />
-          New skill
-        </Button>
-      }
-      description={
-        'Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
-      }
-      title='Skills'
-    >
+    <>
+      <PageHeader
+        actions={
+          <Button onClick={() => setEditing({ kind: 'new' })} size='sm'>
+            <Plus aria-hidden='true' />
+            New skill
+          </Button>
+        }
+        description={
+          'Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
+        }
+        title='Skills'
+      />
       {skills.isError && <LoadError subject='skills' />}
       {skills.data?.skills.length === 0 && (
         <p className='text-sm text-muted-foreground'>No skills yet.</p>
@@ -249,6 +250,6 @@ export function Skills() {
         </ul>
       )}
       <SkillDialog editing={editing} onClose={() => setEditing(undefined)} />
-    </SettingsPage>
+    </>
   );
 }

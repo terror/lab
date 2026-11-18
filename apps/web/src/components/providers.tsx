@@ -1,7 +1,6 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +18,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page';
 import {
   Select,
   SelectContent,
@@ -278,16 +278,17 @@ export function Providers() {
   const open = (initial?: string) => setDialog({ initial, key: Date.now() });
 
   return (
-    <SettingsPage
-      action={
-        <Button onClick={() => open()} size='sm'>
-          <Plus aria-hidden='true' />
-          Add provider
-        </Button>
-      }
-      description='Connect the services Lab uses for models, web search, and its computer.'
-      title='Providers'
-    >
+    <>
+      <PageHeader
+        actions={
+          <Button onClick={() => open()} size='sm'>
+            <Plus aria-hidden='true' />
+            Add provider
+          </Button>
+        }
+        description='Connect the services Lab uses for models, web search, and its computer.'
+        title='Providers'
+      />
       {providers.isError && <LoadError subject='providers' />}
       {providers.isSuccess && connected.length === 0 && (
         <p className='text-sm text-muted-foreground'>
@@ -316,6 +317,6 @@ export function Providers() {
           providers={all}
         />
       )}
-    </SettingsPage>
+    </>
   );
 }

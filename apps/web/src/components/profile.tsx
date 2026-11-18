@@ -2,8 +2,8 @@ import { UserAvatar } from '@/components/account-menu';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page';
 import { Textarea } from '@/components/ui/textarea';
 import { signOut, useUser } from '@/lib/auth';
 import {
@@ -186,10 +186,11 @@ export function Profile() {
   const memory = useQuery(memoryQueryOptions);
 
   return (
-    <SettingsPage
-      description='Your picture and how Lab should respond in every chat.'
-      title='Profile'
-    >
+    <>
+      <PageHeader
+        description='Your picture and how Lab should respond in every chat.'
+        title='Profile'
+      />
       <Picture />
       {memory.isError && <LoadError subject='your profile' />}
       {memory.data && (
@@ -199,6 +200,6 @@ export function Profile() {
         />
       )}
       <YourData />
-    </SettingsPage>
+    </>
   );
 }
