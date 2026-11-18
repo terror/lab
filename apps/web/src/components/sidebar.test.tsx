@@ -11,10 +11,12 @@ import { expect, test, vi } from 'vitest';
 import { Sidebar } from './sidebar';
 
 function renderSidebar({
+  collapsed = false,
   onProject = () => undefined,
   path = '/projects/7',
   selected,
 }: {
+  collapsed?: boolean;
   onProject?: (id: number) => void;
   path?: string;
   selected?: number;
@@ -37,6 +39,14 @@ function renderSidebar({
           },
           { artifactId: 'quux', conversationId: 3, projectId: 7, title: 'qux' },
         ],
+      });
+    }
+
+    if (pathname === '/api/conversations/unread') {
+      return Response.json({
+        chats: [],
+        running: 1,
+        waiting: [{ id: 2, title: 'baz' }],
       });
     }
 
@@ -68,9 +78,11 @@ function renderSidebar({
       component: () => (
         <TooltipProvider>
           <Sidebar
+            collapsed={collapsed}
             onNavigate={() => undefined}
             onProject={onProject}
             onSelect={() => undefined}
+            onToggle={() => undefined}
             selected={selected}
             user={{
               createdAt: new Date(0),
@@ -152,4 +164,21 @@ test('apps pinned to the sidebar link to their pages', async () => {
     .toHaveAttribute('href', '/apps/2/qux');
 
   await expect.element(screen.getByText('qux')).not.toBeInTheDocument();
+});
+
+test('the collapsed rail shows the mark at work and a dot when a chat needs you', async () => {
+  const { screen } = await renderSidebar({ collapsed: true });
+
+  const mark = screen.getByRole('button', { name: 'Expand sidebar' });
+
+  await expect
+    .poll(() =>
+      [...mark.element().querySelectorAll<HTMLElement>('[data-slot]')].map(
+        ({ dataset }) => [dataset.slot, dataset.state ?? dataset.tone]
+      )
+    )
+    .toEqual([
+      ['live-mark', 'thinking'],
+      ['dot', 'attention'],
+    ]);
 });

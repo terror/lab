@@ -1,4 +1,4 @@
-import { SidebarRow } from '@/components/sidebar-row';
+import { MotionSidebarRow, useRowPresence } from '@/components/sidebar-row';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +23,12 @@ export function AppLink({
   onSelect?: () => void;
 }) {
   const path = usePath();
+  const presence = useRowPresence();
 
   const active = path === `/apps/${app.conversationId}/${app.artifactId}`;
 
   return (
-    <SidebarRow asChild selected={active}>
+    <MotionSidebarRow {...presence} asChild selected={active}>
       <Link
         aria-current={active ? 'page' : undefined}
         onClick={onSelect}
@@ -40,7 +41,7 @@ export function AppLink({
         <LayoutTemplate aria-hidden='true' />
         <span className='truncate'>{app.title}</span>
       </Link>
-    </SidebarRow>
+    </MotionSidebarRow>
   );
 }
 

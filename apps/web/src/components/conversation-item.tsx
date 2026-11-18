@@ -1,4 +1,8 @@
-import { SidebarRow, rowAction } from '@/components/sidebar-row';
+import {
+  MotionSidebarRow,
+  rowAction,
+  useRowPresence,
+} from '@/components/sidebar-row';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -27,6 +31,7 @@ import {
   deleteConversation,
   updateConversation,
 } from '@/lib/conversations';
+import { stagger } from '@/lib/motion';
 import { projectsQueryOptions, useProjects } from '@/lib/projects';
 import { useUndoTrash } from '@/lib/trash';
 import { undoToast } from '@/lib/undo';
@@ -44,6 +49,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
+  Fragment,
   type KeyboardEvent,
   type ReactNode,
   useEffect,
@@ -243,6 +249,28 @@ function activity(
   return unread && !selected ? 'unread' : 'idle';
 }
 
+function Title({ arrived, title }: { arrived: boolean; title: string }) {
+  if (!arrived) {
+    return <span className='truncate'>{title}</span>;
+  }
+
+  return (
+    <span className='truncate'>
+      {title.split(' ').map((word, index) => (
+        <Fragment key={index}>
+          {index > 0 && ' '}
+          <span
+            className='motion-safe:animate-word-in'
+            style={{ animationDelay: `${Math.min(index, 5) * stagger}s` }}
+          >
+            {word}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 export function ConversationItem({
   conversation,
   onSelect,
@@ -263,10 +291,19 @@ export function ConversationItem({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const presence = useRowPresence();
+
   const [editing, setEditing] = useState(false);
+  const [named, setNamed] = useState(conversation.title);
+  const [arrived, setArrived] = useState(false);
   const renaming = useRef(false);
 
   const title = conversationTitle(conversation.title);
+
+  if (named !== conversation.title) {
+    setNamed(conversation.title);
+    setArrived(named === null);
+  }
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -359,7 +396,8 @@ export function ConversationItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <SidebarRow
+        <MotionSidebarRow
+          {...presence}
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -385,7 +423,10 @@ export function ConversationItem({
             </DropdownMenu>
           }
           asChild
-          className={cn(indicator?.attention && 'font-medium')}
+          className={cn(
+            arrived && 'animate-title-wash',
+            indicator?.attention && 'font-medium'
+          )}
           selected={selected}
           status={indicator?.mark}
         >
@@ -395,10 +436,10 @@ export function ConversationItem({
             params={{ id: conversation.id }}
             to='/c/$id'
           >
-            <span className='truncate'>{title}</span>
+            <Title arrived={arrived} title={title} />
             {indicator && <span className='sr-only'>{indicator.label}</span>}
           </Link>
-        </SidebarRow>
+        </MotionSidebarRow>
       </ContextMenuTrigger>
       <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
         <MenuItems

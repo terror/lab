@@ -1,3 +1,5 @@
+import '@/index.css';
+import { Button } from '@/components/ui/button';
 import { renderWithQuery } from '@/test/helpers';
 import {
   RouterProvider,
@@ -5,6 +7,7 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
+import { useState } from 'react';
 import { expect, test } from 'vitest';
 
 import { ConversationItem } from './conversation-item';
@@ -68,4 +71,60 @@ test('chat rows show and name what each chat is doing', async () => {
     ['fooUnread', 'dot'],
     ['foo', undefined],
   ]);
+});
+
+function Naming() {
+  const [title, setTitle] = useState<string | null>(null);
+
+  return (
+    <>
+      <Button onClick={() => setTitle('foo bar baz')}>qux</Button>
+      <ul>
+        <ConversationItem
+          conversation={{
+            id: 1,
+            pinned: false,
+            projectId: null,
+            running: false,
+            title,
+            unread: false,
+            waiting: false,
+          }}
+          selected={false}
+        />
+      </ul>
+    </>
+  );
+}
+
+test('a chat’s first title fades in word by word with a yellow wash', async () => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Naming }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('button', { name: 'qux' }).click();
+
+  const link = screen.getByRole('link', { name: 'foo bar baz' });
+
+  await expect.element(link).toBeVisible();
+
+  const words = [...link.element().querySelectorAll('span > span')].map(
+    (word) => [word.textContent, getComputedStyle(word).animationDelay]
+  );
+
+  expect({
+    row: getComputedStyle(link.element().closest('li') ?? document.body)
+      .animationName,
+    words,
+  }).toEqual({
+    row: 'title-wash',
+    words: [
+      ['foo', '0s'],
+      ['bar', '0.03s'],
+      ['baz', '0.06s'],
+    ],
+  });
 });
