@@ -1,9 +1,13 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
+import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 
 import { signIn, signInAdmin } from '../test/auth';
 import { call, pendingToolCall, settle, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
+import { db } from './db';
+import { env } from './env';
+import { conversationOwner } from './records';
 
 test('the agent waits for the user to answer its question', async () => {
   const headers = await signIn();
@@ -234,4 +238,75 @@ test('a chat stops waiting once its approval is answered', async () => {
       ?.waiting,
     waiting: unread.waiting,
   }).toEqual({ listed: false, waiting: [] });
+});
+
+test('an approval can be denied but not approved over the monthly limit', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall(
+      'schedule_create',
+      {
+        cron: '0 9 * * *',
+        description: 'Every day at 9am',
+        prompt: 'bar',
+        title: 'foo',
+      },
+      'baz'
+    )
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: body.id,
+    cost: 2,
+    createdAt: new Date(),
+    input: 0,
+    model: 'foo',
+    output: 0,
+    ownerId: (await conversationOwner(body.id)) ?? '',
+    provider: 'foo',
+  });
+
+  env.LAB_MONTHLY_LIMIT = 1;
+
+  try {
+    const approved = await call(
+      headers,
+      'POST',
+      `/conversations/${body.id}/answers`,
+      { answer: 'approved', callId: 'baz' }
+    );
+
+    const denied = await call(
+      headers,
+      'POST',
+      `/conversations/${body.id}/answers`,
+      { answer: 'denied', callId: 'baz' }
+    );
+
+    await settle(body.id);
+
+    expect({
+      approved,
+      denied: denied.status,
+      tasks: (await call(headers, 'GET', '/schedules')).body.tasks,
+    }).toEqual({
+      approved: {
+        body: { error: 'You’ve used this month’s $1.00 limit' },
+        status: 402,
+      },
+      denied: 204,
+      tasks: [],
+    });
+  } finally {
+    env.LAB_MONTHLY_LIMIT = undefined;
+  }
 });
