@@ -1,4 +1,5 @@
 import { ProviderLogo } from '@/components/provider-logo';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -341,15 +342,16 @@ export function ModelPicker({
     <DropdownMenu onOpenChange={() => setSearch('')}>
       <DropdownMenuTrigger asChild>
         {trigger ?? (
-          <button
+          <Button
             aria-label={current ? `Model: ${current.name}` : 'Model'}
-            className='flex min-w-0 items-center gap-1.5 rounded-control text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
+            className='min-w-0 shrink font-normal'
             disabled={disabled || options.length === 0}
             type='button'
+            variant='quiet'
           >
             <span className='truncate'>{triggerLabel(current, value)}</span>
-            <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
-          </button>
+            <ChevronDown aria-hidden='true' data-icon='inline-end' />
+          </Button>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent

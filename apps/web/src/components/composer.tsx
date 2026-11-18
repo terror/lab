@@ -30,6 +30,7 @@ import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
+import { fade, spring } from '@/lib/motion';
 import { useAdmin } from '@/lib/profile';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import {
   lazy,
   Suspense,
@@ -103,14 +105,16 @@ function AttachmentPreview({
           <span className='truncate'>{attachment.name}</span>
         </div>
       )}
-      <button
+      <Button
         aria-label={`Remove ${attachment.name}`}
-        className='absolute -top-1.5 -right-1.5 rounded-full border bg-background p-0.5 text-muted-foreground hover:text-foreground'
+        className='absolute -top-2 -right-2 rounded-full shadow-xs'
         onClick={onRemove}
+        size='icon-xs'
         type='button'
+        variant='secondary'
       >
-        <X aria-hidden='true' className='size-3' />
-      </button>
+        <X aria-hidden='true' />
+      </Button>
     </div>
   );
 }
@@ -167,7 +171,7 @@ function DictateButton({
           onClick={onClick}
           size='icon'
           type='button'
-          variant='ghost'
+          variant='quiet'
         >
           <Mic aria-hidden='true' />
         </Button>
@@ -177,37 +181,76 @@ function DictateButton({
   );
 }
 
-function SendButton({
-  disabled,
-  queueing,
-}: {
-  disabled: boolean;
-  queueing: boolean;
-}) {
-  const button = (
-    <Button
-      aria-label='Send'
-      className='rounded-full'
-      disabled={disabled}
-      size='icon'
-      type='submit'
-    >
-      <ArrowUp aria-hidden='true' />
-    </Button>
-  );
-
-  if (!queueing) {
-    return button;
-  }
-
+function QueueButton({ disabled }: { disabled: boolean }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <Button
+          aria-label='Send'
+          className='rounded-full'
+          disabled={disabled}
+          size='icon'
+          type='submit'
+        >
+          <ArrowUp aria-hidden='true' />
+        </Button>
+      </TooltipTrigger>
       <TooltipContent>
         Send after this answer
         <Kbd>↵</Kbd>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+const actions = {
+  send: {
+    glyph: <ArrowUp aria-hidden='true' />,
+    label: 'Send',
+    type: 'submit',
+  },
+  stop: {
+    glyph: <Square aria-hidden='true' className='size-3 fill-current' />,
+    label: 'Stop',
+    type: 'button',
+  },
+} as const;
+
+function SendOrStop({
+  disabled,
+  onStop,
+  stopping,
+}: {
+  disabled: boolean;
+  onStop: (() => void) | undefined;
+  stopping: boolean;
+}) {
+  const mode = stopping ? 'stop' : 'send';
+
+  const { glyph, label, type } = actions[mode];
+
+  return (
+    <Button
+      aria-label={label}
+      className='rounded-full'
+      disabled={!stopping && disabled}
+      onClick={stopping ? onStop : undefined}
+      size='icon'
+      type={type}
+    >
+      <AnimatePresence initial={false}>
+        <m.span
+          key={mode}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className='absolute inset-0 grid place-items-center'
+          exit={{ opacity: 0, scale: 0.4, transition: fade.leave, y: -4 }}
+          initial={{ opacity: 0, scale: 0.4 }}
+          transition={{ ...spring.snap, opacity: fade.fast }}
+        >
+          {glyph}
+        </m.span>
+      </AnimatePresence>
+    </Button>
   );
 }
 
@@ -225,7 +268,7 @@ export function Composer({
   onSteer,
   onStop,
   onSubmit,
-  placeholder = 'Ask anything...',
+  placeholder = 'Ask anything…',
   running,
   submitting,
 }: {
@@ -424,15 +467,15 @@ export function Composer({
   return (
     <form onSubmit={onFormSubmit} className='relative w-full'>
       {menu && (
-        <div className='absolute inset-x-2 bottom-full mb-2 flex flex-col gap-0.5 rounded-2xl bg-popover p-1.5 shadow-lg ring-1 ring-foreground/10'>
-          <ul aria-label='Commands' className='flex flex-col gap-0.5'>
+        <div className='absolute inset-x-2 bottom-full mb-2 flex animate-in flex-col rounded-menu bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-base ease-out fade-in-0 zoom-in-95 slide-in-from-bottom-2'>
+          <ul aria-label='Commands' className='flex flex-col'>
             {matches.map((command) => (
               <li key={command.name}>
                 <button
                   aria-current={command === selected ? 'true' : undefined}
                   className={cn(
-                    'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60',
-                    command === selected && 'bg-muted'
+                    'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground',
+                    command === selected && 'bg-accent text-accent-foreground'
                   )}
                   onClick={() => void runCommand(command)}
                   onMouseDown={(event) => event.preventDefault()}
@@ -450,10 +493,20 @@ export function Composer({
               </li>
             ))}
           </ul>
-          <p className='flex gap-3.5 px-3 pt-1 pb-0.5 text-xs text-muted-foreground'>
-            <span>↑↓ to choose</span>
-            <span>↵ to run</span>
-            <span>esc to close</span>
+          <p className='flex gap-3 px-1.5 pt-1.5 pb-0.5 text-xs text-muted-foreground pointer-coarse:hidden'>
+            <span className='flex items-center gap-1'>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+              to choose
+            </span>
+            <span className='flex items-center gap-1'>
+              <Kbd>↵</Kbd>
+              to run
+            </span>
+            <span className='flex items-center gap-1'>
+              <Kbd>esc</Kbd>
+              to close
+            </span>
           </p>
         </div>
       )}
@@ -509,11 +562,11 @@ export function Composer({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label='Add photos and files'
-                className='rounded-full text-muted-foreground'
+                className='rounded-full'
                 disabled={disabled || room <= 0}
                 size='icon'
                 type='button'
-                variant='ghost'
+                variant='quiet'
               >
                 <Plus aria-hidden='true' />
               </Button>
@@ -531,16 +584,10 @@ export function Composer({
               <DropdownMenuItem onSelect={() => input.current?.click()}>
                 <Paperclip aria-hidden='true' />
                 Add photos & files
-                <span className='text-muted-foreground'>
-                  Upload from computer
-                </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={openPicker}>
                 <LibraryBig aria-hidden='true' />
                 Add from library
-                <span className='text-muted-foreground'>
-                  Browse and search your files
-                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -555,7 +602,7 @@ export function Composer({
               />
             </Suspense>
           )}
-          <div className='ml-auto flex min-w-0 items-center gap-2'>
+          <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>
             <ModelPicker
               disabled={disabled}
               onChange={onModelChange}
@@ -590,23 +637,14 @@ export function Composer({
                 onClick={listening ? dictation.stop : dictation.start}
               />
             )}
-            {(!stoppable || !empty) && (
-              <SendButton
-                disabled={disabled || empty || submitting === true}
-                queueing={stoppable}
-              />
+            {stoppable && !empty && (
+              <QueueButton disabled={disabled || submitting === true} />
             )}
-            {stoppable && (
-              <Button
-                aria-label='Stop'
-                className='rounded-full'
-                onClick={onStop}
-                size='icon'
-                type='button'
-              >
-                <Square aria-hidden='true' className='size-3 fill-current' />
-              </Button>
-            )}
+            <SendOrStop
+              disabled={disabled || empty || submitting === true}
+              onStop={onStop}
+              stopping={stoppable}
+            />
           </div>
         </div>
       </div>

@@ -9,9 +9,12 @@ export const spring = {
 
 const easeOut = [0.2, 0, 0, 1] as const;
 
+const easeIn = [0.3, 0, 1, 1] as const;
+
 export const fade = {
   base: { duration: 0.18, ease: easeOut },
   fast: { duration: 0.12, ease: easeOut },
+  leave: { duration: 0.12, ease: easeIn },
 } as const satisfies Record<string, Transition>;
 
 export const stagger = 0.03;
