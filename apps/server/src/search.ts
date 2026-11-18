@@ -32,7 +32,10 @@ function includesAll(text: string, query: string) {
   return words(query).every((word) => lower.includes(word.toLowerCase()));
 }
 
-async function chats(ownerId: string, query: string): Promise<ChatResult[]> {
+export async function searchChats(
+  ownerId: string,
+  query: string
+): Promise<ChatResult[]> {
   const titled = await db
     .select({
       id: conversation.id,
@@ -145,7 +148,7 @@ const search = new Hono().use(requireUser).get('/', query, async (c) => {
 
   const [chatResults, projectResults, scheduleResults, fileResults] =
     await Promise.all([
-      chats(ownerId, q),
+      searchChats(ownerId, q),
       projects(ownerId, q),
       schedules(ownerId, q),
       files(ownerId, q),
