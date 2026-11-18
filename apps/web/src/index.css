@@ -20,6 +20,7 @@
   --animate-title-wash: title-wash var(--motion-story) var(--ease-in)
     var(--motion-slow) backwards;
   --animate-word-in: word-in var(--motion-base) var(--ease-out) backwards;
+  --animate-develop: develop 900ms var(--ease-out);
 
   @keyframes title-wash {
     from {
@@ -30,6 +31,19 @@
   @keyframes word-in {
     from {
       opacity: 0;
+    }
+  }
+
+  @keyframes develop {
+    from {
+      opacity: 0;
+      filter: blur(20px) grayscale(1) contrast(0.4);
+    }
+    25% {
+      opacity: 1;
+    }
+    60% {
+      filter: blur(4px) grayscale(0.5) contrast(0.8);
     }
   }
 
