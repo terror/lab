@@ -24,7 +24,8 @@ export type ImageAccess = {
   available(): Promise<boolean>;
   generate(
     conversationId: ConversationId,
-    request: ImageRequest
+    request: ImageRequest,
+    signal: AbortSignal | undefined
   ): Promise<GeneratedImage>;
 };
 
@@ -55,11 +56,15 @@ export function images(access: ImageAccess) {
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
       try {
         const { data, ...saved } = await once(api, 'image', context, () =>
-          access.generate(api.conversationId, {
-            images: args.images ?? [],
-            name: args.name,
-            prompt: args.prompt,
-          })
+          access.generate(
+            api.conversationId,
+            {
+              images: args.images ?? [],
+              name: args.name,
+              prompt: args.prompt,
+            },
+            context.abortSignal
+          )
         );
 
         return {

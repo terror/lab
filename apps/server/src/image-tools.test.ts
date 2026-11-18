@@ -4,7 +4,7 @@ import { expect, spyOn, test } from 'bun:test';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { signIn, signInAdmin } from '../test/auth';
-import { call, chat, toolOutputs } from '../test/client';
+import { call, chat, settle, toolOutputs } from '../test/client';
 import { prompts, script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
@@ -271,6 +271,62 @@ test('image generation reports gateway errors and stops at the spend limit', asy
     ]);
   } finally {
     env.LAB_MONTHLY_LIMIT = undefined;
+    await disconnect();
+  }
+});
+
+test('stopping a chat cancels its image generation', async () => {
+  const headers = await signIn();
+
+  await connect();
+
+  const started = Promise.withResolvers<AbortSignal | null | undefined>();
+
+  spyOn(globalThis, 'fetch').mockImplementation(
+    Object.assign(
+      (_input: string | Request | URL, init?: RequestInit) => {
+        started.resolve(init?.signal);
+
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(init.signal?.reason)
+          );
+        });
+      },
+      { preconnect: fetch.preconnect }
+    )
+  );
+
+  try {
+    script(generate(), fauxAssistantMessage('baz'));
+
+    const { body } = await call(headers, 'POST', '/conversations', {
+      content: 'foo',
+    });
+
+    const signal = await started.promise;
+
+    const stopped = call(headers, 'POST', `/conversations/${body.id}/abort`);
+
+    expect(
+      await Promise.race([
+        stopped.then(({ status }) => status),
+        Bun.sleep(1_000).then(() => 'still running'),
+      ])
+    ).toBe(204);
+
+    await settle(body.id);
+
+    expect({
+      aborted: signal?.aborted,
+      outputs: await toolOutputs(headers, body.id),
+    }).toEqual({
+      aborted: true,
+      outputs: [
+        '<harness>\n[error] Tool image_generate was aborted\n</harness>',
+      ],
+    });
+  } finally {
     await disconnect();
   }
 });
