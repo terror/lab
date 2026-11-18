@@ -79,6 +79,45 @@ async function shownPlan(
     : shownPlan(tx, conversationId, page.next);
 }
 
+async function planBefore(
+  tx: Tx,
+  conversationId: ConversationId,
+  cursor?: Cursor
+): Promise<Plan> {
+  const page = await tx.scanEntries({ conversationId }, 100, cursor);
+
+  const [latest] = page.items.flatMap(({ model }): Plan[] => {
+    const [message] = model ?? [];
+
+    if (
+      message?.role !== 'toolResult' ||
+      message.toolName !== 'plan_update' ||
+      message.isError
+    ) {
+      return [];
+    }
+
+    const { steps } = message.details as { steps: PlanStep[] };
+
+    return [{ author: 'agent', callId: message.toolCallId, steps }];
+  });
+
+  if (latest !== undefined) {
+    return latest;
+  }
+
+  return page.next === undefined
+    ? PlanDoc.definition.initial()
+    : planBefore(tx, conversationId, page.next);
+}
+
+export async function rewindPlan(tx: Tx, conversationId: ConversationId) {
+  Object.assign(
+    await tx.doc(PlanDoc, conversationId),
+    await planBefore(tx, conversationId)
+  );
+}
+
 export async function editPlan(
   tx: Tx,
   conversationId: ConversationId,
