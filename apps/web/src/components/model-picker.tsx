@@ -25,7 +25,12 @@ import { cn } from '@/lib/utils';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown, Search, Star } from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+  useState,
+} from 'react';
 
 const levels = thinkingLevelSchema.options;
 
@@ -263,10 +268,12 @@ function Section({ children, title }: { children: ReactNode; title: string }) {
 export function ModelPicker({
   disabled,
   onChange,
+  trigger,
   value,
 }: {
   disabled?: boolean;
   onChange: (model: ModelChoice) => void;
+  trigger?: ReactElement;
   value: ModelChoice | undefined;
 }) {
   const models = useQuery(modelsQueryOptions);
@@ -333,15 +340,17 @@ export function ModelPicker({
   return (
     <DropdownMenu onOpenChange={() => setSearch('')}>
       <DropdownMenuTrigger asChild>
-        <button
-          aria-label={current ? `Model: ${current.name}` : 'Model'}
-          className='flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
-          disabled={disabled || options.length === 0}
-          type='button'
-        >
-          <span className='truncate'>{triggerLabel(current, value)}</span>
-          <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
-        </button>
+        {trigger ?? (
+          <button
+            aria-label={current ? `Model: ${current.name}` : 'Model'}
+            className='flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
+            disabled={disabled || options.length === 0}
+            type='button'
+          >
+            <span className='truncate'>{triggerLabel(current, value)}</span>
+            <ChevronDown aria-hidden='true' className='size-4 shrink-0' />
+          </button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align='end'

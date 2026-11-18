@@ -1,5 +1,6 @@
 import { ApprovalCard, approvalOf } from '@/components/approval-card';
 import { Markdown } from '@/components/markdown';
+import { ModelPicker } from '@/components/model-picker';
 import { Plan } from '@/components/plan';
 import {
   ToolBody,
@@ -30,13 +31,29 @@ import {
   TraceTitle,
 } from '@/components/ui/trace';
 import { plural } from '@/lib/format';
+import type { ModelChoice } from '@/lib/models';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import type { PlanStep } from '@lab/server/schemas';
-import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  RotateCcw,
+  Shuffle,
+  Square,
+  TriangleAlert,
+  Volume2,
+} from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 type Part =
   | { type: 'text'; text: string }
@@ -231,23 +248,19 @@ function plain(markdown: string) {
     .replace(/[*_`#>~|]/g, '');
 }
 
-function Action({
+export function Action({
   children,
   label,
-  onClick,
-}: {
-  children: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
+  ...props
+}: ComponentProps<'button'> & { label: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           aria-label={label}
           className='flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground'
-          onClick={onClick}
           type='button'
+          {...props}
         >
           {children}
         </button>
@@ -334,17 +347,60 @@ function SpeakAction({ text }: { text: string }) {
   );
 }
 
-function MessageActions({ latest, text }: { latest: boolean; text: string }) {
+type Retry = (model?: ModelChoice) => void;
+
+function RetryActions({
+  model,
+  onRetry,
+}: {
+  model: ModelChoice | undefined;
+  onRetry: Retry;
+}) {
   return (
-    <MessageFooter
-      className={cn(
-        'gap-0.5 px-0 transition-opacity',
-        !latest &&
-          'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100'
-      )}
-    >
-      <CopyAction text={text} />
-      {'speechSynthesis' in window && <SpeakAction text={text} />}
+    <>
+      <Action label='Retry' onClick={() => onRetry()}>
+        <RotateCcw aria-hidden='true' className='size-4' />
+      </Action>
+      <ModelPicker
+        onChange={onRetry}
+        trigger={
+          <Action label='Retry with another model'>
+            <Shuffle aria-hidden='true' className='size-4' />
+          </Action>
+        }
+        value={model}
+      />
+    </>
+  );
+}
+
+function MessageActions({
+  latest,
+  model,
+  onRetry,
+  text,
+  versions,
+}: {
+  latest: boolean;
+  model: ModelChoice | undefined;
+  onRetry: Retry | undefined;
+  text: string;
+  versions: ReactNode;
+}) {
+  return (
+    <MessageFooter className='gap-0.5 px-0'>
+      {versions}
+      <div
+        className={cn(
+          'flex items-center gap-0.5 transition-opacity',
+          !latest &&
+            'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100'
+        )}
+      >
+        <CopyAction text={text} />
+        {'speechSynthesis' in window && <SpeakAction text={text} />}
+        {onRetry && <RetryActions model={model} onRetry={onRetry} />}
+      </div>
     </MessageFooter>
   );
 }
@@ -422,22 +478,28 @@ export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
 export function AssistantMessage({
   activity,
   latest = false,
+  model,
+  onRetry,
   parts,
   plan,
   progress,
   results,
   span,
   streaming,
+  versions,
   working = false,
 }: {
   activity?: string;
   latest?: boolean;
+  model?: ModelChoice;
+  onRetry?: Retry;
   parts: readonly Part[];
   plan?: ShownPlan;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   span?: Span;
   streaming: boolean;
+  versions?: ReactNode;
   working?: boolean;
 }) {
   const text = replyText(parts);
@@ -491,7 +553,15 @@ export function AssistantMessage({
         {plan && <Plan {...plan} />}
         <Segments segments={all.slice(split)} {...shared} />
         {activity !== undefined && !inSlot && <Activity status={activity} />}
-        {answer && <MessageActions latest={latest} text={text} />}
+        {answer && (
+          <MessageActions
+            latest={latest}
+            model={model}
+            onRetry={onRetry}
+            text={text}
+            versions={versions}
+          />
+        )}
       </MessageContent>
     </Message>
   );
