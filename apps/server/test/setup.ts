@@ -82,7 +82,9 @@ const faux = fauxProvider({
   provider: 'vercel-ai-gateway',
 });
 
-const { respond } = await import('./models');
+const { clearScript, respond } = await import('./models');
+
+afterEach(clearScript);
 
 faux.setResponses(Array.from({ length: 10_000 }, () => respond));
 
