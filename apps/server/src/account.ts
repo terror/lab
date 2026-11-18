@@ -8,16 +8,18 @@ import {
   ProfileDoc,
   SkillsDoc,
 } from '@lab/harness';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 
 import { removeConnector } from './connections';
 import { listConnectors } from './connector-service';
 import { db } from './db';
 import { harness } from './harness';
+import { flushHelperUsage } from './helper-usage';
 import { flushHistory } from './history';
 import { listProjects } from './project-access';
 import { destroyComputer } from './sandbox';
 import { listTasks } from './schedule-access';
+import { flushUsage } from './usage';
 
 async function chats(ownerId: string) {
   await flushHistory();
@@ -54,6 +56,74 @@ async function chats(ownerId: string) {
   }));
 }
 
+async function artifacts(ownerId: string) {
+  const [pins, state] = await Promise.all([
+    db
+      .select({
+        artifactId: schema.artifactPin.artifactId,
+        conversationId: schema.artifactPin.conversationId,
+        createdAt: schema.artifactPin.createdAt,
+        projectId: schema.artifactPin.projectId,
+      })
+      .from(schema.artifactPin)
+      .where(eq(schema.artifactPin.ownerId, ownerId))
+      .orderBy(asc(schema.artifactPin.createdAt)),
+    db
+      .select({
+        artifactId: schema.artifactState.artifactId,
+        conversationId: schema.artifactState.conversationId,
+        key: schema.artifactState.key,
+        value: schema.artifactState.value,
+      })
+      .from(schema.artifactState)
+      .where(eq(schema.artifactState.ownerId, ownerId)),
+  ]);
+
+  return { pins, state };
+}
+
+function uploads(ownerId: string) {
+  return db
+    .select({
+      createdAt: schema.upload.createdAt,
+      id: schema.upload.id,
+      mimeType: schema.upload.mimeType,
+      size: sql`octet_length(${schema.upload.content})`.mapWith(Number),
+    })
+    .from(schema.upload)
+    .where(eq(schema.upload.ownerId, ownerId))
+    .orderBy(asc(schema.upload.createdAt));
+}
+
+async function usage(ownerId: string) {
+  await Promise.all([flushHelperUsage(), flushUsage()]);
+
+  const [events, [budget]] = await Promise.all([
+    db
+      .select({
+        cacheRead: schema.usageEvent.cacheRead,
+        cacheWrite: schema.usageEvent.cacheWrite,
+        conversationId: schema.usageEvent.conversationId,
+        cost: schema.usageEvent.cost,
+        createdAt: schema.usageEvent.createdAt,
+        input: schema.usageEvent.input,
+        kind: schema.usageEvent.kind,
+        model: schema.usageEvent.model,
+        output: schema.usageEvent.output,
+        provider: schema.usageEvent.provider,
+      })
+      .from(schema.usageEvent)
+      .where(eq(schema.usageEvent.ownerId, ownerId))
+      .orderBy(asc(schema.usageEvent.createdAt)),
+    db
+      .select({ limit: schema.spendBudget.monthlyLimit })
+      .from(schema.spendBudget)
+      .where(eq(schema.spendBudget.ownerId, ownerId)),
+  ]);
+
+  return { events, monthlyLimit: budget?.limit ?? null };
+}
+
 async function settings(ownerId: string) {
   const [computer, memory, preferences, profile, skills] = await Promise.all([
     harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT),
@@ -76,18 +146,24 @@ export async function exportAccount(user: {
     listConnectors(user.id),
     db
       .select({
+        conversationId: schema.libraryItem.conversationId,
         createdAt: schema.libraryItem.createdAt,
+        id: schema.libraryItem.id,
         kind: schema.libraryItem.kind,
+        mimeType: schema.libraryItem.mimeType,
         name: schema.libraryItem.name,
+        size: schema.libraryItem.size,
       })
       .from(schema.libraryItem)
-      .where(eq(schema.libraryItem.ownerId, user.id)),
+      .where(eq(schema.libraryItem.ownerId, user.id))
+      .orderBy(asc(schema.libraryItem.createdAt)),
     listProjects(user.id),
     listTasks(user.id),
   ]);
 
   return {
     account: { createdAt: user.createdAt, email: user.email, name: user.name },
+    artifacts: await artifacts(user.id),
     chats: await chats(user.id),
     connectors: connectors.connectors.map(({ enabled, name, url }) => ({
       enabled,
@@ -98,6 +174,8 @@ export async function exportAccount(user: {
     library,
     projects,
     schedules,
+    uploads: await uploads(user.id),
+    usage: await usage(user.id),
     ...(await settings(user.id)),
   };
 }
