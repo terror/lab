@@ -12,6 +12,19 @@ test('inline scripts are allowed by hash', () => {
   ]);
 });
 
+test('errors are reported only to the web app Sentry host', async () => {
+  const source = await Bun.file(
+    new URL('../../web/src/lib/sentry.ts', import.meta.url)
+  ).text();
+
+  const [, dsn = ''] = source.match(/'(https:\/\/[^']+)'/) ?? [];
+
+  expect(contentSecurityPolicy('').connectSrc).toEqual([
+    "'self'",
+    new URL(dsn).origin,
+  ]);
+});
+
 test('responses carry security headers', async () => {
   const response = await app.request('/api/version');
 
