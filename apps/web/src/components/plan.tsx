@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dot } from '@/components/ui/dot';
+import { ProgressCount } from '@/components/ui/progress-count';
+import { confetti } from '@/lib/confetti';
 import { editPlan } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { PLAN_LIMIT, type PlanStep, STEP_LENGTH } from '@lab/server/schemas';
@@ -121,6 +123,7 @@ function Step({
       <span className='relative flex'>
         <Checkbox
           checked={done}
+          className='disabled:cursor-default disabled:opacity-100'
           disabled={!editable}
           id={id}
           onCheckedChange={() =>
@@ -144,11 +147,13 @@ function Step({
         <label
           className={cn(
             'min-w-0 flex-1 wrap-break-word',
-            done && 'text-muted-foreground line-through'
+            done && 'text-muted-foreground'
           )}
           htmlFor={id}
         >
-          {step.text}
+          <span className='strike-sweep' data-done={done || undefined}>
+            {step.text}
+          </span>
           {step.status === 'active' && (
             <span className='sr-only'> (in progress)</span>
           )}
@@ -258,6 +263,23 @@ export function Plan({
 
   const done = shown.filter(({ status }) => status === 'done').length;
 
+  const complete = shown.length > 0 && done === shown.length;
+
+  const count = useRef<HTMLSpanElement>(null);
+
+  const finished = useRef(complete);
+
+  const celebrated = useRef(false);
+
+  useEffect(() => {
+    if (complete && !finished.current && !celebrated.current && count.current) {
+      celebrated.current = true;
+      void confetti(count.current);
+    }
+
+    finished.current = complete;
+  }, [complete]);
+
   const stepKeys = keys(shown);
 
   return (
@@ -267,9 +289,7 @@ export function Plan({
           <h3 className='text-sm font-medium' id={heading}>
             Plan
           </h3>
-          <span className='text-xs text-muted-foreground tabular-nums'>
-            {done} of {shown.length} done
-          </span>
+          <ProgressCount done={done} ref={count} total={shown.length} />
         </div>
         <ol className='flex flex-col'>
           {shown.map((step, index) => (

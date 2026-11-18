@@ -1,9 +1,12 @@
 import { ToolConversation } from '@/components/tools';
+import { confetti } from '@/lib/confetti';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 import { Plan } from './plan';
+
+vi.mock('@/lib/confetti', () => ({ confetti: vi.fn() }));
 
 test('each edit sends the whole plan', async () => {
   const fetch = stubFetch(() => new Response(null, { status: 204 }));
@@ -69,4 +72,30 @@ test('each edit sends the whole plan', async () => {
         path: '/api/conversations/7/plan',
       }))
     );
+});
+
+function plan(status: 'active' | 'done') {
+  return (
+    <Plan
+      editable
+      steps={[
+        { status: 'done', text: 'foo' },
+        { status, text: 'bar' },
+      ]}
+    />
+  );
+}
+
+test('a plan celebrates once when its last step is done', async () => {
+  const { screen } = await renderWithQuery(plan('active'));
+
+  await screen.rerender(plan('done'));
+  await screen.rerender(plan('active'));
+  await screen.rerender(plan('done'));
+
+  expect(
+    vi
+      .mocked(confetti)
+      .mock.calls.map(([element]) => element.getAttribute('data-slot'))
+  ).toEqual(['progress-count']);
 });

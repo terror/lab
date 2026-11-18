@@ -368,6 +368,24 @@
   }
 }
 
+@utility strike-sweep {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 55%;
+  background-repeat: no-repeat;
+  background-size: 0 1px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    background-size 240ms var(--ease-out) 200ms,
+    color var(--motion-base) var(--ease-out) 200ms;
+  &[data-done] {
+    background-size: 100% 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+  }
+}
+
 @utility hover-reveal {
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-out);
