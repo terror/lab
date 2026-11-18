@@ -20,6 +20,8 @@ import {
 import { checkSpend } from './spend';
 import { checkStorage } from './storage';
 
+export const MESSAGE_LENGTH = 4_000_000;
+
 export const draftSchema = z.object({
   attachments: z.array(attachmentSchema).max(8).default([]),
   content: z.string().trim(),
@@ -168,6 +170,10 @@ export async function submitMessage(
   draft: { attachments: Attachment[]; content: string },
   whenBusy: 'followUp' | 'steer' = 'followUp'
 ) {
+  if (draft.content.length > MESSAGE_LENGTH) {
+    throw new HTTPException(400, { message: 'This message is too long' });
+  }
+
   const ownerId = await requireOwner(conversation.id);
 
   await checkSpend(ownerId);
