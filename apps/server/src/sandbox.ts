@@ -568,11 +568,15 @@ export async function resetComputer(ownerId: string) {
   await (await requireProvider(ownerId)).destroy(computerName(ownerId));
 }
 
+export async function destroyComputer(ownerId: string) {
+  await (await activeProvider())?.destroy(computerName(ownerId));
+}
+
 export async function removeChatFolder(
   ownerId: string,
   conversationId: number
 ) {
   await (
-    await providerFor(ownerId)
+    await activeProvider()
   )?.remove(computerName(ownerId), `chats/${conversationId}`);
 }

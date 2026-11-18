@@ -16,7 +16,7 @@ import { db } from './db';
 import { harness } from './harness';
 import { flushHistory } from './history';
 import { listProjects } from './project-access';
-import { resetComputer } from './sandbox';
+import { destroyComputer } from './sandbox';
 import { listTasks } from './schedule-access';
 
 async function chats(ownerId: string) {
@@ -120,11 +120,11 @@ export async function deleteAccount(ownerId: string) {
     )?.abort(BACKGROUND_CONTEXT);
   }
 
+  await destroyComputer(ownerId);
+
   for (const { id } of connectors) {
     await removeConnector(id);
   }
-
-  await resetComputer(ownerId).catch(() => undefined);
 
   await harness.commit(async (tx) => {
     await tx.retireDoc(ComputerDoc, ownerId);
