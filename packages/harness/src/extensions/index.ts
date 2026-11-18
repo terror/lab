@@ -9,6 +9,7 @@ import { codemode } from './codemode';
 import { compaction } from './compaction';
 import { type ConnectorAccess, connectorSettings } from './connector-settings';
 import { type HistoryAccess, history } from './history';
+import { type ImageAccess, images } from './images';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { limitOutput, output } from './output';
@@ -38,6 +39,7 @@ export {
   type ChatTranscript,
   type HistoryAccess,
 } from './history';
+export { type ImageAccess } from './images';
 export {
   type LibraryAccess,
   type LibraryContent,
@@ -117,6 +119,7 @@ export type ExtensionDeps = {
   connectors: ConnectorAccess;
   owner: Owner;
   history: HistoryAccess;
+  images: ImageAccess;
   library: LibraryAccess;
   onHelperUsage: HelperUsage;
   project: ProjectAccess;
@@ -154,6 +157,7 @@ export function extensions(deps: ExtensionDeps) {
     preferences(deps.owner),
     compaction(deps.onHelperUsage),
     history(deps.history, deps.owner),
+    images(deps.images),
     library(deps.library),
     memory(deps.owner),
     project(deps.project),

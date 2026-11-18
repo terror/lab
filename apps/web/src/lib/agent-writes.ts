@@ -28,6 +28,7 @@ const toolWrites = {
   connector_remove: [connectorsQueryOptions.queryKey],
   connector_update: [connectorsQueryOptions.queryKey],
   forget: [memoryQueryOptions.queryKey],
+  image_generate: [libraryQueryKey],
   library_read: [],
   library_search: [],
   preferences_update: [preferencesQueryOptions.queryKey],

@@ -101,7 +101,7 @@ export const usageEvent = pgTable(
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
     entryId: integer('entry_id').unique(),
     kind: text('kind', {
-      enum: ['compaction', 'response', 'status', 'title', 'web'],
+      enum: ['compaction', 'image', 'response', 'status', 'title', 'web'],
     })
       .default('response')
       .notNull(),

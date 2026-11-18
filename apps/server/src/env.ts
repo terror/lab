@@ -21,6 +21,7 @@ const schema = z.object({
   LAB_COMPUTER_USERS: z.enum(['admin', 'everyone']).default('admin'),
   LAB_DEFAULT_MODEL: z.string().min(1).default('anthropic/claude-sonnet-5.5'),
   LAB_HOST: z.string().min(1).default('127.0.0.1'),
+  LAB_IMAGE_MODEL: z.string().min(1).default('google/gemini-3.1-flash-image'),
   LAB_MONTHLY_LIMIT: z.coerce.number().positive().optional(),
   LAB_ORIGIN: z.url(),
   LAB_REPOSITORY: z.string().min(1).default('terror/lab'),
