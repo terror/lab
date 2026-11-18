@@ -51,3 +51,46 @@ test('Tab draws the focus ring and a click never does', async () => {
     seen: ['none', 'solid', 'solid', 'none'],
   });
 });
+
+test('a shell with focus-ring-within draws the ring for its field', async () => {
+  const stop = watchModality();
+
+  const screen = await render(
+    <>
+      <Button>foo</Button>
+      <div className='focus-ring-within'>
+        <textarea aria-label='bar' />
+      </div>
+    </>
+  );
+
+  const field = screen.getByRole('textbox');
+
+  const seen = new Array<string[]>();
+
+  const look = () => {
+    const element = field.element();
+
+    seen.push(
+      [element, element.parentElement ?? element].map(
+        (node) => getComputedStyle(node).outlineStyle
+      )
+    );
+  };
+
+  await field.click();
+
+  look();
+
+  await userEvent.tab({ shift: true });
+  await userEvent.tab();
+
+  look();
+
+  stop();
+
+  expect(seen).toEqual([
+    ['none', 'none'],
+    ['none', 'solid'],
+  ]);
+});
