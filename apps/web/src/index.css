@@ -928,6 +928,117 @@
   stroke-dashoffset: 0;
 }
 
+[data-ribbon] {
+  --lively: linear(
+    0,
+    0.01 1.7%,
+    0.035 3.4%,
+    0.073 5%,
+    0.119 6.7%,
+    0.171 8.4%,
+    0.227 10.1%,
+    0.281 11.7%,
+    0.339 13.4%,
+    0.397 15%,
+    0.453 16.7%,
+    0.506 18.4%,
+    0.557 20.1%,
+    0.605 21.8%,
+    0.648 23.3%,
+    0.689 25%,
+    0.727 26.7%,
+    0.762 28.4%,
+    0.794 30.1%,
+    0.822 31.7%,
+    0.847 33.3%,
+    0.87 35%,
+    0.89 36.7%,
+    0.908 38.4%,
+    0.924 40.1%,
+    0.937 41.7%,
+    0.949 43.4%,
+    0.959 45%,
+    0.968 46.7%,
+    0.975 48.4%,
+    0.981 50%,
+    0.987 51.7%,
+    0.991 53.4%,
+    0.995 55.1%,
+    0.998 56.7%,
+    1 58.4%,
+    1.002 60%,
+    1.003 61.7%,
+    1.004 63.4%,
+    1.005 65.1%,
+    1.005 66.7%,
+    1.006 68.3%,
+    1.006 70%,
+    1.006 71.7%,
+    1.006 73.4%,
+    1.006 75.1%,
+    1.005 76.7%,
+    1.005 78.3%,
+    1.005 80%,
+    1.004 81.7%,
+    1.004 83.4%,
+    1.004 85.1%,
+    1.003 86.7%,
+    1.003 88.4%,
+    1.003 90%,
+    1.002 91.7%,
+    1.002 93.4%,
+    1.002 95%,
+    1.002 96.7%,
+    1.002 98.4%,
+    1.001 100%,
+    1
+  );
+  --lively-duration: 565ms;
+  transform-origin: top;
+}
+
+[data-highlight] {
+  position: relative;
+  isolation: isolate;
+  margin-inline: -0.25rem;
+  border-radius: 0.25rem;
+  padding-inline: 0.25rem;
+}
+
+[data-arrived] [data-highlight]::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-color: var(--spark-yellow-wash);
+  content: '';
+  transform-origin: left;
+}
+
+@keyframes ribbon-drop {
+  from {
+    scale: 1 0;
+  }
+}
+
+@keyframes highlight-sweep {
+  from {
+    scale: 0 1;
+  }
+}
+
+@keyframes highlight-show {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes highlight-fade {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes dot-pulse {
   50% {
     opacity: 0.35;
@@ -1129,6 +1240,16 @@
       dot-pulse 2.4s ease-in-out 4.8s infinite;
   }
 
+  [data-arrived] [data-ribbon] {
+    animation: ribbon-drop var(--lively-duration) var(--lively) 120ms backwards;
+  }
+
+  [data-arrived] [data-highlight]::before {
+    animation:
+      highlight-sweep 480ms var(--ease-out) 320ms backwards,
+      highlight-fade 900ms var(--ease-out) 1900ms forwards;
+  }
+
   [data-slot='copy-icon']:not([data-quiet]) [data-part='back'] {
     transition:
       transform 140ms var(--ease-in),
@@ -1164,6 +1285,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-arrived] [data-highlight]::before {
+    animation:
+      highlight-show 120ms linear 320ms backwards,
+      highlight-fade 900ms var(--ease-out) 1900ms forwards;
+  }
+
   [data-slot='live-mark'][data-state='assemble']
     :where([data-part='coral'], [data-part='blue'], [data-part='yellow']) {
     animation: live-mark-fade var(--motion-base) var(--ease-out) both;
