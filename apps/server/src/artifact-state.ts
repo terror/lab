@@ -1,6 +1,6 @@
 import { schema } from '@lab/db';
 import { type ArtifactStateAccess, STORE_KEY_LIMIT } from '@lab/harness';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
@@ -87,6 +87,51 @@ export function saveValue(
         set: { value },
         target: [table.conversationId, table.artifactId, table.key],
       });
+  });
+}
+
+export async function copyValues(
+  ownerId: string,
+  from: number,
+  to: number,
+  artifactIds: string[]
+) {
+  if (artifactIds.length === 0) {
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        artifactId: table.artifactId,
+        key: table.key,
+        value: table.value,
+      })
+      .from(table)
+      .where(
+        and(
+          eq(table.conversationId, from),
+          inArray(table.artifactId, artifactIds)
+        )
+      );
+
+    if (rows.length === 0) {
+      return;
+    }
+
+    await reserveStorage(
+      tx,
+      ownerId,
+      rows.reduce(
+        (bytes, { key, value }) =>
+          bytes + Buffer.byteLength(key) + Buffer.byteLength(value),
+        0
+      )
+    );
+
+    await tx
+      .insert(table)
+      .values(rows.map((row) => ({ ...row, conversationId: to, ownerId })));
   });
 }
 

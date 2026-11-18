@@ -8,10 +8,16 @@ import {
   type EntryRecord,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { TitleDoc, rewindArtifacts, rewindPlan } from '@lab/harness';
+import {
+  ArtifactsDoc,
+  TitleDoc,
+  rewindArtifacts,
+  rewindPlan,
+} from '@lab/harness';
 import { and, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { copyValues } from './artifact-state';
 import { startChat } from './chat-actions';
 import { db } from './db';
 import { found } from './found';
@@ -300,6 +306,21 @@ export async function branchChat(
     ownerId,
     conversation,
     { parent, projectId, title: title?.title ?? undefined },
-    () => plan.start(conversation)
+    async () => {
+      const artifacts = await harness.snapshot(
+        ArtifactsDoc,
+        conversation.id,
+        BACKGROUND_CONTEXT
+      );
+
+      await copyValues(
+        ownerId,
+        source.id,
+        conversation.id,
+        Object.keys(artifacts?.artifacts ?? {})
+      );
+
+      await plan.start(conversation);
+    }
   );
 }
