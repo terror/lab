@@ -2,6 +2,7 @@ import { schema } from '@lab/db';
 import { sql } from 'drizzle-orm';
 
 import { db } from './db';
+import { storable } from './text';
 
 const table = schema.messageText;
 
@@ -53,7 +54,7 @@ export async function searchMessages(
   query: string,
   { exclude, limit }: { exclude?: number; limit: number }
 ): Promise<MessageMatch[]> {
-  const anyWord = query.trim().split(/\s+/).join(' or ');
+  const anyWord = storable(query).trim().split(/\s+/).join(' or ');
 
   const terms = sql`websearch_to_tsquery('english', ${anyWord})`;
 
