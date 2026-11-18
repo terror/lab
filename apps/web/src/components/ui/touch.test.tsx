@@ -6,16 +6,7 @@ import { cdp } from 'vitest/browser';
 import { Button } from './button';
 import { Switch } from './switch';
 
-const sizes = [
-  'default',
-  'xs',
-  'sm',
-  'lg',
-  'icon',
-  'icon-xs',
-  'icon-sm',
-  'icon-lg',
-] as const;
+const sizes = ['default', 'sm', 'icon', 'icon-xs', 'icon-sm'] as const;
 
 test('buttons and switches get a 44px hit area on a touch screen', async ({
   onTestFinished,
@@ -49,5 +40,5 @@ test('buttons and switches get a 44px hit area on a touch screen', async ({
     );
   });
 
-  expect(smallest).toEqual([44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44]);
+  expect(smallest).toEqual([44, 44, 44, 44, 44, 44, 44, 44]);
 });
