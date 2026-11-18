@@ -5,6 +5,7 @@ import { Scalar } from '@scalar/hono-api-reference';
 import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
 import { generateSpecs } from 'hono-openapi';
+import { bodyLimit } from 'hono/body-limit';
 import { compress } from 'hono/compress';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from 'hono/logger';
@@ -41,6 +42,8 @@ import skills from './skills';
 import trash from './trash';
 import uploads from './uploads';
 import usage from './usage';
+
+const AUTH_BODY_BYTES = 64 * 1024;
 
 const web = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
@@ -99,7 +102,17 @@ const api = new Hono()
 
     return c.json({ status: 'ok' });
   })
-  .on(['GET', 'POST'], '/auth/*', (c) => auth.handler(c.req.raw))
+  .on(
+    ['GET', 'POST'],
+    '/auth/*',
+    bodyLimit({
+      maxSize: AUTH_BODY_BYTES,
+      onError: () => {
+        throw new HTTPException(413, { message: 'Request body is too large' });
+      },
+    }),
+    (c) => auth.handler(c.req.raw)
+  )
   .route('/', changelog)
   .get('/models', requireUser, async (c) => {
     const fallback = await defaultModel();
