@@ -302,6 +302,28 @@ test('conversations are listed in pages', async () => {
   });
 });
 
+test('tampered cursors are rejected', async () => {
+  const headers = await signIn();
+
+  const cursor = (values: string[]) =>
+    Buffer.from(JSON.stringify([values, 1])).toString('base64url');
+
+  const statuses = await Promise.all(
+    [
+      `/conversations?cursor=${cursor(['foo'])}`,
+      `/conversations?sort=title&cursor=${cursor(['foo', 'bar'])}`,
+      '/library?cursor=99999999999999999.1.0',
+    ].map((path) => call(headers, 'GET', path))
+  );
+
+  expect(statuses).toEqual(
+    Array.from({ length: 3 }, () => ({
+      body: { error: 'Invalid cursor' },
+      status: 400,
+    }))
+  );
+});
+
 test('paging continues after the cursor chat is deleted', async () => {
   const headers = await signIn();
 
