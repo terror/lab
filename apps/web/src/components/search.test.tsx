@@ -29,7 +29,12 @@ function stubWorkspace() {
 
     if (pathname === '/api/projects') {
       return Response.json({
-        projects: [{ chats: 0, id: 7, instructions: '', name: 'baz' }],
+        projects: Array.from({ length: 6 }, (_, index) => ({
+          chats: 0,
+          id: index + 7,
+          instructions: '',
+          name: 'baz',
+        })),
       });
     }
 
@@ -101,6 +106,10 @@ test('an empty query lists chats, places to go, and actions', async () => {
       'go-trash',
       'go-settings',
       'go-project-7',
+      'go-project-8',
+      'go-project-9',
+      'go-project-10',
+      'go-project-11',
       'new-chat',
       'new-project',
       'theme',

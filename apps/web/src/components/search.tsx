@@ -87,6 +87,8 @@ const PREVIEW = 3;
 
 const RECENT = 5;
 
+const PROJECTS = 5;
+
 type Destination = {
   icon: LucideIcon;
   key: string;
@@ -370,7 +372,7 @@ function EmptyQuery({
 
   const destinationRows: Row[] = [
     ...destinations.map((destination) => destinationRow(destination, go)),
-    ...(projects.data?.projects ?? []).map((project) => ({
+    ...(projects.data?.projects ?? []).slice(0, PROJECTS).map((project) => ({
       icon: Folder,
       key: `go-project-${project.id}`,
       onSelect: () => go.project(project.id),
