@@ -28,7 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
 import type { Attachment } from './attachments';
-import { call, client } from './client';
+import { call, callIfFound, client } from './client';
 import type { ModelChoice } from './models';
 import { usePreference } from './preferences';
 import { removeStored, usePersistentState } from './storage';
@@ -84,7 +84,7 @@ function conversationsQueryOptions(scope: ChatScope, sort: ConversationSort) {
 }
 
 function loadSummary(id: number, signal: AbortSignal) {
-  return call(
+  return callIfFound(
     client.conversations[':id'].$get(
       { param: { id: String(id) } },
       { init: { signal } }

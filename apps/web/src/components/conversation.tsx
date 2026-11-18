@@ -461,7 +461,7 @@ const TranscriptRow = memo(function TranscriptRow({
 export function Conversation({ id }: { id: number }) {
   const summary = useConversationSummary(id);
 
-  if (summary.isError) {
+  if (summary.data === null || summary.isLoadingError) {
     return <Unavailable subject='chat' />;
   }
 

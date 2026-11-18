@@ -2,7 +2,7 @@ import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 import { z } from 'zod';
 
-import { call, client } from './client';
+import { call, callIfFound, client } from './client';
 import { conversationsQueryKey } from './conversations';
 import { useRefreshMutation } from './mutations';
 
@@ -143,7 +143,7 @@ export function useArtifact(
       conversationId === undefined || artifactId === undefined
         ? skipToken
         : ({ signal }) =>
-            call(
+            callIfFound(
               client.conversations[':id'].artifacts[':artifactId'].$get(
                 { param: { artifactId, id: String(conversationId) } },
                 { init: { signal } }
