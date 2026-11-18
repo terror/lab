@@ -31,6 +31,7 @@ import {
   readChat,
   renameChat,
 } from './chat-actions';
+import { openStream } from './event-streams';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { harness } from './harness';
@@ -252,7 +253,7 @@ const conversations = new Hono()
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
 
     return streamSSE(c, async (stream) => {
-      const closed = new AbortController();
+      const closed = openStream(c.get('user').id);
 
       stream.onAbort(() => closed.abort());
 
@@ -320,7 +321,7 @@ const conversations = new Hono()
       await watch.closed;
 
       clearInterval(heartbeat);
-      stop();
+      closed.abort();
     });
   })
   .post(
