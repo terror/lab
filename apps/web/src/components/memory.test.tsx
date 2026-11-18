@@ -1,4 +1,5 @@
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { Toaster } from '@/components/ui/sonner';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
 
 import { Memory } from './memory';
@@ -31,4 +32,39 @@ test('a memory is added from a dialog', async () => {
   expect(typeof init?.body === 'string' && JSON.parse(init.body)).toEqual({
     text: 'foo',
   });
+});
+
+test('a deleted memory comes back with Undo', async () => {
+  const memory = { createdAt: 0, id: 'bar', text: 'foo' };
+
+  const fetch = stubFetch((_, init) =>
+    Response.json({
+      instructions: '',
+      memories: init?.method === 'DELETE' ? [] : [memory],
+      referenceChats: false,
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <>
+      <Memory />
+      <Toaster />
+    </>
+  );
+
+  await screen.getByRole('button', { name: 'Delete foo' }).click();
+  await screen.getByRole('button', { name: 'Undo' }).click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'DELETE' || init?.method === 'POST'
+          ? [[init.method, requestUrl(input).pathname, init.body]]
+          : []
+      )
+    )
+    .toEqual([
+      ['DELETE', '/api/memory/bar', undefined],
+      ['POST', '/api/memory', JSON.stringify({ text: 'foo' })],
+    ]);
 });
