@@ -23,13 +23,16 @@ type Secrets = Pick<
 >;
 
 export function keyring(secrets: Secrets) {
-  const keys = [
-    secrets.LAB_CREDENTIALS_KEY,
+  const current = deriveKey(
+    secrets.LAB_CREDENTIALS_KEY ?? secrets.BETTER_AUTH_SECRET
+  );
+
+  const older = [
     secrets.LAB_CREDENTIALS_KEY_PREVIOUS,
     secrets.BETTER_AUTH_SECRET,
   ].flatMap((secret) => (secret ? [deriveKey(secret)] : []));
 
-  return { current: keys[0] ?? deriveKey(secrets.BETTER_AUTH_SECRET), keys };
+  return { current, keys: [current, ...older] };
 }
 
 const { current, keys } = keyring(env);
