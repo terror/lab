@@ -155,13 +155,13 @@ test('stopping a chat cancels its web request', async () => {
   try {
     script(toolCall('web_fetch', { url: 'https://foo.example/a' }));
 
-    const { body } = await call(headers, 'POST', '/conversations', {
+    const { body: created } = await call(headers, 'POST', '/conversations', {
       content: 'foo',
     });
 
     const signal = await started.promise;
 
-    const stopped = call(headers, 'POST', `/conversations/${body.id}/abort`);
+    const stopped = call(headers, 'POST', `/conversations/${created.id}/abort`);
 
     expect(
       await Promise.race([
@@ -170,7 +170,7 @@ test('stopping a chat cancels its web request', async () => {
       ])
     ).toBe(204);
 
-    await settle(body.id);
+    await settle(created.id);
 
     expect(signal?.aborted).toBe(true);
   } finally {
