@@ -1,8 +1,9 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 
 import preview from '../../../.storybook/preview';
 import { themes } from '../../../.storybook/themes';
 import { Button } from './button';
+import { Dot } from './dot';
 import { ListRow } from './list-row';
 
 const meta = preview.meta({
@@ -63,6 +64,32 @@ export const AsLink = meta.story({
           </a>
         </ListRow>
       ))}
+    </ul>
+  ),
+});
+
+export const Compact = meta.story({
+  render: () => (
+    <ul className='flex w-64 flex-col gap-0.5'>
+      {['Sourdough starter names', 'Lisbon trip plan', 'Pomodoro timer'].map(
+        (title, index) => (
+          <ListRow
+            key={title}
+            actions={
+              <Button aria-label='Options' size='icon-xs' variant='quiet'>
+                <Ellipsis aria-hidden='true' />
+              </Button>
+            }
+            asChild
+            size='compact'
+            status={index === 0 && <Dot tone='attention' />}
+          >
+            <a href='#foo'>
+              <span className='truncate'>{title}</span>
+            </a>
+          </ListRow>
+        )
+      )}
     </ul>
   ),
 });

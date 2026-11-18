@@ -1,3 +1,4 @@
+import { SidebarRow, rowAction } from '@/components/sidebar-row';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -8,6 +9,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   conversationTitle,
   conversationsQueryKey,
@@ -35,13 +38,18 @@ import {
   Folder,
   FolderInput,
   FolderMinus,
-  LoaderCircle,
   Pencil,
   Pin,
   PinOff,
   Trash2,
 } from 'lucide-react';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 
 function RenameInput({
@@ -196,6 +204,45 @@ function MenuItems({
   );
 }
 
+type Activity = 'idle' | 'running' | 'unread' | 'waiting';
+
+const indicators: Record<
+  Activity,
+  { attention: boolean; label: string; mark: ReactNode } | undefined
+> = {
+  idle: undefined,
+  running: {
+    attention: false,
+    label: 'Running',
+    mark: <LiveMark className='size-3.5' state='thinking' />,
+  },
+  unread: { attention: true, label: 'Unread', mark: <Dot tone='attention' /> },
+  waiting: {
+    attention: true,
+    label: 'Needs you',
+    mark: <Dot tone='attention' />,
+  },
+};
+
+function activity(
+  {
+    running,
+    unread,
+    waiting,
+  }: { running: boolean; unread: boolean; waiting: boolean },
+  selected: boolean
+): Activity {
+  if (waiting) {
+    return 'waiting';
+  }
+
+  if (running) {
+    return 'running';
+  }
+
+  return unread && !selected ? 'unread' : 'idle';
+}
+
 export function ConversationItem({
   conversation,
   onSelect,
@@ -208,6 +255,7 @@ export function ConversationItem({
     running: boolean;
     title: string | null;
     unread: boolean;
+    waiting: boolean;
   };
   onSelect?: () => void;
   selected: boolean;
@@ -215,13 +263,10 @@ export function ConversationItem({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const renaming = useRef(false);
 
   const title = conversationTitle(conversation.title);
-
-  const unread = conversation.unread && !selected;
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -296,86 +341,73 @@ export function ConversationItem({
 
   if (editing) {
     return (
-      <RenameInput
-        initial={title}
-        onCancel={() => setEditing(false)}
-        onSubmit={(value) => {
-          setEditing(false);
-          update.mutate({ title: value });
-        }}
-      />
+      <li>
+        <RenameInput
+          initial={title}
+          onCancel={() => setEditing(false)}
+          onSubmit={(value) => {
+            setEditing(false);
+            update.mutate({ title: value });
+          }}
+        />
+      </li>
     );
   }
 
+  const indicator = indicators[activity(conversation, selected)];
+
   return (
-    <>
-      <ContextMenu onOpenChange={setMenu}>
-        <ContextMenuTrigger asChild>
-          <div
-            className={cn(
-              'group flex items-center rounded-lg hover:bg-sidebar-accent',
-              (selected || menu) &&
-                'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-            )}
-          >
-            <Link
-              aria-current={selected ? 'page' : undefined}
-              className='min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-sm focus-ring-inset'
-              onClick={onSelect}
-              params={{ id: conversation.id }}
-              to='/c/$id'
-            >
-              <span className='block truncate'>{title}</span>
-              {conversation.running && <span className='sr-only'>Running</span>}
-              {unread && <span className='sr-only'>Unread</span>}
-            </Link>
-            <div className='relative mr-1 flex'>
-              <DropdownMenu onOpenChange={setMenu}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    aria-label={`Options for ${title}`}
-                    className='peer rounded-md p-1 text-muted-foreground opacity-0 focus-ring-inset group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
-                    type='button'
-                  >
-                    <Ellipsis aria-hidden='true' className='size-4' />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align='start'
-                  onCloseAutoFocus={onCloseAutoFocus}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <SidebarRow
+          actions={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label={`Options for ${title}`}
+                  className={rowAction}
+                  type='button'
                 >
-                  <MenuItems
-                    {...menuProps}
-                    parts={dropdownParts}
-                    onDelete={() => remove.mutate()}
-                    onRename={startRename}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {conversation.running && (
-                <LoaderCircle
-                  aria-hidden='true'
-                  className='pointer-events-none absolute inset-0 m-auto size-3.5 text-muted-foreground group-hover:opacity-0 peer-focus-visible:opacity-0 peer-data-[state=open]:opacity-0 motion-safe:animate-spin'
+                  <Ellipsis aria-hidden='true' />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align='start'
+                onCloseAutoFocus={onCloseAutoFocus}
+              >
+                <MenuItems
+                  {...menuProps}
+                  parts={dropdownParts}
+                  onDelete={() => remove.mutate()}
+                  onRename={startRename}
                 />
-              )}
-              {unread && (
-                <span
-                  aria-hidden='true'
-                  className='pointer-events-none absolute inset-0 m-auto size-2 rounded-full bg-foreground group-hover:opacity-0 peer-focus-visible:opacity-0 peer-data-[state=open]:opacity-0'
-                />
-              )}
-            </div>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
-          <MenuItems
-            {...menuProps}
-            parts={contextParts}
-            onDelete={() => remove.mutate()}
-            onRename={startRename}
-          />
-        </ContextMenuContent>
-      </ContextMenu>
-    </>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+          asChild
+          className={cn(indicator?.attention && 'font-medium')}
+          selected={selected}
+          status={indicator?.mark}
+        >
+          <Link
+            aria-current={selected ? 'page' : undefined}
+            onClick={onSelect}
+            params={{ id: conversation.id }}
+            to='/c/$id'
+          >
+            <span className='truncate'>{title}</span>
+            {indicator && <span className='sr-only'>{indicator.label}</span>}
+          </Link>
+        </SidebarRow>
+      </ContextMenuTrigger>
+      <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
+        <MenuItems
+          {...menuProps}
+          parts={contextParts}
+          onDelete={() => remove.mutate()}
+          onRename={startRename}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

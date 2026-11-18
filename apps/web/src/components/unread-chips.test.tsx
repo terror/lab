@@ -22,6 +22,7 @@ function chat(id: number) {
 async function renderChips(unread: {
   chats: ReturnType<typeof chat>[];
   running: number;
+  waiting: { id: number; title: string | null }[];
 }) {
   const fetch = stubFetch(({ pathname }) =>
     pathname === '/api/conversations/unread'
@@ -36,18 +37,17 @@ async function renderChips(unread: {
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
 
-  return { fetch, screen };
+  return { fetch, router, screen };
 }
 
 test('finished chats show as chips that can be marked read', async () => {
   const { fetch, screen } = await renderChips({
     chats: [1, 2, 3, 4].map(chat),
     running: 2,
+    waiting: [],
   });
 
-  const list = screen.getByRole('list', {
-    name: 'Finished while you were away',
-  });
+  const list = screen.getByRole('list', { name: 'While you were away' });
 
   await expect
     .element(list)
@@ -65,9 +65,25 @@ test('finished chats show as chips that can be marked read', async () => {
 });
 
 test('running chats show when nothing is unread', async () => {
-  const { screen } = await renderChips({ chats: [], running: 1 });
+  const { screen } = await renderChips({ chats: [], running: 1, waiting: [] });
 
   await expect
-    .element(screen.getByRole('list', { name: 'Finished while you were away' }))
+    .element(screen.getByRole('list', { name: 'While you were away' }))
     .toHaveTextContent('1 running');
+});
+
+test('chats waiting on an answer come first and open the chat', async () => {
+  const { router, screen } = await renderChips({
+    chats: [chat(1)],
+    running: 0,
+    waiting: [{ id: 2, title: 'bar' }],
+  });
+
+  await expect
+    .element(screen.getByRole('list', { name: 'While you were away' }))
+    .toHaveTextContent('bar Needs youfoo 11m');
+
+  await screen.getByRole('button', { name: 'bar Needs you' }).click();
+
+  await expect.poll(() => router.state.location.pathname).toEqual('/c/2');
 });

@@ -1,3 +1,4 @@
+import { SidebarRow } from '@/components/sidebar-row';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type PinnedApp, usePin, usePinUpdate } from '@/lib/artifacts';
+import { usePath } from '@/lib/location';
 import { useProjects } from '@/lib/projects';
 import { Link } from '@tanstack/react-router';
 import { LayoutTemplate, Pin, PinOff } from 'lucide-react';
@@ -20,26 +22,25 @@ export function AppLink({
   app: PinnedApp;
   onSelect?: () => void;
 }) {
+  const path = usePath();
+
+  const active = path === `/apps/${app.conversationId}/${app.artifactId}`;
+
   return (
-    <Link
-      activeProps={{
-        className:
-          'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
-      }}
-      className='flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm focus-ring-inset hover:bg-sidebar-accent'
-      onClick={onSelect}
-      params={{
-        artifactId: app.artifactId,
-        conversationId: app.conversationId,
-      }}
-      to='/apps/$conversationId/$artifactId'
-    >
-      <LayoutTemplate
-        aria-hidden='true'
-        className='size-4 shrink-0 text-muted-foreground'
-      />
-      <span className='truncate'>{app.title}</span>
-    </Link>
+    <SidebarRow asChild selected={active}>
+      <Link
+        aria-current={active ? 'page' : undefined}
+        onClick={onSelect}
+        params={{
+          artifactId: app.artifactId,
+          conversationId: app.conversationId,
+        }}
+        to='/apps/$conversationId/$artifactId'
+      >
+        <LayoutTemplate aria-hidden='true' />
+        <span className='truncate'>{app.title}</span>
+      </Link>
+    </SidebarRow>
   );
 }
 

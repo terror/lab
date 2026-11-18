@@ -40,3 +40,89 @@ test('the agent waits for the user to answer its question', async () => {
     waiting: [],
   });
 });
+
+async function untilWaiting(headers: Headers) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const { body } = await call(headers, 'GET', '/conversations');
+
+    if (body.conversations[0]?.waiting) {
+      return;
+    }
+
+    await Bun.sleep(20);
+  }
+
+  throw new Error('Not waiting');
+}
+
+async function lists(headers: Headers) {
+  const [list, unread] = await Promise.all([
+    call(headers, 'GET', '/conversations'),
+    call(headers, 'GET', '/conversations/unread'),
+  ]);
+
+  return { list: list.body, unread: unread.body };
+}
+
+test('a chat is listed as waiting while its question is unanswered', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall('ask_user', { options: ['bar', 'baz'], question: 'foo' }),
+    fauxAssistantMessage('qux')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  const callId = await pendingToolCall(headers, body.id);
+
+  await untilWaiting(headers);
+
+  const waiting = await lists(headers);
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'baz',
+    callId,
+  });
+
+  await settle(body.id);
+
+  const answered = await call(headers, 'GET', '/conversations');
+
+  expect({ answered: answered.body.conversations, waiting }).toEqual({
+    answered: [
+      {
+        id: body.id,
+        pinned: false,
+        projectId: null,
+        running: false,
+        title: 'foo',
+        unread: true,
+        waiting: false,
+      },
+    ],
+    waiting: {
+      list: {
+        conversations: [
+          {
+            id: body.id,
+            pinned: false,
+            projectId: null,
+            running: true,
+            title: null,
+            unread: false,
+            waiting: true,
+          },
+        ],
+        next: null,
+      },
+      unread: {
+        chats: [],
+        running: 0,
+        waiting: [{ id: body.id, title: null }],
+      },
+    },
+  });
+});

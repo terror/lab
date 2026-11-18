@@ -54,6 +54,7 @@ function renderSidebar({
               running: false,
               title: 'bar',
               unread: false,
+              waiting: false,
             },
           ]
         : [];
@@ -121,6 +122,26 @@ test('clicking a project from one of its chats opens the project', async () => {
   expect(onProject.mock.calls).toEqual([[7]]);
 
   await expect.element(screen.getByText('bar')).toBeVisible();
+});
+
+test('projects, apps and recent chats scroll together', async () => {
+  const { screen } = await renderSidebar();
+
+  await expect.element(screen.getByText('bar')).toBeVisible();
+
+  const scroller = (name: string) =>
+    screen
+      .getByRole('navigation', { name })
+      .element()
+      .closest('.overflow-y-auto');
+
+  const [projects, apps, chats] = ['Projects', 'Apps', 'Chats'].map(scroller);
+
+  expect({ apps, chats, projects: projects?.tagName }).toEqual({
+    apps: projects,
+    chats: projects,
+    projects: 'DIV',
+  });
 });
 
 test('apps pinned to the sidebar link to their pages', async () => {

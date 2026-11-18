@@ -1,4 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import {
+  type ConversationId,
+  LiveDoc,
+  type LiveState,
+} from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import {
   type AnyColumn,
@@ -137,6 +142,35 @@ export async function running() {
   );
 }
 
+const approvalSchema = z.object({ approval: z.object({ action: z.string() }) });
+
+type Slot =
+  | NonNullable<LiveState['nestedTools']>[number]
+  | NonNullable<LiveState['tools']>[number];
+
+function asksUser({ details, name, status }: Slot) {
+  return (
+    status === 'running' &&
+    (name === 'ask_user' || approvalSchema.safeParse(details).success)
+  );
+}
+
+async function waiting(ids: number[]) {
+  const live = await Promise.all(
+    ids.map((id) =>
+      harness.snapshot(LiveDoc, id as ConversationId, BACKGROUND_CONTEXT)
+    )
+  );
+
+  return new Set(
+    ids.filter((_, index) =>
+      [...(live[index]?.tools ?? []), ...(live[index]?.nestedTools ?? [])].some(
+        asksUser
+      )
+    )
+  );
+}
+
 export async function listConversations(
   user: User,
   { cursor, filter, limit, project, search, sort }: z.infer<typeof listSchema>
@@ -190,6 +224,10 @@ export async function listConversations(
 
   const busy = await running();
 
+  const asking = await waiting(
+    page.filter(({ id }) => busy.has(id)).map(({ id }) => id)
+  );
+
   return {
     conversations: page.map(({ id, pinnedAt, projectId, title, unread }) => ({
       id,
@@ -198,6 +236,7 @@ export async function listConversations(
       running: busy.has(id),
       title,
       unread: unread && !busy.has(id),
+      waiting: asking.has(id),
     })),
     next: next ?? null,
   };
@@ -230,12 +269,15 @@ export async function listUnread(user: User) {
       .orderBy(desc(table.lastMessageAt), desc(table.id))
       .limit(50),
     db
-      .select({ id: table.id })
+      .select({ id: table.id, title: table.title })
       .from(table)
-      .where(and(owned, inArray(table.id, [...(await running())]))),
+      .where(and(owned, inArray(table.id, [...(await running())])))
+      .orderBy(desc(table.lastMessageAt), desc(table.id)),
   ]);
 
   const busy = new Set(active.map(({ id }) => id));
+
+  const asking = await waiting([...busy]);
 
   const finished = rows.filter(({ id }) => !busy.has(id));
 
@@ -272,6 +314,7 @@ export async function listUnread(user: User) {
       scheduled: tasks.has(id),
       title,
     })),
-    running: busy.size,
+    running: busy.size - asking.size,
+    waiting: active.filter(({ id }) => asking.has(id)),
   };
 }
