@@ -102,14 +102,16 @@ function AttachmentPreview({
           <span className='truncate'>{attachment.name}</span>
         </div>
       )}
-      <button
+      <Button
         aria-label={`Remove ${attachment.name}`}
-        className='absolute -top-1.5 -right-1.5 rounded-full border bg-background p-0.5 text-muted-foreground hover:text-foreground'
+        className='absolute -top-2 -right-2 rounded-full shadow-xs'
         onClick={onRemove}
+        size='icon-xs'
         type='button'
+        variant='secondary'
       >
-        <X aria-hidden='true' className='size-3' />
-      </button>
+        <X aria-hidden='true' />
+      </Button>
     </div>
   );
 }
@@ -166,7 +168,7 @@ function DictateButton({
           onClick={onClick}
           size='icon'
           type='button'
-          variant='ghost'
+          variant='quiet'
         >
           <Mic aria-hidden='true' />
         </Button>
@@ -505,11 +507,11 @@ export function Composer({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label='Add photos and files'
-                className='rounded-full text-muted-foreground'
+                className='rounded-full'
                 disabled={disabled || room <= 0}
                 size='icon'
                 type='button'
-                variant='ghost'
+                variant='quiet'
               >
                 <Plus aria-hidden='true' />
               </Button>
@@ -551,7 +553,7 @@ export function Composer({
               />
             </Suspense>
           )}
-          <div className='ml-auto flex min-w-0 items-center gap-2'>
+          <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>
             <ModelPicker
               disabled={disabled}
               onChange={onModelChange}

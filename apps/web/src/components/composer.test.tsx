@@ -1,7 +1,8 @@
+import '@/index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { cdp, userEvent } from 'vitest/browser';
 
 import { Composer } from './composer';
 
@@ -134,4 +135,38 @@ test('slash commands run from the composer', async () => {
     draft: [['']],
     options: '/compactSummarize earlier messages to free up context',
   });
+});
+
+test('on a touch screen the buttons sit far enough apart that their hit areas never overlap', async ({
+  onTestFinished,
+}) => {
+  await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: true });
+
+  onTestFinished(async () => {
+    await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  });
+
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft=''
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={() => undefined}
+      />
+    </TooltipProvider>
+  );
+
+  const edges = ['Model', 'Dictate', 'Send'].map((name) =>
+    screen.getByRole('button', { name }).element().getBoundingClientRect()
+  );
+
+  expect(
+    edges.slice(1).map((edge, index) => edge.left - (edges[index]?.right ?? 0))
+  ).toEqual([12, 12]);
 });
