@@ -8,7 +8,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { conversationDoc } from './docs';
-import { failure } from './results';
+import { failure, page } from './results';
 
 export const TOOL_OUTPUT_LENGTH = 100_000;
 
@@ -29,15 +29,12 @@ function textOf(output: Output) {
   return output.flatMap((part) => (part.type === 'text' ? [part.text] : []));
 }
 
-function page(text: string, callId: string, offset: number) {
-  const end = Math.min(text.length, offset + TOOL_OUTPUT_LENGTH);
-
-  const more =
-    end < text.length
-      ? `\n\n[Showing characters ${offset}–${end} of ${text.length}. Call tool_output_read with call_id "${callId}" and offset ${end} to read more.]`
-      : `\n\n[End of output at character ${text.length}.]`;
-
-  return `${text.slice(offset, end)}${more}`;
+function stored(text: string, callId: string, offset: number) {
+  return page(text, offset, TOOL_OUTPUT_LENGTH, {
+    ending: 'output',
+    next: (end) =>
+      `Call tool_output_read with call_id "${callId}" and offset ${end} to read more.`,
+  });
 }
 
 export async function limitOutput(
@@ -69,7 +66,7 @@ export async function limitOutput(
   return {
     ...result,
     output: [
-      { text: page(text, api.callId, 0), type: 'text' as const },
+      { text: stored(text, api.callId, 0).text, type: 'text' as const },
       ...images,
     ],
   };
@@ -98,17 +95,11 @@ const toolOutputRead = defineTool({
       return failure('No stored output has that call id.');
     }
 
-    const start = Math.min(args.offset ?? 0, text.length);
+    const shown = stored(text, args.call_id, args.offset ?? 0);
 
     return {
-      details: {
-        end: Math.min(text.length, start + TOOL_OUTPUT_LENGTH),
-        start,
-        total: text.length,
-      },
-      output: [
-        { text: page(text, args.call_id, start), type: 'text' as const },
-      ],
+      details: { end: shown.end, start: shown.start, total: shown.total },
+      output: [{ text: shown.text, type: 'text' as const }],
     };
   },
 });

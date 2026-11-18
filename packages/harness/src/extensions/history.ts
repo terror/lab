@@ -10,7 +10,7 @@ import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import type { Owner } from './docs';
 import { MemoryDoc } from './memory';
-import { failure, text } from './results';
+import { failure, page, text } from './results';
 
 export const HISTORY_READ_LENGTH = 100_000;
 
@@ -103,27 +103,20 @@ export function history(access: HistoryAccess, owner: Owner) {
         return failure(`No chat has the id ${id}.`);
       }
 
-      const start = Math.min(offset ?? 0, transcript.text.length);
-
-      const end = Math.min(transcript.text.length, start + HISTORY_READ_LENGTH);
-
-      const more =
-        end < transcript.text.length
-          ? `\n\n[Showing characters ${start}–${end} of ${transcript.text.length}. Call chat_read with offset ${end} to continue.]`
-          : '';
+      const shown = page(transcript.text, offset ?? 0, HISTORY_READ_LENGTH, {
+        next: (end) => `Call chat_read with offset ${end} to continue.`,
+      });
 
       return {
         details: {
-          end,
+          end: shown.end,
           id,
-          passage: transcript.text.slice(start, end),
-          start,
+          passage: shown.passage,
+          start: shown.start,
           title: transcript.title,
-          total: transcript.text.length,
+          total: shown.total,
         },
-        output: text(
-          `${name(transcript.title)}\n\n${transcript.text.slice(start, end)}${more}`
-        ),
+        output: text(`${name(transcript.title)}\n\n${shown.text}`),
       };
     },
   });
