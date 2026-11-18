@@ -13,7 +13,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Pills } from '@/components/ui/pills';
 import {
   conversationTitle,
-  useConversations,
+  useLatestChats,
   usePinnedConversations,
   useStartChat,
 } from '@/lib/conversations';
@@ -342,7 +342,7 @@ function EmptyQuery({
   onNewProject: () => void;
 }) {
   const pinned = usePinnedConversations();
-  const recents = useConversations();
+  const recents = useLatestChats();
   const projects = useProjects();
   const projectNames = useProjectNames();
   const go = useGo(onDone);
