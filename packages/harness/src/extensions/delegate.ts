@@ -13,7 +13,9 @@ import {
 } from '@earendil-works/pi-durable';
 import { arr, obj, str } from '@earendil-works/pi-schema';
 
-import { text } from './results';
+import { errorMessage, failure, once, text } from './results';
+
+export type Admit = (conversationId: ConversationId) => Promise<void>;
 
 const SUBAGENT_LIMIT = 6;
 
@@ -133,71 +135,80 @@ async function report(
     : failed('The subagent finished without a report.');
 }
 
-const delegateTool = defineTool({
-  name: 'delegate',
-  description:
-    "Hand tasks to subagents that work in parallel and report back. Each subagent starts fresh: it sees only its prompt, not this conversation, and it cannot ask the user anything. It can search and read the web, the user's library files and other chats, and files on the user's computer, but it cannot run code or change anything. Use it for research or reading that splits into independent parts, or when the material would crowd this conversation and you only need the findings. You get back each subagent's final report.",
-  callers: ['model'],
-  replay: 'safe',
-  parameters: obj({
-    tasks: arr(
-      obj({
-        prompt: str({
-          description:
-            'The complete brief for one subagent: the goal, what you already know, and what its report should contain.',
-          maxLength: 20_000,
-          minLength: 1,
+export function delegate(admit: Admit) {
+  const delegateTool = defineTool({
+    name: 'delegate',
+    description:
+      "Hand tasks to subagents that work in parallel and report back. Each subagent starts fresh: it sees only its prompt, not this conversation, and it cannot ask the user anything. It can search and read the web, the user's library files and other chats, and files on the user's computer, but it cannot run code or change anything. Use it for research or reading that splits into independent parts, or when the material would crowd this conversation and you only need the findings. You get back each subagent's final report.",
+    callers: ['model'],
+    replay: 'safe',
+    parameters: obj({
+      tasks: arr(
+        obj({
+          prompt: str({
+            description:
+              'The complete brief for one subagent: the goal, what you already know, and what its report should contain.',
+            maxLength: 20_000,
+            minLength: 1,
+          }),
+          title: str({
+            description: 'A few words that name the task for the user.',
+            maxLength: 80,
+            minLength: 1,
+          }),
         }),
-        title: str({
-          description: 'A few words that name the task for the user.',
-          maxLength: 80,
-          minLength: 1,
-        }),
-      }),
-      {
-        description: 'One task per subagent.',
-        maxItems: SUBAGENT_LIMIT,
-        minItems: 1,
-      }
-    ),
-  }),
-  execute: async ({ tasks }, api, context): Promise<ToolExecutionResult> => {
-    const assigned = await assign(api, tasks, context);
-
-    let subagents = assigned.map(({ id, title }): Subagent => ({
-      id,
-      status: 'running',
-      title,
-    }));
-
-    await api.details({ subagents }, context);
-
-    const reports = await Promise.all(
-      assigned.map(async ({ id, prompt, title }, index) => {
-        const settled = await report(api, id, prompt, context);
-
-        subagents = subagents.with(index, { id, title, ...settled });
-
-        await api.details({ subagents }, context);
-
-        return { ...settled, title };
-      })
-    );
-
-    return {
-      details: { subagents },
-      isError: reports.every(({ status }) => status === 'failed'),
-      output: text(
-        [
-          PREFACE,
-          ...reports.map(({ summary, title }) => `## ${title}\n\n${summary}`),
-        ].join('\n\n')
+        {
+          description: 'One task per subagent.',
+          maxItems: SUBAGENT_LIMIT,
+          minItems: 1,
+        }
       ),
-    };
-  },
-});
+    }),
+    execute: async ({ tasks }, api, context): Promise<ToolExecutionResult> => {
+      try {
+        await once(api, 'admitted', context, async () => {
+          await admit(api.conversationId);
 
-export const delegate = defineExtension({
-  name: 'lab.delegate',
-  tools: [delegateTool],
-});
+          return true;
+        });
+      } catch (error) {
+        return failure(errorMessage(error));
+      }
+
+      const assigned = await assign(api, tasks, context);
+
+      let subagents = assigned.map(({ id, title }): Subagent => ({
+        id,
+        status: 'running',
+        title,
+      }));
+
+      await api.details({ subagents }, context);
+
+      const reports = await Promise.all(
+        assigned.map(async ({ id, prompt, title }, index) => {
+          const settled = await report(api, id, prompt, context);
+
+          subagents = subagents.with(index, { id, title, ...settled });
+
+          await api.details({ subagents }, context);
+
+          return { ...settled, title };
+        })
+      );
+
+      return {
+        details: { subagents },
+        isError: reports.every(({ status }) => status === 'failed'),
+        output: text(
+          [
+            PREFACE,
+            ...reports.map(({ summary, title }) => `## ${title}\n\n${summary}`),
+          ].join('\n\n')
+        ),
+      };
+    },
+  });
+
+  return defineExtension({ name: 'lab.delegate', tools: [delegateTool] });
+}

@@ -13,10 +13,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { signIn } from '../test/auth';
-import { call, chat, settle, toolDetails, toolOutputs } from '../test/client';
+import {
+  call,
+  chat,
+  create,
+  settle,
+  toolDetails,
+  toolOutputs,
+} from '../test/client';
 import { emptyDeps } from '../test/harness';
 import { script, toolCall } from '../test/models';
 import { db } from './db';
+import { env } from './env';
 import { harness } from './harness';
 import { recordUsage } from './helper-usage';
 import { historyAccess } from './history-access';
@@ -321,9 +329,16 @@ test('stopping a chat stops its subagents', async () => {
 });
 
 test('subagents finish their work after a restart', async () => {
+  const admissions: number[] = [];
+
   const options = {
     models,
     ...emptyDeps(),
+    admit: async (conversationId: number) => {
+      if (admissions.push(conversationId) > 1) {
+        throw new Error('foo');
+      }
+    },
     path: join(await mkdtemp(join(tmpdir(), 'lab-')), 'lab.sqlite'),
   };
 
@@ -431,4 +446,47 @@ test('subagents that fail are reported beside the ones that finish', async () =>
       ],
     ],
   ]);
+});
+
+test('delegating stops at the monthly limit', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: id,
+    cost: 2,
+    createdAt: new Date(),
+    input: 0,
+    model: 'foo',
+    output: 0,
+    ownerId: (await conversationOwner(id)) ?? '',
+    provider: 'foo',
+  });
+
+  script(() => {
+    env.LAB_MONTHLY_LIMIT = 1;
+
+    return delegated;
+  }, fauxAssistantMessage('done'));
+
+  try {
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      content: 'foo',
+    });
+
+    await settle(id);
+  } finally {
+    env.LAB_MONTHLY_LIMIT = undefined;
+  }
+
+  expect({
+    outputs: await toolOutputs(headers, id),
+    subagents: await subagents(harness, id),
+  }).toEqual({
+    outputs: ['You’ve used this month’s $1.00 limit'],
+    subagents: [],
+  });
 });
