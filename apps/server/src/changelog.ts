@@ -19,13 +19,9 @@ const commitsSchema = z.array(
   })
 );
 
-const pullsSchema = z.array(
-  z.object({
-    body: z.string().nullable(),
-    labels: z.array(z.object({ name: z.string() })),
-    number: z.number(),
-  })
-);
+const pullsSchema = z.object({
+  items: z.array(z.object({ body: z.string().nullable(), number: z.number() })),
+});
 
 const LABEL = 'user-facing';
 
@@ -87,10 +83,9 @@ function entry(
 }
 
 async function github(path: string) {
-  const response = await fetch(
-    `https://api.github.com/repos/${env.LAB_REPOSITORY}/${path}`,
-    { headers: { accept: 'application/vnd.github+json' } }
-  );
+  const response = await fetch(`https://api.github.com/${path}`, {
+    headers: { accept: 'application/vnd.github+json' },
+  });
 
   if (response.status === 404) {
     return undefined;
@@ -104,16 +99,23 @@ async function github(path: string) {
 }
 
 async function load(): Promise<History> {
+  const search = new URLSearchParams({
+    order: 'desc',
+    per_page: '100',
+    q: `repo:${env.LAB_REPOSITORY} is:pr is:merged label:${LABEL}`,
+    sort: 'updated',
+  });
+
   const [commits, pulls] = await Promise.all([
-    github(`commits?sha=${version}&per_page=100`),
-    github('pulls?state=closed&sort=updated&direction=desc&per_page=100'),
+    github(`repos/${env.LAB_REPOSITORY}/commits?sha=${version}&per_page=100`),
+    github(`search/issues?${search.toString()}`),
   ]);
 
   return {
     bodies: new Map(
-      (pullsSchema.safeParse(pulls).data ?? [])
-        .filter(({ labels }) => labels.some(({ name }) => name === LABEL))
-        .map(({ body, number }) => [number, body ?? ''] as const)
+      (pullsSchema.safeParse(pulls).data?.items ?? []).map(
+        ({ body, number }) => [number, body ?? ''] as const
+      )
     ),
     commits: commitsSchema.safeParse(commits).data ?? [],
   };

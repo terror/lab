@@ -43,12 +43,32 @@ type Sort = z.infer<typeof sortSchema>;
 
 type SortColumns = Record<'createdAt' | 'lastMessageAt' | 'title', AnyColumn>;
 
+function timestamp(value: string) {
+  const iso = `${value.replace(' ', 'T')}Z`;
+
+  const date = new Date(iso);
+
+  return (
+    /^(?!0000)\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?$/.test(value) &&
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().slice(0, 19) === iso.slice(0, 19)
+  );
+}
+
+const valueTypes = {
+  boolean: (value: string) => value === 'true' || value === 'false',
+  text: (value: string) => !value.includes('\0'),
+  timestamp,
+};
+
+type ValueType = keyof typeof valueTypes;
+
 const sorts: Record<
   Sort,
   {
     ascending: boolean;
     keys: (columns: SortColumns) => SQL[];
-    types: string[];
+    types: ValueType[];
   }
 > = {
   activity: {
@@ -109,7 +129,10 @@ function after(cursor: string, sort: Sort) {
 
   const [values, id] = decode(cursor);
 
-  if (values.length !== types.length) {
+  if (
+    values.length !== types.length ||
+    types.some((type, index) => !valueTypes[type](values[index] ?? ''))
+  ) {
     throw new HTTPException(400, { message: 'Invalid cursor' });
   }
 

@@ -98,3 +98,34 @@ test('message matches report when they were sent in any server timezone', async 
     }
   }
 });
+
+test('searches ignore null characters', async () => {
+  const headers = await signIn();
+
+  const id = await chat(headers, { content: 'foo' });
+
+  await call(headers, 'PATCH', `/conversations/${id}`, { title: 'bar' });
+
+  await settle();
+
+  const found = await Promise.all(
+    [
+      '/conversations?search=b%00ar',
+      '/library?search=b%00ar',
+      '/search?q=b%00ar',
+    ].map((path) => call(headers, 'GET', path))
+  );
+
+  expect(
+    found.map(({ body, status }) => ({
+      ids: (body.conversations ?? body.chats ?? body.items)?.map(
+        (item: { id: number }) => item.id
+      ),
+      status,
+    }))
+  ).toEqual([
+    { ids: [id], status: 200 },
+    { ids: [], status: 200 },
+    { ids: [id], status: 200 },
+  ]);
+});

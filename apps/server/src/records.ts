@@ -5,6 +5,7 @@ import { and, eq, ilike, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from './db';
+import { storable } from './text';
 
 export function serial() {
   let pending = Promise.resolve();
@@ -72,7 +73,10 @@ export function liveChat(ownerId: string, id: number) {
 }
 
 export function contains(column: AnyPgColumn, search: string) {
-  const pattern = search.replace(/[\\%_]/g, (character) => `\\${character}`);
+  const pattern = storable(search).replace(
+    /[\\%_]/g,
+    (character) => `\\${character}`
+  );
 
   return ilike(column, `%${pattern}%`);
 }
