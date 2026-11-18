@@ -48,6 +48,48 @@ test('enter sends on desktop and adds a line on touch screens', async () => {
   expect([await enter('fine'), await enter('coarse')]).toEqual([[['foo']], []]);
 });
 
+test('a run can be stopped while a draft waits', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const onStop = vi.fn();
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft='foo'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSteer={() => undefined}
+        onStop={onStop}
+        onSubmit={() => undefined}
+        running
+      />
+    </TooltipProvider>
+  );
+
+  await screen.getByRole('button', { name: 'Stop' }).click();
+
+  expect({
+    buttons: [...screen.container.querySelectorAll('button')].map((button) =>
+      button.getAttribute('aria-label')
+    ),
+    stops: onStop.mock.calls.length,
+  }).toEqual({
+    buttons: [
+      'Add photos and files',
+      'Model',
+      'Steer',
+      'Dictate',
+      'Send',
+      'Stop',
+    ],
+    stops: 1,
+  });
+});
+
 test('slash commands run from the composer', async () => {
   const fetch = stubFetch(() => new Response(null, { status: 202 }));
 

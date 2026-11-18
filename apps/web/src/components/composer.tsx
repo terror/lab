@@ -176,30 +176,14 @@ function DictateButton({
   );
 }
 
-function SubmitButton({
+function SendButton({
   disabled,
-  onStop,
-  stopping,
+  queueing,
 }: {
   disabled: boolean;
-  onStop: (() => void) | undefined;
-  stopping: boolean;
+  queueing: boolean;
 }) {
-  if (stopping) {
-    return (
-      <Button
-        aria-label='Stop'
-        className='rounded-full'
-        onClick={onStop}
-        size='icon'
-        type='button'
-      >
-        <Square aria-hidden='true' className='size-3 fill-current' />
-      </Button>
-    );
-  }
-
-  return (
+  const button = (
     <Button
       aria-label='Send'
       className='rounded-full'
@@ -209,6 +193,20 @@ function SubmitButton({
     >
       <ArrowUp aria-hidden='true' />
     </Button>
+  );
+
+  if (!queueing) {
+    return button;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent>
+        Send after this answer
+        <Kbd>↵</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -265,6 +263,8 @@ export function Composer({
     dictation.state.kind === 'failed' ? dictation.state.message : undefined;
 
   const steering = running === true && !empty && onSteer !== undefined;
+
+  const stoppable = running === true && onStop !== undefined;
 
   const room = MAX_ATTACHMENTS - attachments.length;
 
@@ -586,11 +586,23 @@ export function Composer({
                 onClick={listening ? dictation.stop : dictation.start}
               />
             )}
-            <SubmitButton
-              disabled={disabled || empty || submitting === true}
-              onStop={onStop}
-              stopping={running === true && empty && onStop !== undefined}
-            />
+            {(!stoppable || !empty) && (
+              <SendButton
+                disabled={disabled || empty || submitting === true}
+                queueing={stoppable}
+              />
+            )}
+            {stoppable && (
+              <Button
+                aria-label='Stop'
+                className='rounded-full'
+                onClick={onStop}
+                size='icon'
+                type='button'
+              >
+                <Square aria-hidden='true' className='size-3 fill-current' />
+              </Button>
+            )}
           </div>
         </div>
       </div>
