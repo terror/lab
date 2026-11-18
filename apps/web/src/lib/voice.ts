@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react';
 
 import { usePreference } from './preferences';
 
-export type Moment = { absent: number; at: Date; name: string };
+export type Moment = {
+  absent: number;
+  at: Date;
+  fresh: boolean;
+  name: string;
+};
 
 type Voice = {
   greeting: Moment;
@@ -52,6 +57,10 @@ const greetings: {
   lines: (first: string, at: Date) => readonly string[];
   when: (moment: Moment) => boolean;
 }[] = [
+  {
+    lines: (first) => [`Hello, ${first}.`],
+    when: ({ fresh }) => fresh,
+  },
   {
     lines: (first) => [
       `Happy new year, ${first}`,

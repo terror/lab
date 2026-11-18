@@ -21,7 +21,6 @@ function LiveMark({
     | 'assemble'
     | 'broken'
     | 'done'
-    | 'doze'
     | 'drift'
     | 'error'
     | 'gulp'
@@ -30,8 +29,7 @@ function LiveMark({
     | 'proud'
     | 'recover'
     | 'thinking'
-    | 'waiting'
-    | 'wake';
+    | 'waiting';
 }) {
   return (
     <svg
@@ -91,22 +89,6 @@ function LiveMark({
           width='4'
           x='14'
           y='-5'
-        />
-        <rect
-          className='fill-muted-foreground'
-          data-part='z'
-          height='2'
-          width='2'
-          x='22'
-          y='1'
-        />
-        <rect
-          className='fill-muted-foreground'
-          data-part='z'
-          height='3'
-          width='3'
-          x='25'
-          y='-3'
         />
         {sparkles.map(({ dx, dy, part, size, x, y }) => (
           <rect
