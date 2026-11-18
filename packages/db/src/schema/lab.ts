@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   customType,
   doublePrecision,
   index,
@@ -43,8 +44,18 @@ export const conversation = pgTable(
     pinnedAt: timestamp('pinned_at'),
     deletedAt: timestamp('deleted_at'),
     projectId: integer('project_id').references(() => project.id),
+    parentId: integer('parent_id'),
+    parentEntryId: integer('parent_entry_id'),
   },
   (table) => [
+    check(
+      'conversation_parent_check',
+      sql`${table.parentEntryId} is null or ${table.parentId} is not null`
+    ),
+    index('conversation_parentId_parentEntryId_idx').on(
+      table.parentId,
+      table.parentEntryId
+    ),
     index('conversation_projectId_lastMessageAt_idx').on(
       table.projectId,
       table.lastMessageAt
