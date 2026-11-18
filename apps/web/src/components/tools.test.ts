@@ -99,6 +99,24 @@ test('tools describe themselves while running and when done', () => {
   ]);
 });
 
+test('a tool the user declined says what it didn’t do', () => {
+  const details = { approval: { decision: 'denied' } };
+
+  expect([
+    line('project_update', false, {}, details),
+    line('schedule_create', false, {}, details),
+    line('skill_create', false, {}, details),
+    line('skill_update', false, {}, details),
+    line('trash_purge', false, {}, details),
+  ]).toEqual([
+    ['Didn’t change a project', undefined],
+    ['Didn’t schedule a task', undefined],
+    ['Didn’t save a skill', undefined],
+    ['Didn’t change a skill', undefined],
+    ['Didn’t delete forever', undefined],
+  ]);
+});
+
 test('a failed tool says what it couldn’t do', () => {
   expect([
     failedTitle('Running foo'),
