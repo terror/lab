@@ -214,7 +214,7 @@ export function Worked({
   steps: number;
 }) {
   const details = [
-    plural(steps, 'step'),
+    plural(steps, 'action'),
     failed > 0 ? `${failed} failed` : undefined,
   ].filter((detail) => detail !== undefined);
 

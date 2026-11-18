@@ -46,7 +46,7 @@ test('a finished turn folds only its steps behind how long it worked', async () 
   );
 
   const fold = screen.getByRole('button', {
-    name: 'Worked for 2m 31s · 2 steps · 1 failed',
+    name: 'Worked for 2m 31s · 2 actions · 1 failed',
   });
 
   await expect.element(fold).toHaveAttribute('aria-expanded', 'false');
@@ -103,7 +103,9 @@ test('a turn shows how long it worked as soon as its reply starts', async () => 
 
   await expect
     .element(
-      screen.getByRole('button', { name: 'Worked for 5s · 2 steps · 1 failed' })
+      screen.getByRole('button', {
+        name: 'Worked for 5s · 2 actions · 1 failed',
+      })
     )
     .toBeVisible();
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument();
