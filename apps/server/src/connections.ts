@@ -165,11 +165,16 @@ async function connect({ id, name, ownerId, url }: Row): Promise<Entry> {
     return {
       client,
       connector: {
-        call: async (tool: string, args: Record<string, unknown>) => {
-          const result = (await client.callTool({
-            arguments: args,
-            name: tool,
-          })) as CallToolResult;
+        call: async (
+          tool: string,
+          args: Record<string, unknown>,
+          signal: AbortSignal | undefined
+        ) => {
+          const result = (await client.callTool(
+            { arguments: args, name: tool },
+            undefined,
+            { signal }
+          )) as CallToolResult;
 
           return {
             isError: result.isError === true,

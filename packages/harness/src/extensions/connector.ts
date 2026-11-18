@@ -22,7 +22,8 @@ export type ConnectorResult = { isError: boolean; text: string };
 export type Connector = {
   call: (
     tool: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    signal: AbortSignal | undefined
   ) => Promise<ConnectorResult>;
   name: string;
   slug: string;
@@ -92,7 +93,7 @@ function connectorParts({ call, name, slug, tools }: Connector) {
           const run = async () => {
             try {
               const result = await once(api, 'result', context, () =>
-                call(tool.name, input)
+                call(tool.name, input, context.abortSignal)
               );
 
               return { isError: result.isError, output: text(result.text) };
