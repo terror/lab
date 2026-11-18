@@ -36,7 +36,7 @@ import { removeStored, usePersistentState } from './storage';
 export type ConversationSort = z.infer<typeof sortSchema>;
 
 export function conversationTitle(title: string | null | undefined) {
-  return title ?? 'New chat';
+  return title ?? 'Untitled chat';
 }
 
 export function useConversationSort() {

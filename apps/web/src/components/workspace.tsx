@@ -217,12 +217,9 @@ function usePageTitle(selected: number | undefined) {
 
   const project = projects.data?.projects.find(({ id }) => id === projectId);
 
-  return (
-    pageTitles[path] ??
-    project?.name ??
-    app.data?.title ??
-    conversationTitle(conversation.data?.title)
-  );
+  const chat = conversation.data && conversationTitle(conversation.data.title);
+
+  return pageTitles[path] ?? project?.name ?? app.data?.title ?? chat ?? 'Lab';
 }
 
 function WorkspaceLayout({

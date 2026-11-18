@@ -8,6 +8,7 @@ import {
   type ToolProgress,
   type ToolResult,
 } from '@/components/assistant-message';
+import { ChatHeader } from '@/components/chat-header';
 import { Composer } from '@/components/composer';
 import { ComposerDock } from '@/components/composer-dock';
 import { DocumentCard } from '@/components/document-card';
@@ -765,9 +766,12 @@ export function Conversation({ id }: { id: number }) {
   }
 
   return (
-    <MessageScrollerProvider>
-      <ConversationView id={id} />
-    </MessageScrollerProvider>
+    <>
+      <ChatHeader id={id} />
+      <MessageScrollerProvider>
+        <ConversationView id={id} />
+      </MessageScrollerProvider>
+    </>
   );
 }
 
