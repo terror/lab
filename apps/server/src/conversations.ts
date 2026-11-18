@@ -9,6 +9,7 @@ import {
 import { getBunServer } from '@hono/bun';
 import {
   ANSWER_LENGTH,
+  DENIED,
   PlanDoc,
   QuestionsDoc,
   TitleDoc,
@@ -417,11 +418,13 @@ const conversations = new Hono()
     ownedChat,
     answering,
     async (c) => {
-      await checkSpend(c.get('user').id);
-
       const { conversation } = c.var;
 
       const { answer, callId } = c.req.valid('json');
+
+      if (answer !== DENIED) {
+        await checkSpend(c.get('user').id);
+      }
 
       await conversation.commit(async (tx) => {
         const doc = await tx.doc(QuestionsDoc, conversation.id);
