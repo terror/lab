@@ -1,6 +1,7 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { artifactChat, call, settle, toolOutputs } from '../test/client';
@@ -113,4 +114,45 @@ test('artifact state stops at its key, length, and storage limits', async () => 
   } finally {
     env.LAB_STORAGE_LIMIT = undefined;
   }
+});
+
+test('concurrent saves cannot go over the key limit together', async () => {
+  const headers = await signIn();
+
+  const id = await artifactChat(headers);
+
+  const ownerId = (await conversationOwner(id)) ?? '';
+
+  await db.insert(schema.artifactState).values(
+    Array.from({ length: 99 }, (_, index) => ({
+      artifactId: 'bar',
+      conversationId: id,
+      key: String(index),
+      ownerId,
+      value: '',
+    }))
+  );
+
+  const statuses = await Promise.all(
+    Array.from(
+      { length: 5 },
+      async (_, index) =>
+        (
+          await call(
+            headers,
+            'PUT',
+            `/conversations/${id}/artifacts/bar/state?key=foo${index}`,
+            { value: '' }
+          )
+        ).status
+    )
+  );
+
+  expect({
+    keys: await db.$count(
+      schema.artifactState,
+      eq(schema.artifactState.conversationId, id)
+    ),
+    statuses: statuses.toSorted((a, b) => a - b),
+  }).toEqual({ keys: 100, statuses: [204, 400, 400, 400, 400] });
 });
