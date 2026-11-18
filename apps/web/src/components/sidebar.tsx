@@ -47,6 +47,7 @@ import { spring } from '@/lib/motion';
 import { useProjects } from '@/lib/projects';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { useParams } from '@tanstack/react-router';
 import {
   ArrowDownUp,
@@ -565,6 +566,7 @@ function RailMark({
 }) {
   const unread = useUnreadChats();
   const reduced = useReducedMotion();
+  const quiet = useQuiet();
 
   const working = (unread.data?.running ?? 0) > 0;
 
@@ -579,7 +581,11 @@ function RailMark({
   if (seen !== newest) {
     setSeen(newest);
     setHop(
-      !reduced && seen !== undefined && newest !== undefined && newest > seen
+      !quiet &&
+        !reduced &&
+        seen !== undefined &&
+        newest !== undefined &&
+        newest > seen
     );
   }
 
@@ -615,7 +621,7 @@ function RailMark({
               <m.span
                 animate={{ scale: 1 }}
                 className='absolute top-1 right-1 flex'
-                initial={{ scale: 0 }}
+                initial={quiet ? false : { scale: 0 }}
                 transition={{ ...spring.pop, delay: hop ? 0.74 : 0 }}
               >
                 <Dot tone='attention' />

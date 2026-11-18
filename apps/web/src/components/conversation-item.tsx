@@ -27,6 +27,7 @@ import { conversationTitle } from '@/lib/conversations';
 import { useHandoff } from '@/lib/handoff';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { Link } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
 import {
@@ -121,6 +122,7 @@ export function ConversationItem({
 
   const current = activity(conversation, selected);
 
+  const quiet = useQuiet();
   const [order, settle] = useHandoff(current);
   const [named, setNamed] = useState(conversation.title);
   const [arrived, setArrived] = useState(false);
@@ -159,7 +161,7 @@ export function ConversationItem({
   };
 
   const mark =
-    order === undefined ? (
+    order === undefined || quiet ? (
       indicator?.mark
     ) : (
       <LiveMark

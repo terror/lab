@@ -1,5 +1,8 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { conversationsQueryKey } from '@/lib/conversations';
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -292,4 +295,51 @@ test('the collapsed rail hops once when a chat finishes in the background', asyn
     ?.dispatchEvent(new AnimationEvent('animationend', { bubbles: true }));
 
   await expect.poll(state).toBe('thinking');
+});
+
+test('the collapsed rail holds still when a chat finishes and Lab is quiet', async () => {
+  const chats: unknown[] = [];
+
+  const { client, screen } = await renderSidebar({ chats, collapsed: true });
+
+  const mark = screen.getByRole('button', { name: 'Expand sidebar' });
+
+  const state = () =>
+    mark
+      .element()
+      .querySelector('[data-slot=live-mark]')
+      ?.getAttribute('data-state');
+
+  await expect.poll(state).toBe('thinking');
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  chats.push({
+    finishedAt: '2026-01-01T00:00:00.000Z',
+    id: 3,
+    preview: 'foo',
+    scheduled: false,
+    title: 'bar',
+  });
+
+  await client.invalidateQueries({ queryKey: conversationsQueryKey });
+
+  await expect
+    .poll(
+      () =>
+        client.getQueryData<{ chats: unknown[] }>([
+          ...conversationsQueryKey,
+          'unread',
+        ])?.chats.length
+    )
+    .toBe(1);
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, 50);
+  });
+
+  expect(state()).toBe('thinking');
 });

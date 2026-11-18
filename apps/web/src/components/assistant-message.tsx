@@ -19,6 +19,7 @@ import { fade, spring } from '@/lib/motion';
 import { runFailureTitles } from '@/lib/run-failure';
 import type { Part, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import { AnimatePresence, m } from 'motion/react';
@@ -147,6 +148,7 @@ export function AssistantMessage({
   working?: boolean;
 }) {
   const cheer = useCheer(working);
+  const quiet = useQuiet();
 
   const text = replyText(parts);
 
@@ -183,7 +185,7 @@ export function AssistantMessage({
     working: 'thinking',
   } as const;
 
-  const marked = working || (latest && failure === undefined);
+  const marked = !quiet && (working || (latest && failure === undefined));
 
   return (
     <Message>

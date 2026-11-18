@@ -1,7 +1,10 @@
 import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
+import { QueryClient } from '@tanstack/react-query';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -192,6 +195,31 @@ test('chats that finish in the background hand their marks over to dots, six at 
 
   await expect
     .poll(marks, { timeout: 3_000 })
+    .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
+});
+
+test('finished chats swap straight to their dots when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Finishing }),
+  });
+
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    client
+  );
+
+  await screen.getByRole('button', { name: 'qux' }).click();
+
+  await expect
+    .poll(marks)
     .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
 });
 
