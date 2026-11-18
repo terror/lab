@@ -3,7 +3,7 @@ import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
-import { setTokenUtil } from 'better-auth/oauth2';
+import { symmetricEncrypt } from 'better-auth/crypto';
 import { and, eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
@@ -108,7 +108,7 @@ function plaintext(token: string | null): token is string {
 }
 
 export async function sealOAuthTokens() {
-  const context = await auth.$context;
+  const { secretConfig } = await auth.$context;
 
   const table = schema.account;
 
@@ -127,7 +127,12 @@ export async function sealOAuthTokens() {
       if (plaintext(token)) {
         await db
           .update(table)
-          .set({ [column]: await setTokenUtil(token, context) })
+          .set({
+            [column]: await symmetricEncrypt({
+              data: token,
+              key: secretConfig,
+            }),
+          })
           .where(and(eq(table.id, row.id), eq(table[column], token)));
       }
     }

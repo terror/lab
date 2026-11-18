@@ -1,5 +1,5 @@
 import { schema } from '@lab/db';
-import { decryptOAuthToken } from 'better-auth/oauth2';
+import { symmetricDecrypt } from 'better-auth/crypto';
 import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
@@ -147,10 +147,10 @@ test('google tokens are stored encrypted, including ones saved before', async ()
   expect({
     accessToken,
     again: await stored(),
-    refreshToken: await decryptOAuthToken(
-      sealed?.refreshToken ?? '',
-      await auth.$context
-    ),
+    refreshToken: await symmetricDecrypt({
+      data: sealed?.refreshToken ?? '',
+      key: (await auth.$context).secretConfig,
+    }),
     sealed,
   }).toEqual({
     accessToken: 'foo',
