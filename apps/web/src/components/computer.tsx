@@ -1,6 +1,5 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,6 +8,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { PageHeader } from '@/components/ui/page';
 import {
   type ComputerStatus,
   computerQueryOptions,
@@ -173,14 +173,15 @@ export function Computer() {
   const status = useQuery(computerQueryOptions);
 
   return (
-    <SettingsPage
-      description={
-        'A persistent Linux computer Lab uses to run code and work with files. Each chat gets its own folder, and it stops on its own when idle.'
-      }
-      title='Computer'
-    >
+    <>
+      <PageHeader
+        description={
+          'A persistent Linux computer Lab uses to run code and work with files. Each chat gets its own folder, and it stops on its own when idle.'
+        }
+        title='Computer'
+      />
       {status.isError && <LoadError subject='the computer' />}
       {status.data && <Details status={status.data} />}
-    </SettingsPage>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
-import { SettingsPage } from '@/components/settings-page';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -28,6 +27,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import {
   type Connector,
@@ -232,16 +232,17 @@ export function Connectors() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <SettingsPage
-      action={
-        <Button onClick={() => setAdding(true)} size='sm'>
-          <Plus aria-hidden='true' />
-          Add connector
-        </Button>
-      }
-      description='Give Lab tools from remote MCP servers. Lab asks before using a tool that can change something.'
-      title='Connectors'
-    >
+    <>
+      <PageHeader
+        actions={
+          <Button onClick={() => setAdding(true)} size='sm'>
+            <Plus aria-hidden='true' />
+            Add connector
+          </Button>
+        }
+        description='Give Lab tools from remote MCP servers. Lab asks before using a tool that can change something.'
+        title='Connectors'
+      />
       {connectors.isError && <LoadError subject='connectors' />}
       {connectors.data?.connectors.length === 0 && (
         <p className='text-sm text-muted-foreground'>No connectors yet.</p>
@@ -258,6 +259,6 @@ export function Connectors() {
           {adding && <AddConnector onClose={() => setAdding(false)} />}
         </DialogContent>
       </Dialog>
-    </SettingsPage>
+    </>
   );
 }

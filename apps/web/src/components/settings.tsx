@@ -3,7 +3,6 @@ import { Connectors } from '@/components/connectors';
 import { Memory } from '@/components/memory';
 import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
-import { SettingsPage } from '@/components/settings-page';
 import { Skills } from '@/components/skills';
 import { Trash } from '@/components/trash';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { PageHeader } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
 import { usePreference } from '@/lib/preferences';
@@ -49,7 +49,11 @@ function Appearance() {
   const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
 
   return (
-    <SettingsPage description='Choose how Lab looks to you.' title='Appearance'>
+    <>
+      <PageHeader
+        description='Choose how Lab looks to you.'
+        title='Appearance'
+      />
       <div className='flex items-center justify-between gap-4'>
         <span className='text-sm'>Theme</span>
         <DropdownMenu>
@@ -94,7 +98,7 @@ function Appearance() {
           onCheckedChange={setLineNumbers}
         />
       </div>
-    </SettingsPage>
+    </>
   );
 }
 
@@ -170,7 +174,7 @@ export function Settings() {
             );
           })}
         </nav>
-        <main className='max-w-3xl min-w-0 flex-1 px-2 pt-4 sm:px-0'>
+        <main className='flex max-w-3xl min-w-0 flex-1 flex-col gap-8 px-2 pt-4 sm:px-0'>
           <Panel />
         </main>
       </div>
