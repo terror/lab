@@ -15,7 +15,7 @@ import {
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
-import { runDueTasks } from './schedules';
+import { runDueTasks } from './scheduler';
 
 const task = {
   cron: '0 9 * * *',
