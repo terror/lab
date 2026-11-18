@@ -1,10 +1,10 @@
 import type { ExtensionDeps } from '@lab/harness';
 
-import { deps } from '../src/harness';
+import { harnessDeps } from '../src/harness';
 
 export function emptyDeps(): ExtensionDeps {
   return {
-    ...deps,
+    ...harnessDeps(),
     admit: async () => undefined,
     history: { read: async () => undefined, search: async () => [] },
     images: {

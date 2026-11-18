@@ -5,6 +5,7 @@ import { and, eq, ilike, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from './db';
+import { harness } from './harness';
 import { storable } from './text';
 
 export function serial() {
@@ -74,8 +75,6 @@ export function contains(column: AnyPgColumn, search: string) {
 type Chat = { id: number; ownerId: string };
 
 async function delegator(conversationId: number) {
-  const { harness } = await import('./harness');
-
   const record = await harness.commit(
     (tx) => tx.conversation(conversationId as ConversationId),
     BACKGROUND_CONTEXT

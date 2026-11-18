@@ -97,3 +97,11 @@ faux.setResponses(Array.from({ length: 10_000 }, () => respond));
 const server = await import('../src/models');
 
 server.models.setProvider(faux.provider);
+
+const { openLabHarness } = await import('../src/harness');
+
+await openLabHarness();
+
+const { startPipelines } = await import('../src/pipelines');
+
+startPipelines();

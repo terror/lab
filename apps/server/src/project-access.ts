@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
 import { liveChat, requireOwner } from './records';
+import { moveToTrash } from './trash-items';
 
 const PROJECT_LIMIT = 100;
 
@@ -185,8 +186,6 @@ export const projectAccess: ProjectAccess = {
           isNull(schema.conversation.deletedAt)
         )
       );
-
-    const { moveToTrash } = await import('./trash-items');
 
     const trashed =
       project &&

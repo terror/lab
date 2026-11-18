@@ -18,18 +18,21 @@ export function observe<T>(
   handle: (items: readonly T[]) => Promise<void>,
   queue = serial()
 ) {
-  harness.observeCommits({
-    advance: ({ changes }) => {
-      const items = select(changes);
+  return {
+    flush: queue.flush,
+    start: () => {
+      harness.observeCommits({
+        advance: ({ changes }) => {
+          const items = select(changes);
 
-      if (items.length > 0) {
-        queue.run(() => handle(items));
-      }
+          if (items.length > 0) {
+            queue.run(() => handle(items));
+          }
+        },
+        end: () => undefined,
+      });
     },
-    end: () => undefined,
-  });
-
-  return queue.flush;
+  };
 }
 
 export function entryChanges(
@@ -208,6 +211,6 @@ export function entryPipeline<Row extends Keyed>({
         }
       }
     },
-    flush: observe((changes) => entryChanges(changes, keep), record),
+    ...observe((changes) => entryChanges(changes, keep), record),
   };
 }
