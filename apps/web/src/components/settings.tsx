@@ -1,5 +1,6 @@
 import { Computer } from '@/components/computer';
 import { Connectors } from '@/components/connectors';
+import { Mcp } from '@/components/mcp';
 import { Memory } from '@/components/memory';
 import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
@@ -102,6 +103,7 @@ const panels: Record<SettingsSection, ComponentType> = {
   appearance: Appearance,
   computer: Computer,
   connectors: Connectors,
+  mcp: Mcp,
   memory: Memory,
   profile: Profile,
   providers: Providers,
