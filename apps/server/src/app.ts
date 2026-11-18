@@ -21,7 +21,7 @@ import conversations from './conversations';
 import { db } from './db';
 import { docsPage } from './docs';
 import { env } from './env';
-import frame from './frame';
+import frame, { framePaths } from './frame';
 import { harness } from './harness';
 import library from './library';
 import memory from './memory';
@@ -88,7 +88,7 @@ const docsHeaders = secureHeaders({
 });
 
 app.use(async (c, next) => {
-  if (/^\/frame(\/vendor\/[^/]+)?$/.test(c.req.path)) {
+  if (framePaths.has(c.req.path)) {
     return next();
   }
 

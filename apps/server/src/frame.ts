@@ -159,10 +159,15 @@ export function framePolicy(origin: string) {
   ].join('; ');
 }
 
-const frameLibraries: Record<string, string> = {
-  'chart.js': 'chart.js/dist/chart.umd.min.js',
-  'd3.js': 'd3/dist/d3.min.js',
-};
+const frameLibraries = new Map([
+  ['chart.js', 'chart.js/dist/chart.umd.min.js'],
+  ['d3.js', 'd3/dist/d3.min.js'],
+]);
+
+export const framePaths = new Set([
+  '/frame',
+  ...[...frameLibraries.keys()].map((name) => `/frame/vendor/${name}`),
+]);
 
 function libraryFile(path: string) {
   return Bun.file(
@@ -172,7 +177,7 @@ function libraryFile(path: string) {
 
 const frame = new Hono()
   .get('/vendor/:name', async (c) => {
-    const path = frameLibraries[c.req.param('name')];
+    const path = frameLibraries.get(c.req.param('name'));
 
     if (!path) {
       return c.notFound();
