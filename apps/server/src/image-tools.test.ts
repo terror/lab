@@ -242,8 +242,6 @@ test('image generation reports gateway errors and stops at the spend limit', asy
 
   await connect();
 
-  env.LAB_MONTHLY_LIMIT = 0.01;
-
   try {
     script(
       generate(),
@@ -252,8 +250,11 @@ test('image generation reports gateway errors and stops at the spend limit', asy
       generate(),
       generate({ images: [1_000_000] }),
       generate(),
-      generate(),
-      fauxAssistantMessage('baz')
+      () => {
+        env.LAB_MONTHLY_LIMIT = 0.01;
+
+        return generate();
+      }
     );
 
     const id = await chat(headers, { content: 'foo' });

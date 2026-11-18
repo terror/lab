@@ -22,6 +22,7 @@ import { type ProjectAccess, project } from './project';
 import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
+import { spend } from './spend';
 import { title } from './title';
 import { type WebAccess, web } from './web';
 
@@ -182,5 +183,6 @@ export function extensions(deps: ExtensionDeps) {
     title(deps.onHelperUsage),
     web(deps.web),
     delegate(deps.admit),
+    spend(deps.admit),
   ].map(ownLimits);
 }

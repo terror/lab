@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { signIn, signInAdmin } from '../test/auth';
 import { call, create, settle } from '../test/client';
+import { prompts, script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
 import { conversationOwner } from './records';
@@ -196,4 +197,49 @@ test('users other than the admin stop at the monthly limit', async () => {
   } finally {
     env.LAB_MONTHLY_LIMIT = undefined;
   }
+});
+
+test('a run stops once it reaches the monthly limit', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await settle();
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: id,
+    cost: 2,
+    createdAt: new Date(),
+    input: 0,
+    model: 'foo',
+    output: 0,
+    ownerId: (await conversationOwner(id)) ?? '',
+    provider: 'foo',
+  });
+
+  const before = prompts.length;
+
+  script(() => {
+    env.LAB_MONTHLY_LIMIT = 1;
+
+    return toolCall('artifact_create', {
+      content: '<p>foo</p>',
+      id: 'bar',
+      title: 'Baz',
+    });
+  });
+
+  try {
+    await call(headers, 'POST', `/conversations/${id}/messages`, {
+      content: 'foo',
+    });
+
+    await settle(id);
+  } finally {
+    env.LAB_MONTHLY_LIMIT = undefined;
+  }
+
+  expect(prompts.length - before).toBe(1);
 });
