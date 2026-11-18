@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{WebviewUrl, WebviewWindowBuilder, webview::NewWindowResponse};
+use tauri::{Url, WebviewUrl, WebviewWindowBuilder, webview::NewWindowResponse};
+
+fn external(_url: &Url) -> bool {
+  true
+}
 
 fn main() {
   tauri::Builder::default()
@@ -22,4 +26,24 @@ fn main() {
     })
     .run(tauri::generate_context!())
     .expect("error: failed to run lab");
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn external_schemes() {
+    #[track_caller]
+    fn case(url: &str, expected: bool) {
+      assert_eq!(external(&url.parse::<Url>().unwrap()), expected);
+    }
+
+    case("http://foo", true);
+    case("https://foo", true);
+    case("mailto:foo@bar", true);
+    case("file:///foo", false);
+    case("smb://foo/bar", false);
+    case("vscode://foo", false);
+  }
 }
