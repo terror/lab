@@ -74,6 +74,36 @@ export const LongRunningStep = meta.story({
   },
 });
 
+const reply =
+  'Graça sits high on one of Lisbon’s hills, so the cafés up there stay calm even at weekends. Two are worth the climb: the kiosk under the pines beside the miradouro, and a small bookish bar a street back from the tram line.';
+
+function Reply() {
+  const words = reply.split(' ');
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCount((current) => current + 1), 70);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const shown = Math.min(count, words.length);
+
+  return (
+    <AssistantMessage
+      parts={[{ text: words.slice(0, shown).join(' '), type: 'text' }]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={shown < words.length}
+    />
+  );
+}
+
+export const StreamingReply = meta.story({
+  decorators: [themes],
+  render: () => <Reply />,
+});
+
 const steps = [
   'Reading package.json',
   'Running bun install',

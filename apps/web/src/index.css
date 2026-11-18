@@ -345,6 +345,49 @@
   }
 }
 
+@keyframes caret-out {
+  to {
+    margin-inline-start: 0;
+    width: 0;
+    scale: 0.4;
+    opacity: 0;
+  }
+}
+
+[data-streaming] {
+  --caret: '';
+}
+
+[data-streaming] > :is(p, h1, h2, h3, h4, h5, h6):last-child::after,
+[data-streaming] > :is(ul, ol):last-child > li:last-child::after {
+  display: inline-block;
+  margin-inline-start: 0.26em;
+  border-radius: 2px;
+  background-color: var(--spark-blue);
+  width: 0.5rem;
+  height: 0.5rem;
+  vertical-align: 1px;
+  content: var(--caret);
+  animation: var(--caret-motion);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-streaming='true'] {
+    --caret-motion:
+      dot-pulse 1.2s ease-in-out 0s 4, dot-pulse 2.4s ease-in-out 4.8s infinite;
+  }
+
+  [data-streaming='false'] {
+    --caret-motion: caret-out 420ms var(--ease-out) forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-streaming='false'] {
+    --caret: none;
+  }
+}
+
 [data-streamdown='inline-code'] {
   border-radius: 0.3em;
   background-color: color-mix(in oklab, var(--foreground) 5%, transparent);

@@ -56,6 +56,47 @@ test('mermaid diagrams follow theme switches', async () => {
   document.documentElement.classList.remove('dark');
 });
 
+test('a streaming reply ends in a caret that fades once it finishes', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <>
+      <Markdown streaming>{'foo\n\nbar'}</Markdown>
+      <Markdown streaming={false}>baz</Markdown>
+    </>
+  );
+
+  const carets = () =>
+    [...screen.container.querySelectorAll('p')].map((paragraph) => {
+      const caret = getComputedStyle(paragraph, '::after');
+
+      return [paragraph.textContent, caret.content, caret.animationName];
+    });
+
+  await expect.poll(carets).toEqual([
+    ['foo', 'none', 'none'],
+    ['bar', '""', 'dot-pulse, dot-pulse'],
+    ['baz', 'none', 'none'],
+  ]);
+
+  await screen.rerender(
+    <>
+      <Markdown streaming={false}>{'foo\n\nbar'}</Markdown>
+      <Markdown streaming={false}>baz</Markdown>
+    </>
+  );
+
+  await expect.poll(carets).toEqual([
+    ['foo', 'none', 'none'],
+    ['bar', '""', 'caret-out'],
+    ['baz', 'none', 'none'],
+  ]);
+});
+
 test('finished messages are not patched as if they were cut off', async () => {
   stubFetch(() =>
     Response.json({

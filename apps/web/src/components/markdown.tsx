@@ -1,6 +1,6 @@
 import { usePreference } from '@/lib/preferences';
 import { useDark } from '@/lib/theme';
-import { Suspense, use } from 'react';
+import { Suspense, use, useState } from 'react';
 import type { DiagramPlugin, StreamdownProps } from 'streamdown';
 
 type Modules = {
@@ -100,6 +100,11 @@ export function Markdown({
   streaming: boolean;
 }) {
   const [lineNumbers] = usePreference('lineNumbers');
+  const [streamed, setStreamed] = useState(streaming);
+
+  if (streaming && !streamed) {
+    setStreamed(true);
+  }
 
   return (
     <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
@@ -107,6 +112,7 @@ export function Markdown({
         animated={
           streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
         }
+        data-streaming={streamed ? streaming : undefined}
         isAnimating={streaming}
         lineNumbers={lineNumbers}
         parseIncompleteMarkdown={streaming}
