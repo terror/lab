@@ -614,6 +614,37 @@
   }
 }
 
+@keyframes trace-tick {
+  12%,
+  71% {
+    color: var(--spark-blue-ink);
+  }
+}
+
+@keyframes trace-tick-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes trace-tick-out {
+  to {
+    opacity: 0;
+  }
+}
+
+[data-slot='trace-line'][data-tick] {
+  animation: trace-tick 1020ms var(--ease-out) 240ms both;
+}
+
+[data-slot='trace-line'][data-tick] [data-slot='trace-icon'] > :first-child {
+  animation: trace-tick-out var(--motion-base) var(--ease-out) 240ms both;
+}
+
+[data-slot='trace-line'][data-tick] [data-slot='status-icon'] {
+  animation: trace-tick-in var(--motion-base) var(--ease-out) 240ms both;
+}
+
 @keyframes dot-pulse {
   50% {
     opacity: 0.35;
