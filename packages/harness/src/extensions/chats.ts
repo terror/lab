@@ -7,7 +7,7 @@ import {
 import { bool, int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
 import { type ApprovalRequest, requestApproval } from './host-input';
-import { failure, text } from './results';
+import { failure, listing, text } from './results';
 
 export type ChatSummary = { id: number; pinned: boolean; title: string | null };
 
@@ -148,23 +148,13 @@ export function chats(access: ChatsAccess) {
     name: 'trash_list',
     description: 'List the chats and projects in the Trash.',
     parameters: obj({}),
-    execute: async (_args, api): Promise<ToolExecutionResult> => {
-      const items = await access.trashed(api.conversationId);
-
-      return {
-        details: { count: items.length, items },
-        output: text(
-          items.length > 0
-            ? items
-                .map(
-                  (item) =>
-                    `[${item.kind} ${item.id}] ${name(item.title)} (deleted ${item.deletedAt.slice(0, 10)})`
-                )
-                .join('\n')
-            : 'The Trash is empty.'
-        ),
-      };
-    },
+    execute: async (_args, api) =>
+      listing(await access.trashed(api.conversationId), {
+        empty: 'The Trash is empty.',
+        key: 'items',
+        line: (item) =>
+          `[${item.kind} ${item.id}] ${name(item.title)} (deleted ${item.deletedAt.slice(0, 10)})`,
+      }),
   });
 
   const trashRestore = defineTool({

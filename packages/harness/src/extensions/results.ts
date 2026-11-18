@@ -13,6 +13,20 @@ export function failure(message: string): ToolExecutionResult {
   return { isError: true, output: text(message) };
 }
 
+export function listing<T extends JsonValue>(
+  items: T[],
+  {
+    empty,
+    key,
+    line,
+  }: { empty: string; key: string; line: (item: T) => string }
+): ToolExecutionResult {
+  return {
+    details: { count: items.length, [key]: items },
+    output: text(items.length > 0 ? items.map(line).join('\n') : empty),
+  };
+}
+
 export function page(
   content: string,
   offset: number,

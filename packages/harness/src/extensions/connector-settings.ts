@@ -7,7 +7,7 @@ import {
 import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
-import { errorMessage, failure, once, text } from './results';
+import { errorMessage, failure, listing, once, text } from './results';
 
 type ConnectorStatus =
   | 'connected'
@@ -86,18 +86,12 @@ export function connectorSettings(access: ConnectorAccess) {
     description:
       "List the user's connectors: remote MCP servers whose tools you can find with tool_search.",
     parameters: obj({}),
-    execute: async (_, api) => {
-      const connectors = await access.list(api.conversationId);
-
-      return {
-        details: { connectors },
-        output: text(
-          connectors.length > 0
-            ? connectors.map(line).join('\n')
-            : 'The user has no connectors.'
-        ),
-      };
-    },
+    execute: async (_, api) =>
+      listing(await access.list(api.conversationId), {
+        empty: 'The user has no connectors.',
+        key: 'connectors',
+        line,
+      }),
   });
 
   const connectorAdd = defineTool({

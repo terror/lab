@@ -10,7 +10,7 @@ import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import type { Owner } from './docs';
 import { MemoryDoc } from './memory';
-import { failure, page, text } from './results';
+import { failure, listing, page, text } from './results';
 
 export const HISTORY_READ_LENGTH = 100_000;
 
@@ -62,22 +62,12 @@ export function history(access: HistoryAccess, owner: Owner) {
         return failure(DISABLED);
       }
 
-      const matches = await access.search(api.conversationId, query);
-
-      const listing =
-        matches.length === 0
-          ? 'No matching chats.'
-          : matches
-              .map(
-                ({ id, snippet, title, updatedAt }) =>
-                  `[${id}] ${name(title)} (${updatedAt.slice(0, 10)}): ${snippet}`
-              )
-              .join('\n');
-
-      return {
-        details: { count: matches.length, matches },
-        output: text(listing),
-      };
+      return listing(await access.search(api.conversationId, query), {
+        empty: 'No matching chats.',
+        key: 'matches',
+        line: ({ id, snippet, title, updatedAt }) =>
+          `[${id}] ${name(title)} (${updatedAt.slice(0, 10)}): ${snippet}`,
+      });
     },
   });
 
