@@ -9,7 +9,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { NewChat } from './new-chat';
 
@@ -98,6 +98,21 @@ test('a new user gets starters that fill the message box', async () => {
 
   await expect.element(message).toHaveValue('Plan a three-day trip to ');
   await expect.element(message).toHaveFocus();
+});
+
+test('a chat and a project with the same name are both suggested', async () => {
+  const error = vi.spyOn(console, 'error');
+
+  const { screen } = await renderHome({
+    chats: [{ id: 1, projectId: 2, title: 'foo', unread: false }],
+    projects: [{ id: 2, name: 'foo' }],
+  });
+
+  const list = screen.getByRole('list', { name: 'Suggestions' });
+
+  await expect.poll(() => list.element().textContent).toBe('foo foo ');
+
+  expect(error).not.toHaveBeenCalled();
 });
 
 test('a returning user gets their latest chat, its project, and the next task', async () => {
