@@ -70,7 +70,7 @@ const filterOptions = (['active', 'paused', 'all'] as const).map((value) => ({
   value,
 }));
 
-function schedule(task: ScheduledTask) {
+function schedule(task: ScheduledTask, now: number) {
   if (!task.enabled) {
     return `${task.description} · Paused`;
   }
@@ -79,10 +79,10 @@ function schedule(task: ScheduledTask) {
     return task.description;
   }
 
-  return `${task.description} · Next run ${untilRun(task.nextRunAt)}`;
+  return `${task.description} · Next run ${untilRun(task.nextRunAt, now)}`;
 }
 
-function TaskSummary({ task }: { task: ScheduledTask }) {
+function TaskSummary({ now, task }: { now: number; task: ScheduledTask }) {
   return (
     <>
       <Clock
@@ -91,13 +91,15 @@ function TaskSummary({ task }: { task: ScheduledTask }) {
       />
       <span className='flex min-w-0 flex-col'>
         <span className='truncate font-medium'>{task.title}</span>
-        <span className='truncate text-muted-foreground'>{schedule(task)}</span>
+        <span className='truncate text-muted-foreground'>
+          {schedule(task, now)}
+        </span>
       </span>
     </>
   );
 }
 
-function TaskRow({ task }: { task: ScheduledTask }) {
+function TaskRow({ now, task }: { now: number; task: ScheduledTask }) {
   const navigate = useNavigate();
 
   const toggle = useScheduleAction(setTaskEnabled);
@@ -160,7 +162,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   if (task.conversationId === null) {
     return (
       <ListRow actions={actions}>
-        <TaskSummary task={task} />
+        <TaskSummary now={now} task={task} />
       </ListRow>
     );
   }
@@ -168,7 +170,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   return (
     <ListRow actions={actions} asChild>
       <Link params={{ id: task.conversationId }} to='/c/$id'>
-        <TaskSummary task={task} />
+        <TaskSummary now={now} task={task} />
       </Link>
     </ListRow>
   );
@@ -187,7 +189,10 @@ function SchedulePrompt() {
 export function Scheduled() {
   const [filter, setFilter] = useState<Filter>('active');
 
-  const schedules = useQuery(schedulesQueryOptions);
+  const schedules = useQuery({
+    ...schedulesQueryOptions,
+    refetchInterval: 60_000,
+  });
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
 
@@ -224,7 +229,11 @@ export function Scheduled() {
           )}
           <ul className='flex flex-col gap-0.5'>
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
+              <TaskRow
+                key={task.id}
+                now={schedules.dataUpdatedAt}
+                task={task}
+              />
             ))}
           </ul>
         </section>
