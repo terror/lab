@@ -41,7 +41,7 @@ function rewound({ artifacts, created }: Rewind, message?: Message): Rewind {
   if (message?.role === 'assistant') {
     const calls = message.content.flatMap((part) =>
       part.type === 'toolCall' && part.name === 'artifact_create'
-        ? [[part.id, String(part.arguments.content)]]
+        ? [[part.id, (part.arguments as { content: string }).content]]
         : []
     );
 
