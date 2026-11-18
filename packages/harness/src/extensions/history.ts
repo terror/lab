@@ -8,9 +8,9 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import type { Owner } from './docs';
 import { MemoryDoc } from './memory';
 import { failure, text } from './results';
-import type { Owner } from './users';
 
 export const HISTORY_READ_LENGTH = 100_000;
 

@@ -7,9 +7,9 @@ import {
 } from '@earendil-works/pi-durable';
 import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { type Owner, userDoc } from './docs';
 import { requestApproval } from './host-input';
 import { failure, once, text } from './results';
-import { type Owner, userDoc } from './users';
 
 export type ScheduledTask = {
   conversationId: number | null;

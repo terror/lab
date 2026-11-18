@@ -2,12 +2,12 @@ import type { Context } from '@earendil-works/chord/context';
 import {
   type ToolExecutionApi,
   type ToolExecutionResult,
-  defineDoc,
   defineExtension,
   defineTool,
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { conversationDoc } from './docs';
 import { failure } from './results';
 
 export const TOOL_OUTPUT_LENGTH = 100_000;
@@ -18,15 +18,10 @@ const STORED_OUTPUTS = 20;
 
 const STORED_LENGTH = 5_000_000;
 
-const OutputDoc = defineDoc<{ outputs: Record<string, string> }>({
-  kind: 'lab.output',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ outputs: {} }),
-  checkpointWhen: () => true,
-});
+const OutputDoc = conversationDoc<{ outputs: Record<string, string> }>(
+  'lab.output',
+  () => ({ outputs: {} })
+);
 
 type Output = NonNullable<ToolExecutionResult['output']>;
 

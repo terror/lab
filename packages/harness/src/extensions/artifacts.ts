@@ -1,12 +1,12 @@
 import {
   type ToolExecutionResult,
-  defineDoc,
   defineExtension,
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
 import { arr, int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { conversationDoc } from './docs';
 import { failure, text } from './results';
 
 export const ARTIFACT_LENGTH = 300_000;
@@ -20,15 +20,9 @@ export type Artifact = {
   version: number;
 };
 
-export const ArtifactsDoc = defineDoc<{ artifacts: Record<string, Artifact> }>({
-  kind: 'lab.artifacts',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ artifacts: {} }),
-  checkpointWhen: () => true,
-});
+export const ArtifactsDoc = conversationDoc<{
+  artifacts: Record<string, Artifact>;
+}>('lab.artifacts', () => ({ artifacts: {} }));
 
 const artifactCreate = defineTool({
   name: 'artifact_create',
