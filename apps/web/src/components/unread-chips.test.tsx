@@ -19,10 +19,13 @@ function chat(id: number) {
   };
 }
 
-test('finished chats show as chips that can be marked read', async () => {
+async function renderChips(unread: {
+  chats: ReturnType<typeof chat>[];
+  running: number;
+}) {
   const fetch = stubFetch(({ pathname }) =>
     pathname === '/api/conversations/unread'
-      ? Response.json({ chats: [1, 2, 3, 4].map(chat), running: 2 })
+      ? Response.json(unread)
       : new Response(null, { status: 204 })
   );
 
@@ -32,6 +35,15 @@ test('finished chats show as chips that can be marked read', async () => {
   });
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  return { fetch, screen };
+}
+
+test('finished chats show as chips that can be marked read', async () => {
+  const { fetch, screen } = await renderChips({
+    chats: [1, 2, 3, 4].map(chat),
+    running: 2,
+  });
 
   const list = screen.getByRole('list', {
     name: 'Finished while you were away',
@@ -50,4 +62,12 @@ test('finished chats show as chips that can be marked read', async () => {
         .map(([input]) => requestUrl(input).pathname)
     )
     .toEqual(['/api/conversations/1/read']);
+});
+
+test('running chats show when nothing is unread', async () => {
+  const { screen } = await renderChips({ chats: [], running: 1 });
+
+  await expect
+    .element(screen.getByRole('list', { name: 'Finished while you were away' }))
+    .toHaveTextContent('1 running');
 });
