@@ -14,6 +14,7 @@ import { Pills } from '@/components/ui/pills';
 import {
   conversationTitle,
   useConversations,
+  usePinnedConversations,
   useStartChat,
 } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
@@ -37,6 +38,7 @@ import {
   MessageSquare,
   MessageSquarePlus,
   Moon,
+  Pin,
   Plus,
   Search,
   Settings,
@@ -73,6 +75,8 @@ const scopes: { id: Scope; label: string }[] = [
 ];
 
 const PREVIEW = 3;
+
+const RECENT = 5;
 
 type Row = {
   chip?: string;
@@ -278,6 +282,7 @@ function EmptyQuery({
   onDone: () => void;
   onNewProject: () => void;
 }) {
+  const pinned = usePinnedConversations();
   const recents = useConversations();
   const projectNames = useProjectNames();
   const go = useGo(onDone);
@@ -285,14 +290,25 @@ function EmptyQuery({
 
   const dark = useDark();
 
-  const recent: Row[] = (recents.data ?? []).slice(0, 4).map((chat) => ({
-    chip:
-      chat.projectId === null ? undefined : projectNames.get(chat.projectId),
-    icon: MessageSquare,
-    key: `recent-${chat.id}`,
-    onSelect: () => go.chat(chat.id),
-    title: conversationTitle(chat.title),
-  }));
+  const pinnedChats = pinned.data ?? [];
+
+  const pinnedIds = new Set(pinnedChats.map(({ id }) => id));
+
+  const recent: Row[] = [
+    ...pinnedChats.map((chat) => ({ chat, icon: Pin })),
+    ...(recents.data ?? [])
+      .filter(({ id }) => !pinnedIds.has(id))
+      .map((chat) => ({ chat, icon: MessageSquare })),
+  ]
+    .slice(0, RECENT)
+    .map(({ chat, icon }) => ({
+      chip:
+        chat.projectId === null ? undefined : projectNames.get(chat.projectId),
+      icon,
+      key: `recent-${chat.id}`,
+      onSelect: () => go.chat(chat.id),
+      title: conversationTitle(chat.title),
+    }));
 
   const actions: Row[] = [
     {
