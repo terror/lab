@@ -1,6 +1,14 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
 import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
@@ -13,11 +21,18 @@ import {
   useTrashAction,
 } from '@/lib/trash';
 import { useQuery } from '@tanstack/react-query';
+import { Ellipsis, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
-const names: Record<TrashItem['kind'], (item: TrashItem) => string> = {
-  conversation: ({ title }) => conversationTitle(title),
-  project: ({ title }) => title ?? 'Untitled project',
+const kinds: Record<
+  TrashItem['kind'],
+  { icon: LucideIcon; name: (item: TrashItem) => string }
+> = {
+  conversation: {
+    icon: MessageSquare,
+    name: ({ title }) => conversationTitle(title),
+  },
+  project: { icon: Folder, name: ({ title }) => title ?? 'Untitled project' },
 };
 
 function TrashRow({ item }: { item: TrashItem }) {
@@ -26,45 +41,65 @@ function TrashRow({ item }: { item: TrashItem }) {
   const restore = useTrashAction(restoreFromTrash);
   const remove = useTrashAction(deleteForever);
 
-  const name = names[item.kind](item);
+  const { icon: Icon, name: title } = kinds[item.kind];
+
+  const name = title(item);
 
   return (
-    <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
-      <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm font-medium'>{name}</p>
-        <p className='truncate text-sm text-muted-foreground'>
-          Deleted {shortDate(item.deletedAt)}
-        </p>
-      </div>
-      <div className='flex shrink-0 items-center gap-1'>
-        <Button
-          aria-label={`Delete ${name} forever`}
-          disabled={remove.isPending}
-          onClick={() => setConfirming(true)}
-          size='sm'
-          variant='ghost'
-        >
-          Delete forever
-        </Button>
-        <Button
-          aria-label={`Restore ${name}`}
-          disabled={restore.isPending}
-          onClick={() => restore.mutate(item)}
-          size='sm'
-          variant='secondary'
-        >
-          Restore
-        </Button>
-      </div>
-      <ConfirmDialog
-        action='Delete forever'
-        description={`“${name}” will be deleted permanently. This can’t be undone.`}
-        onConfirm={() => remove.mutate(item)}
-        onOpenChange={setConfirming}
-        open={confirming}
-        title='Delete forever?'
+    <ListRow
+      actions={
+        <>
+          <Button
+            aria-label={`Restore ${name}`}
+            disabled={restore.isPending}
+            onClick={() => restore.mutate(item)}
+            size='sm'
+            variant='quiet'
+          >
+            Restore
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={`Actions for ${name}`}
+                size='icon-sm'
+                variant='quiet'
+              >
+                <Ellipsis aria-hidden='true' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuItem
+                disabled={remove.isPending}
+                onSelect={() => setConfirming(true)}
+                variant='destructive'
+              >
+                Delete forever
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ConfirmDialog
+            action='Delete forever'
+            description={`“${name}” will be deleted permanently. This can’t be undone.`}
+            onConfirm={() => remove.mutate(item)}
+            onOpenChange={setConfirming}
+            open={confirming}
+            title='Delete forever?'
+          />
+        </>
+      }
+    >
+      <Icon
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground'
       />
-    </li>
+      <span className='flex min-w-0 flex-col'>
+        <span className='truncate font-medium'>{name}</span>
+        <span className='truncate text-muted-foreground'>
+          Deleted {shortDate(item.deletedAt)}
+        </span>
+      </span>
+    </ListRow>
   );
 }
 
@@ -86,23 +121,27 @@ export function Trash() {
               disabled={empty.isPending}
               onClick={() => setConfirming(true)}
               size='sm'
-              variant='secondary'
+              variant='outline'
             >
               Empty trash
             </Button>
           )
         }
-        description={
-          'Deleted chats and projects stay here until you restore them or delete them forever.'
-        }
+        description='Deleted chats and projects stay here until you restore them or delete them forever.'
         title='Trash'
       />
-      {trash.isError && <LoadError subject='the trash' />}
+      {trash.isPending && <ListSkeleton />}
+      {trash.isLoadingError && (
+        <LoadError onRetry={() => trash.refetch()} subject='the trash' />
+      )}
       {trash.isSuccess && count === 0 && (
-        <p className='text-sm text-muted-foreground'>The trash is empty.</p>
+        <EmptyState
+          description='Chats and projects you delete land here.'
+          title='All clean'
+        />
       )}
       {count > 0 && (
-        <ul className='-mx-3 flex flex-col'>
+        <ul className='flex flex-col gap-0.5'>
           {trash.data?.map((item) => (
             <TrashRow key={`${item.kind}-${item.id}`} item={item} />
           ))}
