@@ -10,6 +10,7 @@ import {
 } from '@/components/project-dialog';
 import { ProjectMenu } from '@/components/project-menu';
 import { useSearch } from '@/components/search';
+import { SidebarRow, rowAction } from '@/components/sidebar-row';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,7 @@ import {
   SquarePen,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useId, useState } from 'react';
+import { Fragment, type ReactNode, useId, useState } from 'react';
 import { z } from 'zod';
 
 type Side = 'bottom' | 'right';
@@ -177,7 +178,7 @@ function SectionHeader({
   title: string;
 }) {
   return (
-    <div className='flex items-center gap-1 px-2'>
+    <div className='sticky top-0 z-10 flex items-center gap-1 bg-sidebar px-2'>
       <h2 className='text-xs font-medium text-muted-foreground'>{title}</h2>
       {collapsible && (
         <CollapseButton
@@ -238,33 +239,6 @@ function SortMenu() {
   );
 }
 
-function NavButton({
-  active,
-  children,
-  expanded,
-  onClick,
-}: {
-  active: boolean;
-  children: ReactNode;
-  expanded?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-current={active ? 'page' : undefined}
-      aria-expanded={expanded}
-      className={cn(
-        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm focus-ring-inset transition-colors hover:bg-sidebar-accent',
-        active && 'bg-sidebar-accent text-sidebar-accent-foreground'
-      )}
-      onClick={onClick}
-      type='button'
-    >
-      {children}
-    </button>
-  );
-}
-
 export const navPages = [
   { icon: SquarePen, label: 'New chat', to: '/' },
   { icon: Clock, label: 'Scheduled', to: '/scheduled' },
@@ -283,13 +257,11 @@ function openProject(path: string, chatProject: number | null | undefined) {
 
 function ShowMore({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      className='w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground focus-ring-inset hover:bg-sidebar-accent hover:text-foreground'
-      onClick={onClick}
-      type='button'
-    >
-      Show more
-    </button>
+    <SidebarRow asChild className='text-muted-foreground hover:text-foreground'>
+      <button onClick={onClick} type='button'>
+        Show more
+      </button>
+    </SidebarRow>
   );
 }
 
@@ -309,7 +281,7 @@ function ProjectChats({
   const all = chats.data ?? [];
 
   return (
-    <div className='flex flex-col gap-0.5 pl-7'>
+    <ul className='flex flex-col gap-0.5 pl-6'>
       {all.slice(0, PREVIEW).map((conversation) => (
         <ConversationItem
           key={conversation.id}
@@ -321,7 +293,7 @@ function ProjectChats({
       {(all.length > PREVIEW || chats.hasNextPage) && (
         <ShowMore onClick={() => onProject(id)} />
       )}
-    </div>
+    </ul>
   );
 }
 
@@ -396,48 +368,53 @@ function ProjectsSection({
           <TooltipContent>New project</TooltipContent>
         </Tooltip>
       </SectionHeader>
-      <nav
-        aria-label='Projects'
-        className='flex flex-col gap-0.5'
-        hidden={collapsed}
-        id={list}
-      >
+      <nav aria-label='Projects' hidden={collapsed} id={list}>
         {projects.isError && <LoadError className='px-2' subject='projects' />}
-        {shown.map((project) => {
-          const Icon = project.id === showing ? FolderOpen : Folder;
-          const page = path === `/projects/${project.id}`;
+        <ul className='flex flex-col gap-0.5'>
+          {shown.map((project) => {
+            const Icon = project.id === showing ? FolderOpen : Folder;
+            const page = path === `/projects/${project.id}`;
 
-          return (
-            <div key={project.id} className='flex flex-col gap-0.5'>
-              <div className='group relative flex items-center'>
-                <NavButton
-                  active={page}
-                  expanded={page ? project.id === showing : undefined}
-                  onClick={() => select(project.id)}
+            return (
+              <Fragment key={project.id}>
+                <SidebarRow
+                  actions={
+                    <ProjectMenu
+                      className={rowAction}
+                      onRename={() => setEditing({ kind: 'rename', project })}
+                      project={project}
+                    />
+                  }
+                  asChild
+                  selected={page}
                 >
-                  <Icon aria-hidden='true' className='size-4 shrink-0' />
-                  <span className='truncate pr-6'>{project.name}</span>
-                </NavButton>
-                <ProjectMenu
-                  className='absolute right-1 p-1 opacity-0 focus-ring-inset group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100'
-                  onRename={() => setEditing({ kind: 'rename', project })}
-                  project={project}
-                />
-              </div>
-              {project.id === showing && (
-                <ProjectChats
-                  id={project.id}
-                  onProject={onProject}
-                  onSelect={onSelect}
-                  selected={selected}
-                />
-              )}
-            </div>
-          );
-        })}
-        {!expanded && all.length > shown.length && (
-          <ShowMore onClick={() => setExpanded(true)} />
-        )}
+                  <button
+                    aria-current={page ? 'page' : undefined}
+                    aria-expanded={page ? project.id === showing : undefined}
+                    onClick={() => select(project.id)}
+                    type='button'
+                  >
+                    <Icon aria-hidden='true' />
+                    <span className='truncate'>{project.name}</span>
+                  </button>
+                </SidebarRow>
+                {project.id === showing && (
+                  <li>
+                    <ProjectChats
+                      id={project.id}
+                      onProject={onProject}
+                      onSelect={onSelect}
+                      selected={selected}
+                    />
+                  </li>
+                )}
+              </Fragment>
+            );
+          })}
+          {!expanded && all.length > shown.length && (
+            <ShowMore onClick={() => setExpanded(true)} />
+          )}
+        </ul>
       </nav>
       <ProjectDialog
         editing={editing}
@@ -471,19 +448,16 @@ function AppsSection({ onSelect }: { onSelect?: () => void }) {
         subject='apps'
         title='Apps'
       />
-      <nav
-        aria-label='Apps'
-        className='flex flex-col gap-0.5'
-        hidden={collapsed}
-        id={list}
-      >
-        {apps.data?.map((app) => (
-          <AppLink
-            key={`${app.conversationId}/${app.artifactId}`}
-            app={app}
-            onSelect={onSelect}
-          />
-        ))}
+      <nav aria-label='Apps' hidden={collapsed} id={list}>
+        <ul className='flex flex-col gap-0.5'>
+          {apps.data?.map((app) => (
+            <AppLink
+              key={`${app.conversationId}/${app.artifactId}`}
+              app={app}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
       </nav>
     </div>
   );
@@ -520,20 +494,17 @@ function PinnedSection({
       >
         <SortMenu />
       </SectionHeader>
-      <nav
-        aria-label='Pinned chats'
-        className='flex flex-col gap-1'
-        hidden={collapsed}
-        id={list}
-      >
-        {pinned.data?.map((conversation) => (
-          <ConversationItem
-            key={conversation.id}
-            conversation={conversation}
-            onSelect={onSelect}
-            selected={conversation.id === selected}
-          />
-        ))}
+      <nav aria-label='Pinned chats' hidden={collapsed} id={list}>
+        <ul className='flex flex-col gap-0.5'>
+          {pinned.data?.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              onSelect={onSelect}
+              selected={conversation.id === selected}
+            />
+          ))}
+        </ul>
       </nav>
     </div>
   );
@@ -665,10 +636,7 @@ function SidebarPanel({
   selected: number | undefined;
   user: User;
 }) {
-  const list = useId();
   const path = usePath();
-
-  const [collapsed, setCollapsed] = useCollapsed('recents-collapsed');
 
   return (
     <aside className='flex h-full min-w-52 flex-col gap-4 bg-sidebar p-3 text-sidebar-foreground'>
@@ -690,44 +658,74 @@ function SidebarPanel({
           )}
         </div>
       </div>
-      <div className='flex flex-col gap-0.5'>
+      <ul className='flex flex-col gap-0.5'>
         {navPages.map(({ icon: Icon, label, to }) => (
-          <NavButton
-            key={to}
-            active={path === to}
-            onClick={() => onNavigate(to)}
-          >
-            <Icon aria-hidden='true' className='size-4' />
-            {label}
-          </NavButton>
+          <SidebarRow key={to} asChild selected={path === to}>
+            <button
+              aria-current={path === to ? 'page' : undefined}
+              onClick={() => onNavigate(to)}
+              type='button'
+            >
+              <Icon aria-hidden='true' />
+              {label}
+            </button>
+          </SidebarRow>
         ))}
+      </ul>
+      <div className='-mx-3 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3'>
+        <ProjectsSection
+          onProject={onProject}
+          onSelect={onSelect}
+          selected={selected}
+        />
+        <AppsSection onSelect={onSelect} />
+        <PinnedSection onSelect={onSelect} selected={selected} />
+        <RecentsSection
+          conversations={conversations}
+          error={error}
+          onLoadMore={onLoadMore}
+          onSelect={onSelect}
+          selected={selected}
+        />
       </div>
-      <ProjectsSection
-        onProject={onProject}
-        onSelect={onSelect}
-        selected={selected}
-      />
-      <AppsSection onSelect={onSelect} />
-      <PinnedSection onSelect={onSelect} selected={selected} />
-      <div className='flex min-h-0 flex-col gap-1'>
-        {(error || (conversations?.length ?? 0) > 0) && (
-          <SectionHeader
-            collapsed={collapsed}
-            controls={list}
-            onToggle={() => setCollapsed(!collapsed)}
-            subject='chats'
-            title='Recents'
-          >
-            <SortMenu />
-          </SectionHeader>
-        )}
-        <nav
-          aria-label='Chats'
-          className='flex min-h-0 flex-col gap-1 overflow-y-auto'
-          hidden={collapsed}
-          id={list}
+      <AccountMenu user={user} />
+    </aside>
+  );
+}
+
+function RecentsSection({
+  conversations,
+  error,
+  onLoadMore,
+  onSelect,
+  selected,
+}: {
+  conversations: ReturnType<typeof useConversations>['data'];
+  error: boolean;
+  onLoadMore: (() => void) | undefined;
+  onSelect?: () => void;
+  selected: number | undefined;
+}) {
+  const list = useId();
+
+  const [collapsed, setCollapsed] = useCollapsed('recents-collapsed');
+
+  return (
+    <div className='flex flex-col gap-1'>
+      {(error || (conversations?.length ?? 0) > 0) && (
+        <SectionHeader
+          collapsed={collapsed}
+          controls={list}
+          onToggle={() => setCollapsed(!collapsed)}
+          subject='chats'
+          title='Recents'
         >
-          {error && <LoadError className='px-2' subject='chats' />}
+          <SortMenu />
+        </SectionHeader>
+      )}
+      <nav aria-label='Chats' hidden={collapsed} id={list}>
+        {error && <LoadError className='px-2' subject='chats' />}
+        <ul className='flex flex-col gap-0.5'>
           {conversations?.map((conversation) => (
             <ConversationItem
               key={conversation.id}
@@ -736,12 +734,9 @@ function SidebarPanel({
               selected={conversation.id === selected}
             />
           ))}
-          {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
-        </nav>
-      </div>
-      <div className='mt-auto'>
-        <AccountMenu user={user} />
-      </div>
-    </aside>
+        </ul>
+        {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
+      </nav>
+    </div>
   );
 }

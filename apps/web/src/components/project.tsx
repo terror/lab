@@ -53,10 +53,16 @@ function ProjectChats({ id }: { id: number }) {
   }
 
   return (
-    <nav aria-label='Project chats' className='-mx-2 flex flex-col gap-1'>
-      {chats.data?.map((chat) => (
-        <ConversationItem key={chat.id} conversation={chat} selected={false} />
-      ))}
+    <nav aria-label='Project chats' className='-mx-2'>
+      <ul className='flex flex-col gap-1'>
+        {chats.data?.map((chat) => (
+          <ConversationItem
+            key={chat.id}
+            conversation={chat}
+            selected={false}
+          />
+        ))}
+      </ul>
       {chats.hasNextPage && !chats.isFetchingNextPage && (
         <LoadMore onLoadMore={() => void chats.fetchNextPage()} />
       )}
@@ -74,10 +80,15 @@ function ProjectApps({ id }: { id: number }) {
   return (
     <section className='flex flex-col gap-2'>
       <SectionHeading>Apps</SectionHeading>
-      <nav aria-label='Project apps' className='-mx-2 flex flex-col gap-1'>
-        {apps.data?.map((app) => (
-          <AppLink key={`${app.conversationId}/${app.artifactId}`} app={app} />
-        ))}
+      <nav aria-label='Project apps' className='-mx-2'>
+        <ul className='flex flex-col gap-1'>
+          {apps.data?.map((app) => (
+            <AppLink
+              key={`${app.conversationId}/${app.artifactId}`}
+              app={app}
+            />
+          ))}
+        </ul>
       </nav>
     </section>
   );
