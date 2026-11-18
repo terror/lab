@@ -8,7 +8,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { type Owner, userDoc } from './docs';
-import { errorMessage, failure, once, page, text } from './results';
+import { caught, failure, once, page, text } from './results';
 
 export const SANDBOX_OUTPUT_LENGTH = 100_000;
 
@@ -109,12 +109,8 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
         })
       ),
     }),
-    execute: async (
-      { command, timeout },
-      api,
-      context
-    ): Promise<ToolExecutionResult> => {
-      try {
+    execute: ({ command, timeout }, api, context) =>
+      caught(async () => {
         const run = await access.exec(api.conversationId, {
           command,
           onOutput: (chunk) => api.output(chunk),
@@ -132,10 +128,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
           isError: run.exitCode !== 0,
           output: text(run.output ? `${header}\n\n${run.output}` : header),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const sandboxRead = defineTool({
@@ -148,8 +141,8 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
       ),
       path,
     }),
-    execute: async (args, api): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api) =>
+      caught(async (): Promise<ToolExecutionResult> => {
         const file = await access.read(api.conversationId, args.path);
 
         if (!file) {
@@ -180,10 +173,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
           },
           output: text(shown.text),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const sandboxWrite = defineTool({
@@ -197,8 +187,8 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
       }),
       path,
     }),
-    execute: async (args, api): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api) =>
+      caught(async () => {
         const written = await access.write(
           api.conversationId,
           args.path,
@@ -209,10 +199,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
           details: written,
           output: text(`Wrote ${written.size} bytes to ${written.path}.`),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const sandboxList = defineTool({
@@ -222,18 +209,15 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
     parameters: obj({
       path: opt(path),
     }),
-    execute: async (args, api): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api) =>
+      caught(async () => {
         const listing = await access.list(api.conversationId, args.path ?? '.');
 
         return {
           details: { path: args.path ?? '.' },
           output: text(listing || 'No files.'),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const sandboxUpload = defineTool({
@@ -244,8 +228,8 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
       libraryId: int({ description: 'The library file id.', minimum: 1 }),
       path: opt(path),
     }),
-    execute: async (args, api): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api) =>
+      caught(async () => {
         const written = await access.upload(
           api.conversationId,
           args.libraryId,
@@ -258,10 +242,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
             `Copied library file ${args.libraryId} to ${written.path}.`
           ),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const sandboxSave = defineTool({
@@ -279,8 +260,8 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
       ),
       path,
     }),
-    execute: async (args, api, context): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api, context) =>
+      caught(async () => {
         const saved = await once(api, 'saved', context, () =>
           access.save(api.conversationId, args.path, args.name)
         );
@@ -291,10 +272,7 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
             `Saved ${saved.name} (${saved.size} bytes) to the library.`
           ),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   return defineExtension({

@@ -1,13 +1,12 @@
 import {
   type ConversationId,
-  type ToolExecutionResult,
   defineExtension,
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
 import { arr, int, obj, opt, str } from '@earendil-works/pi-schema';
 
-import { errorMessage, failure, once, text } from './results';
+import { caught, once, text } from './results';
 
 export type ImageRequest = { images: number[]; name: string; prompt: string };
 
@@ -53,8 +52,8 @@ export function images(access: ImageAccess) {
         minLength: 1,
       }),
     }),
-    execute: async (args, api, context): Promise<ToolExecutionResult> => {
-      try {
+    execute: (args, api, context) =>
+      caught(async () => {
         const { data, ...saved } = await once(api, 'image', context, () =>
           access.generate(
             api.conversationId,
@@ -76,10 +75,7 @@ export function images(access: ImageAccess) {
             { data, mimeType: saved.mimeType, type: 'image' as const },
           ],
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   return defineExtension({
