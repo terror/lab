@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./plan": "./src/plan.ts",
     "./preferences": "./src/preferences.ts"
   },
   "scripts": {

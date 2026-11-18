@@ -2,6 +2,7 @@ import {
   Activity,
   AssistantMessage,
   replyText,
+  type ShownPlan,
   type ToolProgress,
   type ToolResult,
 } from '@/components/assistant-message';
@@ -316,6 +317,13 @@ function rowsFor(item: TranscriptItem): Row[] {
   return [{ bubble: { files, id: key, images, text }, key, kind: 'user' }];
 }
 
+function ownsPlan(row: Row, callId: string | null | undefined) {
+  return (
+    row.kind === 'assistant' &&
+    row.parts.some((part) => part.type === 'toolCall' && part.id === callId)
+  );
+}
+
 const noParts: Parameters<typeof AssistantMessage>[0]['parts'] = [];
 
 const rowCache = new WeakMap<object, Row[]>();
@@ -386,6 +394,7 @@ const TranscriptRow = memo(function TranscriptRow({
   loading,
   onEarlier,
   onGap,
+  plan,
   progress,
   results,
   row,
@@ -397,6 +406,7 @@ const TranscriptRow = memo(function TranscriptRow({
   loading: boolean;
   onEarlier: () => void;
   onGap: (gap: Gap) => void;
+  plan: ShownPlan | undefined;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   row: Row;
@@ -447,6 +457,7 @@ const TranscriptRow = memo(function TranscriptRow({
         activity={activity}
         latest={latest}
         parts={row.parts}
+        plan={plan}
         progress={progress}
         results={results}
         span={row.span}
@@ -477,7 +488,13 @@ const EAGER_ROWS = 6;
 
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
-  const { view, status: activity, loadEarlier, fillGap } = useConversation(id);
+  const {
+    view,
+    status: activity,
+    plan,
+    loadEarlier,
+    fillGap,
+  } = useConversation(id);
   const [draft, setDraft] = useDraft(id);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
@@ -649,6 +666,14 @@ function ConversationView({ id }: { id: number }) {
 
   const running = phase.kind !== 'idle';
 
+  const shownPlan = useMemo(
+    () =>
+      plan && plan.steps.length > 0
+        ? { editable: running, steps: plan.steps }
+        : undefined,
+    [plan, running]
+  );
+
   const wasRunning = useRef(running);
 
   useEffect(() => {
@@ -704,6 +729,7 @@ function ConversationView({ id }: { id: number }) {
                       loading={earlier.isPending || gap.isPending}
                       onEarlier={onEarlier}
                       onGap={onGap}
+                      plan={ownsPlan(row, plan?.callId) ? shownPlan : undefined}
                       progress={progress}
                       results={results}
                       row={row}

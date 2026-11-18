@@ -13,6 +13,7 @@ import { type ImageAccess, images } from './images';
 import { type LibraryAccess, library } from './library';
 import { memory } from './memory';
 import { limitOutput, output } from './output';
+import { plan } from './plan';
 import { preferences } from './preferences';
 import { type ProjectAccess, project } from './project';
 import { type SandboxAccess, sandbox } from './sandbox';
@@ -103,6 +104,7 @@ export {
   type TrashKind,
   trashKinds,
 } from './chats';
+export { PlanDoc, editPlan } from './plan';
 export { PreferencesDoc } from './preferences';
 export { type Owner, userDoc } from './users';
 export { TitleDoc, plainTitle } from './title';
@@ -154,6 +156,7 @@ export function extensions(deps: ExtensionDeps) {
     codemode,
     connectorSettings(deps.connectors),
     output,
+    plan,
     preferences(deps.owner),
     compaction(deps.onHelperUsage),
     history(deps.history, deps.owner),

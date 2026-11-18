@@ -11,6 +11,7 @@ import { manageRenderers } from './manage';
 import { memoryRenderers } from './memory';
 import { type ToolName } from './names';
 import { outputRenderers } from './output';
+import { planRenderers } from './plan';
 import { preferencesRenderers } from './preferences';
 import { projectRenderers } from './project';
 import { sandboxRenderers } from './sandbox';
@@ -30,6 +31,7 @@ const renderers = {
   ...manageRenderers,
   ...memoryRenderers,
   ...outputRenderers,
+  ...planRenderers,
   ...preferencesRenderers,
   ...projectRenderers,
   ...sandboxRenderers,

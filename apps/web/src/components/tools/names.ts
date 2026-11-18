@@ -18,6 +18,7 @@ export const toolNames = [
   'image_generate',
   'library_read',
   'library_search',
+  'plan_update',
   'preferences_update',
   'project_create',
   'project_delete',

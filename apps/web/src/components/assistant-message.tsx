@@ -1,5 +1,6 @@
 import { ApprovalCard, approvalOf } from '@/components/approval-card';
 import { Markdown } from '@/components/markdown';
+import { Plan } from '@/components/plan';
 import {
   ToolBody,
   ToolConversation,
@@ -32,6 +33,7 @@ import { plural } from '@/lib/format';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
+import type { PlanStep } from '@lab/server/schemas';
 import { Check, Copy, Square, TriangleAlert, Volume2 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
@@ -415,10 +417,13 @@ function Segments({
   });
 }
 
+export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
+
 export function AssistantMessage({
   activity,
   latest = false,
   parts,
+  plan,
   progress,
   results,
   span,
@@ -428,6 +433,7 @@ export function AssistantMessage({
   activity?: string;
   latest?: boolean;
   parts: readonly Part[];
+  plan?: ShownPlan;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   span?: Span;
@@ -482,6 +488,7 @@ export function AssistantMessage({
             ))}
           </Worked>
         )}
+        {plan && <Plan {...plan} />}
         <Segments segments={all.slice(split)} {...shared} />
         {activity !== undefined && !inSlot && <Activity status={activity} />}
         {answer && <MessageActions latest={latest} text={text} />}

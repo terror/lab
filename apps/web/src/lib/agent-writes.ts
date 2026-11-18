@@ -31,6 +31,7 @@ const toolWrites = {
   image_generate: [libraryQueryKey],
   library_read: [],
   library_search: [],
+  plan_update: [],
   preferences_update: [preferencesQueryOptions.queryKey],
   project_create: [projectsQueryOptions.queryKey],
   project_delete: [

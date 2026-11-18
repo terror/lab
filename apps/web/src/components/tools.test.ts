@@ -42,6 +42,8 @@ test('tools describe themselves while running and when done', () => {
     line('web_search', false, { query: 'foo' }, { count: 2 }),
     line('web_fetch', false, {}, { domain: 'bar.com', title: 'foo' }),
     line('ask_user', true),
+    line('plan_update', true),
+    line('plan_update', false),
     line(
       'sandbox_exec',
       false,
@@ -74,6 +76,8 @@ test('tools describe themselves while running and when done', () => {
     ['Searched the web for “foo”', '2 results'],
     ['Read “foo”', 'bar.com'],
     ['Asking you a question', undefined],
+    ['Updating the plan', undefined],
+    ['Updated the plan', undefined],
     ['Ran ls', 'exit 0 · 1.5s'],
     ['Wrote bar.txt', '3 B'],
     ['Saved bar.csv to your library', undefined],
