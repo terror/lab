@@ -9,7 +9,7 @@ import { signIn, signInAdmin } from '../test/auth';
 import { call, chat, toolDetails, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 import { env } from './env';
-import { type SandboxProvider, useSandboxProvider } from './sandbox';
+import { type SandboxProvider, readUpTo, useSandboxProvider } from './sandbox';
 
 afterEach(() => {
   useSandboxProvider(undefined);
@@ -258,6 +258,56 @@ test('files move between the computer and the library', async () => {
       'bar.txt (3 bytes)',
       'Saved bar.txt (3 bytes) to the library.',
     ],
+  });
+});
+
+test('files too large to read or save are refused without loading them whole', async () => {
+  const headers = await signIn();
+
+  const limits: number[] = [];
+
+  useSandboxProvider({
+    ...memoryProvider(),
+    read: async (_computer, _path, limit) => {
+      limits.push(limit);
+
+      return new Uint8Array(limit);
+    },
+  });
+
+  script(
+    toolCall('sandbox_read', { path: 'foo' }),
+    toolCall('sandbox_save', { path: 'foo' }),
+    fauxAssistantMessage('bar')
+  );
+
+  const id = await chat(headers, { content: 'baz' });
+
+  expect({ limits, outputs: await toolOutputs(headers, id) }).toEqual({
+    limits: [5_000_001, 100_000_001],
+    outputs: [
+      'foo is over 5000000 bytes, too large to read. Look at parts of it with sandbox_exec, for example with head or grep.',
+      'foo is over 100000000 bytes, too large to save to the library.',
+    ],
+  });
+});
+
+test('reading a file stops at the limit', async () => {
+  const state = { closed: false };
+
+  async function* endless() {
+    try {
+      while (true) {
+        yield new Uint8Array([1, 2, 3]);
+      }
+    } finally {
+      state.closed = true;
+    }
+  }
+
+  expect({ content: await readUpTo(endless(), 5), state }).toEqual({
+    content: new Uint8Array([1, 2, 3, 1, 2]),
+    state: { closed: true },
   });
 });
 
