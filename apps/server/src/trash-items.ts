@@ -43,7 +43,7 @@ async function purgeChat(ownerId: string, id: number) {
 
   await conversation?.abort(BACKGROUND_CONTEXT);
 
-  void removeChatFolder(ownerId, id).catch(console.error);
+  await removeChatFolder(ownerId, id);
 
   const released = await db.transaction(async (tx) => {
     const attached = await tx

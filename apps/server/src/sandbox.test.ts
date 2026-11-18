@@ -388,3 +388,70 @@ test('only the admin gets a computer unless everyone is allowed', async () => {
     env.LAB_COMPUTER_USERS = 'everyone';
   }
 });
+
+test('a computer is cleaned up after its user loses access to it', async () => {
+  const headers = await signIn();
+
+  const provider = memoryProvider();
+
+  useSandboxProvider(provider);
+
+  script(
+    toolCall('sandbox_write', { content: 'foo', path: 'bar.txt' }),
+    fauxAssistantMessage('baz')
+  );
+
+  const id = await chat(headers, { content: 'foo' });
+
+  env.LAB_COMPUTER_USERS = 'admin';
+
+  try {
+    await call(headers, 'DELETE', `/conversations/${id}`);
+    await call(headers, 'DELETE', `/trash/conversation/${id}`);
+
+    const files = [...provider.files.keys()];
+
+    await call(headers, 'DELETE', '/profile');
+
+    expect({ computers: [...provider.computers.keys()], files }).toEqual({
+      computers: [],
+      files: [],
+    });
+  } finally {
+    env.LAB_COMPUTER_USERS = 'everyone';
+  }
+});
+
+test('a chat or account whose computer cannot be cleaned up is kept', async () => {
+  const headers = await signIn();
+
+  useSandboxProvider({
+    ...memoryProvider(),
+    destroy: async () => {
+      throw new Error('foo');
+    },
+    remove: async () => {
+      throw new Error('foo');
+    },
+  });
+
+  const id = await chat(headers, { content: 'bar' });
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+
+  const purged = await call(headers, 'DELETE', `/trash/conversation/${id}`);
+
+  const deleted = await call(headers, 'DELETE', '/profile');
+
+  const trash = await call(headers, 'GET', '/trash');
+
+  expect({
+    deleted,
+    purged,
+    trash: trash.body.items?.map((item: { id: number }) => item.id),
+  }).toEqual({
+    deleted: { body: { error: 'Internal server error' }, status: 500 },
+    purged: { body: { error: 'Internal server error' }, status: 500 },
+    trash: [id],
+  });
+});
