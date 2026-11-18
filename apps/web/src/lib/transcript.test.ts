@@ -1,7 +1,7 @@
 import type { TranscriptItem } from '@earendil-works/pi-durable';
 import { expect, test } from 'vitest';
 
-import { type Row, type Span, mergeReplies, toolResults } from './conversation';
+import { type Row, type Span, mergeReplies, toolResults } from './transcript';
 
 function reply(key: string, text: string, span?: Span): Row {
   return {

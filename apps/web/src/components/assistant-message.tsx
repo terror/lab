@@ -41,6 +41,7 @@ import { fade, spring } from '@/lib/motion';
 import { runFailureTitles } from '@/lib/run-failure';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
+import type { Part, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
@@ -54,16 +55,6 @@ import {
   useRef,
   useState,
 } from 'react';
-
-type Part =
-  | { type: 'text'; text: string }
-  | { type: 'thinking'; thinking: string; redacted?: boolean }
-  | {
-      type: 'toolCall';
-      id: string;
-      name: string;
-      arguments: Record<string, unknown>;
-    };
 
 export type { ToolProgress, ToolResult };
 
@@ -110,8 +101,6 @@ const steps: Record<
 };
 
 type Call = Extract<Part, { type: 'toolCall' }>;
-
-type Span = { end: number; start: number };
 
 function callStatus(
   result: ToolResult | undefined,
