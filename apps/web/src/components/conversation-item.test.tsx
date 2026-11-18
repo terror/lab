@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 import { render } from 'vitest-browser-react';
+import { userEvent } from 'vitest/browser';
 
 import { ConversationItem } from './conversation-item';
 
@@ -221,6 +222,47 @@ test('finished chats swap straight to their dots when Lab is quiet', async () =>
   await expect
     .poll(marks)
     .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
+});
+
+test('leaving a rename returns focus to the chat’s options', async () => {
+  stubFetch(() => new Response(null, { status: 204 }));
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => (
+        <ul>
+          <ConversationItem
+            conversation={{
+              id: 1,
+              pinned: false,
+              projectId: null,
+              running: false,
+              title: 'foo',
+              unread: false,
+              waiting: false,
+            }}
+            selected={false}
+          />
+        </ul>
+      ),
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('button', { name: 'Options for foo' }).click();
+  await screen.getByRole('menuitem', { name: 'Rename' }).click();
+
+  await expect
+    .element(screen.getByRole('textbox', { name: 'Chat title' }))
+    .toHaveFocus();
+
+  await userEvent.keyboard('{Escape}');
+
+  await expect
+    .element(screen.getByRole('button', { name: 'Options for foo' }))
+    .toHaveFocus();
 });
 
 test('undoing an undone move puts the chat back in the project', async () => {
