@@ -27,6 +27,34 @@ test('mermaid code blocks render as diagrams', async () => {
     .toEqual(['foo', 'bar']);
 });
 
+test('mermaid diagrams follow theme switches', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>
+      {'```mermaid\nflowchart LR\n  foo --> bar\n```'}
+    </Markdown>
+  );
+
+  const fill = () => {
+    const node = screen.container.querySelector('svg .node rect');
+
+    return node ? getComputedStyle(node).fill : undefined;
+  };
+
+  await expect.poll(fill, { timeout: 10_000 }).toBe('rgb(238, 238, 238)');
+
+  document.documentElement.classList.add('dark');
+
+  await expect.poll(fill, { timeout: 10_000 }).toBe('rgb(31, 32, 32)');
+
+  document.documentElement.classList.remove('dark');
+});
+
 test('finished messages are not patched as if they were cut off', async () => {
   stubFetch(() =>
     Response.json({

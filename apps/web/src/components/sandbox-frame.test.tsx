@@ -21,7 +21,7 @@ test('generated content runs in an isolated, offline frame', async () => {
   });
 });
 
-test('calls from the frame get the handler’s answer or its error', async () => {
+function captureFrame() {
   const ports: MessagePort[] = [];
 
   vi.spyOn(HTMLIFrameElement.prototype, 'contentWindow', 'get').mockReturnValue(
@@ -33,6 +33,38 @@ test('calls from the frame get the handler’s answer or its error', async () =>
       ) => ports.push(...transfer),
     })
   );
+
+  return ports;
+}
+
+test('frames render again in the new theme after a theme switch', async () => {
+  const ports = captureFrame();
+
+  await render(<SandboxFrame html='foo' title='bar' />);
+
+  await expect.poll(() => ports.length).toBe(1);
+
+  const schemes: unknown[] = [];
+
+  const [port] = ports;
+
+  port?.addEventListener('message', ({ data }) =>
+    schemes.push(/color-scheme:(\w+)/.exec(data.html)?.[1])
+  );
+  port?.start();
+  port?.postMessage({ type: 'ready' });
+
+  await expect.poll(() => schemes).toEqual(['light']);
+
+  document.documentElement.classList.add('dark');
+
+  await expect.poll(() => schemes).toEqual(['light', 'dark']);
+
+  document.documentElement.classList.remove('dark');
+});
+
+test('calls from the frame get the handler’s answer or its error', async () => {
+  const ports = captureFrame();
 
   await render(
     <SandboxFrame
