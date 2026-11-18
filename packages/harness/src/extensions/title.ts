@@ -1,5 +1,5 @@
 import type { Context } from '@earendil-works/chord/context';
-import type { Message } from '@earendil-works/pi-ai';
+import { contentText } from '@earendil-works/pi-ai';
 import {
   type Conversation,
   GenerationTask,
@@ -35,16 +35,6 @@ export const TitleDoc = conversationDoc<{ title: string | null }>(
   'lab.title',
   () => ({ title: null })
 );
-
-function text(message: Message) {
-  if (typeof message.content === 'string') {
-    return message.content;
-  }
-
-  return message.content
-    .map((part) => (part.type === 'text' ? part.text : ''))
-    .join('');
-}
 
 function generateTitle(onHelperUsage: HelperUsage) {
   return defineTask<Record<string, never>, { phase: 'generate' }, null>({
@@ -87,7 +77,7 @@ function generateTitle(onHelperUsage: HelperUsage) {
           .filter(({ role }) => role === 'user' || role === 'assistant')
           .map(
             (message) =>
-              `${message.role}: ${text(message).slice(0, MESSAGE_LIMIT)}`
+              `${message.role}: ${contentText(message.content, '').slice(0, MESSAGE_LIMIT)}`
           )
           .join('\n\n');
 
