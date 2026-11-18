@@ -80,3 +80,55 @@ test('the mark assembles on the first visit of a session and rests after', async
 
   expect(states).toEqual(['assemble', 'idle']);
 });
+
+test('a new user gets starters that fill the message box', async () => {
+  const { screen } = await renderHome();
+
+  await screen.getByRole('button', { name: 'Plan a trip' }).click();
+
+  const message = screen.getByLabelText('Message');
+
+  await expect.element(message).toHaveValue('Plan a three-day trip to ');
+  await expect.element(message).toHaveFocus();
+});
+
+test('a returning user gets their latest chat, its project, and the next task', async () => {
+  const { router, screen } = await renderHome({
+    chats: [
+      { id: 1, projectId: null, title: 'foo', unread: true },
+      { id: 2, projectId: 3, title: 'bar', unread: false },
+    ],
+    projects: [
+      { id: 4, name: 'baz' },
+      { id: 3, name: 'qux' },
+    ],
+    tasks: [
+      {
+        conversationId: 5,
+        enabled: false,
+        nextRunAt: new Date(Date.now() + DAY).toISOString(),
+        title: 'quux',
+      },
+      {
+        conversationId: null,
+        enabled: true,
+        nextRunAt: new Date(Date.now() + 2 * DAY + 60_000).toISOString(),
+        title: 'corge',
+      },
+    ],
+  });
+
+  const list = screen.getByRole('list', { name: 'Suggestions' });
+
+  await expect
+    .poll(() => list.element().textContent)
+    .toBe('bar qux corge in 2 days');
+
+  await screen.getByRole('button', { name: 'corge in 2 days' }).click();
+
+  await expect.poll(() => router.state.location.pathname).toBe('/scheduled');
+
+  await screen.getByRole('button', { name: 'qux' }).click();
+
+  await expect.poll(() => router.state.location.pathname).toBe('/projects/3');
+});

@@ -45,9 +45,14 @@ export function useConversationSort() {
 
 export const conversationsQueryKey = ['conversations'];
 
-export type ChatScope = { filter: 'recent' } | { project: number };
+export type ChatScope =
+  | { filter: 'all' }
+  | { filter: 'recent' }
+  | { project: number };
 
 const recent: ChatScope = { filter: 'recent' };
+
+const everything: ChatScope = { filter: 'all' };
 
 function scopeQuery(scope: ChatScope) {
   return 'project' in scope
@@ -110,6 +115,13 @@ export function useConversations(scope = recent) {
   const [sort] = useConversationSort();
 
   return useInfiniteQuery(conversationsQueryOptions(scope, sort));
+}
+
+export function useLatestChats() {
+  return useInfiniteQuery({
+    ...conversationsQueryOptions(everything, 'activity'),
+    refetchInterval: false,
+  });
 }
 
 async function createConversation(

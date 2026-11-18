@@ -1,8 +1,10 @@
 import { StartComposer } from '@/components/start-composer';
+import { Suggestions } from '@/components/suggestions';
 import { LiveMark } from '@/components/ui/live-mark';
 import { UnreadChips } from '@/components/unread-chips';
+import { useDraft } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const greetedKey = 'lab:greeted';
 
@@ -39,6 +41,14 @@ function useFirstVisit() {
 
 export function NewChat({ user }: { user: { name: string } }) {
   const first = useFirstVisit();
+  const [, setDraft] = useDraft('new');
+  const input = useRef<HTMLTextAreaElement>(null);
+
+  const prompt = (text: string) => {
+    setDraft(text);
+    input.current?.focus();
+    input.current?.setSelectionRange(text.length, text.length);
+  };
 
   return (
     <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-24'>
@@ -55,9 +65,10 @@ export function NewChat({ user }: { user: { name: string } }) {
           </h1>
         </div>
         <div className='relative w-full'>
-          <StartComposer draft='new' />
+          <StartComposer draft='new' inputRef={input} />
           <div className='absolute inset-x-0 top-full mt-4 flex flex-col items-center gap-2'>
             <UnreadChips />
+            <Suggestions onPrompt={prompt} />
           </div>
         </div>
       </div>
