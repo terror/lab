@@ -8,7 +8,37 @@ const bridge = `<script>
   delete window.RTCPeerConnection;
   delete window.webkitRTCPeerConnection;
   const send = (message) => parent.postMessage(message, '*');
-  window.lab = { send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }) };
+  const calls = new Map();
+  let called = 0;
+  const call = (method, args) => new Promise((resolve, reject) => {
+    called += 1;
+    calls.set(called, { reject, resolve });
+    send({ args, id: called, method, type: 'call' });
+  });
+  addEventListener('message', (event) => {
+    const reply = event.source === parent && event.data && event.data.type === 'reply' && calls.get(event.data.id);
+    if (reply) {
+      calls.delete(event.data.id);
+      if (typeof event.data.error === 'string') {
+        reply.reject(new Error(event.data.error));
+      } else {
+        reply.resolve(event.data.value);
+      }
+    }
+  });
+  const store = {
+    delete: async (key) => {
+      await call('store.delete', { key: String(key) });
+    },
+    get: async (key) => {
+      const value = await call('store.get', { key: String(key) });
+      return typeof value === 'string' ? JSON.parse(value) : null;
+    },
+    set: async (key, value) => {
+      await call('store.set', { key: String(key), value: JSON.stringify(value) ?? 'null' });
+    },
+  };
+  window.lab = { send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }), store };
   const size = () => send({ type: 'size', height: Math.ceil(document.documentElement.getBoundingClientRect().height) });
   new ResizeObserver(size).observe(document.documentElement);
   addEventListener('load', size);
@@ -29,6 +59,8 @@ const runner = `(() => {
   let shown = 0;
   let pending = -1;
   let port;
+  const calls = new Map();
+  let called = 0;
   const show = (index) => {
     frames.forEach((frame, other) => frame.classList.toggle('pending', other !== index));
   };
@@ -51,8 +83,18 @@ const runner = `(() => {
           const scripts = message.scripts !== false;
           const next = 1 - shown;
           pending = next;
+          calls.forEach((call, id) => {
+            if (call.source === frames[next].contentWindow) {
+              calls.delete(id);
+            }
+          });
           frames[next].setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
           frames[next].srcdoc = ${literal(prefetch)} + (scripts ? ${literal(bridge)} : '') + message.html;
+        }
+        const call = message && message.type === 'reply' && calls.get(message.id);
+        if (call) {
+          calls.delete(message.id);
+          call.source.postMessage({ error: message.error, id: call.id, type: 'reply', value: message.value }, '*');
         }
       };
       port.postMessage({ type: 'ready' });
@@ -71,6 +113,11 @@ const runner = `(() => {
     }
     if (data.type === 'send' && typeof data.text === 'string' && navigator.userActivation.isActive) {
       port.postMessage({ type: 'send', text: data.text.slice(0, 2000) });
+    }
+    if (data.type === 'call' && typeof data.method === 'string' && Number.isInteger(data.id)) {
+      called += 1;
+      calls.set(called, { id: data.id, source: event.source });
+      port.postMessage({ args: data.args, id: called, method: data.method, type: 'call' });
     }
   });
 })();`;

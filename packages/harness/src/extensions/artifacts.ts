@@ -92,7 +92,7 @@ const artifactCreate = defineTool({
   },
 });
 
-const artifactId = str({
+export const artifactId = str({
   description: 'The artifact id.',
   maxLength: 40,
   minLength: 1,

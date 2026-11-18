@@ -11,10 +11,14 @@ const table = schema.upload;
 
 const library = schema.libraryItem;
 
+const state = schema.artifactState;
+
 type Reader = Pick<typeof db, 'select'>;
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 async function usedBytes(reader: Reader, ownerId: string) {
-  const [uploads, items] = await Promise.all([
+  const [uploads, items, values] = await Promise.all([
     reader
       .select({
         bytes:
@@ -32,9 +36,20 @@ async function usedBytes(reader: Reader, ownerId: string) {
       })
       .from(library)
       .where(eq(library.ownerId, ownerId)),
+    reader
+      .select({
+        bytes:
+          sql`coalesce(sum(octet_length(${state.key}) + octet_length(${state.value})), 0)`.mapWith(
+            Number
+          ),
+      })
+      .from(state)
+      .where(eq(state.ownerId, ownerId)),
   ]);
 
-  return (uploads[0]?.bytes ?? 0) + (items[0]?.bytes ?? 0);
+  return (
+    (uploads[0]?.bytes ?? 0) + (items[0]?.bytes ?? 0) + (values[0]?.bytes ?? 0)
+  );
 }
 
 function full(limit: number) {
@@ -55,6 +70,26 @@ export async function checkStorage(ownerId: string, adding: number) {
   }
 }
 
+export async function reserveStorage(
+  tx: Transaction,
+  ownerId: string,
+  adding: number
+) {
+  const { storageLimit } = await policy(ownerId);
+
+  if (storageLimit === undefined || adding <= 0) {
+    return;
+  }
+
+  await tx.execute(
+    sql`select 1 from ${schema.user} where ${schema.user.id} = ${ownerId} for update`
+  );
+
+  if ((await usedBytes(tx, ownerId)) + adding > storageLimit * MEGABYTE) {
+    throw full(storageLimit);
+  }
+}
+
 export async function storeUpload(
   ownerId: string,
   {
@@ -63,20 +98,12 @@ export async function storeUpload(
     thumbnail = null,
   }: { content: Uint8Array; mimeType: string; thumbnail?: Uint8Array | null }
 ) {
-  const { storageLimit } = await policy(ownerId);
-
   return db.transaction(async (tx) => {
-    if (storageLimit !== undefined) {
-      await tx.execute(
-        sql`select 1 from ${schema.user} where ${schema.user.id} = ${ownerId} for update`
-      );
-
-      const adding = content.byteLength + (thumbnail?.byteLength ?? 0);
-
-      if ((await usedBytes(tx, ownerId)) + adding > storageLimit * MEGABYTE) {
-        throw full(storageLimit);
-      }
-    }
+    await reserveStorage(
+      tx,
+      ownerId,
+      content.byteLength + (thumbnail?.byteLength ?? 0)
+    );
 
     const [created] = await tx
       .insert(table)

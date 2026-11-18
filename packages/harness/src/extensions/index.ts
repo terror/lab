@@ -1,6 +1,7 @@
 import type { Extension } from '@earendil-works/pi-durable';
 
 import type { HelperUsage } from '../helper';
+import { type ArtifactStateAccess, artifactApps } from './artifact-apps';
 import { artifacts } from './artifacts';
 import { ask } from './ask';
 import { assistant } from './assistant';
@@ -24,6 +25,13 @@ import { title } from './title';
 import type { Owner } from './users';
 import { type WebAccess, web } from './web';
 
+export {
+  type ArtifactStateAccess,
+  STORE_KEY_LENGTH,
+  STORE_KEY_LIMIT,
+  STORE_VALUE_LENGTH,
+} from './artifact-apps';
+export { ArtifactsDoc } from './artifacts';
 export {
   type ConnectorAccess,
   type ConnectorChange,
@@ -119,6 +127,7 @@ export {
 
 export type ExtensionDeps = {
   admit: Admit;
+  artifactState: ArtifactStateAccess;
   chats: ChatsAccess;
   connectors: ConnectorAccess;
   owner: Owner;
@@ -152,6 +161,7 @@ function ownLimits(extension: Extension): Extension {
 export function extensions(deps: ExtensionDeps) {
   return [
     artifacts,
+    artifactApps(deps.artifactState),
     ask,
     assistant,
     chats(deps.chats),
