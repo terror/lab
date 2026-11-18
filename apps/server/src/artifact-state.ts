@@ -48,6 +48,12 @@ export function saveValue(
   { key, value }: { key: string; value: string }
 ) {
   return db.transaction(async (tx) => {
+    await tx
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.id, ownerId))
+      .for('update');
+
     const [existing] = await tx
       .select({
         bytes:
