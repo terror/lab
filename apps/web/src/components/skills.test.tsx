@@ -1,3 +1,4 @@
+import { Toaster } from '@/components/ui/sonner';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -64,4 +65,41 @@ test('a skill is edited in a dialog', async () => {
     method: 'PATCH',
     path: '/api/skills/qux',
   });
+});
+
+test('a deleted skill comes back with Undo', async () => {
+  const fetch = stubFetch((_, init) =>
+    Response.json({ skills: init?.method === 'DELETE' ? [] : [skill] })
+  );
+
+  const { screen } = await renderWithQuery(
+    <>
+      <Skills />
+      <Toaster />
+    </>
+  );
+
+  await screen.getByRole('button', { name: 'Delete foo' }).click();
+  await screen.getByRole('button', { name: 'Undo' }).click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'DELETE' || init?.method === 'POST'
+          ? [[init.method, requestUrl(input).pathname, init.body]]
+          : []
+      )
+    )
+    .toEqual([
+      ['DELETE', '/api/skills/qux', undefined],
+      [
+        'POST',
+        '/api/skills',
+        JSON.stringify({
+          description: 'bar',
+          instructions: 'baz',
+          name: 'foo',
+        }),
+      ],
+    ]);
 });

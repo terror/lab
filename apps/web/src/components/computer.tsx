@@ -1,15 +1,6 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -166,26 +157,14 @@ function Details({ status }: { status: ComputerStatus }) {
           Reset computer
         </Button>
       </div>
-      <AlertDialog onOpenChange={setConfirming} open={confirming}>
-        <AlertDialogContent size='sm'>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset the computer?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Every file and installed package on it will be deleted. Lab
-              creates a fresh computer the next time it needs one.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => reset.mutate()}
-              variant='destructive'
-            >
-              Reset
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        action='Reset'
+        description='Every file and installed package on it will be deleted. Lab creates a fresh computer the next time it needs one.'
+        onConfirm={() => reset.mutate()}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title='Reset the computer?'
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   updateMemory,
   useMemoryUpdate,
 } from '@/lib/memory';
+import { undoToast } from '@/lib/undo';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
@@ -100,6 +101,7 @@ function AddMemoryDialog({
 
 function Memories({ memories }: { memories: MemoryState['memories'] }) {
   const remove = useMemoryUpdate(removeMemory);
+  const restore = useMemoryUpdate(addMemory);
 
   return (
     <div className='flex flex-col gap-3'>
@@ -107,7 +109,7 @@ function Memories({ memories }: { memories: MemoryState['memories'] }) {
         <h2 className='text-sm font-medium'>Memories</h2>
         <p className='text-sm text-muted-foreground'>
           Facts Lab remembers across chats. Ask it to remember or forget
-          something, or forget them here.
+          something, or delete them here.
         </p>
       </div>
       {memories.length === 0 && (
@@ -121,13 +123,18 @@ function Memories({ memories }: { memories: MemoryState['memories'] }) {
           >
             <span className='min-w-0 flex-1 text-sm'>{memory}</span>
             <Button
-              aria-label={`Forget ${memory}`}
+              aria-label={`Delete ${memory}`}
               disabled={remove.isPending}
-              onClick={() => remove.mutate(id)}
+              onClick={() =>
+                remove.mutate(id, {
+                  onSuccess: () =>
+                    undoToast('Memory deleted.', () => restore.mutate(memory)),
+                })
+              }
               size='sm'
               variant='ghost'
             >
-              Forget
+              Delete
             </Button>
           </li>
         ))}

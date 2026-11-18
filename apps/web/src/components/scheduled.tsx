@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { StartComposer } from '@/components/start-composer';
 import {
@@ -78,6 +79,8 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   });
   const remove = useScheduleAction(deleteTask);
 
+  const [confirming, setConfirming] = useState(false);
+
   const open = () => {
     if (task.conversationId !== null) {
       void navigate({
@@ -128,13 +131,21 @@ function TaskRow({ task }: { task: ScheduledTask }) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => remove.mutate(task.id)}
+            onSelect={() => setConfirming(true)}
             variant='destructive'
           >
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ConfirmDialog
+        action='Delete'
+        description='This can’t be undone. To stop it for a while, pause it instead.'
+        onConfirm={() => remove.mutate(task.id)}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title={`Delete ${task.title}?`}
+      />
     </li>
   );
 }

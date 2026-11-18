@@ -15,11 +15,11 @@ import {
   projectsQueryOptions,
 } from '@/lib/projects';
 import { useUndoTrash } from '@/lib/trash';
+import { undoToast } from '@/lib/undo';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
 
 export function ProjectMenu({
   className,
@@ -52,17 +52,13 @@ export function ProjectMenu({
     onSuccess: async () => {
       const viewing = path === page || chat.data?.projectId === project.id;
 
-      toast('Project moved to Trash.', {
-        action: {
-          label: 'Undo',
-          onClick: () =>
-            void undo({ id: project.id, kind: 'project' }, async () => {
-              if (viewing) {
-                await navigate({ href: path });
-              }
-            }),
-        },
-      });
+      undoToast('Project moved to Trash.', () =>
+        undo({ id: project.id, kind: 'project' }, async () => {
+          if (viewing) {
+            await navigate({ href: path });
+          }
+        })
+      );
 
       if (viewing) {
         await navigate({ to: '/' });

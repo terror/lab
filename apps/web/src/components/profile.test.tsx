@@ -1,7 +1,7 @@
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
-import { YourData } from './profile';
+import { Profile, YourData } from './profile';
 
 const user = {
   createdAt: new Date(0).toISOString(),
@@ -12,13 +12,18 @@ const user = {
   updatedAt: new Date(0).toISOString(),
 };
 
+vi.mock('@/lib/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth')>()),
+  useUser: () => ({ ...user, image: '/foo.png' }),
+}));
+
 function respond(admin: boolean) {
   return stubFetch(({ pathname }, init) => {
     if (pathname === '/api/auth/get-session') {
       return Response.json({ session: { id: 'bar', userId: 'foo' }, user });
     }
 
-    if (pathname === '/api/profile' && init?.method === 'DELETE') {
+    if (init?.method === 'DELETE') {
       return new Response(null, { status: 204 });
     }
 
@@ -72,4 +77,24 @@ test('the admin cannot delete their account', async () => {
   await expect
     .poll(() => screen.getByRole('button', { name: 'Delete account' }).query())
     .toBeNull();
+});
+
+test('removing the profile picture asks first', async () => {
+  const fetch = respond(false);
+
+  const { screen } = await renderWithQuery(<Profile />);
+
+  await screen.getByRole('button', { name: 'Remove' }).click();
+  await screen
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Remove' })
+    .click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'DELETE' ? [requestUrl(input).pathname] : []
+      )
+    )
+    .toEqual(['/api/profile/picture']);
 });

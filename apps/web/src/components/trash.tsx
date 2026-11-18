@@ -1,15 +1,6 @@
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
@@ -28,37 +19,6 @@ const names: Record<TrashItem['kind'], (item: TrashItem) => string> = {
   conversation: ({ title }) => conversationTitle(title),
   project: ({ title }) => title ?? 'Untitled project',
 };
-
-function ConfirmDelete({
-  description,
-  onConfirm,
-  onOpenChange,
-  open,
-  title,
-}: {
-  description: string;
-  onConfirm: () => void;
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
-  title: string;
-}) {
-  return (
-    <AlertDialog onOpenChange={onOpenChange} open={open}>
-      <AlertDialogContent size='sm'>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} variant='destructive'>
-            Delete forever
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
 
 function TrashRow({ item }: { item: TrashItem }) {
   const [confirming, setConfirming] = useState(false);
@@ -96,8 +56,9 @@ function TrashRow({ item }: { item: TrashItem }) {
           Restore
         </Button>
       </div>
-      <ConfirmDelete
-        description={`“${name}” will be deleted permanently. This can't be undone.`}
+      <ConfirmDialog
+        action='Delete forever'
+        description={`“${name}” will be deleted permanently. This can’t be undone.`}
         onConfirm={() => remove.mutate(item)}
         onOpenChange={setConfirming}
         open={confirming}
@@ -146,8 +107,9 @@ export function Trash() {
           ))}
         </ul>
       )}
-      <ConfirmDelete
-        description={`${count} ${count === 1 ? 'item' : 'items'} will be deleted permanently. This can't be undone.`}
+      <ConfirmDialog
+        action='Delete forever'
+        description={`${count} ${count === 1 ? 'item' : 'items'} will be deleted permanently. This can’t be undone.`}
         onConfirm={() => empty.mutate(undefined)}
         onOpenChange={setConfirming}
         open={confirming}
