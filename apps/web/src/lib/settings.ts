@@ -1,7 +1,6 @@
 import { useAdmin } from '@/lib/profile';
 import {
   Brain,
-  Cable,
   Gauge,
   KeyRound,
   type LucideIcon,
@@ -19,7 +18,6 @@ export const settingsSections = [
   'profile',
   'computer',
   'connectors',
-  'mcp',
   'memory',
   'skills',
   'providers',
@@ -36,7 +34,6 @@ export const settingsSectionInfo: Record<
   appearance: { icon: Palette, label: 'Appearance' },
   computer: { icon: Monitor, label: 'Computer' },
   connectors: { icon: Plug, label: 'Connectors' },
-  mcp: { icon: Cable, label: 'MCP' },
   memory: { icon: Brain, label: 'Memory' },
   profile: { icon: UserRound, label: 'Profile' },
   providers: { admin: true, icon: KeyRound, label: 'Providers' },

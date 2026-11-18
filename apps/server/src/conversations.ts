@@ -323,7 +323,7 @@ async function branchChat(
   );
 }
 
-export type BunServer = {
+type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
