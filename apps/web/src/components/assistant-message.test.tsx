@@ -61,7 +61,7 @@ test('a finished turn folds only its steps behind how long it worked', async () 
   await expect.element(screen.getByText('Couldn’t read a page')).toBeVisible();
 });
 
-test('a running turn keeps its text and shows only its current step', async () => {
+test('a running turn lists its finished steps above its current one', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -81,7 +81,9 @@ test('a running turn keeps its text and shows only its current step', async () =
   await expect
     .element(screen.getByRole('status'))
     .toHaveTextContent('Reading a page');
-  await expect.element(screen.getByRole('button')).not.toBeInTheDocument();
+  await expect
+    .element(screen.getByRole('button'))
+    .toHaveTextContent('Searched the web for “foo”');
   await expect.element(screen.getByText('bar')).toBeVisible();
 });
 
@@ -106,6 +108,69 @@ test('a pending question waits for an answer instead of working', async () => {
   await expect
     .element(screen.getByRole('status'))
     .toHaveTextContent('Waiting for your answer');
+});
+
+function turn(finished: readonly string[]) {
+  return (
+    <AssistantMessage
+      parts={parts.slice(0, 3)}
+      progress={new Map()}
+      results={
+        new Map(
+          finished.map((id) => [id, { output: '', status: 'done' } as const])
+        )
+      }
+      streaming
+      working
+    />
+  );
+}
+
+function ticks(container: HTMLElement) {
+  return [...container.querySelectorAll('button [data-slot=trace-line]')].map(
+    (line) => [line.textContent, line.getAttribute('data-tick')]
+  );
+}
+
+test('only a step that finishes while the chat is open ticks', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const opened = await renderWithQuery(turn(['a']));
+
+  await expect.poll(() => ticks(opened.screen.container)).toHaveLength(1);
+
+  const before = ticks(opened.screen.container);
+
+  await opened.screen.unmount();
+
+  const watched = await renderWithQuery(turn([]));
+
+  await watched.screen.rerender(turn(['a']));
+
+  await expect.poll(() => ticks(watched.screen.container)).toHaveLength(1);
+
+  expect([...before, ...ticks(watched.screen.container)]).toEqual([
+    ['Searched the web for “foo”', null],
+    ['Searched the web for “foo”', 'true'],
+  ]);
+});
+
+test('a turn between steps says it is thinking', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(turn(['a', 'b']));
+
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('Thinking');
 });
 
 test('a turn shows how long it worked as soon as its reply starts', async () => {

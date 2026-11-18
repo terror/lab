@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { expect } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
+import { themes } from '../../.storybook/themes';
 import { Activity, AssistantMessage } from './assistant-message';
 
 const answer = `Here is a **three day** plan.
@@ -93,3 +94,66 @@ function RapidActivity() {
 }
 
 export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
+
+const searches = [
+  {
+    arguments: { query: 'quiet Lisbon neighbourhoods' },
+    id: 'call-1',
+    name: 'web_search',
+    type: 'toolCall',
+  },
+  {
+    arguments: { url: 'https://example.com' },
+    id: 'call-2',
+    name: 'web_fetch',
+    type: 'toolCall',
+  },
+  {
+    arguments: { query: 'tram lines' },
+    id: 'call-3',
+    name: 'chat_search',
+    type: 'toolCall',
+  },
+] as const;
+
+function Steps() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setStep((current) => current + 1), 1_200);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const phase = step % 7;
+
+  const replying = phase >= 4;
+
+  return (
+    <AssistantMessage
+      key={Math.floor(step / 7)}
+      parts={[
+        ...searches.slice(0, Math.min(phase + 1, searches.length)),
+        ...(replying
+          ? [{ text: 'Príncipe Real is the quietest.', type: 'text' } as const]
+          : []),
+      ]}
+      progress={new Map()}
+      results={
+        new Map(
+          searches
+            .slice(0, phase)
+            .map(({ id }) => [id, { output: '', status: 'done' } as const])
+        )
+      }
+      span={{ end: 9_000, start: 0 }}
+      streaming
+      working
+    />
+  );
+}
+
+export const LiveSteps = meta.story({
+  decorators: [themes],
+  render: () => <Steps />,
+});
