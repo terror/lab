@@ -168,41 +168,54 @@ function CollapseButton({
   );
 }
 
-function SectionHeader({
+function SidebarSection({
+  actions,
   children,
-  collapsed,
   collapsible = true,
-  controls,
-  onToggle,
+  header = true,
+  label,
+  storageKey,
   subject,
   title,
 }: {
-  children?: ReactNode;
-  collapsed: boolean;
+  actions?: ReactNode;
+  children: ReactNode;
   collapsible?: boolean;
-  controls: string;
-  onToggle: () => void;
+  header?: boolean;
+  label: string;
+  storageKey: string;
   subject: string;
   title: string;
 }) {
+  const list = useId();
+
+  const [collapsed, setCollapsed] = usePersistentState(
+    storageKey,
+    collapsedSchema,
+    false
+  );
+
   return (
-    <div className='sticky top-0 z-10 flex items-center gap-1 bg-sidebar px-2'>
-      <h2 className='text-xs font-medium text-muted-foreground'>{title}</h2>
-      {collapsible && (
-        <CollapseButton
-          collapsed={collapsed}
-          controls={controls}
-          onToggle={onToggle}
-          subject={subject}
-        />
+    <div className='flex flex-col gap-1'>
+      {header && (
+        <div className='sticky top-0 z-10 flex items-center gap-1 bg-sidebar px-2'>
+          <h2 className='text-xs font-medium text-muted-foreground'>{title}</h2>
+          {collapsible && (
+            <CollapseButton
+              collapsed={collapsed}
+              controls={list}
+              onToggle={() => setCollapsed(!collapsed)}
+              subject={subject}
+            />
+          )}
+          {actions}
+        </div>
       )}
-      {children}
+      <nav aria-label={label} hidden={collapsed} id={list}>
+        {children}
+      </nav>
     </div>
   );
-}
-
-function useCollapsed(key: string) {
-  return usePersistentState(key, collapsedSchema, false);
 }
 
 function SortMenu() {
@@ -318,12 +331,9 @@ function ProjectsSection({
   onSelect?: () => void;
   selected: number | undefined;
 }) {
-  const list = useId();
   const path = usePath();
   const projects = useProjects();
   const summary = useConversationSummary(selected);
-
-  const [collapsed, setCollapsed] = useCollapsed('projects-collapsed');
 
   const presence = useRowPresence();
 
@@ -359,30 +369,29 @@ function ProjectsSection({
     : all.filter((project, index) => index < PREVIEW || project.id === open);
 
   return (
-    <div className='flex flex-col gap-1'>
-      <SectionHeader
-        collapsed={collapsed}
+    <>
+      <SidebarSection
+        actions={
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                aria-label='New project'
+                className={cn(headerButton, 'ml-auto')}
+                onClick={() => setEditing({ kind: 'new' })}
+                type='button'
+              >
+                <Plus aria-hidden='true' className='size-3.5' />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>New project</TooltipContent>
+          </Tooltip>
+        }
         collapsible={all.length > 0}
-        controls={list}
-        onToggle={() => setCollapsed(!collapsed)}
+        label='Projects'
+        storageKey='projects-collapsed'
         subject='projects'
         title='Projects'
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              aria-label='New project'
-              className={cn(headerButton, 'ml-auto')}
-              onClick={() => setEditing({ kind: 'new' })}
-              type='button'
-            >
-              <Plus aria-hidden='true' className='size-3.5' />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>New project</TooltipContent>
-        </Tooltip>
-      </SectionHeader>
-      <nav aria-label='Projects' hidden={collapsed} id={list}>
         {projects.isError && <LoadError className='px-2' subject='projects' />}
         <ul className='flex flex-col gap-0.5'>
           <AnimatePresence initial={false}>
@@ -432,21 +441,18 @@ function ProjectsSection({
             <ShowMore onClick={() => setExpanded(true)} />
           )}
         </ul>
-      </nav>
+      </SidebarSection>
       <ProjectDialog
         editing={editing}
         onClose={() => setEditing(undefined)}
         onCreated={(project) => onProject(project.id)}
       />
-    </div>
+    </>
   );
 }
 
 function AppsSection({ onSelect }: { onSelect?: () => void }) {
-  const list = useId();
   const apps = usePins(null);
-
-  const [collapsed, setCollapsed] = useCollapsed('apps-collapsed');
 
   if (apps.isError) {
     return <LoadError className='px-2' subject='apps' />;
@@ -457,28 +463,24 @@ function AppsSection({ onSelect }: { onSelect?: () => void }) {
   }
 
   return (
-    <div className='flex flex-col gap-1'>
-      <SectionHeader
-        collapsed={collapsed}
-        controls={list}
-        onToggle={() => setCollapsed(!collapsed)}
-        subject='apps'
-        title='Apps'
-      />
-      <nav aria-label='Apps' hidden={collapsed} id={list}>
-        <ul className='flex flex-col gap-0.5'>
-          <AnimatePresence initial={false}>
-            {apps.data?.map((app) => (
-              <AppLink
-                key={`${app.conversationId}/${app.artifactId}`}
-                app={app}
-                onSelect={onSelect}
-              />
-            ))}
-          </AnimatePresence>
-        </ul>
-      </nav>
-    </div>
+    <SidebarSection
+      label='Apps'
+      storageKey='apps-collapsed'
+      subject='apps'
+      title='Apps'
+    >
+      <ul className='flex flex-col gap-0.5'>
+        <AnimatePresence initial={false}>
+          {apps.data?.map((app) => (
+            <AppLink
+              key={`${app.conversationId}/${app.artifactId}`}
+              app={app}
+              onSelect={onSelect}
+            />
+          ))}
+        </AnimatePresence>
+      </ul>
+    </SidebarSection>
   );
 }
 
@@ -489,10 +491,7 @@ function PinnedSection({
   onSelect?: () => void;
   selected: number | undefined;
 }) {
-  const list = useId();
   const pinned = usePinnedConversations();
-
-  const [collapsed, setCollapsed] = useCollapsed('pinned-collapsed');
 
   if (pinned.isError) {
     return <LoadError className='px-2' subject='pinned chats' />;
@@ -503,31 +502,26 @@ function PinnedSection({
   }
 
   return (
-    <div className='flex flex-col gap-1'>
-      <SectionHeader
-        collapsed={collapsed}
-        controls={list}
-        onToggle={() => setCollapsed(!collapsed)}
-        subject='pinned chats'
-        title='Pinned'
-      >
-        <SortMenu />
-      </SectionHeader>
-      <nav aria-label='Pinned chats' hidden={collapsed} id={list}>
-        <ul className='flex flex-col gap-0.5'>
-          <AnimatePresence initial={false}>
-            {pinned.data?.map((conversation) => (
-              <ConversationItem
-                key={conversation.id}
-                conversation={conversation}
-                onSelect={onSelect}
-                selected={conversation.id === selected}
-              />
-            ))}
-          </AnimatePresence>
-        </ul>
-      </nav>
-    </div>
+    <SidebarSection
+      actions={<SortMenu />}
+      label='Pinned chats'
+      storageKey='pinned-collapsed'
+      subject='pinned chats'
+      title='Pinned'
+    >
+      <ul className='flex flex-col gap-0.5'>
+        <AnimatePresence initial={false}>
+          {pinned.data?.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              onSelect={onSelect}
+              selected={conversation.id === selected}
+            />
+          ))}
+        </AnimatePresence>
+      </ul>
+    </SidebarSection>
   );
 }
 
@@ -760,41 +754,31 @@ function RecentsSection({
   onSelect?: () => void;
   selected: number | undefined;
 }) {
-  const list = useId();
-
-  const [collapsed, setCollapsed] = useCollapsed('recents-collapsed');
-
   return (
-    <div className='flex flex-col gap-1'>
-      {(error || (conversations?.length ?? 0) > 0) && (
-        <SectionHeader
-          collapsed={collapsed}
-          controls={list}
-          onToggle={() => setCollapsed(!collapsed)}
-          subject='chats'
-          title='Recents'
-        >
-          <SortMenu />
-        </SectionHeader>
-      )}
-      <nav aria-label='Chats' hidden={collapsed} id={list}>
-        {error && <LoadError className='px-2' subject='chats' />}
-        <ul className='flex flex-col gap-0.5'>
-          {conversations && (
-            <AnimatePresence initial={false}>
-              {conversations.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  onSelect={onSelect}
-                  selected={conversation.id === selected}
-                />
-              ))}
-            </AnimatePresence>
-          )}
-        </ul>
-        {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
-      </nav>
-    </div>
+    <SidebarSection
+      actions={<SortMenu />}
+      header={error || (conversations?.length ?? 0) > 0}
+      label='Chats'
+      storageKey='recents-collapsed'
+      subject='chats'
+      title='Recents'
+    >
+      {error && <LoadError className='px-2' subject='chats' />}
+      <ul className='flex flex-col gap-0.5'>
+        {conversations && (
+          <AnimatePresence initial={false}>
+            {conversations.map((conversation) => (
+              <ConversationItem
+                key={conversation.id}
+                conversation={conversation}
+                onSelect={onSelect}
+                selected={conversation.id === selected}
+              />
+            ))}
+          </AnimatePresence>
+        )}
+      </ul>
+      {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
+    </SidebarSection>
   );
 }

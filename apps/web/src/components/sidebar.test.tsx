@@ -156,6 +156,27 @@ test('projects, apps and recent chats scroll together', async () => {
   });
 });
 
+test('hiding a section folds its list away', async () => {
+  const { screen } = await renderSidebar();
+
+  const projects = screen.getByRole('navigation', {
+    includeHidden: true,
+    name: 'Projects',
+  });
+
+  await screen.getByRole('button', { name: 'Hide projects' }).click();
+
+  await expect.element(projects).not.toBeVisible();
+
+  const show = screen.getByRole('button', { name: 'Show projects' });
+
+  await expect.element(show).toHaveAttribute('aria-expanded', 'false');
+
+  await show.click();
+
+  await expect.element(projects).toBeVisible();
+});
+
 test('apps pinned to the sidebar link to their pages', async () => {
   const { screen } = await renderSidebar();
 
