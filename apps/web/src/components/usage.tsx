@@ -1,13 +1,12 @@
 import { BudgetPanel } from '@/components/budget';
 import { LoadError } from '@/components/load-error';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListRow } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Pills } from '@/components/ui/pills';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
@@ -17,14 +16,15 @@ import { conversationTitle } from '@/lib/conversations';
 import { formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
 import { type Usage, usageQueryOptions } from '@/lib/usage';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { z } from 'zod';
 
 const ranges = [
-  { days: 7, label: 'Last 7 days' },
-  { days: 30, label: 'Last 30 days' },
-  { days: 90, label: 'Last 90 days' },
+  { label: '7 days', value: '7' },
+  { label: '30 days', value: '30' },
+  { label: '90 days', value: '90' },
 ];
 
 const rangeSchema = z.number().int();
@@ -46,24 +46,34 @@ function date(value: string) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className='flex flex-col gap-1 rounded-2xl bg-muted/50 px-4 py-3'>
+    <Card className='gap-1 px-4 py-3' variant='inset'>
       <span className='text-xs text-muted-foreground'>{label}</span>
       <span className='text-2xl font-semibold tracking-tight tabular-nums'>
         {value}
       </span>
-    </div>
+    </Card>
   );
 }
 
 function SpendChart({ daily }: { daily: Usage['daily'] }) {
   const max = Math.max(0, ...daily.map(({ cost }) => cost));
+  const total = daily.reduce((sum, { cost }) => sum + cost, 0);
+  const peak = daily.find(({ cost }) => cost === max);
 
   const first = daily[0];
   const last = daily.at(-1);
 
   return (
     <figure className='flex flex-col gap-3'>
-      <figcaption className='text-sm font-medium'>Daily spend</figcaption>
+      <figcaption className='flex flex-wrap items-baseline justify-between gap-x-4 text-sm'>
+        <span className='font-medium text-muted-foreground'>Daily spend</span>
+        {peak && max > 0 && (
+          <span className='text-muted-foreground tabular-nums'>
+            {formatSpend(total)} in total · peak {formatSpend(max)} on{' '}
+            {date(peak.date)}
+          </span>
+        )}
+      </figcaption>
       <div className='flex h-40 items-end gap-0.5 border-b'>
         {daily.map((entry) => (
           <Tooltip key={entry.date}>
@@ -74,7 +84,12 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
                 type='button'
               >
                 <span
-                  className='w-full rounded-t-sm bg-foreground/50 transition-colors group-hover:bg-foreground group-focus-visible:bg-foreground'
+                  className={cn(
+                    'min-h-0.5 w-full rounded-t-sm transition-colors',
+                    entry.cost > 0
+                      ? 'bg-foreground/50 group-hover:bg-foreground group-focus-visible:bg-foreground'
+                      : 'bg-foreground/10 group-hover:bg-foreground/25'
+                  )}
                   style={{
                     height: max > 0 ? `${(entry.cost / max) * 100}%` : 0,
                   }}
@@ -101,7 +116,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
 function Models({ models }: { models: Usage['models'] }) {
   return (
     <section className='flex flex-col gap-2'>
-      <h2 className='text-sm font-medium'>By model</h2>
+      <SectionHeading>By model</SectionHeading>
       <table className='w-full text-sm'>
         <thead className='text-xs text-muted-foreground'>
           <tr>
@@ -113,15 +128,15 @@ function Models({ models }: { models: Usage['models'] }) {
         </thead>
         <tbody className='tabular-nums'>
           {models.map((model) => (
-            <tr key={`${model.provider}:${model.model}`}>
-              <td className='py-1.5 pr-4'>
+            <tr key={`${model.provider}:${model.model}`} className='border-t'>
+              <td className='py-2 pr-4'>
                 <span className='block truncate'>{model.name}</span>
               </td>
-              <td className='py-1.5 text-right'>{model.responses}</td>
-              <td className='py-1.5 text-right'>
+              <td className='py-2 text-right'>{model.responses}</td>
+              <td className='py-2 text-right'>
                 {compact.format(model.input + model.output)}
               </td>
-              <td className='py-1.5 text-right'>{formatSpend(model.cost)}</td>
+              <td className='py-2 text-right'>{formatSpend(model.cost)}</td>
             </tr>
           ))}
         </tbody>
@@ -133,24 +148,35 @@ function Models({ models }: { models: Usage['models'] }) {
 function Chats({ conversations }: { conversations: Usage['conversations'] }) {
   return (
     <section className='flex flex-col gap-2'>
-      <h2 className='text-sm font-medium'>Most expensive chats</h2>
-      <ul className='-mx-3 flex flex-col'>
+      <SectionHeading>Most expensive chats</SectionHeading>
+      <ul className='flex flex-col gap-0.5'>
         {conversations.map(({ cost, id, title }) => (
-          <li key={id}>
-            <Link
-              className='flex items-center justify-between gap-4 rounded-xl px-3 py-1.5 text-sm hover:bg-muted/50'
-              params={{ id }}
-              to='/c/$id'
-            >
-              <span className='truncate'>{conversationTitle(title)}</span>
+          <ListRow key={id} asChild>
+            <Link params={{ id }} to='/c/$id'>
+              <span className='min-w-0 flex-1 truncate'>
+                {conversationTitle(title)}
+              </span>
               <span className='shrink-0 text-muted-foreground tabular-nums'>
                 {formatSpend(cost)}
               </span>
             </Link>
-          </li>
+          </ListRow>
         ))}
       </ul>
     </section>
+  );
+}
+
+function UsageSkeleton() {
+  return (
+    <div aria-busy='true' className='flex flex-col gap-6'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+        {[0, 1, 2, 3].map((stat) => (
+          <Skeleton key={stat} className='h-17 rounded-card' />
+        ))}
+      </div>
+      <Skeleton className='h-40 rounded-card' />
+    </div>
   );
 }
 
@@ -162,60 +188,62 @@ export function UsagePanel() {
   return (
     <>
       <PageHeader
-        actions={
-          <Select
-            onValueChange={(value) => setDays(Number(value))}
-            value={String(days)}
-          >
-            <SelectTrigger
-              aria-label='Range'
-              className='h-auto gap-1 border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-transparent'
-              size='sm'
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align='end'>
-              {ranges.map((range) => (
-                <SelectItem key={range.days} value={String(range.days)}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
         description='Spend and tokens across your chats, from provider prices.'
         title='Usage'
       />
       <BudgetPanel />
-      {usage.isError && <LoadError subject='usage' />}
-      {usage.data && (
-        <>
-          <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-            <Stat
-              label='Spend'
-              value={formatSpend(usage.data.summary?.cost ?? 0)}
+      <section className='flex flex-col gap-4'>
+        <SectionHeading
+          actions={
+            <Pills
+              label='Range'
+              onValueChange={(value) => setDays(Number(value))}
+              options={ranges}
+              value={String(days)}
             />
-            <Stat
-              label='Input tokens'
-              value={compact.format(usage.data.summary?.input ?? 0)}
-            />
-            <Stat
-              label='Output tokens'
-              value={compact.format(usage.data.summary?.output ?? 0)}
-            />
-            <Stat
-              label='Responses'
-              value={String(usage.data.summary?.responses ?? 0)}
-            />
-          </div>
-          <SpendChart daily={usage.data.daily} />
-          {usage.data.models.length > 0 && (
-            <Models models={usage.data.models} />
-          )}
-          {usage.data.conversations.length > 0 && (
-            <Chats conversations={usage.data.conversations} />
-          )}
-        </>
+          }
+        >
+          Spend
+        </SectionHeading>
+        {usage.isPending && <UsageSkeleton />}
+        {usage.isLoadingError && (
+          <LoadError onRetry={() => usage.refetch()} subject='usage' />
+        )}
+        {usage.data?.models.length === 0 && (
+          <EmptyState
+            description='Spend and tokens show up here after your first chat in this range.'
+            title='Nothing spent yet'
+          />
+        )}
+        {usage.data && usage.data.models.length > 0 && (
+          <>
+            <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+              <Stat
+                label='Spend'
+                value={formatSpend(usage.data.summary?.cost ?? 0)}
+              />
+              <Stat
+                label='Input tokens'
+                value={compact.format(usage.data.summary?.input ?? 0)}
+              />
+              <Stat
+                label='Output tokens'
+                value={compact.format(usage.data.summary?.output ?? 0)}
+              />
+              <Stat
+                label='Responses'
+                value={String(usage.data.summary?.responses ?? 0)}
+              />
+            </div>
+            <SpendChart daily={usage.data.daily} />
+          </>
+        )}
+      </section>
+      {usage.data && usage.data.models.length > 0 && (
+        <Models models={usage.data.models} />
+      )}
+      {usage.data && usage.data.conversations.length > 0 && (
+        <Chats conversations={usage.data.conversations} />
       )}
     </>
   );
