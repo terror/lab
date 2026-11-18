@@ -56,7 +56,7 @@ test('deleting a project forever clears the drafts of its chats', async () => {
       : Response.json({ chats: [8] })
   );
 
-  window.localStorage.setItem('lab:draft:8', '"bar"');
+  window.localStorage.setItem('lab:foo:draft:8', '"bar"');
 
   const { screen } = await renderWithQuery(<Trash />);
 
@@ -68,7 +68,7 @@ test('deleting a project forever clears the drafts of its chats', async () => {
     .click();
 
   await expect
-    .poll(() => window.localStorage.getItem('lab:draft:8'))
+    .poll(() => window.localStorage.getItem('lab:foo:draft:8'))
     .toBe(null);
 });
 

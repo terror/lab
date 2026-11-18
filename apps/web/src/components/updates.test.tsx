@@ -9,7 +9,10 @@ import { expect, test } from 'vitest';
 import { Updates } from './updates';
 
 test('a tab behind the latest deploy leaves the seen version alone', async () => {
-  window.localStorage.setItem('lab:seen-version', JSON.stringify('bbbbbbb'));
+  window.localStorage.setItem(
+    'lab:foo:seen-version',
+    JSON.stringify('bbbbbbb')
+  );
 
   const fetch = stubFetch(({ pathname }) =>
     pathname.endsWith('/changelog')
@@ -31,6 +34,6 @@ test('a tab behind the latest deploy leaves the seen version alone', async () =>
 
   expect({
     changelog: fetchedPaths(fetch).some((path) => path.endsWith('/changelog')),
-    seen: window.localStorage.getItem('lab:seen-version'),
+    seen: window.localStorage.getItem('lab:foo:seen-version'),
   }).toEqual({ changelog: false, seen: JSON.stringify('bbbbbbb') });
 });

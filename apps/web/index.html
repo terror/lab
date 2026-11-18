@@ -8,8 +8,9 @@
     <title>Lab</title>
     <script>
       try {
+        const user = JSON.parse(localStorage.getItem('lab:user'));
         const theme =
-          JSON.parse(localStorage.getItem('lab:preferences'))?.theme ??
+          JSON.parse(localStorage.getItem(`lab:${user}:preferences`))?.theme ??
           'system';
         const dark =
           theme === 'dark' ||
