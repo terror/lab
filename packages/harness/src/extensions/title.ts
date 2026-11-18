@@ -31,10 +31,10 @@ export function plainTitle(value: string) {
     .trim();
 }
 
-export const TitleDoc = conversationDoc<{ title: string | null }>(
-  'lab.title',
-  () => ({ title: null })
-);
+export const TitleDoc = conversationDoc<{
+  requested: boolean;
+  title: string | null;
+}>('lab.title', () => ({ requested: false, title: null }));
 
 function generateTitle(onHelperUsage: HelperUsage) {
   return defineTask<Record<string, never>, { phase: 'generate' }, null>({
@@ -142,7 +142,9 @@ export async function titleChat(
   await conversation.commit(async (tx) => {
     const doc = await tx.doc(TitleDoc, conversation.id);
 
-    if (!doc.title) {
+    if (!doc.title && !doc.requested) {
+      doc.requested = true;
+
       await tx.createTask(task, {}, { ownership: { kind: 'conversation' } });
     }
   }, context);
