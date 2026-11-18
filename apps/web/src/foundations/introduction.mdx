@@ -56,9 +56,9 @@ after a pointer press.
 ### Touch
 
 - Interactive targets are at least 24px.
-- On a touch screen every `Button` and `Switch` has a hit area of at least 44px
-  in both directions. The control doesn't grow. A pseudo-element extends past
-  its edge.
+- On a touch screen every `Button`, `Switch`, and `Checkbox` has a hit area of
+  at least 44px in both directions. The control doesn't grow. A pseudo-element
+  extends past its edge.
 - `hit-area` gives any other control the same 44px touch target. The control
   needs `relative`.
 - Hit areas of close neighbours overlap, and the later control takes the tap. On
@@ -70,6 +70,12 @@ after a pointer press.
 
 ## Working with components
 
+- A content page is a `Page` with a `PageHeader`. A list is `ListRow` items
+  under a `SectionHeading`.
+- Every data view has three states: `Skeleton` while it loads, `EmptyState` when
+  it has nothing, and a load error with a way to retry.
+- A `Card` is `outline` when it asks you something and `inset` when it holds
+  read-only agent output.
 - `components/ui` holds shadcn components. Edit them in place; don't wrap them
   to restyle.
 - Variants live in `cva` definitions next to the component, and `cn` merges

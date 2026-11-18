@@ -60,3 +60,44 @@ test('deleting a scheduled task asks first', async () => {
     )
     .toEqual(['/api/schedules/7']);
 });
+
+test('a task links to its chat and an empty filter says so', async () => {
+  stubFetch(({ pathname }) =>
+    pathname === '/api/schedules'
+      ? Response.json({
+          tasks: [
+            {
+              conversationId: 7,
+              description: 'bar',
+              enabled: true,
+              id: 1,
+              nextRunAt: null,
+              title: 'foo',
+            },
+          ],
+        })
+      : Response.json({ default: null, models: [] })
+  );
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => (
+        <TooltipProvider>
+          <Scheduled />
+        </TooltipProvider>
+      ),
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await expect
+    .element(screen.getByRole('link', { name: /^foo/ }))
+    .toHaveAttribute('href', '/c/7');
+
+  await screen.getByRole('button', { name: 'Active' }).click();
+  await screen.getByRole('menuitemradio', { name: 'Paused' }).click();
+
+  await expect.element(screen.getByText('No paused tasks')).toBeVisible();
+});

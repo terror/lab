@@ -4,20 +4,12 @@ import { render } from 'vitest-browser-react';
 import { cdp } from 'vitest/browser';
 
 import { Button } from './button';
+import { Checkbox } from './checkbox';
 import { Switch } from './switch';
 
-const sizes = [
-  'default',
-  'xs',
-  'sm',
-  'lg',
-  'icon',
-  'icon-xs',
-  'icon-sm',
-  'icon-lg',
-] as const;
+const sizes = ['default', 'sm', 'icon', 'icon-xs', 'icon-sm'] as const;
 
-test('buttons and switches get a 44px hit area on a touch screen', async ({
+test('buttons, switches, and checkboxes get a 44px hit area on a touch screen', async ({
   onTestFinished,
 }) => {
   await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: true });
@@ -36,11 +28,14 @@ test('buttons and switches get a 44px hit area on a touch screen', async ({
       <Button className='size-5'>bar</Button>
       <Switch aria-label='baz' />
       <Switch aria-label='qux' size='sm' />
+      <Checkbox aria-label='quux' />
     </>
   );
 
   const smallest = [
-    ...document.querySelectorAll('[data-slot=button], [data-slot=switch]'),
+    ...document.querySelectorAll(
+      '[data-slot=button], [data-slot=switch], [data-slot=checkbox]'
+    ),
   ].map((control) => {
     const { height, width } = getComputedStyle(control, '::after');
 
@@ -49,5 +44,5 @@ test('buttons and switches get a 44px hit area on a touch screen', async ({
     );
   });
 
-  expect(smallest).toEqual([44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44]);
+  expect(smallest).toEqual([44, 44, 44, 44, 44, 44, 44, 44, 44]);
 });

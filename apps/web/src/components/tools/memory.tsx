@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Lightbulb } from 'lucide-react';
 
@@ -13,14 +14,16 @@ function MemoryNote({
   text: string;
 }) {
   return (
-    <p
-      className={cn(
-        'rounded-xl bg-muted/40 px-3.5 py-3 text-sm/relaxed text-foreground/90',
-        forgotten && 'text-muted-foreground line-through'
-      )}
-    >
-      {note}
-    </p>
+    <Card variant='inset'>
+      <p
+        className={cn(
+          'text-sm/relaxed text-foreground',
+          forgotten && 'text-muted-foreground line-through'
+        )}
+      >
+        {note}
+      </p>
+    </Card>
   );
 }
 
