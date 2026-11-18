@@ -1,3 +1,4 @@
+import type { Pose } from '@/components/ui/empty-state';
 import { useEffect, useState } from 'react';
 
 import { usePreference } from './preferences';
@@ -210,4 +211,109 @@ export function useThinking(turn: string | undefined) {
     quiet,
     seed: turn ?? '',
   });
+}
+
+type Copy = { description: string; title: string };
+
+const empties = {
+  active: {
+    plain: {
+      description: 'Describe one above and Lab will set it up.',
+      title: 'No active tasks',
+    },
+    pose: 'asleep',
+    voiced: {
+      description: 'Describe a task above and Lab will run it on schedule.',
+      title: 'Nothing on the clock',
+    },
+  },
+  library: {
+    plain: {
+      description: 'Images and files from your chats land here.',
+      title: 'Nothing on the shelves yet',
+    },
+    pose: 'default',
+    voiced: {
+      description: 'Images and files from your chats collect here.',
+      title: 'Empty shelves',
+    },
+  },
+  matches: {
+    plain: {
+      description: 'Nothing here matches that search and filter.',
+      title: 'No matches',
+    },
+    pose: 'puzzled',
+    voiced: {
+      description: 'Try fewer words or another filter.',
+      title: 'No matches',
+    },
+  },
+  memory: {
+    plain: {
+      description:
+        'Tell it something worth remembering in any chat, or add a memory here.',
+      title: 'Lab hasn’t learned anything yet',
+    },
+    pose: 'default',
+    voiced: {
+      description:
+        'Tell Lab something worth keeping in any chat, or add a memory here.',
+      title: 'An empty jar',
+    },
+  },
+  paused: {
+    plain: {
+      description: 'A task you pause waits here until you resume it.',
+      title: 'No paused tasks',
+    },
+    pose: 'asleep',
+    voiced: {
+      description: 'A task you pause waits here until you resume it.',
+      title: 'No paused tasks',
+    },
+  },
+  project: {
+    plain: {
+      description: 'Start one above and it lands here.',
+      title: 'No chats in this project yet',
+    },
+    pose: 'stretching',
+    voiced: {
+      description: 'Start a chat above and it lands here.',
+      title: 'A fresh project',
+    },
+  },
+  tasks: {
+    plain: {
+      description: 'Describe one above and Lab will set it up.',
+      title: 'No scheduled tasks yet',
+    },
+    pose: 'asleep',
+    voiced: {
+      description: 'Describe a task above and Lab will run it on schedule.',
+      title: 'Nothing on the clock',
+    },
+  },
+  trash: {
+    plain: {
+      description: 'Chats and projects you delete land here.',
+      title: 'All clean',
+    },
+    pose: 'drained',
+    voiced: {
+      description:
+        'Chats and projects you delete wait here until you restore them or delete them for good.',
+      title: 'Nothing to throw out',
+    },
+  },
+} satisfies Record<string, { plain: Copy; pose: Pose; voiced: Copy }>;
+
+export type EmptyView = keyof typeof empties;
+
+export function useEmpty(view: EmptyView): Copy & { pose?: Pose } {
+  const quiet = useQuiet();
+  const { plain, pose, voiced } = empties[view];
+
+  return quiet ? plain : { ...voiced, pose };
 }

@@ -5,7 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
 import { expect, test, vi } from 'vitest';
 
-import { say, useThinking } from './voice';
+import { say, useEmpty, useThinking } from './voice';
 
 function check(at: Date, absent: number, expected: string[]) {
   const greetings = Array.from({ length: 40 }, (_, index) =>
@@ -131,4 +131,35 @@ test('a quiet wait always says thinking', () => {
       say('thinking', tier, { quiet: true, seed: 'foo' })
     )
   ).toEqual(['Thinking', 'Thinking', 'Thinking', 'Thinking']);
+});
+
+async function emptyTrash(personality: 'default' | 'quiet') {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality,
+  });
+
+  const { result } = await renderHookWithQuery(() => useEmpty('trash'), client);
+
+  return result.current;
+}
+
+test('an empty view keeps its plain words and still glyph when quiet', async () => {
+  expect({
+    default: await emptyTrash('default'),
+    quiet: await emptyTrash('quiet'),
+  }).toEqual({
+    default: {
+      description:
+        'Chats and projects you delete wait here until you restore them or delete them for good.',
+      pose: 'drained',
+      title: 'Nothing to throw out',
+    },
+    quiet: {
+      description: 'Chats and projects you delete land here.',
+      title: 'All clean',
+    },
+  });
 });

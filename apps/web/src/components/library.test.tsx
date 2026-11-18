@@ -25,9 +25,7 @@ test('a search with no matches offers to show everything', async () => {
   await screen.getByRole('button', { name: 'Show everything' }).click();
 
   await expect.element(search).toHaveValue('');
-  await expect
-    .element(screen.getByText('Nothing on the shelves yet'))
-    .toBeVisible();
+  await expect.element(screen.getByText('Empty shelves')).toBeVisible();
 });
 
 test('a saved file that is not a pdf opens as text', async () => {

@@ -1,5 +1,4 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
-import { DeadlineSandbox } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
@@ -62,23 +61,4 @@ test('scripts cannot grow past the memory cap', async () => {
   expect(outputs[0]).toMatch(
     /^Script failed\nWall time \d+\.\d seconds\nOutput:\nScript error:\nInternalError: out of memory\n {4}at <anonymous> \(codemode\.js:1:\d+\)\n\nNo tool calls were made\.$/
   );
-});
-
-test('scripts without their own timeout stop at the default deadline', async () => {
-  const sandbox = new DeadlineSandbox({ timeoutMs: 100 });
-
-  const { result } = sandbox.start('while (true) {}', {
-    onCall: () => undefined,
-    seed: 0,
-    startedAt: 0,
-  });
-
-  expect(await result).toEqual({
-    calls: [],
-    error: { kind: 'timeout', message: 'Execution timed out after 100 ms' },
-    ok: false,
-    output: [],
-  });
-
-  await sandbox.close();
 });

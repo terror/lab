@@ -84,5 +84,5 @@ test('the trash loads again after a failed load', async () => {
 
   await screen.getByRole('button', { name: 'Retry' }).click();
 
-  await expect.element(screen.getByText('All clean')).toBeVisible();
+  await expect.element(screen.getByText('Nothing to throw out')).toBeVisible();
 });
