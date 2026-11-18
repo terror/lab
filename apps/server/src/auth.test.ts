@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call } from '../test/client';
+import { call, create } from '../test/client';
+import app from './app';
 import { allowed, emailAllowed } from './auth';
 import { env } from './env';
 
@@ -31,4 +32,41 @@ test('the admin email still needs to be verified', () => {
     allowed({ email: env.LAB_ADMIN_EMAIL, emailVerified: true }),
     allowed({ email: env.LAB_ADMIN_EMAIL, emailVerified: false }),
   ]).toEqual([true, false]);
+});
+
+test('changes from other sites are rejected', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  async function sent(from: Record<string, string>) {
+    const response = await app.request(`/api/conversations/${id}/read`, {
+      headers: { ...Object.fromEntries(headers), ...from },
+      method: 'POST',
+    });
+
+    return [response.status, await response.text()];
+  }
+
+  const rejected = [403, '{"error":"This request came from another site"}'];
+
+  expect({
+    app: await sent({
+      origin: env.LAB_ORIGIN,
+      'sec-fetch-site': 'same-origin',
+    }),
+    crossSite: await sent({
+      origin: 'https://foo.example',
+      'sec-fetch-site': 'cross-site',
+    }),
+    native: await sent({}),
+    opaque: await sent({ origin: 'null' }),
+    sameSite: await sent({ 'sec-fetch-site': 'same-site' }),
+  }).toEqual({
+    app: [204, ''],
+    crossSite: rejected,
+    native: [204, ''],
+    opaque: rejected,
+    sameSite: rejected,
+  });
 });
