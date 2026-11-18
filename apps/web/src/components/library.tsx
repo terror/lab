@@ -68,7 +68,7 @@ function FilePreview({ id }: { id: number }) {
 
   return (
     <pre className='max-h-128 min-h-48 overflow-auto rounded-xl bg-muted p-4 font-mono text-xs/relaxed whitespace-pre-wrap'>
-      {text.data ?? (text.isError ? 'Unable to load file.' : '')}
+      {text.data ?? (text.isError ? 'Couldn’t load this file.' : '')}
     </pre>
   );
 }
