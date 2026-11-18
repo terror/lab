@@ -14,6 +14,7 @@ import { Pills } from '@/components/ui/pills';
 import {
   conversationTitle,
   useConversations,
+  usePinnedConversations,
   useStartChat,
 } from '@/lib/conversations';
 import { useChatModel } from '@/lib/models';
@@ -27,19 +28,23 @@ import {
 import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
 import { useNavigate } from '@tanstack/react-router';
+import { Command as CommandPrimitive } from 'cmdk';
 import {
   Clock,
   File,
   Folder,
   FolderPlus,
+  LibraryBig,
   type LucideIcon,
   MessageSquare,
   MessageSquarePlus,
   Moon,
+  Pin,
   Plus,
   Search,
   Settings,
   Sun,
+  Trash2,
 } from 'lucide-react';
 import {
   type KeyboardEvent,
@@ -61,9 +66,16 @@ export function useSearch() {
   return useContext(SearchContext);
 }
 
-type Scope = 'chats' | 'files' | 'projects' | 'scheduled' | 'settings';
+type Scope =
+  | 'chats'
+  | 'files'
+  | 'pages'
+  | 'projects'
+  | 'scheduled'
+  | 'settings';
 
 const scopes: { id: Scope; label: string }[] = [
+  { id: 'pages', label: 'Go to' },
   { id: 'chats', label: 'Chats' },
   { id: 'projects', label: 'Projects' },
   { id: 'scheduled', label: 'Scheduled' },
@@ -72,6 +84,36 @@ const scopes: { id: Scope; label: string }[] = [
 ];
 
 const PREVIEW = 3;
+
+const RECENT = 5;
+
+type Destination = {
+  icon: LucideIcon;
+  key: string;
+  keys?: string[];
+  section?: SettingsSection;
+  title: string;
+  to: '/library' | '/scheduled' | '/settings';
+};
+
+const destinations: Destination[] = [
+  { icon: LibraryBig, key: 'library', title: 'Library', to: '/library' },
+  { icon: Clock, key: 'scheduled', title: 'Scheduled', to: '/scheduled' },
+  {
+    icon: Trash2,
+    key: 'trash',
+    section: 'trash',
+    title: 'Trash',
+    to: '/settings',
+  },
+  {
+    icon: Settings,
+    key: 'settings',
+    keys: ['⌘', ','],
+    title: 'Settings',
+    to: '/settings',
+  },
+];
 
 type Row = {
   chip?: string;
@@ -189,6 +231,23 @@ function useGo(onDone: () => void) {
   );
 }
 
+function destinationRow(
+  { icon, key, keys, section, title, to }: Destination,
+  go: ReturnType<typeof useGo>
+): Row {
+  return {
+    icon,
+    key: `go-${key}`,
+    keys,
+    onSelect: () => (section ? go.settings(section) : go.route(to)),
+    title,
+  };
+}
+
+function matches(text: string, query: string) {
+  return query !== '' && text.toLowerCase().includes(query.toLowerCase());
+}
+
 function useProjectNames() {
   const projects = useProjects();
 
@@ -209,9 +268,7 @@ function useResultGroups(query: string, onDone: () => void) {
 
   const data = query ? results.data : undefined;
 
-  const lower = query.toLowerCase();
-
-  return useMemo<Record<Scope, Row[]>>(
+  const groups = useMemo<Record<Scope, Row[]>>(
     () => ({
       chats: (data?.chats ?? []).map((chat) => ({
         chip:
@@ -232,6 +289,9 @@ function useResultGroups(query: string, onDone: () => void) {
         onSelect: () => go.route('/library'),
         title: file.name,
       })),
+      pages: destinations
+        .filter(({ title }) => matches(title, query))
+        .map((destination) => destinationRow(destination, go)),
       projects: (data?.projects ?? []).map((project) => ({
         icon: Folder,
         key: `project-${project.id}`,
@@ -252,22 +312,24 @@ function useResultGroups(query: string, onDone: () => void) {
             : go.chat(task.conversationId),
         title: task.title,
       })),
-      settings: query
-        ? sections
-            .filter((id) =>
-              settingsSectionInfo[id].label.toLowerCase().includes(lower)
-            )
-            .map((id) => ({
-              icon: settingsSectionInfo[id].icon,
-              key: `settings-${id}`,
-              meta: 'Settings',
-              onSelect: () => go.settings(id),
-              title: settingsSectionInfo[id].label,
-            }))
-        : [],
+      settings: sections
+        .filter(
+          (id) =>
+            !destinations.some(({ section }) => section === id) &&
+            matches(settingsSectionInfo[id].label, query)
+        )
+        .map((id) => ({
+          icon: settingsSectionInfo[id].icon,
+          key: `settings-${id}`,
+          meta: 'Settings',
+          onSelect: () => go.settings(id),
+          title: settingsSectionInfo[id].label,
+        })),
     }),
-    [data, go, lower, projectNames, query, sections]
+    [data, go, projectNames, query, sections]
   );
+
+  return { groups, pending: results.isPending };
 }
 
 function EmptyQuery({
@@ -277,21 +339,44 @@ function EmptyQuery({
   onDone: () => void;
   onNewProject: () => void;
 }) {
+  const pinned = usePinnedConversations();
   const recents = useConversations();
+  const projects = useProjects();
   const projectNames = useProjectNames();
   const go = useGo(onDone);
   const [, setTheme] = useTheme();
 
   const dark = useDark();
 
-  const recent: Row[] = (recents.data ?? []).slice(0, 4).map((chat) => ({
-    chip:
-      chat.projectId === null ? undefined : projectNames.get(chat.projectId),
-    icon: MessageSquare,
-    key: `recent-${chat.id}`,
-    onSelect: () => go.chat(chat.id),
-    title: conversationTitle(chat.title),
-  }));
+  const pinnedChats = pinned.data ?? [];
+
+  const pinnedIds = new Set(pinnedChats.map(({ id }) => id));
+
+  const recent: Row[] = [
+    ...pinnedChats.map((chat) => ({ chat, icon: Pin })),
+    ...(recents.data ?? [])
+      .filter(({ id }) => !pinnedIds.has(id))
+      .map((chat) => ({ chat, icon: MessageSquare })),
+  ]
+    .slice(0, RECENT)
+    .map(({ chat, icon }) => ({
+      chip:
+        chat.projectId === null ? undefined : projectNames.get(chat.projectId),
+      icon,
+      key: `recent-${chat.id}`,
+      onSelect: () => go.chat(chat.id),
+      title: conversationTitle(chat.title),
+    }));
+
+  const destinationRows: Row[] = [
+    ...destinations.map((destination) => destinationRow(destination, go)),
+    ...(projects.data?.projects ?? []).map((project) => ({
+      icon: Folder,
+      key: `go-project-${project.id}`,
+      onSelect: () => go.project(project.id),
+      title: project.name,
+    })),
+  ];
 
   const actions: Row[] = [
     {
@@ -316,18 +401,12 @@ function EmptyQuery({
       },
       title: dark ? 'Switch to light theme' : 'Switch to dark theme',
     },
-    {
-      icon: Settings,
-      key: 'settings',
-      keys: ['⌘', ','],
-      onSelect: () => go.route('/settings'),
-      title: 'Settings',
-    },
   ];
 
   return (
     <>
       <Group heading='Recent' rows={recent} />
+      <Group heading='Go to' rows={destinationRows} />
       <Group heading='Actions' rows={actions} />
     </>
   );
@@ -362,23 +441,25 @@ function ScopePills({
   );
 }
 
-function Footer() {
-  const hints: [string[], string][] = [
-    [['↑', '↓'], 'navigate'],
-    [['↵'], 'open'],
-    [['⇥'], 'scope'],
-    [['⌘', '↵'], 'ask Lab'],
-    [['esc'], 'close'],
+function Footer({ ask, scope }: { ask: boolean; scope: boolean }) {
+  const hints: [string[], string, boolean][] = [
+    [['↑', '↓'], 'navigate', true],
+    [['↵'], 'open', true],
+    [['⇥'], 'scope', scope],
+    [['⌘', '↵'], 'ask Lab', ask],
+    [['esc'], 'close', true],
   ];
 
   return (
-    <div className='flex h-9 items-center gap-4 border-t px-4 text-xs text-muted-foreground'>
-      {hints.map(([keys, label]) => (
-        <span key={label} className='flex items-center gap-1.5'>
-          <Keys keys={keys} />
-          {label}
-        </span>
-      ))}
+    <div className='flex h-9 items-center gap-4 border-t px-4 text-xs text-muted-foreground pointer-coarse:hidden'>
+      {hints
+        .filter(([, , shown]) => shown)
+        .map(([keys, label]) => (
+          <span key={label} className='flex items-center gap-1.5'>
+            <Keys keys={keys} />
+            {label}
+          </span>
+        ))}
     </div>
   );
 }
@@ -400,11 +481,12 @@ function Palette({
 
   const query = useDeferredValue(search.trim());
 
-  const groups = useResultGroups(query, onDone);
+  const { groups, pending } = useResultGroups(query, onDone);
 
   const counts: Record<Scope, number> = {
     chats: groups.chats.length,
     files: groups.files.length,
+    pages: groups.pages.length,
     projects: groups.projects.length,
     scheduled: groups.scheduled.length,
     settings: groups.settings.length,
@@ -438,6 +520,10 @@ function Palette({
     ...scopes.filter(({ id }) => counts[id] > 0).map(({ id }) => id),
   ];
 
+  const scoped = visible.length > 1;
+
+  const unmatched = query !== '' && !scoped && !pending;
+
   const ask = () => {
     if (!query) {
       return;
@@ -467,26 +553,33 @@ function Palette({
 
   return (
     <Command
+      label='Search Lab'
       onKeyDown={onKeyDown}
       onValueChange={setSelected}
       shouldFilter={false}
       value={query ? current : undefined}
     >
-      <label className='flex h-12 items-center gap-3 px-4'>
+      <div className='flex h-12 items-center gap-3 px-4'>
         <Search aria-hidden='true' className='size-4 text-muted-foreground' />
-        <input
-          aria-label='Search Lab'
+        <CommandPrimitive.Input
           className='flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground'
-          onChange={(event) => {
-            setSearch(event.target.value);
+          onValueChange={(value) => {
+            setSearch(value);
             setScope('all');
           }}
           placeholder='Search Lab'
           value={search}
         />
-      </label>
+      </div>
       <div className='h-px bg-border' />
-      {query && <ScopePills counts={counts} onScope={setScope} scope={scope} />}
+      {scoped && (
+        <ScopePills counts={counts} onScope={setScope} scope={scope} />
+      )}
+      {unmatched && (
+        <p className='truncate px-5 pt-3 pb-1 text-sm text-muted-foreground'>
+          No matches for “{query}”.
+        </p>
+      )}
       <CommandList className='max-h-96 px-1.5 pb-1.5'>
         {!query && <EmptyQuery onDone={onDone} onNewProject={onNewProject} />}
         {sections.map(({ hidden, id, label, rows }) => (
@@ -529,7 +622,7 @@ function Palette({
           </CommandGroup>
         )}
       </CommandList>
-      <Footer />
+      <Footer ask={query !== ''} scope={scoped} />
     </Command>
   );
 }
