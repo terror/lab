@@ -28,6 +28,11 @@ function frame() {
     html: '',
     loads,
     received,
+    removeAttribute(name: string) {
+      if (name === 'srcdoc') {
+        this.html = '';
+      }
+    },
     setAttribute: () => undefined,
   };
 }
@@ -87,6 +92,7 @@ export async function runner() {
         source: rendered.contentWindow,
       });
     },
+    documents: () => [a.html, b.html],
     navigator,
     posted,
     received: () => rendered.received,
