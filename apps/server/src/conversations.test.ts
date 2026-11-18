@@ -302,22 +302,24 @@ test('conversations are listed in pages', async () => {
   });
 });
 
+function cursor(values: string[]) {
+  return Buffer.from(JSON.stringify([values, 1])).toString('base64url');
+}
+
 test('tampered cursors are rejected', async () => {
   const headers = await signIn();
-
-  const cursor = (values: string[]) =>
-    Buffer.from(JSON.stringify([values, 1])).toString('base64url');
 
   const statuses = await Promise.all(
     [
       `/conversations?cursor=${cursor(['foo'])}`,
       `/conversations?sort=title&cursor=${cursor(['foo', 'bar'])}`,
+      `/conversations?sort=title&cursor=${cursor(['true', '\0'])}`,
       '/library?cursor=99999999999999999.1.0',
     ].map((path) => call(headers, 'GET', path))
   );
 
   expect(statuses).toEqual(
-    Array.from({ length: 3 }, () => ({
+    Array.from({ length: 4 }, () => ({
       body: { error: 'Invalid cursor' },
       status: 400,
     }))

@@ -1,6 +1,7 @@
 import { schema } from '@lab/db';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
@@ -48,7 +49,13 @@ const download = validator(
 function after(cursor: string) {
   const [time = 0, entryId = 0, position = 0] = cursor.split('.').map(Number);
 
-  const createdAt = new Date(time).toISOString();
+  const date = new Date(time);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new HTTPException(400, { message: 'Invalid cursor' });
+  }
+
+  const createdAt = date.toISOString();
 
   return sql`(${table.createdAt}, ${table.entryId}, -${table.position}) < (${createdAt}::timestamp, ${entryId}, ${-position})`;
 }
