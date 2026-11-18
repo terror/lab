@@ -3,18 +3,13 @@ import { Connectors } from '@/components/connectors';
 import { Memory } from '@/components/memory';
 import { Profile } from '@/components/profile';
 import { Providers } from '@/components/providers';
+import { SettingRow } from '@/components/setting-row';
 import { Skills } from '@/components/skills';
 import { Trash } from '@/components/trash';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { ListRow } from '@/components/ui/list-row';
 import { Page, PageHeader } from '@/components/ui/page';
+import { Pills } from '@/components/ui/pills';
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
 import { usePreference } from '@/lib/preferences';
@@ -27,7 +22,7 @@ import {
 import { type Theme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { Link, useSearch } from '@tanstack/react-router';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 const themes: { label: string; value: Theme }[] = [
@@ -40,58 +35,36 @@ function Appearance() {
   const [theme, setTheme] = useTheme();
   const [lineNumbers, setLineNumbers] = usePreference('lineNumbers');
 
-  const label = themes.find(({ value }) => value === theme)?.label ?? 'System';
-
   return (
     <>
       <PageHeader
         description='Choose how Lab looks to you.'
         title='Appearance'
       />
-      <div className='flex items-center justify-between gap-4'>
-        <span className='text-sm'>Theme</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className='flex items-center gap-1 rounded-control text-sm text-muted-foreground'
-              type='button'
-            >
-              {label}
-              <ChevronDown aria-hidden='true' className='size-4' />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align='end'>
-            <DropdownMenuRadioGroup
-              onValueChange={(value) => {
-                const choice = themes.find(
-                  (candidate) => candidate.value === value
-                );
-
-                if (choice) {
-                  setTheme(choice.value);
-                }
-              }}
+      <ul className='flex flex-col gap-0.5'>
+        <SettingRow
+          control={
+            <Pills
+              label='Theme'
+              onValueChange={setTheme}
+              options={themes}
               value={theme}
-            >
-              {themes.map(({ label: name, value }) => (
-                <DropdownMenuRadioItem key={value} value={value}>
-                  {name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className='flex items-center justify-between gap-4'>
-        <label className='text-sm' htmlFor='line-numbers'>
-          Line numbers in code blocks
-        </label>
-        <Switch
-          checked={lineNumbers}
-          id='line-numbers'
-          onCheckedChange={setLineNumbers}
+            />
+          }
+          label='Theme'
         />
-      </div>
+        <SettingRow
+          control={
+            <Switch
+              checked={lineNumbers}
+              id='line-numbers'
+              onCheckedChange={setLineNumbers}
+            />
+          }
+          htmlFor='line-numbers'
+          label='Line numbers in code blocks'
+        />
+      </ul>
     </>
   );
 }

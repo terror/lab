@@ -151,7 +151,6 @@
         "apps/web/src/components/project-instructions.tsx",
         "apps/web/src/components/project-menu.tsx",
         "apps/web/src/components/question-card.tsx",
-        "apps/web/src/components/settings.tsx",
         "apps/web/src/components/sidebar.tsx",
         "apps/web/src/components/tools/artifacts.tsx",
         "apps/web/src/components/tools/previews.tsx",
