@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, ilike, inArray, isNotNull } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from './db';
@@ -60,6 +60,14 @@ export async function owners(ids: readonly number[]) {
     [...deleted, ...live].flatMap(({ id, ownerId }) =>
       ownerId === null ? [] : [[id, ownerId] as const]
     )
+  );
+}
+
+export function liveChat(ownerId: string, id: number) {
+  return and(
+    eq(schema.conversation.id, id),
+    eq(schema.conversation.ownerId, ownerId),
+    isNull(schema.conversation.deletedAt)
   );
 }
 

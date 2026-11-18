@@ -2,7 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type TrashKind, trashKinds } from '@lab/harness';
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -11,6 +11,7 @@ import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
 import { restoreProject, trashProject } from './project-access';
+import { liveChat } from './records';
 import { removeChatFolder } from './sandbox';
 import { pruneUploads } from './storage';
 import { positiveId, validator } from './validator';
@@ -66,13 +67,7 @@ const conversations: Trashable = {
     const rows = await db
       .update(table)
       .set({ deletedAt: new Date() })
-      .where(
-        and(
-          eq(table.id, id),
-          eq(table.ownerId, ownerId),
-          isNull(table.deletedAt)
-        )
-      )
+      .where(liveChat(ownerId, id))
       .returning({ id: table.id });
 
     return rows.length > 0 ? [id] : undefined;

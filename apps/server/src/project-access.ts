@@ -4,7 +4,7 @@ import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
-import { requireOwner } from './records';
+import { liveChat, requireOwner } from './records';
 
 const PROJECT_LIMIT = 100;
 
@@ -96,14 +96,7 @@ export async function moveChat(
   const rows = await db
     .update(schema.conversation)
     .set({ projectId })
-    .where(
-      and(
-        eq(schema.conversation.id, chatId),
-        eq(schema.conversation.ownerId, ownerId),
-        isNull(schema.conversation.deletedAt),
-        target
-      )
-    )
+    .where(and(liveChat(ownerId, chatId), target))
     .returning({ id: schema.conversation.id });
 
   return rows.length > 0;
