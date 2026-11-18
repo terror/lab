@@ -1,4 +1,3 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -56,12 +55,12 @@ export function serveMcp(tools: readonly string[] = []) {
 }
 
 async function endlessMcp(request: Request) {
-  const server = new Server(
+  const mcp = new McpServer(
     { name: 'foo', version: '1.0.0' },
     { capabilities: { tools: {} } }
   );
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  mcp.server.setRequestHandler(ListToolsRequestSchema, async () => ({
     nextCursor: 'bar',
     tools: [{ inputSchema: { type: 'object' }, name: 'baz' }],
   }));
@@ -71,7 +70,7 @@ async function endlessMcp(request: Request) {
     sessionIdGenerator: undefined,
   });
 
-  await server.connect(transport);
+  await mcp.connect(transport);
 
   return transport.handleRequest(request);
 }
