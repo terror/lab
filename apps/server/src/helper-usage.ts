@@ -3,7 +3,7 @@ import { schema } from '@lab/db';
 import type { HelperKind } from '@lab/harness';
 
 import { db } from './db';
-import { conversationOwner, serial } from './records';
+import { chatOf, serial } from './records';
 
 type UsageEvent = typeof schema.usageEvent.$inferInsert;
 
@@ -29,12 +29,12 @@ export async function recordUsage(
   conversationId: number,
   event: Omit<UsageEvent, 'conversationId' | 'ownerId'>
 ) {
-  const ownerId = await conversationOwner(conversationId);
+  const chat = await chatOf(conversationId);
 
-  if (ownerId) {
+  if (chat) {
     await db
       .insert(schema.usageEvent)
-      .values({ ...event, conversationId, ownerId });
+      .values({ ...event, conversationId: chat.id, ownerId: chat.ownerId });
   }
 }
 

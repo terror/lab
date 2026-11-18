@@ -4,7 +4,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { db } from './db';
 import { markedSnippet, searchMessages } from './message-search';
-import { conversationOwner } from './records';
+import { chatOf, conversationOwner } from './records';
 
 const table = schema.messageText;
 
@@ -45,14 +45,14 @@ export const historyAccess: HistoryAccess = {
     };
   },
   search: async (conversationId, query) => {
-    const ownerId = await conversationOwner(conversationId);
+    const chat = await chatOf(conversationId);
 
-    if (!ownerId) {
+    if (!chat) {
       return [];
     }
 
-    const matches = await searchMessages(ownerId, query, {
-      exclude: conversationId,
+    const matches = await searchMessages(chat.ownerId, query, {
+      exclude: chat.id,
       limit: SEARCH_LIMIT,
     });
 

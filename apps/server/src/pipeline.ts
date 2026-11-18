@@ -73,10 +73,31 @@ export async function eachEntry(
   }
 }
 
+async function subagentsOf(id: number, cursor?: Cursor): Promise<number[]> {
+  const page = await harness.commit(
+    (tx) =>
+      tx.scanConversations(
+        { ownerConversationId: id as ConversationId },
+        100,
+        cursor
+      ),
+    BACKGROUND_CONTEXT
+  );
+
+  const owned = page.items.map((record) => record.id);
+
+  const nested = await Promise.all(owned.map((child) => subagentsOf(child)));
+
+  const rest = page.next === undefined ? [] : await subagentsOf(id, page.next);
+
+  return [...owned, ...nested.flat(), ...rest];
+}
+
 export async function backfill(
   pipeline: string,
   id: number,
-  visit: (entries: readonly EntryRecord[]) => Promise<void>
+  visit: (entries: readonly EntryRecord[]) => Promise<void>,
+  conversation = id
 ) {
   const table = schema.backfillCheckpoint;
 
@@ -86,7 +107,7 @@ export async function backfill(
     .where(and(eq(table.pipeline, pipeline), eq(table.conversationId, id)));
 
   await eachEntry(
-    id,
+    conversation,
     async (entries) => {
       await visit(entries);
 
@@ -111,6 +132,7 @@ export function entryPipeline<Row>({
   name,
   rows,
   store,
+  subagents = false,
 }: {
   keep: (entry: EntryRecord) => boolean;
   name: string;
@@ -119,6 +141,7 @@ export function entryPipeline<Row>({
     owned: ReadonlyMap<number, string>
   ) => Row[] | Promise<Row[]>;
   store: (rows: Row[]) => Promise<unknown>;
+  subagents?: boolean;
 }) {
   const record = async (entries: readonly EntryRecord[]) => {
     const owned = await owners(
@@ -132,6 +155,8 @@ export function entryPipeline<Row>({
     }
   };
 
+  const visit = (page: readonly EntryRecord[]) => record(page.filter(keep));
+
   return {
     backfill: async () => {
       const conversations = await db
@@ -139,7 +164,13 @@ export function entryPipeline<Row>({
         .from(schema.conversation);
 
       for (const { id } of conversations) {
-        await backfill(name, id, (page) => record(page.filter(keep)));
+        await backfill(name, id, visit);
+
+        if (subagents) {
+          for (const subagent of await subagentsOf(id)) {
+            await backfill(`${name}/${subagent}`, id, visit, subagent);
+          }
+        }
       }
     },
     flush: observe((changes) => entryChanges(changes, keep), record),

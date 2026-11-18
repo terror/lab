@@ -9,6 +9,7 @@ import { db } from './db';
 import { flushHelperUsage, usageFields } from './helper-usage';
 import { models as catalog } from './models';
 import { entryPipeline } from './pipeline';
+import { chatOf } from './records';
 import { monthSpend } from './spend';
 import { validator } from './validator';
 
@@ -21,24 +22,30 @@ function assistant(entry: EntryRecord) {
 export const usagePipeline = entryPipeline({
   keep: assistant,
   name: 'usage',
-  rows: (entries, owned) =>
-    entries.flatMap((entry) => {
-      const message = entry.model?.[0];
+  rows: async (entries) => {
+    const rows = await Promise.all(
+      entries.map(async (entry) => {
+        const message = entry.model?.[0];
 
-      const ownerId = owned.get(entry.conversationId);
+        const chat = await chatOf(entry.conversationId);
 
-      return message?.role === 'assistant' && ownerId
-        ? [
-            {
-              ...usageFields(message),
-              conversationId: entry.conversationId,
-              entryId: entry.id,
-              ownerId,
-            },
-          ]
-        : [];
-    }),
+        return message?.role === 'assistant' && chat
+          ? [
+              {
+                ...usageFields(message),
+                conversationId: chat.id,
+                entryId: entry.id,
+                ownerId: chat.ownerId,
+              },
+            ]
+          : [];
+      })
+    );
+
+    return rows.flat();
+  },
   store: (rows) => db.insert(table).values(rows).onConflictDoNothing(),
+  subagents: true,
 });
 
 export const flushUsage = usagePipeline.flush;
