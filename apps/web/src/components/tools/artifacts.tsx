@@ -1,4 +1,4 @@
-import { SandboxFrame } from '@/components/sandbox-frame';
+import { type FrameCall, SandboxFrame } from '@/components/sandbox-frame';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
 import { plural } from '@/lib/format';
 import { useLibraryImages } from '@/lib/library';
@@ -17,7 +18,14 @@ import {
   Maximize2,
   TriangleAlert,
 } from 'lucide-react';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { count, field, namedTitle, text } from './format';
 import { PreviewCode, PreviewList } from './previews';
@@ -148,9 +156,11 @@ function Superseded({ artifact }: { artifact: Shown }) {
 
 function FullScreen({
   artifact,
+  onCall,
   onClose,
 }: {
   artifact: Shown;
+  onCall?: FrameCall;
   onClose: () => void;
 }) {
   const html = useLibraryImages(artifact.html);
@@ -169,7 +179,7 @@ function FullScreen({
         </DialogHeader>
         <div className='min-h-0 flex-1 overflow-y-auto'>
           {html !== undefined && (
-            <SandboxFrame html={html} title={artifact.title} />
+            <SandboxFrame html={html} onCall={onCall} title={artifact.title} />
           )}
         </div>
       </DialogContent>
@@ -230,6 +240,14 @@ function Live({ artifact }: { artifact: Shown }) {
 
   const conversationId = useContext(ToolConversation);
   const [draft, setDraft] = useDraft(conversationId ?? 'new');
+
+  const onCall = useMemo(
+    () =>
+      conversationId === undefined
+        ? undefined
+        : artifactCalls(conversationId, artifact.id),
+    [artifact.id, conversationId]
+  );
 
   const addToDraft = (message: string) =>
     setDraft(draft.trim() ? `${draft.trimEnd()}\n\n${message}` : message);
@@ -297,6 +315,7 @@ function Live({ artifact }: { artifact: Shown }) {
           {html !== undefined && (
             <SandboxFrame
               html={html}
+              onCall={onCall}
               onError={onError}
               onSend={addToDraft}
               title={title}
@@ -311,7 +330,11 @@ function Live({ artifact }: { artifact: Shown }) {
         />
       )}
       {fullScreen && (
-        <FullScreen artifact={artifact} onClose={() => setFullScreen(false)} />
+        <FullScreen
+          artifact={artifact}
+          onCall={onCall}
+          onClose={() => setFullScreen(false)}
+        />
       )}
     </section>
   );

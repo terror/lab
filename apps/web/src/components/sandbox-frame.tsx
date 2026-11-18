@@ -10,6 +10,12 @@ const messageSchema = z.discriminatedUnion('type', [
   z.object({ height: z.number(), type: z.literal('size') }),
   z.object({ message: z.string().max(500), type: z.literal('error') }),
   z.object({ text: z.string().max(2_000), type: z.literal('send') }),
+  z.object({
+    args: z.unknown(),
+    id: z.number(),
+    method: z.string().max(100),
+    type: z.literal('call'),
+  }),
 ]);
 
 const FRAME_SANDBOX = 'allow-scripts allow-forms';
@@ -38,9 +44,24 @@ function themed(html: string) {
   return `<style>:root{${variables};color-scheme:${dark() ? 'dark' : 'light'}}body{margin:0;background:transparent;color:var(--foreground);font-family:system-ui,sans-serif}</style>${html}`;
 }
 
+export type FrameCall = (method: string, args: unknown) => Promise<unknown>;
+
+async function answer(method: string, args: unknown, onCall?: FrameCall) {
+  try {
+    if (!onCall) {
+      throw new Error(`lab.${method} isn’t available here.`);
+    }
+
+    return { value: await onCall(method, args) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 export function SandboxFrame({
   height: fixed,
   html,
+  onCall,
   onError,
   onSend,
   scripts = true,
@@ -48,6 +69,7 @@ export function SandboxFrame({
 }: {
   height?: number;
   html: string;
+  onCall?: FrameCall;
   onError?: (message: string) => void;
   onSend?: (text: string) => void;
   scripts?: boolean;
@@ -58,14 +80,16 @@ export function SandboxFrame({
   const latest = useRef(html);
   const report = useRef(onError);
   const sendText = useRef(onSend);
+  const handle = useRef(onCall);
 
   const [height, setHeight] = useState(MIN_HEIGHT);
   const [closed, setClosed] = useState(false);
 
   useEffect(() => {
+    handle.current = onCall;
     report.current = onError;
     sendText.current = onSend;
-  }, [onError, onSend]);
+  }, [onCall, onError, onSend]);
 
   useEffect(() => {
     latest.current = html;
@@ -110,6 +134,17 @@ export function SandboxFrame({
 
       if (message?.type === 'send' && navigator.userActivation.isActive) {
         sendText.current?.(message.text);
+      }
+
+      if (message?.type === 'call') {
+        void answer(message.method, message.args, handle.current).then(
+          (reply) =>
+            channel.port1.postMessage({
+              ...reply,
+              id: message.id,
+              type: 'reply',
+            })
+        );
       }
     });
 

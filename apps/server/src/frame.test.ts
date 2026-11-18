@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { runInNewContext } from 'node:vm';
 
-import { runner } from '../test/frame';
+import { bridge, runner } from '../test/frame';
 import app from './app';
 
 test('the frame runner is sandboxed, offline, and only framed by Lab', async () => {
@@ -40,6 +40,63 @@ test('the frame runner relays a send only during user activation in its content'
     { type: 'ready' },
     { text: 'baz', type: 'send' },
   ]);
+});
+
+test('the frame runner relays calls and returns each reply to the frame that called', async () => {
+  const frame = await runner();
+
+  frame.render('foo', true);
+  frame.call({ args: 'bar', id: 7, method: 'baz' });
+  frame.render('foo', true);
+  frame.render('foo', true);
+  frame.call({ args: 'qux', id: 7, method: 'baz' });
+  frame.reply({ id: 1, value: 'stale' });
+  frame.reply({ id: 2, value: 'quux' });
+  frame.reply({ id: 2, value: 'again' });
+
+  expect({ posted: frame.posted, received: frame.received() }).toEqual({
+    posted: [
+      { type: 'ready' },
+      { args: 'bar', id: 1, method: 'baz', type: 'call' },
+      { args: 'qux', id: 2, method: 'baz', type: 'call' },
+    ],
+    received: [{ error: undefined, id: 7, type: 'reply', value: 'quux' }],
+  });
+});
+
+test('frame content stores JSON values through calls to its runner', async () => {
+  const { lab, posted, reply } = await bridge();
+
+  const saved = lab?.store.set('foo', { bar: 1 });
+  const loaded = lab?.store.get('foo');
+  const failed = lab?.store
+    .delete('foo')
+    .catch((error: Error) => error.message);
+
+  reply({ id: 1 });
+  reply({ id: 2, value: '{"bar":1}' });
+  reply({ error: 'baz', id: 3 });
+
+  expect({
+    failed: await failed,
+    loaded: await loaded,
+    posted,
+    saved: await saved,
+  }).toEqual({
+    failed: 'baz',
+    loaded: { bar: 1 },
+    posted: [
+      {
+        args: { key: 'foo', value: '{"bar":1}' },
+        id: 1,
+        method: 'store.set',
+        type: 'call',
+      },
+      { args: { key: 'foo' }, id: 2, method: 'store.get', type: 'call' },
+      { args: { key: 'foo' }, id: 3, method: 'store.delete', type: 'call' },
+    ],
+    saved: undefined,
+  });
 });
 
 test('frame content turns off DNS prefetching and loses WebRTC before it runs', async () => {
