@@ -250,7 +250,13 @@ export function useChatActions(
     mutationFn: (change: Parameters<typeof updateConversation>[1]) =>
       updateConversation(chat.id, change),
     onSettled: refresh,
+    scope: { id: `chat:${chat.id}` },
   });
+
+  const pinned =
+    update.isPending && update.variables.pinned !== undefined
+      ? update.variables.pinned
+      : chat.pinned;
 
   const move = useMutation({
     mutationFn: ({ to }: { from: number | null; to: number | null }) =>
@@ -301,8 +307,8 @@ export function useChatActions(
       onDelete: () => remove.mutate(),
       onMove: (projectId: number | null) =>
         move.mutate({ from: chat.projectId, to: projectId }),
-      onPin: () => update.mutate({ pinned: !chat.pinned }),
-      pinned: chat.pinned,
+      onPin: () => update.mutate({ pinned: !pinned }),
+      pinned,
       projectId: chat.projectId,
     },
     rename: (title: string) => update.mutate({ title }),
