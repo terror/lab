@@ -222,7 +222,7 @@ test('a chat stops waiting once its approval is answered', async () => {
 
   await settle(body.id);
 
-  server.stop(true);
+  await server.stop(true);
 
   for (const { id } of (await call(headers, 'GET', '/connectors')).body
     .connectors) {
