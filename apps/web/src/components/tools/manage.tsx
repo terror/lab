@@ -2,7 +2,7 @@ import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
 import { ArchiveRestore, Pencil, Pin, Trash2 } from 'lucide-react';
 
-import { count, field, text } from './format';
+import { count, declined, field, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 
@@ -99,15 +99,10 @@ export const manageRenderers = {
   trash_purge: {
     icon: Trash2,
     preview: itemPreview,
-    title: ({ active, details }) => {
-      if (active) {
-        return 'Deleting forever';
-      }
-
-      return text(field(field(details, 'approval'), 'decision')) === 'denied'
-        ? 'Didn’t delete forever'
-        : 'Deleted forever';
-    },
+    title: declined(
+      ({ active }) => (active ? 'Deleting forever' : 'Deleted forever'),
+      'Didn’t delete forever'
+    ),
   },
   trash_restore: {
     icon: ArchiveRestore,
