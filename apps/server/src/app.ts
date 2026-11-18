@@ -32,7 +32,11 @@ import projects from './projects';
 import providers from './providers';
 import schedules from './schedules';
 import search from './search';
-import { contentSecurityPolicy, docsSecurityPolicy } from './security';
+import {
+  contentSecurityPolicy,
+  docsScript,
+  docsSecurityPolicy,
+} from './security';
 import skills from './skills';
 import trash from './trash';
 import uploads from './uploads';
@@ -159,6 +163,7 @@ app.get(
   requireUser,
   Scalar({
     agent: { disabled: true },
+    cdn: docsScript,
     hideClientButton: true,
     pageTitle: 'Lab API',
     showDeveloperTools: 'never',

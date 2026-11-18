@@ -26,13 +26,16 @@ export function contentSecurityPolicy(html: string) {
   };
 }
 
+export const docsScript =
+  'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js';
+
 export const docsSecurityPolicy = {
-  connectSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+  connectSrc: ["'self'"],
   defaultSrc: ["'self'"],
   fontSrc: ["'self'", 'data:', 'https://fonts.scalar.com'],
   frameAncestors: ["'none'"],
   imgSrc: ["'self'", 'data:'],
   objectSrc: ["'none'"],
-  scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+  scriptSrc: ["'self'", "'unsafe-inline'", docsScript],
   styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.scalar.com'],
 };
