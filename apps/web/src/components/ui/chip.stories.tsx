@@ -1,4 +1,4 @@
-import { Lightbulb } from 'lucide-react';
+import { Bookmark, BookmarkX } from 'lucide-react';
 
 import preview from '../../../.storybook/preview';
 import { themes } from '../../../.storybook/themes';
@@ -23,7 +23,7 @@ export const Done = meta.story({
   args: { tone: 'done' },
   render: (args) => (
     <Chip {...args}>
-      <Lightbulb aria-hidden='true' />
+      <Bookmark aria-hidden='true' />
       Remembered
     </Chip>
   ),
@@ -33,7 +33,7 @@ export const Neutral = meta.story({
   args: { tone: 'neutral' },
   render: (args) => (
     <Chip {...args}>
-      <Lightbulb aria-hidden='true' />
+      <BookmarkX aria-hidden='true' />
       Forgot
     </Chip>
   ),

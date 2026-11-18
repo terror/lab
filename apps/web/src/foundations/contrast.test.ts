@@ -40,3 +40,25 @@ test('every spark ink passes AA on every surface in both themes', () => {
 
   expect(failing).toEqual([]);
 });
+
+test('a remembered fact stays readable under its yellow highlight in both themes', () => {
+  const ratios = ['light', 'dark'].map((theme) => {
+    const root = document.createElement('div');
+
+    root.className = theme;
+    document.body.append(root);
+
+    const style = getComputedStyle(root);
+
+    const ratio = contrast(
+      style.getPropertyValue('--muted-foreground'),
+      style.getPropertyValue('--spark-yellow-wash')
+    );
+
+    root.remove();
+
+    return ratio >= 4.5;
+  });
+
+  expect(ratios).toEqual([true, true]);
+});

@@ -138,6 +138,8 @@ function ToolStep({
 export function ToolCards({ call, progress, result, working }: CallProps) {
   const view = useToolView(call, progress, result, working);
 
+  const [live] = useState(view.active);
+
   const conversationId = useContext(ToolConversation);
 
   const approval = approvalOf(view.details);
@@ -156,7 +158,11 @@ export function ToolCards({ call, progress, result, working }: CallProps) {
           />
         </div>
       )}
-      {inline && <div className='mt-1.5 mb-2'>{inline}</div>}
+      {inline && (
+        <div className='mt-1.5 mb-2' data-arrived={live || undefined}>
+          {inline}
+        </div>
+      )}
     </>
   );
 }
