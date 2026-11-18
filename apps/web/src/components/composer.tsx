@@ -225,7 +225,7 @@ export function Composer({
   onSteer,
   onStop,
   onSubmit,
-  placeholder = 'Ask anything...',
+  placeholder = 'Ask anything…',
   running,
   submitting,
 }: {
@@ -423,15 +423,15 @@ export function Composer({
   return (
     <form onSubmit={onFormSubmit} className='relative w-full'>
       {menu && (
-        <div className='absolute inset-x-2 bottom-full mb-2 flex flex-col gap-0.5 rounded-2xl bg-popover p-1.5 shadow-lg ring-1 ring-foreground/10'>
-          <ul aria-label='Commands' className='flex flex-col gap-0.5'>
+        <div className='absolute inset-x-2 bottom-full mb-2 flex animate-in flex-col rounded-menu bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-base ease-out fade-in-0 zoom-in-95 slide-in-from-bottom-2'>
+          <ul aria-label='Commands' className='flex flex-col'>
             {matches.map((command) => (
               <li key={command.name}>
                 <button
                   aria-current={command === selected ? 'true' : undefined}
                   className={cn(
-                    'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60',
-                    command === selected && 'bg-muted'
+                    'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground',
+                    command === selected && 'bg-accent text-accent-foreground'
                   )}
                   onClick={() => void runCommand(command)}
                   onMouseDown={(event) => event.preventDefault()}
@@ -449,10 +449,20 @@ export function Composer({
               </li>
             ))}
           </ul>
-          <p className='flex gap-3.5 px-3 pt-1 pb-0.5 text-xs text-muted-foreground'>
-            <span>↑↓ to choose</span>
-            <span>↵ to run</span>
-            <span>esc to close</span>
+          <p className='flex gap-3 px-1.5 pt-1.5 pb-0.5 text-xs text-muted-foreground pointer-coarse:hidden'>
+            <span className='flex items-center gap-1'>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+              to choose
+            </span>
+            <span className='flex items-center gap-1'>
+              <Kbd>↵</Kbd>
+              to run
+            </span>
+            <span className='flex items-center gap-1'>
+              <Kbd>esc</Kbd>
+              to close
+            </span>
           </p>
         </div>
       )}
@@ -529,16 +539,10 @@ export function Composer({
               <DropdownMenuItem onSelect={() => input.current?.click()}>
                 <Paperclip aria-hidden='true' />
                 Add photos & files
-                <span className='text-muted-foreground'>
-                  Upload from computer
-                </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={openPicker}>
                 <LibraryBig aria-hidden='true' />
                 Add from library
-                <span className='text-muted-foreground'>
-                  Browse and search your files
-                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
