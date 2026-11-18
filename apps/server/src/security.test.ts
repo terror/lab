@@ -41,14 +41,14 @@ test('the API docs load one pinned script', async () => {
   expect({
     policy: response.headers.get('content-security-policy'),
     scripts: Array.from(
-      html.matchAll(/<script[^>]*src="([^"]*)"/g),
-      ([, src]) => src
+      html.matchAll(/<script[^>]*src=[^>]*>/g),
+      ([tag]) => tag
     ),
   }).toEqual({
     policy:
-      "connect-src 'self'; default-src 'self'; font-src 'self' data: https://fonts.scalar.com; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js; style-src 'self' 'unsafe-inline' https://fonts.scalar.com",
+      "connect-src 'self'; default-src 'self'; font-src 'self' data: https://fonts.scalar.com; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js 'sha256-R35nR0MIjkB1w1EeroUQY7pXXvIiMMbIHp2/fHXF4pg='; style-src 'self' 'unsafe-inline' https://fonts.scalar.com",
     scripts: [
-      'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js',
+      '<script crossorigin="anonymous" integrity="sha384-DXupxC0wR1MllQMEexwTowkgKaBvZGJuwz+TU+7cHC09aC+q5vPMiJS2TW3GWjPN" src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js">',
     ],
   });
 });
