@@ -84,7 +84,13 @@ const faux = fauxProvider({
 
 const { clearScript, respond } = await import('./models');
 
-afterEach(clearScript);
+afterEach(() => {
+  const unused = clearScript();
+
+  if (unused > 0) {
+    throw new Error(`Unused scripted model replies: ${unused}`);
+  }
+});
 
 faux.setResponses(Array.from({ length: 10_000 }, () => respond));
 

@@ -299,7 +299,7 @@ test('stopping a chat cancels its image generation', async () => {
   );
 
   try {
-    script(generate(), fauxAssistantMessage('baz'));
+    script(generate());
 
     const { body } = await call(headers, 'POST', '/conversations', {
       content: 'foo',

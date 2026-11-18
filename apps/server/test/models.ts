@@ -22,7 +22,7 @@ export function script(...steps: FauxResponseStep[]) {
 }
 
 export function clearScript() {
-  scripted.length = 0;
+  return scripted.splice(0).length;
 }
 
 export const respond: FauxResponseFactory = (
