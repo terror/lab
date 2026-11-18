@@ -34,6 +34,17 @@
       }
     ],
     "react/exhaustive-deps": "error",
+    "react/forbid-elements": [
+      "error",
+      {
+        "forbid": [
+          {
+            "element": "button",
+            "message": "Use Button from components/ui/button, or add a component to components/ui."
+          }
+        ]
+      }
+    ],
     "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",
     "tailwindcss/enforce-canonical": "error",
@@ -49,6 +60,17 @@
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-dynamic-classes": "error",
     "tailwindcss/no-hardcoded-colors": "error",
+    "tailwindcss/no-restricted-classes": [
+      "error",
+      {
+        "patterns": [
+          {
+            "message": "Spark colors belong to the agent. Use a components/ui component that carries one, or add it there.",
+            "pattern": "spark-(coral|blue|yellow)"
+          }
+        ]
+      }
+    ],
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-unnecessary-arbitrary-value": "error",
     "typescript/no-deprecated": "error",
@@ -61,9 +83,75 @@
         "jsx-a11y/click-events-have-key-events": "off",
         "jsx-a11y/no-noninteractive-element-interactions": "off",
         "jsx-a11y/prefer-tag-over-role": "off",
+        "react/forbid-elements": "off",
         "tailwindcss/no-arbitrary-value": "off",
         "tailwindcss/no-default-palette": "off",
-        "tailwindcss/no-hardcoded-colors": "off"
+        "tailwindcss/no-hardcoded-colors": "off",
+        "tailwindcss/no-restricted-classes": [
+          "error",
+          {
+            "patterns": [
+              {
+                "message": "Text takes the ink tier. Raw and wash fail contrast.",
+                "pattern": "(^|:)(text|decoration|caret|placeholder)-spark-(coral|blue|yellow)(-wash)?(/|$)"
+              },
+              {
+                "message": "A spark never colors a border, ring, or outline.",
+                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-spark-"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/src/components/lab-mark.tsx"],
+      "rules": {
+        "tailwindcss/no-restricted-classes": [
+          "error",
+          {
+            "patterns": [
+              {
+                "message": "Text takes the ink tier. Raw and wash fail contrast.",
+                "pattern": "(^|:)(text|decoration|caret|placeholder)-spark-(coral|blue|yellow)(-wash)?(/|$)"
+              },
+              {
+                "message": "A spark never colors a border, ring, or outline.",
+                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-spark-"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/web/src/components/account-menu.tsx",
+        "apps/web/src/components/approval-card.tsx",
+        "apps/web/src/components/artifact-apps.tsx",
+        "apps/web/src/components/assistant-message.tsx",
+        "apps/web/src/components/composer.tsx",
+        "apps/web/src/components/computer.tsx",
+        "apps/web/src/components/conversation-item.tsx",
+        "apps/web/src/components/document-card.tsx",
+        "apps/web/src/components/library-tile.tsx",
+        "apps/web/src/components/library.tsx",
+        "apps/web/src/components/model-picker.tsx",
+        "apps/web/src/components/plan.tsx",
+        "apps/web/src/components/project-instructions.tsx",
+        "apps/web/src/components/project-menu.tsx",
+        "apps/web/src/components/question-card.tsx",
+        "apps/web/src/components/scheduled.tsx",
+        "apps/web/src/components/search.tsx",
+        "apps/web/src/components/settings.tsx",
+        "apps/web/src/components/sidebar.tsx",
+        "apps/web/src/components/tools/artifacts.tsx",
+        "apps/web/src/components/tools/previews.tsx",
+        "apps/web/src/components/unread-chips.tsx",
+        "apps/web/src/components/usage.tsx"
+      ],
+      "rules": {
+        "react/forbid-elements": "off"
       }
     }
   ],
