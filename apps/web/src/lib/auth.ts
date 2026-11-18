@@ -3,10 +3,16 @@ import { createAuthClient } from 'better-auth/react';
 
 import { clearStored } from './storage';
 
-export const authClient = createAuthClient();
+export const authClient = createAuthClient({
+  fetchOptions: { customFetchImpl: (input, init) => window.fetch(input, init) },
+});
 
 export async function signOut(queryClient: QueryClient) {
-  await authClient.signOut().catch(() => undefined);
+  const result = await authClient.signOut().catch(() => undefined);
+
+  if (!result || result.error) {
+    throw new Error('Couldn’t sign out. Check your connection and try again.');
+  }
 
   clearStored();
   queryClient.clear();
