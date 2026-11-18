@@ -30,10 +30,15 @@ export type WebSearch = {
 
 export type WebAccess = {
   available(): Promise<boolean>;
-  fetch(conversationId: ConversationId, url: string): Promise<WebPage>;
+  fetch(
+    conversationId: ConversationId,
+    url: string,
+    signal: AbortSignal | undefined
+  ): Promise<WebPage>;
   search(
     conversationId: ConversationId,
-    search: WebSearch
+    search: WebSearch,
+    signal: AbortSignal | undefined
   ): Promise<WebResult[]>;
 };
 
@@ -90,12 +95,11 @@ export function web(access: WebAccess) {
     execute: ({ domains, limit, query, recency }, api, context) =>
       caught(async () => {
         const results = await once(api, 'results', context, () =>
-          access.search(api.conversationId, {
-            domains,
-            limit: limit ?? 5,
-            query,
-            recency,
-          })
+          access.search(
+            api.conversationId,
+            { domains, limit: limit ?? 5, query, recency },
+            context.abortSignal
+          )
         );
 
         return {
@@ -126,7 +130,7 @@ export function web(access: WebAccess) {
     execute: ({ offset, url }, api, context) =>
       caught(async () => {
         const fetched = await once(api, 'page', context, () =>
-          access.fetch(api.conversationId, url)
+          access.fetch(api.conversationId, url, context.abortSignal)
         );
 
         const shown = page(fetched.text, offset ?? 0, WEB_READ_LENGTH, {
