@@ -1,10 +1,11 @@
 import { type Context, awaitWithContext } from '@earendil-works/chord/context';
-import {
-  type DocumentWatch,
-  type JsonObject,
-  type ToolExecutionApi,
-  defineDoc,
+import type {
+  DocumentWatch,
+  JsonObject,
+  ToolExecutionApi,
 } from '@earendil-works/pi-durable';
+
+import { conversationDoc } from './docs';
 
 export const ANSWER_LENGTH = 1_000;
 
@@ -17,15 +18,9 @@ type Answers = {
   asked?: Record<string, number>;
 };
 
-export const QuestionsDoc = defineDoc<Answers>({
-  kind: 'lab.questions',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ answers: {} }),
-  checkpointWhen: () => true,
-});
+export const QuestionsDoc = conversationDoc<Answers>('lab.questions', () => ({
+  answers: {},
+}));
 
 function answerFor(watch: DocumentWatch<Answers>, callId: string) {
   return new Promise<string>((resolve) => {
