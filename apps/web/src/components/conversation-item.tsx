@@ -27,6 +27,7 @@ import { conversationTitle } from '@/lib/conversations';
 import { useHandoff } from '@/lib/handoff';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { Link } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
 import {
@@ -34,6 +35,7 @@ import {
   type CSSProperties,
   Fragment,
   type ReactNode,
+  useRef,
   useState,
 } from 'react';
 
@@ -116,11 +118,13 @@ export function ConversationItem({
   selected: boolean;
 }) {
   const presence = useRowPresence();
-  const renaming = useRenaming();
+  const options = useRef<HTMLButtonElement>(null);
+  const renaming = useRenaming(options);
   const actions = useChatActions(conversation, selected);
 
   const current = activity(conversation, selected);
 
+  const quiet = useQuiet();
   const [order, settle] = useHandoff(current);
   const [named, setNamed] = useState(conversation.title);
   const [arrived, setArrived] = useState(false);
@@ -159,7 +163,7 @@ export function ConversationItem({
   };
 
   const mark =
-    order === undefined ? (
+    order === undefined || quiet ? (
       indicator?.mark
     ) : (
       <LiveMark
@@ -181,6 +185,7 @@ export function ConversationItem({
                 <button
                   aria-label={`Options for ${title}`}
                   className={rowAction}
+                  ref={options}
                   type='button'
                 >
                   <Ellipsis aria-hidden='true' />

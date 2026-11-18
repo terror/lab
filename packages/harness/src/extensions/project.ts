@@ -7,6 +7,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { requestApproval } from './host-input';
 import { failure, text } from './results';
 
 export const PROJECT_INSTRUCTIONS_LENGTH = 8_000;
@@ -59,6 +60,15 @@ const projectId = int({ description: 'The project id.', minimum: 1 });
 
 const missing = 'No project has that id.';
 
+function updated(changed: Project | undefined): ToolExecutionResult {
+  return changed
+    ? {
+        details: { project: changed },
+        output: text(`Updated the project ${line(changed)}.`),
+      }
+    : failure(missing);
+}
+
 export function project(access: ProjectAccess) {
   const projectList = defineTool({
     name: 'project_list',
@@ -104,8 +114,9 @@ export function project(access: ProjectAccess) {
 
   const projectUpdate = defineTool({
     name: 'project_update',
+    callers: ['model'],
     description:
-      'Rename a project or replace its instructions, which apply to every chat in it. Only the fields you pass change.',
+      'Rename a project or replace its instructions, which apply to every chat in it. Only the fields you pass change. The user approves new instructions first.',
     parameters: obj({
       id: projectId,
       instructions: opt(
@@ -117,19 +128,50 @@ export function project(access: ProjectAccess) {
       ),
       name: opt(name),
     }),
-    execute: async ({ id, ...change }, api): Promise<ToolExecutionResult> => {
+    execute: async (
+      { id, ...change },
+      api,
+      context
+    ): Promise<ToolExecutionResult> => {
       if (change.instructions === undefined && change.name === undefined) {
         return failure('Pass a name or instructions to change.');
       }
 
-      const updated = await access.update(api.conversationId, id, change);
+      if (change.instructions === undefined) {
+        return updated(await access.update(api.conversationId, id, change));
+      }
 
-      return updated
-        ? {
-            details: { project: updated },
-            output: text(`Updated the project ${line(updated)}.`),
-          }
-        : failure(missing);
+      const current = (await access.list(api.conversationId)).find(
+        (candidate) => candidate.id === id
+      );
+
+      if (!current) {
+        return failure(missing);
+      }
+
+      const { approval, approved } = await requestApproval(api, context, {
+        action: `Change the instructions of the “${current.name}” project`,
+        summary: [
+          change.instructions || 'No instructions.',
+          change.name === undefined ? '' : `New name: ${change.name}`,
+        ].filter(Boolean),
+      });
+
+      if (!approved) {
+        return {
+          details: { approval },
+          output: text(
+            'The user declined to change the project’s instructions.'
+          ),
+        };
+      }
+
+      const changed = await access.update(api.conversationId, id, change);
+
+      return {
+        ...updated(changed),
+        details: { approval, ...(changed && { project: changed }) },
+      };
     },
   });
 

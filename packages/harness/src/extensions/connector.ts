@@ -13,7 +13,6 @@ export type ConnectorTool = {
   description: string;
   name: string;
   parameters: object;
-  readOnly: boolean;
   title: string;
 };
 
@@ -32,8 +31,6 @@ export type Connector = {
 
 const TOOL_NAME_LENGTH = 64;
 
-const ARGUMENT_LENGTH = 200;
-
 export function connectorToolName(slug: string, tool: string) {
   return `mcp__${slug}__${tool.replace(/[^\w-]/g, '_')}`.slice(
     0,
@@ -42,13 +39,9 @@ export function connectorToolName(slug: string, tool: string) {
 }
 
 function summary(args: Record<string, unknown>) {
-  return Object.entries(args).map(([key, value]) => {
-    const line = `${key}: ${JSON.stringify(value)}`;
-
-    return line.length > ARGUMENT_LENGTH
-      ? `${line.slice(0, ARGUMENT_LENGTH - 1)}…`
-      : line;
-  });
+  return Object.entries(args).map(
+    ([key, value]) => `${key}: ${JSON.stringify(value)}`
+  );
 }
 
 function namedTools(slug: string, tools: readonly ConnectorTool[]) {
@@ -82,7 +75,7 @@ function connectorParts({ call, name, slug, tools }: Connector) {
     ],
     tools: namedTools(slug, tools).map(([toolName, tool]) =>
       defineTool({
-        callers: tool.readOnly ? undefined : ['model'],
+        callers: ['model'],
         deferred: true,
         description: tool.description,
         name: toolName,
@@ -101,10 +94,6 @@ function connectorParts({ call, name, slug, tools }: Connector) {
               return failure(errorMessage(error));
             }
           };
-
-          if (tool.readOnly) {
-            return run();
-          }
 
           const { approval, approved } = await requestApproval(api, context, {
             action: `Use ${tool.title} from ${name}`,

@@ -2,6 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, eq, lte } from 'drizzle-orm';
+import { HTTPException } from 'hono/http-exception';
 
 import { createChat } from './chat-actions';
 import { db } from './db';
@@ -46,7 +47,9 @@ export async function runTask(row: Row) {
   const model = await defaultModel();
 
   if (!model) {
-    throw new Error('No model is available for scheduled tasks.');
+    throw new HTTPException(400, {
+      message: 'Add a provider in settings to start chatting',
+    });
   }
 
   const id = await createChat(row.ownerId, {

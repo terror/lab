@@ -4,7 +4,7 @@ import { skills as extension } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, chat, toolDetails, toolOutputs } from '../test/client';
+import { call, chat, settle, toolDetails, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 
 type Listed = {
@@ -22,6 +22,23 @@ async function listed(headers: Headers) {
   const { body } = await call(headers, 'GET', '/skills');
 
   return (body.skills as Listed[]).map(fields);
+}
+
+async function answered(headers: Headers, answers: Record<string, string>) {
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  for (const [callId, answer] of Object.entries(answers)) {
+    await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+      answer,
+      callId,
+    });
+  }
+
+  await settle(body.id);
+
+  return body.id as number;
 }
 
 test('skills can be managed from settings', async () => {
@@ -69,27 +86,27 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
   const headers = await signIn();
 
   script(
-    toolCall('skill_create', {
-      description: 'foo',
-      instructions: 'bar',
-      name: 'baz',
-    }),
+    toolCall(
+      'skill_create',
+      { description: 'foo', instructions: 'bar', name: 'baz' },
+      'foo'
+    ),
     fauxAssistantMessage('foo')
   );
 
-  const created = await chat(headers, { content: 'foo' });
+  const created = await answered(headers, { foo: 'approved' });
 
   const [{ id }] = (await call(headers, 'GET', '/skills')).body.skills;
 
   script(
     toolCall('skill_read', { id }),
-    toolCall('skill_update', { id, instructions: 'qux' }),
+    toolCall('skill_update', { id, instructions: 'qux' }, 'bar'),
     toolCall('skill_delete', { id }),
     toolCall('skill_read', { id }),
     fauxAssistantMessage('foo')
   );
 
-  const changed = await chat(headers, { content: 'foo' });
+  const changed = await answered(headers, { bar: 'approved' });
 
   const details = [
     ...(await toolDetails(headers, created)),
@@ -116,6 +133,80 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
     ],
     skills: [],
   });
+});
+
+test('the agent saves or changes a skill only once the user approves', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/skills', {
+    description: 'foo',
+    instructions: 'bar',
+    name: 'baz',
+  });
+
+  const [{ id }] = body.skills;
+
+  script(
+    toolCall(
+      'skill_create',
+      { description: 'foo', instructions: 'bar', name: 'qux' },
+      'foo'
+    ),
+    toolCall('skill_update', { id, instructions: 'qux' }, 'bar'),
+    fauxAssistantMessage('foo')
+  );
+
+  const denied = await answered(headers, { bar: 'denied', foo: 'denied' });
+
+  expect({
+    details: await toolDetails(headers, denied),
+    outputs: await toolOutputs(headers, denied),
+    skills: await listed(headers),
+  }).toEqual({
+    details: [
+      {
+        approval: {
+          action: 'Save the “qux” skill',
+          decision: 'denied',
+          summary: ['foo', 'bar'],
+        },
+      },
+      {
+        approval: {
+          action: 'Change the “baz” skill',
+          decision: 'denied',
+          summary: ['Instructions: qux'],
+        },
+      },
+    ],
+    outputs: [
+      'The user declined to save this skill.',
+      'The user declined to change this skill.',
+    ],
+    skills: [{ description: 'foo', instructions: 'bar', name: 'baz' }],
+  });
+});
+
+test('tools that change saved instructions are only offered to the model', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall('codemode', {
+      code: 'const names = new Set(ALL_TOOLS.map(({ name }) => name)); return ["project_update", "skill_create", "skill_read", "skill_update"].filter((name) => names.has(name));',
+    }),
+    fauxAssistantMessage('foo')
+  );
+
+  const outputs = await toolOutputs(
+    headers,
+    await chat(headers, { content: 'foo' })
+  );
+
+  expect(outputs).toHaveLength(1);
+
+  expect(outputs[0]).toMatch(
+    /^Script completed\nWall time \d+\.\d seconds\nOutput:\n\["skill_read"\]$/
+  );
 });
 
 test('saved skills are listed in the prompt', async () => {

@@ -77,6 +77,7 @@ import {
 } from '@/lib/transcript';
 import { uploadUrl } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
+import { useThinking } from '@/lib/voice';
 import {
   type AgentState,
   type InboxState,
@@ -360,6 +361,7 @@ const TranscriptRow = memo(function TranscriptRow({
   plan,
   progress,
   results,
+  retrying,
   row,
   versions,
   working,
@@ -375,6 +377,7 @@ const TranscriptRow = memo(function TranscriptRow({
   plan: ShownPlan | undefined;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
+  retrying: boolean;
   row: Row;
   versions: Versions | undefined;
   working: boolean;
@@ -439,6 +442,7 @@ const TranscriptRow = memo(function TranscriptRow({
         plan={plan}
         progress={progress}
         results={results}
+        retrying={retrying}
         span={row.span}
         streaming={row.streaming ?? false}
         versions={switcher}
@@ -480,6 +484,8 @@ export function Conversation({ id }: { id: number }) {
 const EAGER_ROWS = 6;
 
 const noForks: Fork[] = [];
+
+const ignoreBranch = () => undefined;
 
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
@@ -646,7 +652,14 @@ function ConversationView({ id }: { id: number }) {
     [plan, running]
   );
 
-  const onBranch = running || branch.isPending ? undefined : branch.mutate;
+  const branching = branch.isPending ? ignoreBranch : branch.mutate;
+
+  const onBranch = running ? undefined : branching;
+
+  const retried =
+    branch.isPending && branch.variables.kind === 'retry'
+      ? branch.variables.entryId
+      : undefined;
 
   const wasRunning = useRef(running);
 
@@ -666,13 +679,32 @@ function ConversationView({ id }: { id: number }) {
   });
 
   useEffect(() => {
-    if (!running) {
-      markRead();
+    if (running) {
+      return undefined;
     }
+
+    if (!document.hidden) {
+      markRead();
+
+      return undefined;
+    }
+
+    const read = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', read);
+        markRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', read);
+
+    return () => document.removeEventListener('visibilitychange', read);
   }, [markRead, running]);
 
+  const waiting = useThinking(running ? anchor?.key : undefined);
+
   const thinking =
-    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
+    phase.kind === 'thinking' ? (activity ?? waiting) : undefined;
 
   const last = rows.at(-1)?.row;
 
@@ -718,6 +750,11 @@ function ConversationView({ id }: { id: number }) {
                       plan={ownsPlan(row, plan?.callId) ? shownPlan : undefined}
                       progress={progress}
                       results={results}
+                      retrying={
+                        row.kind === 'assistant' &&
+                        row.entryId !== undefined &&
+                        row.entryId === retried
+                      }
                       row={row}
                       versions={versions.get(row)}
                       working={running && row === last}

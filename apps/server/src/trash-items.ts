@@ -45,16 +45,23 @@ async function purgeChat(ownerId: string, id: number) {
 
   void removeChatFolder(ownerId, id).catch(console.error);
 
-  await db.transaction(async (tx) => {
+  const released = await db.transaction(async (tx) => {
+    const attached = await tx
+      .select({ id: schema.libraryItem.uploadId })
+      .from(schema.libraryItem)
+      .where(eq(schema.libraryItem.conversationId, id));
+
     await tx.delete(table).where(eq(table.id, id));
 
     await tx
       .insert(schema.conversationDeletion)
       .values({ id, ownerId })
       .onConflictDoNothing();
+
+    return attached.flatMap((upload) => upload.id ?? []);
   });
 
-  void pruneUploads(ownerId).catch(console.error);
+  await pruneUploads(ownerId, released).catch(console.error);
 }
 
 const conversations: Trashable = {

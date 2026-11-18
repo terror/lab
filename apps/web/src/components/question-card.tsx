@@ -3,8 +3,7 @@ import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { answerQuestion } from '@/lib/conversations';
-import { useMutation } from '@tanstack/react-query';
+import { useAnswer } from '@/lib/conversations';
 import { Check } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
@@ -25,11 +24,7 @@ export function QuestionCard({
 }) {
   const [other, setOther] = useState('');
 
-  const send = useMutation({
-    meta: { inlineError: true },
-    mutationFn: (value: string) =>
-      answerQuestion(conversationId ?? 0, { answer: value, callId }),
-  });
+  const send = useAnswer(conversationId, callId);
 
   const chosen = answer ?? (send.isSuccess ? send.variables : undefined);
 

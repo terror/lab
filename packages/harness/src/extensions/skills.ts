@@ -7,6 +7,7 @@ import { obj, opt, str } from '@earendil-works/pi-schema';
 import { randomUUID } from 'node:crypto';
 
 import { type Owner, userDoc } from './docs';
+import { type ApprovalRequest, requestApproval } from './host-input';
 import { failure, text } from './results';
 
 export const SKILL_LIMIT = 50;
@@ -118,15 +119,21 @@ const notes = {
   Updated: 'Your list of saved skills now shows this version.',
 };
 
-function result(change: SkillChange, verb: keyof typeof notes) {
+type Approval = ApprovalRequest & { decision: string };
+
+function result(
+  change: SkillChange,
+  verb: keyof typeof notes,
+  approval: Approval
+) {
   if (change.kind !== 'saved') {
-    return failure(failures[change.kind]);
+    return { ...failure(failures[change.kind]), details: { approval } };
   }
 
   const { skill } = change;
 
   return {
-    details: skill,
+    details: { ...skill, approval },
     output: text(
       `${verb} the skill [${skill.id}] ${skill.name}.\n\n${notes[verb]}`
     ),
@@ -198,10 +205,23 @@ export function skills(owner: Owner) {
 
   const skillCreate = defineTool({
     name: 'skill_create',
+    callers: ['model'],
     description:
-      'Save a new skill: reusable instructions to follow whenever a matching request comes up. Use it when the user asks you to create or save a skill.',
+      'Save a new skill: reusable instructions to follow whenever a matching request comes up. Use it when the user asks you to create or save a skill. The user approves it first.',
     parameters: obj({ description, instructions, name }),
     execute: async (fields, api, context) => {
+      const { approval, approved } = await requestApproval(api, context, {
+        action: `Save the “${fields.name}” skill`,
+        summary: [fields.description, fields.instructions],
+      });
+
+      if (!approved) {
+        return {
+          details: { approval },
+          output: text('The user declined to save this skill.'),
+        };
+      }
+
       const skillId = await api.memo('id', randomUUID().slice(0, 8), context);
 
       const key = await owner(api.conversationId);
@@ -216,14 +236,15 @@ export function skills(owner: Owner) {
         context
       );
 
-      return result(change, 'Created');
+      return result(change, 'Created', approval);
     },
   });
 
   const skillUpdate = defineTool({
     name: 'skill_update',
+    callers: ['model'],
     description:
-      "Change a saved skill's name, description, or instructions. Only the fields you pass change.",
+      "Change a saved skill's name, description, or instructions. Only the fields you pass change. The user approves it first.",
     parameters: obj({
       description: opt(description),
       id,
@@ -232,6 +253,34 @@ export function skills(owner: Owner) {
     }),
     execute: async (fields, api, context) => {
       const key = await owner(api.conversationId);
+
+      const current = (
+        await api.snapshot(SkillsDoc, key, context)
+      )?.skills.find((skill) => skill.id === fields.id);
+
+      if (!current) {
+        return failure(failures.missing);
+      }
+
+      const { approval, approved } = await requestApproval(api, context, {
+        action: `Change the “${current.name}” skill`,
+        summary: [
+          fields.name === undefined ? '' : `Name: ${fields.name}`,
+          fields.description === undefined
+            ? ''
+            : `Description: ${fields.description}`,
+          fields.instructions === undefined
+            ? ''
+            : `Instructions: ${fields.instructions}`,
+        ].filter(Boolean),
+      });
+
+      if (!approved) {
+        return {
+          details: { approval },
+          output: text('The user declined to change this skill.'),
+        };
+      }
 
       const change = await api.commit(
         async (tx) =>
@@ -242,7 +291,7 @@ export function skills(owner: Owner) {
         context
       );
 
-      return result(change, 'Updated');
+      return result(change, 'Updated', approval);
     },
   });
 

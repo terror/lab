@@ -8,6 +8,7 @@ import { signIn } from '../test/auth';
 import { call, create, idle, raw, settle } from '../test/client';
 import { db } from './db';
 import { harness } from './harness';
+import { MESSAGE_LENGTH } from './messages';
 import { conversationOwner } from './records';
 
 test('conversations require a session', async () => {
@@ -56,6 +57,37 @@ test('conversations are created with the chosen model', async () => {
     { modelId: 'anthropic/claude-haiku-5.5', provider: 'vercel-ai-gateway' },
     'off',
   ]);
+});
+
+test('messages longer than the limit are rejected', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  const content = 'a'.repeat(MESSAGE_LENGTH + 1);
+
+  const rejected = {
+    body: { error: 'This message is too long' },
+    status: 400,
+  };
+
+  expect(
+    await Promise.all([
+      call(headers, 'POST', '/conversations', { content }),
+      call(headers, 'POST', `/conversations/${id}/messages`, { content }),
+      call(headers, 'POST', `/conversations/${id}/branches`, {
+        content,
+        entryId: body.items[0].id,
+        kind: 'edit',
+      }),
+    ])
+  ).toEqual([rejected, rejected, rejected]);
 });
 
 test('conversations are not listed when their first message fails', async () => {

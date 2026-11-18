@@ -30,7 +30,11 @@ export type SandboxProvider = {
   inspect(computer: string): Promise<ComputerState | undefined>;
   label: string;
   network(computer: string, mode: NetworkMode): Promise<void>;
-  read(computer: string, path: string): Promise<Uint8Array | undefined>;
+  read(
+    computer: string,
+    path: string,
+    limit: number
+  ): Promise<Uint8Array | undefined>;
   run(
     computer: string,
     options: {
@@ -81,6 +85,39 @@ function quoted(value: string) {
 
 const desired = new Map<string, NetworkMode>();
 
+export async function readUpTo(
+  stream: AsyncIterable<Uint8Array | string>,
+  limit: number
+) {
+  const chunks: Uint8Array[] = [];
+
+  let length = 0;
+
+  for await (const chunk of stream) {
+    const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+
+    const kept = bytes.subarray(0, limit - length);
+
+    chunks.push(kept);
+    length += kept.byteLength;
+
+    if (length >= limit) {
+      break;
+    }
+  }
+
+  const content = new Uint8Array(length);
+
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    content.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return content;
+}
+
 function vercel(auth: VercelCredentials): SandboxProvider {
   const open = (computer: string) =>
     Sandbox.getOrCreate({
@@ -122,10 +159,10 @@ function vercel(auth: VercelCredentials): SandboxProvider {
 
       await (await find(computer))?.update({ networkPolicy: policies[mode] });
     },
-    read: async (computer, path) => {
-      const content = await (await open(computer)).readFileToBuffer({ path });
+    read: async (computer, path, limit) => {
+      const stream = await (await open(computer)).readFile({ path });
 
-      return content ? new Uint8Array(content) : undefined;
+      return stream ? readUpTo(stream, limit) : undefined;
     },
     run: async (computer, { command, cwd, onOutput, signal, timeoutMs }) => {
       const sandbox = await open(computer);
@@ -215,6 +252,8 @@ function computerName(ownerId: string) {
 
 const MAX_READ_BYTES = 5_000_000;
 
+const MAX_SAVE_BYTES = 100_000_000;
+
 const OUTPUT_LIMIT = 4_000_000;
 
 const mimeTypes: Record<string, string> = {
@@ -286,6 +325,14 @@ function shownPath({ chat }: Computer, path: string) {
   return relative.startsWith('..') || posix.isAbsolute(relative)
     ? path
     : relative;
+}
+
+function readFile(computer: Computer, path: string, limit: number) {
+  return computer.provider.read(
+    computer.name,
+    resolvePath(computer, path),
+    limit + 1
+  );
 }
 
 async function libraryFile(ownerId: string, id: number) {
@@ -401,34 +448,35 @@ export function createSandboxAccess(
     read: async (conversationId, path) => {
       const computer = await computerOf(conversationId);
 
-      const content = await computer.provider.read(
-        computer.name,
-        resolvePath(computer, path)
-      );
+      const content = await readFile(computer, path, MAX_READ_BYTES);
 
       if (!content) {
         return undefined;
       }
 
-      const text =
-        content.byteLength <= MAX_READ_BYTES ? decodeText(content) : undefined;
+      if (content.byteLength > MAX_READ_BYTES) {
+        return { kind: 'large', limit: MAX_READ_BYTES };
+      }
 
-      return {
-        binary: text === undefined,
-        size: content.byteLength,
-        text: text ?? '',
-      };
+      const text = decodeText(content);
+
+      return text === undefined
+        ? { kind: 'binary', size: content.byteLength }
+        : { kind: 'text', text };
     },
     save: async (conversationId, path, name) => {
       const computer = await computerOf(conversationId);
 
-      const content = await computer.provider.read(
-        computer.name,
-        resolvePath(computer, path)
-      );
+      const content = await readFile(computer, path, MAX_SAVE_BYTES);
 
       if (!content) {
         throw new Error(`No file at ${path}.`);
+      }
+
+      if (content.byteLength > MAX_SAVE_BYTES) {
+        throw new Error(
+          `${path} is over ${MAX_SAVE_BYTES} bytes, too large to save to the library.`
+        );
       }
 
       const fileName = name ?? posix.basename(path);

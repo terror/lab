@@ -3,6 +3,7 @@ import { expect } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
 import { themes } from '../../.storybook/themes';
+import { useThinking } from '../lib/voice';
 import { AssistantMessage } from './assistant-message';
 import { Activity } from './tool-steps';
 import { ToolConversation } from './tools';
@@ -74,6 +75,40 @@ export const LongRunningStep = meta.story({
   },
 });
 
+const reply =
+  'Graça sits high on one of Lisbon’s hills, so the cafés up there stay calm even at weekends. Two are worth the climb: the kiosk under the pines beside the miradouro, and a small bookish bar a street back from the tram line.';
+
+function Reply() {
+  const words = reply.split(' ');
+  const [count, setCount] = useState(0);
+
+  const streaming = count < words.length;
+
+  useEffect(() => {
+    if (!streaming) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => setCount((current) => current + 1), 70);
+
+    return () => clearInterval(timer);
+  }, [streaming]);
+
+  return (
+    <AssistantMessage
+      parts={[{ text: words.slice(0, count).join(' '), type: 'text' }]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={streaming}
+    />
+  );
+}
+
+export const StreamingReply = meta.story({
+  decorators: [themes],
+  render: () => <Reply />,
+});
+
 const steps = [
   'Reading package.json',
   'Running bun install',
@@ -96,6 +131,15 @@ function RapidActivity() {
 }
 
 export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
+
+function Waiting() {
+  return <Activity status={useThinking('foo')} />;
+}
+
+export const LongWait = meta.story({
+  decorators: [themes],
+  render: () => <Waiting />,
+});
 
 const searches = [
   {
@@ -262,4 +306,56 @@ function Asks() {
 export const Asking = meta.story({
   decorators: [themes],
   render: () => <Asks />,
+});
+
+const tries = [
+  { key: 'a', state: 'working', until: 2 },
+  { key: 'a', state: 'worked', until: 4 },
+  { key: 'a', state: 'working', until: 6 },
+  { key: 'a', state: 'failed', until: 9.5 },
+  { key: 'a', state: 'retrying', until: 10.5 },
+  { key: 'b', state: 'working', until: 12.5 },
+  { key: 'b', state: 'failed', until: 16 },
+] as const;
+
+const outcomes = {
+  failed: { failure: 'model_error', retrying: false, working: false },
+  retrying: { failure: 'model_error', retrying: true, working: false },
+  worked: { failure: undefined, retrying: false, working: false },
+  working: { failure: undefined, retrying: false, working: true },
+} as const;
+
+function Tries() {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((current) => current + 1), 500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const attempt =
+    tries.find(({ until }) => (tick % 32) / 2 < until) ?? tries[0];
+
+  const { failure, retrying, working } = outcomes[attempt.state];
+
+  return (
+    <AssistantMessage
+      key={`${Math.floor(tick / 32)}-${attempt.key}`}
+      failure={failure}
+      latest={!working}
+      onRetry={failure && !retrying ? () => undefined : undefined}
+      parts={[{ text: 'Príncipe Real is the quietest.', type: 'text' }]}
+      progress={new Map()}
+      results={new Map()}
+      retrying={retrying}
+      streaming={working}
+      working={working}
+    />
+  );
+}
+
+export const Failing = meta.story({
+  decorators: [themes],
+  render: () => <Tries />,
 });

@@ -21,6 +21,7 @@ import { useProject } from '@/lib/projects';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight, Ellipsis, Folder, Pin } from 'lucide-react';
+import { useRef } from 'react';
 
 function ProjectCrumb({ id }: { id: number }) {
   const project = useProject(id);
@@ -50,7 +51,8 @@ function ProjectCrumb({ id }: { id: number }) {
 export function ChatHeader({ id }: { id: number }) {
   const summary = useConversationSummary(id);
   const pins = usePinnedConversations();
-  const renaming = useRenaming();
+  const options = useRef<HTMLButtonElement>(null);
+  const renaming = useRenaming(options);
 
   const projectId = summary.data?.projectId ?? null;
 
@@ -95,7 +97,12 @@ export function ChatHeader({ id }: { id: number }) {
       </IconButton>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button aria-label='Chat options' size='icon-sm' variant='quiet'>
+          <Button
+            aria-label='Chat options'
+            ref={options}
+            size='icon-sm'
+            variant='quiet'
+          >
             <Ellipsis aria-hidden='true' />
           </Button>
         </DropdownMenuTrigger>

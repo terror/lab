@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from 'bun:test';
 
 import { call } from '../test/client';
+import { logRequest } from './app';
 import { harness } from './harness';
 
 test('health reports ok', async () => {
@@ -34,4 +35,16 @@ test('health fails when the harness is not running', async () => {
     body: { error: 'Harness is not running' },
     status: 503,
   });
+});
+
+test('request logs leave out query strings', () => {
+  const log = spyOn(console, 'log').mockImplementation(() => undefined);
+
+  logRequest('<-- GET /api/search?q=foo');
+  logRequest('--> GET /api/search?q=foo 200 1ms');
+
+  expect(log.mock.calls).toEqual([
+    ['<-- GET /api/search'],
+    ['--> GET /api/search 200 1ms'],
+  ]);
 });

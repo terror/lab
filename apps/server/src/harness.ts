@@ -2,6 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { schema } from '@lab/db';
 import {
   ComputerDoc,
+  type ExtensionDeps,
   adoptGlobalDocs,
   openHarness,
   purgeConversations,
@@ -47,29 +48,33 @@ export async function purgeDeleted(path: string) {
 
 await purgeDeleted(env.LAB_STORAGE_PATH);
 
-export const harness = await openHarness({
+export const deps: ExtensionDeps = {
   admit: async (conversationId) =>
     checkSpend(await requireOwner(conversationId)),
   artifactState: artifactStateAccess,
+  chats: chatsAccess,
+  connectors: connectorAccess,
   history: historyAccess,
   images: imageAccess,
   library: libraryAccess,
-  models,
   onHelperUsage: recordHelperUsage,
-  onReport: (report) => console.error(report),
-  path: env.LAB_STORAGE_PATH,
-  chats: chatsAccess,
-  connectors: connectorAccess,
   owner: requireOwner,
   project: projectAccess,
-  registry,
-  schedule: scheduleAccess,
   sandbox: createSandboxAccess(
     async (ownerId) =>
       (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
         ?.network ?? 'full'
   ),
+  schedule: scheduleAccess,
   web: webAccess(),
+};
+
+export const harness = await openHarness({
+  ...deps,
+  models,
+  onReport: (report) => console.error(report),
+  path: env.LAB_STORAGE_PATH,
+  registry,
 });
 
 const [admin] = await db

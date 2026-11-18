@@ -8,18 +8,16 @@ import { validator } from './validator';
 
 const version = env.RAILWAY_GIT_COMMIT_SHA;
 
-const compareSchema = z.object({
-  commits: z.array(
-    z.object({
-      commit: z.object({
-        author: z.object({ date: z.string() }).nullable(),
-        message: z.string(),
-      }),
-      html_url: z.string(),
-      sha: z.string(),
-    })
-  ),
-});
+const commitsSchema = z.array(
+  z.object({
+    commit: z.object({
+      author: z.object({ date: z.string() }).nullable(),
+      message: z.string(),
+    }),
+    html_url: z.string(),
+    sha: z.string(),
+  })
+);
 
 const pullsSchema = z.array(
   z.object({
@@ -31,7 +29,7 @@ const pullsSchema = z.array(
 
 const LABEL = 'user-facing';
 
-type Commit = z.infer<typeof compareSchema>['commits'][number];
+type Commit = z.infer<typeof commitsSchema>[number];
 
 type Entry = {
   date: string | null;
@@ -41,7 +39,12 @@ type Entry = {
   url: string;
 };
 
-const cache = new Map<string, Entry[]>();
+type History = {
+  bodies: ReadonlyMap<number, string>;
+  commits: Commit[];
+};
+
+let history: Promise<History> | undefined;
 
 function paragraph(text: string) {
   return (
@@ -100,37 +103,35 @@ async function github(path: string) {
   return response.json();
 }
 
-async function changes(since: string) {
-  const cached = cache.get(since);
-
-  if (cached) {
-    return cached;
-  }
-
-  const [compare, pulls] = await Promise.all([
-    github(`compare/${since}...${version}`),
+async function load(): Promise<History> {
+  const [commits, pulls] = await Promise.all([
+    github(`commits?sha=${version}&per_page=100`),
     github('pulls?state=closed&sort=updated&direction=desc&per_page=100'),
   ]);
 
-  const commits = compareSchema.safeParse(compare).data?.commits ?? [];
+  return {
+    bodies: new Map(
+      (pullsSchema.safeParse(pulls).data ?? [])
+        .filter(({ labels }) => labels.some(({ name }) => name === LABEL))
+        .map(({ body, number }) => [number, body ?? ''] as const)
+    ),
+    commits: commitsSchema.safeParse(commits).data ?? [],
+  };
+}
 
-  const bodies = new Map(
-    (pullsSchema.safeParse(pulls).data ?? [])
-      .filter(({ labels }) => labels.some(({ name }) => name === LABEL))
-      .map(({ body, number }) => [number, body ?? ''] as const)
-  );
+async function changes(since: string) {
+  history ??= load().catch((error: unknown) => {
+    history = undefined;
+    throw error;
+  });
 
-  const entries = commits
-    .flatMap((commit) => entry(commit, bodies))
-    .toReversed();
+  const { bodies, commits } = await history;
 
-  if (cache.size >= 100) {
-    cache.clear();
-  }
+  const seen = commits.findIndex(({ sha }) => sha.startsWith(since));
 
-  cache.set(since, entries);
-
-  return entries;
+  return commits
+    .slice(0, seen === -1 ? undefined : seen)
+    .flatMap((commit) => entry(commit, bodies));
 }
 
 const query = validator(

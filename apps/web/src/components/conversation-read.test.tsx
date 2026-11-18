@@ -6,11 +6,24 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import { Conversation } from './conversation';
 
-test('viewing an idle chat marks it read', async () => {
+afterEach(() => {
+  Reflect.deleteProperty(document, 'hidden');
+});
+
+function hide(hidden: boolean) {
+  Object.defineProperty(document, 'hidden', {
+    configurable: true,
+    get: () => hidden,
+  });
+
+  document.dispatchEvent(new Event('visibilitychange'));
+}
+
+async function open() {
   vi.stubGlobal(
     'EventSource',
     class {
@@ -34,11 +47,31 @@ test('viewing an idle chat marks it read', async () => {
 
   await renderWithQuery(<RouterProvider router={router} />);
 
-  await expect
-    .poll(() =>
-      fetch.mock.calls
-        .filter(([, init]) => init?.method === 'POST')
-        .map(([input]) => requestUrl(input).pathname)
-    )
-    .toEqual(['/api/conversations/1/read']);
+  return () =>
+    fetch.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([input]) => requestUrl(input).pathname);
+}
+
+test('viewing an idle chat marks it read', async () => {
+  const posts = await open();
+
+  await expect.poll(posts).toEqual(['/api/conversations/1/read']);
+});
+
+test('a chat in a hidden tab stays unread until the tab returns', async () => {
+  hide(true);
+
+  const posts = await open();
+
+  await new Promise(requestAnimationFrame);
+  await new Promise(requestAnimationFrame);
+
+  expect(posts()).toEqual([]);
+
+  hide(false);
+  hide(true);
+  hide(false);
+
+  await expect.poll(posts).toEqual(['/api/conversations/1/read']);
 });

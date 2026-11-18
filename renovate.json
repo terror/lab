@@ -1,6 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "extends": [
+    "config:recommended",
+    ":semanticCommitsDisabled",
+    "security:minimumReleaseAgeNpm"
+  ],
   "schedule": ["before 6am on monday"],
   "timezone": "America/Los_Angeles",
   "rangeStrategy": "pin",

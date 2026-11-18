@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react';
+
 import { usePreference } from './preferences';
 
 export type Moment = { absent: number; at: Date; name: string };
 
 type Voice = {
   greeting: Moment;
+  thinking: number;
 };
 
 type Lines<T> = {
@@ -126,6 +129,15 @@ const greetings: {
   },
 ];
 
+const waits = [
+  ['Thinking'],
+  ['Stirring it in', 'Turning it over', 'Letting it settle'],
+  ['Still on it'],
+  ['You can leave this, I’ll mark it when it’s done'],
+];
+
+const waitAfter = [4_000, 20_000, 90_000];
+
 const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
   greeting: {
     plain: plainGreeting,
@@ -133,6 +145,10 @@ const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
       greetings
         .find(({ when }) => when(moment))
         ?.lines(firstName(moment.name), moment.at) ?? [plainGreeting(moment)],
+  },
+  thinking: {
+    plain: () => 'Thinking',
+    pool: (tier) => waits[tier] ?? ['Thinking'],
   },
 };
 
@@ -166,4 +182,32 @@ export function useQuiet() {
   const [personality] = usePreference('personality');
 
   return personality === 'quiet';
+}
+
+export function useThinking(turn: string | undefined) {
+  const quiet = useQuiet();
+  const [reached, setReached] = useState<{ tier: number; turn?: string }>({
+    tier: 0,
+  });
+
+  useEffect(() => {
+    if (turn === undefined) {
+      return undefined;
+    }
+
+    const timers = waitAfter.map((after, index) =>
+      setTimeout(() => setReached({ tier: index + 1, turn }), after)
+    );
+
+    return () => {
+      for (const timer of timers) {
+        clearTimeout(timer);
+      }
+    };
+  }, [turn]);
+
+  return say('thinking', reached.turn === turn ? reached.tier : 0, {
+    quiet,
+    seed: turn ?? '',
+  });
 }
