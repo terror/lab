@@ -2,8 +2,8 @@
 
 use tauri::{Url, WebviewUrl, WebviewWindowBuilder, webview::NewWindowResponse};
 
-fn external(_url: &Url) -> bool {
-  true
+fn external(url: &Url) -> bool {
+  matches!(url.scheme(), "http" | "https" | "mailto")
 }
 
 fn main() {
@@ -14,7 +14,9 @@ fn main() {
         .inner_size(1280.0, 800.0)
         .min_inner_size(640.0, 480.0)
         .on_new_window(|url, _features| {
-          if let Err(error) = tauri_plugin_opener::open_url(&url, None::<&str>) {
+          if !external(&url) {
+            eprintln!("error: refusing to open `{url}`");
+          } else if let Err(error) = tauri_plugin_opener::open_url(&url, None::<&str>) {
             eprintln!("error: failed to open `{url}`: {error}");
           }
 
