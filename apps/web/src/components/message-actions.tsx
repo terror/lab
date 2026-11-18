@@ -3,7 +3,8 @@ import { IconButton } from '@/components/ui/icon-button';
 import { MessageFooter } from '@/components/ui/message';
 import type { ModelChoice } from '@/lib/models';
 import { cn } from '@/lib/utils';
-import { Check, Copy, RotateCcw, Shuffle, Square, Volume2 } from 'lucide-react';
+import { useQuiet } from '@/lib/voice';
+import { RotateCcw, Shuffle, Square, Volume2 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 function plain(markdown: string) {
@@ -13,32 +14,60 @@ function plain(markdown: string) {
     .replace(/[*_`#>~|]/g, '');
 }
 
+function CopyIcon({ copied, quiet }: { copied: boolean; quiet: boolean }) {
+  return (
+    <svg
+      aria-hidden='true'
+      className='size-4 overflow-visible'
+      data-quiet={quiet || undefined}
+      data-slot='copy-icon'
+      data-state={copied ? 'copied' : 'idle'}
+      fill='none'
+      stroke='currentColor'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      strokeWidth='2'
+      viewBox='0 0 24 24'
+    >
+      <path
+        d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'
+        data-part='back'
+      />
+      <rect data-part='front' height='14' rx='2' width='14' x='8' y='8' />
+      <path d='M20 6 9 17l-5-5' data-part='check' pathLength='1' />
+    </svg>
+  );
+}
+
 function CopyAction({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const quiet = useQuiet();
 
   useEffect(() => {
     if (!copied) {
       return undefined;
     }
 
-    const timer = window.setTimeout(() => setCopied(false), 1_500);
+    const timer = window.setTimeout(() => setCopied(false), 1_600);
 
     return () => window.clearTimeout(timer);
   }, [copied]);
 
   return (
-    <IconButton
-      label={copied ? 'Copied' : 'Copy'}
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => setCopied(true));
-      }}
-    >
-      {copied ? (
-        <Check aria-hidden='true' className='size-4' />
-      ) : (
-        <Copy aria-hidden='true' className='size-4' />
-      )}
-    </IconButton>
+    <>
+      <IconButton
+        className={cn(copied && 'text-foreground')}
+        label={copied ? 'Copied' : 'Copy'}
+        onClick={() => {
+          void navigator.clipboard.writeText(text).then(() => setCopied(true));
+        }}
+      >
+        <CopyIcon copied={copied} quiet={quiet} />
+      </IconButton>
+      <span aria-live='polite' className='sr-only'>
+        {copied ? 'Copied' : ''}
+      </span>
+    </>
   );
 }
 
@@ -102,10 +131,26 @@ function RetryActions({
   model: ModelChoice | undefined;
   onRetry: Retry;
 }) {
+  const [turns, setTurns] = useState(0);
+  const quiet = useQuiet();
+
   return (
     <>
-      <IconButton label='Retry' onClick={() => onRetry()}>
-        <RotateCcw aria-hidden='true' className='size-4' />
+      <IconButton
+        label='Retry'
+        onClick={() => {
+          setTurns((count) => count + 1);
+          onRetry();
+        }}
+      >
+        <RotateCcw
+          key={turns}
+          aria-hidden='true'
+          className={cn(
+            'size-4',
+            turns > 0 && !quiet && 'motion-safe:animate-retry'
+          )}
+        />
       </IconButton>
       <ModelPicker
         onChange={onRetry}

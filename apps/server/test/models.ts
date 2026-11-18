@@ -21,6 +21,10 @@ export function script(...steps: FauxResponseStep[]) {
   scripted.push(...steps);
 }
 
+export function clearScript() {
+  scripted.length = 0;
+}
+
 export const respond: FauxResponseFactory = (
   context,
   options,

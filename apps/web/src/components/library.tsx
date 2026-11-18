@@ -33,6 +33,7 @@ import {
 } from '@/lib/library';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
+import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
@@ -222,6 +223,8 @@ function LibraryEmpty({
   filtered: boolean;
   onClear: () => void;
 }) {
+  const emptyState = useEmpty(filtered ? 'matches' : 'library');
+
   if (filtered) {
     return (
       <EmptyState
@@ -230,8 +233,7 @@ function LibraryEmpty({
             Show everything
           </Button>
         }
-        description='Nothing here matches that search and filter.'
-        title='No matches'
+        {...emptyState}
       />
     );
   }
@@ -243,8 +245,7 @@ function LibraryEmpty({
           <Link to='/'>Start a chat</Link>
         </Button>
       }
-      description='Images and files from your chats land here.'
-      title='Nothing on the shelves yet'
+      {...emptyState}
     />
   );
 }

@@ -24,6 +24,7 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
+import { type EmptyView, useEmpty } from '@/lib/voice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Clock, Ellipsis } from 'lucide-react';
@@ -34,32 +35,23 @@ type Filter = 'active' | 'all' | 'paused';
 const filters: Record<
   Filter,
   {
-    empty: { description: string; title: string };
+    empty: EmptyView;
     keep: (task: ScheduledTask) => boolean;
     label: string;
   }
 > = {
   active: {
-    empty: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No active tasks',
-    },
+    empty: 'active',
     keep: (task) => task.enabled,
     label: 'Active',
   },
   paused: {
-    empty: {
-      description: 'A task you pause waits here until you resume it.',
-      title: 'No paused tasks',
-    },
+    empty: 'paused',
     keep: (task) => !task.enabled,
     label: 'Paused',
   },
   all: {
-    empty: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No scheduled tasks yet',
-    },
+    empty: 'tasks',
     keep: () => true,
     label: 'All',
   },
@@ -70,7 +62,7 @@ const filterOptions = (['active', 'paused', 'all'] as const).map((value) => ({
   value,
 }));
 
-function schedule(task: ScheduledTask) {
+function schedule(task: ScheduledTask, now: number) {
   if (!task.enabled) {
     return `${task.description} · Paused`;
   }
@@ -79,10 +71,10 @@ function schedule(task: ScheduledTask) {
     return task.description;
   }
 
-  return `${task.description} · Next run ${untilRun(task.nextRunAt)}`;
+  return `${task.description} · Next run ${untilRun(task.nextRunAt, now)}`;
 }
 
-function TaskSummary({ task }: { task: ScheduledTask }) {
+function TaskSummary({ now, task }: { now: number; task: ScheduledTask }) {
   return (
     <>
       <Clock
@@ -91,13 +83,15 @@ function TaskSummary({ task }: { task: ScheduledTask }) {
       />
       <span className='flex min-w-0 flex-col'>
         <span className='truncate font-medium'>{task.title}</span>
-        <span className='truncate text-muted-foreground'>{schedule(task)}</span>
+        <span className='truncate text-muted-foreground'>
+          {schedule(task, now)}
+        </span>
       </span>
     </>
   );
 }
 
-function TaskRow({ task }: { task: ScheduledTask }) {
+function TaskRow({ now, task }: { now: number; task: ScheduledTask }) {
   const navigate = useNavigate();
 
   const toggle = useScheduleAction(setTaskEnabled);
@@ -160,7 +154,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   if (task.conversationId === null) {
     return (
       <ListRow actions={actions}>
-        <TaskSummary task={task} />
+        <TaskSummary now={now} task={task} />
       </ListRow>
     );
   }
@@ -168,7 +162,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   return (
     <ListRow actions={actions} asChild>
       <Link params={{ id: task.conversationId }} to='/c/$id'>
-        <TaskSummary task={task} />
+        <TaskSummary now={now} task={task} />
       </Link>
     </ListRow>
   );
@@ -187,9 +181,14 @@ function SchedulePrompt() {
 export function Scheduled() {
   const [filter, setFilter] = useState<Filter>('active');
 
-  const schedules = useQuery(schedulesQueryOptions);
+  const schedules = useQuery({
+    ...schedulesQueryOptions,
+    refetchInterval: 60_000,
+  });
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
+
+  const emptyState = useEmpty(filters[filter].empty);
 
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
@@ -220,11 +219,15 @@ export function Scheduled() {
             />
           )}
           {schedules.isSuccess && tasks.length === 0 && (
-            <EmptyState {...filters[filter].empty} />
+            <EmptyState {...emptyState} />
           )}
           <ul className='flex flex-col gap-0.5'>
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
+              <TaskRow
+                key={task.id}
+                now={schedules.dataUpdatedAt}
+                task={task}
+              />
             ))}
           </ul>
         </section>

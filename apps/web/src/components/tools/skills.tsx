@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { WandSparkles } from 'lucide-react';
 
-import { field, namedTitle, text } from './format';
+import { declined, field, namedTitle, text } from './format';
 import { PreviewPassage, SettingsLink } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -51,7 +51,10 @@ export const skillRenderers = {
     actions: manageSkills,
     icon: WandSparkles,
     preview: ({ details }) => <SkillCard details={details} />,
-    title: skillTitle('Creating a skill', 'Created'),
+    title: declined(
+      skillTitle('Creating a skill', 'Created'),
+      'Didn’t save a skill'
+    ),
   },
   skill_delete: {
     actions: manageSkills,
@@ -75,6 +78,9 @@ export const skillRenderers = {
     actions: manageSkills,
     icon: WandSparkles,
     preview: ({ details }) => <SkillCard details={details} />,
-    title: skillTitle('Updating a skill', 'Updated'),
+    title: declined(
+      skillTitle('Updating a skill', 'Updated'),
+      'Didn’t change a skill'
+    ),
   },
 } satisfies Record<string, ToolRenderer>;

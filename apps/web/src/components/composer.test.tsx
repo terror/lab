@@ -251,6 +251,54 @@ test('on a touch screen the buttons sit far enough apart that their hit areas ne
   ).toEqual([12, 12]);
 });
 
+test('pasted files fill the attachment slots that are left', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const onAttachmentsChange = vi.fn();
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={Array.from({ length: 7 }, () => ({
+          name: 'foo',
+          text: 'foo',
+          type: 'file' as const,
+        }))}
+        draft=''
+        model={undefined}
+        onAttachmentsChange={onAttachmentsChange}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={() => undefined}
+      />
+    </TooltipProvider>
+  );
+
+  const clipboardData = new DataTransfer();
+
+  clipboardData.items.add(new File(['bar'], 'bar'));
+  clipboardData.items.add(new File(['baz'], 'baz'));
+
+  screen
+    .getByLabelText('Message')
+    .element()
+    .dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      })
+    );
+
+  await expect
+    .element(screen.getByText('You can attach up to 8 files'))
+    .toBeVisible();
+
+  expect(onAttachmentsChange.mock.calls.map(([update]) => update([]))).toEqual([
+    [{ name: 'bar', text: 'bar', type: 'file' }],
+  ]);
+});
+
 test('on a phone the attach menu opens as a sheet', async () => {
   stubFetch(() => Response.json({ default: null, models: [] }));
 

@@ -21,6 +21,8 @@ const meta = preview.meta({
         'error',
         'broken',
         'recover',
+        'doze',
+        'wake',
       ],
     },
   },
@@ -94,4 +96,12 @@ export const Broken = meta.story({
 
 export const Recover = meta.story({
   args: { className: 'size-10', state: 'recover' },
+});
+
+export const Doze = meta.story({
+  args: { className: 'size-10', state: 'doze' },
+});
+
+export const Wake = meta.story({
+  args: { className: 'size-10', state: 'wake' },
 });

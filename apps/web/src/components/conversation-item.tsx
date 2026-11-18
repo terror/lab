@@ -35,6 +35,7 @@ import {
   type CSSProperties,
   Fragment,
   type ReactNode,
+  useRef,
   useState,
 } from 'react';
 
@@ -117,7 +118,8 @@ export function ConversationItem({
   selected: boolean;
 }) {
   const presence = useRowPresence();
-  const renaming = useRenaming();
+  const options = useRef<HTMLButtonElement>(null);
+  const renaming = useRenaming(options);
   const actions = useChatActions(conversation, selected);
 
   const current = activity(conversation, selected);
@@ -183,6 +185,7 @@ export function ConversationItem({
                 <button
                   aria-label={`Options for ${title}`}
                   className={rowAction}
+                  ref={options}
                   type='button'
                 >
                   <Ellipsis aria-hidden='true' />

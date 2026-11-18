@@ -195,6 +195,39 @@ test('the agent finds connector tools and asks before ones that change things', 
   });
 });
 
+test('connector approvals show every argument in full', async () => {
+  const headers = await signInAdmin();
+
+  await call(headers, 'POST', '/connectors', { name: 'Foo', url: mcp() });
+
+  const value = 'a'.repeat(300);
+
+  script(
+    toolCall('tool_search', { query: 'foo' }),
+    toolCall('mcp__foo__write', { value }, 'baz'),
+    fauxAssistantMessage('bar')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'denied',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  expect((await toolDetails(headers, body.id))[1]).toEqual({
+    approval: {
+      action: 'Use write from Foo',
+      decision: 'denied',
+      summary: [`value: "${value}"`],
+    },
+  });
+});
+
 test('stopping a chat stops its connector call', async () => {
   const headers = await signInAdmin();
 

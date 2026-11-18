@@ -46,6 +46,13 @@ export function pathTitle(running: string, done: string) {
   };
 }
 
+export function declined(title: (view: ToolView) => string, refused: string) {
+  return (view: ToolView) =>
+    text(field(field(view.details, 'approval'), 'decision')) === 'denied'
+      ? refused
+      : title(view);
+}
+
 export function namedTitle(
   name: (view: ToolView) => unknown,
   {

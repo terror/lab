@@ -71,6 +71,40 @@ async function resolveAddress(host: string, refuse: Check) {
 
 const NULL_BODY = new Set([204, 205, 304]);
 
+const RESPONSE_LIMIT = 10_000_000;
+
+type Fetch = (url: string | URL, init?: RequestInit) => Promise<Response>;
+
+export function limitResponses(fetcher: Fetch): Fetch {
+  return async (url, init) => {
+    const response = await fetcher(url, init);
+
+    if (!response.body) {
+      return response;
+    }
+
+    let received = 0;
+
+    const limited = new TransformStream<Uint8Array, Uint8Array>({
+      transform: (chunk, controller) => {
+        received += chunk.byteLength;
+
+        if (received > RESPONSE_LIMIT) {
+          controller.error(
+            new Error(`The connector sent more than ${RESPONSE_LIMIT} bytes.`)
+          );
+
+          return;
+        }
+
+        controller.enqueue(chunk);
+      },
+    });
+
+    return new Response(response.body.pipeThrough(limited), response);
+  };
+}
+
 export async function guardedFetch(
   url: string | URL,
   init: RequestInit | undefined,

@@ -1,5 +1,6 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import '@/index.css';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -41,15 +42,17 @@ const model = {
   thinkingLevels: [],
 };
 
-async function open(forks: unknown[] = []) {
+async function open(
+  forks: unknown[] = [],
+  branch = async () => Response.json({ id: 2 }, { status: 201 })
+) {
   vi.stubGlobal('EventSource', FakeEventSource);
 
   const fetch = stubFetch(({ pathname }) => {
-    const responses: Record<string, () => Response> = {
+    const responses: Record<string, () => Response | Promise<Response>> = {
       '/api/conversations/1': () =>
         Response.json({ forks, id: 1, projectId: null, running: false }),
-      '/api/conversations/1/branches': () =>
-        Response.json({ id: 2 }, { status: 201 }),
+      '/api/conversations/1/branches': branch,
       '/api/models': () => Response.json({ default: null, models: [model] }),
     };
 
@@ -157,6 +160,30 @@ test('messages and replies branch into a new chat', async () => {
     },
     { content: 'baz', entryId: 5, kind: 'edit' }
   );
+});
+
+test('a reply keeps its spinning retry button while it branches', async () => {
+  const branch = Promise.withResolvers<Response>();
+
+  const { fetch, screen } = await open([], () => branch.promise);
+
+  const retry = screen.getByRole('button', { name: 'Retry' });
+
+  await retry.click();
+  await retry.click();
+
+  await expect.element(retry).toBeVisible();
+
+  expect({
+    branches: fetch.mock.calls
+      .map(([input]) => requestUrl(input).pathname)
+      .filter((pathname) => pathname.endsWith('/branches')),
+    spin: getComputedStyle(
+      retry.element().querySelector('svg') ?? retry.element()
+    ).animationName,
+  }).toEqual({ branches: ['/api/conversations/1/branches'], spin: 'retry' });
+
+  branch.resolve(Response.json({ id: 2 }, { status: 201 }));
 });
 
 test('versions link the chats that branch at a message', async () => {

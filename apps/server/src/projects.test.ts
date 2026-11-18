@@ -2,7 +2,14 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, chat, create, toolOutputs } from '../test/client';
+import {
+  call,
+  chat,
+  create,
+  settle,
+  toolDetails,
+  toolOutputs,
+} from '../test/client';
 import { prompts, script, toolCall } from '../test/models';
 
 async function ids(headers: Headers, query: string) {
@@ -88,6 +95,65 @@ test('the agent can create, rename, and move chats into projects', async () => {
       { id: created, instructions: '', name: 'bar' },
       { id, instructions: '', name: 'baz' },
     ],
+  });
+});
+
+test('the agent changes project instructions only once the user approves', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'POST', '/projects', { name: 'foo' });
+
+  const id = body.project.id;
+
+  script(
+    toolCall('project_update', { id, instructions: 'bar' }, 'foo'),
+    toolCall('project_update', { id, instructions: 'baz', name: 'qux' }, 'bar'),
+    fauxAssistantMessage('foo')
+  );
+
+  const chatId = (
+    await call(headers, 'POST', '/conversations', { content: 'foo' })
+  ).body.id;
+
+  await call(headers, 'POST', `/conversations/${chatId}/answers`, {
+    answer: 'denied',
+    callId: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${chatId}/answers`, {
+    answer: 'approved',
+    callId: 'bar',
+  });
+
+  await settle(chatId);
+
+  expect({
+    details: await toolDetails(headers, chatId),
+    outputs: await toolOutputs(headers, chatId),
+    projects: (await call(headers, 'GET', '/projects')).body.projects,
+  }).toEqual({
+    details: [
+      {
+        approval: {
+          action: 'Change the instructions of the “foo” project',
+          decision: 'denied',
+          summary: ['bar'],
+        },
+      },
+      {
+        approval: {
+          action: 'Change the instructions of the “foo” project',
+          decision: 'approved',
+          summary: ['baz', 'New name: qux'],
+        },
+        project: { id, instructions: 'baz', name: 'qux' },
+      },
+    ],
+    outputs: [
+      'The user declined to change the project’s instructions.',
+      `Updated the project [${id}] qux.`,
+    ],
+    projects: [{ id, instructions: 'baz', name: 'qux' }],
   });
 });
 

@@ -84,3 +84,21 @@ test('the conversation follows its event stream', async () => {
     status: undefined,
   });
 });
+
+test('a status that arrives after the run ends is dropped', async () => {
+  vi.stubGlobal('EventSource', FakeEventSource);
+
+  const { act, result, unmount } = await renderHook(() => useConversation(1));
+
+  const source = FakeEventSource.current;
+
+  await act(() => {
+    source?.emit('value', { conversation: { id: 1 }, docs: {}, entries: [] });
+    source?.emit('status', 'foo');
+    source?.emit('ops', [['s', ['docs', 'pi.live'], { run: {} }]]);
+  });
+
+  await unmount();
+
+  expect(result.current.status).toBe(undefined);
+});

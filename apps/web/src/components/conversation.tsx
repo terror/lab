@@ -77,6 +77,7 @@ import {
 } from '@/lib/transcript';
 import { uploadUrl } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
+import { useThinking } from '@/lib/voice';
 import {
   type AgentState,
   type InboxState,
@@ -500,6 +501,8 @@ const EAGER_ROWS = 6;
 
 const noForks: Fork[] = [];
 
+const ignoreBranch = () => undefined;
+
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
   const {
@@ -665,7 +668,9 @@ function ConversationView({ id }: { id: number }) {
     [plan, running]
   );
 
-  const onBranch = running || branch.isPending ? undefined : branch.mutate;
+  const branching = branch.isPending ? ignoreBranch : branch.mutate;
+
+  const onBranch = running ? undefined : branching;
 
   const retried =
     branch.isPending && branch.variables.kind === 'retry'
@@ -712,8 +717,10 @@ function ConversationView({ id }: { id: number }) {
     return () => document.removeEventListener('visibilitychange', read);
   }, [markRead, running]);
 
+  const waiting = useThinking(running ? anchor?.key : undefined);
+
   const thinking =
-    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
+    phase.kind === 'thinking' ? (activity ?? waiting) : undefined;
 
   const last = rows.at(-1)?.row;
 

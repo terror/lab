@@ -19,6 +19,7 @@ import { Unavailable } from '@/components/unavailable';
 import { usePins } from '@/lib/artifacts';
 import { useConversations } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
+import { useEmpty } from '@/lib/voice';
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -35,6 +36,8 @@ function ProjectComposer({ id, name }: { id: number; name: string }) {
 function ProjectChats({ id }: { id: number }) {
   const chats = useConversations({ project: id });
 
+  const emptyState = useEmpty('project');
+
   if (chats.isPending) {
     return <ListSkeleton />;
   }
@@ -44,12 +47,7 @@ function ProjectChats({ id }: { id: number }) {
   }
 
   if (chats.data?.length === 0) {
-    return (
-      <EmptyState
-        description='Start one above and it lands here.'
-        title='No chats in this project yet'
-      />
-    );
+    return <EmptyState {...emptyState} />;
   }
 
   return (

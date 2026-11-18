@@ -1,6 +1,6 @@
+import { HomeMark } from '@/components/home-mark';
 import { StartComposer } from '@/components/start-composer';
 import { Suggestions } from '@/components/suggestions';
-import { LiveMark } from '@/components/ui/live-mark';
 import { UnreadChips } from '@/components/unread-chips';
 import { startChatKey, useDraft } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
@@ -110,10 +110,7 @@ export function NewChat({ user }: { user: { id: string; name: string } }) {
               'opacity-0 transition duration-fast ease-in motion-safe:-translate-y-2'
           )}
         >
-          <LiveMark
-            className='size-10'
-            state={first && !quiet ? 'assemble' : 'idle'}
-          />
+          <HomeMark assemble={first && !quiet} />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
             {first && !quiet ? <Words text={greeting} /> : greeting}
           </h1>
