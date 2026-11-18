@@ -130,6 +130,22 @@ test('a query lists the places to go whose title matches it', async () => {
     .toEqual({ pathname: '/settings', search: { section: 'trash' } });
 });
 
+test('a query without matches says so instead of showing scopes', async () => {
+  stubWorkspace();
+
+  const { screen } = await openSearch();
+
+  await screen.getByRole('combobox', { name: 'Search Lab' }).fill('foo');
+
+  await expect.element(screen.getByText('No matches for “foo”.')).toBeVisible();
+  await expect
+    .element(screen.getByRole('group', { name: 'Scope' }))
+    .not.toBeInTheDocument();
+
+  expect(values()).toEqual(['ask']);
+  expect(hints()).toBe('↑↓navigate↵open⌘↵ask Labescclose');
+});
+
 test('asking Lab reports a failure to start the chat', async () => {
   stubWorkspace();
 

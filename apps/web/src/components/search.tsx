@@ -268,7 +268,7 @@ function useResultGroups(query: string, onDone: () => void) {
 
   const data = query ? results.data : undefined;
 
-  return useMemo<Record<Scope, Row[]>>(
+  const groups = useMemo<Record<Scope, Row[]>>(
     () => ({
       chats: (data?.chats ?? []).map((chat) => ({
         chip:
@@ -328,6 +328,8 @@ function useResultGroups(query: string, onDone: () => void) {
     }),
     [data, go, projectNames, query, sections]
   );
+
+  return { groups, pending: results.isPending };
 }
 
 function EmptyQuery({
@@ -479,7 +481,7 @@ function Palette({
 
   const query = useDeferredValue(search.trim());
 
-  const groups = useResultGroups(query, onDone);
+  const { groups, pending } = useResultGroups(query, onDone);
 
   const counts: Record<Scope, number> = {
     chats: groups.chats.length,
@@ -519,6 +521,8 @@ function Palette({
   ];
 
   const scoped = visible.length > 1;
+
+  const unmatched = query !== '' && !scoped && !pending;
 
   const ask = () => {
     if (!query) {
@@ -568,7 +572,14 @@ function Palette({
         />
       </div>
       <div className='h-px bg-border' />
-      {query && <ScopePills counts={counts} onScope={setScope} scope={scope} />}
+      {scoped && (
+        <ScopePills counts={counts} onScope={setScope} scope={scope} />
+      )}
+      {unmatched && (
+        <p className='truncate px-5 pt-3 pb-1 text-sm text-muted-foreground'>
+          No matches for “{query}”.
+        </p>
+      )}
       <CommandList className='max-h-96 px-1.5 pb-1.5'>
         {!query && <EmptyQuery onDone={onDone} onNewProject={onNewProject} />}
         {sections.map(({ hidden, id, label, rows }) => (
