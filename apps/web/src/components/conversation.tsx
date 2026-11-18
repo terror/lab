@@ -39,7 +39,6 @@ import {
   abortConversation,
   type BranchRequest,
   cancelSubmission,
-  contentText,
   conversationsQueryKey,
   type Fork,
   type Gap,
@@ -64,6 +63,7 @@ import {
   mergeReplies,
   ownsPlan,
   type Part,
+  queuedMessages,
   replyKeys,
   type Row,
   toolProgress,
@@ -660,15 +660,7 @@ function ConversationView({ id }: { id: number }) {
 
   const progress = useMemo(() => toolProgress(live?.tools), [live?.tools]);
 
-  const queued = (inbox?.items ?? []).flatMap((item) => {
-    if (item.mode === 'write') {
-      return [];
-    }
-
-    const bubble = { id: `queued-${item.id}`, text: contentText(item.content) };
-
-    return [{ bubble, submission: Number(item.id) }];
-  });
+  const queued = queuedMessages(inbox);
 
   const phase = runPhase(live, answering);
 

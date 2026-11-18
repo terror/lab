@@ -1,7 +1,13 @@
 import type { TranscriptItem } from '@earendil-works/pi-durable';
 import { expect, test } from 'vitest';
 
-import { type Row, type Span, mergeReplies, toolResults } from './transcript';
+import {
+  type Row,
+  type Span,
+  mergeReplies,
+  queuedMessages,
+  toolResults,
+} from './transcript';
 
 function reply(key: string, text: string, span?: Span): Row {
   return {
@@ -107,4 +113,44 @@ test('tool results carry when they ran and whether they were stopped', () => {
     b: { output: 'foo', status: 'failed' },
     c: { output: 'foo', status: 'stopped' },
   });
+});
+
+test('queued messages show what was typed and attached, not the prompt', () => {
+  expect(
+    queuedMessages({
+      items: [
+        {
+          content: [
+            {
+              text: 'foo\n\n<file name="bar.txt">\nbaz\n</file>',
+              type: 'text',
+            },
+            { data: 'cXV4', mimeType: 'image/png', type: 'image' },
+          ],
+          entry: {
+            data: {
+              files: [
+                { name: 'bar.txt', text: 'baz', type: 'file' },
+                { name: 'qux.png', type: 'image' },
+              ],
+              text: 'foo',
+            },
+            kind: 'lab.message',
+          },
+          id: 7,
+          mode: 'followUp',
+        },
+      ],
+    } as unknown as Parameters<typeof queuedMessages>[0])
+  ).toEqual([
+    {
+      bubble: {
+        files: [{ name: 'bar.txt' }],
+        id: 'queued-7',
+        images: ['data:image/png;base64,cXV4'],
+        text: 'foo',
+      },
+      submission: 7,
+    },
+  ]);
 });

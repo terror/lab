@@ -2,6 +2,7 @@ import type { ToolProgress, ToolResult } from '@/components/tools';
 import {
   CompactionEntry,
   type EntryRecord,
+  type InboxState,
   type LiveState,
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
@@ -58,18 +59,20 @@ const messageDataSchema = z.object({
 
 export type Versions = { chats: readonly number[]; index: number };
 
-function messageImages(content: unknown, entry: EntryRecord) {
+function imageParts(content: unknown) {
   if (!Array.isArray(content)) {
     return [];
   }
 
-  const images = content.flatMap((part: unknown) => {
+  return content.flatMap((part: unknown) => {
     const image = imagePartSchema.safeParse(part);
 
     return image.success ? [image.data] : [];
   });
+}
 
-  return images.map((image, index) => {
+function messageImages(content: unknown, entry: EntryRecord) {
+  return imageParts(content).map((image, index) => {
     if (image.data) {
       return imageSource(image);
     }
@@ -215,26 +218,50 @@ function rowsFor(item: TranscriptItem): Row[] {
     return [];
   }
 
-  const data = messageDataSchema.safeParse(item.entry.data).data;
-  const text = data?.text ?? contentText(message?.content);
-  const images = messageImages(message?.content, item.entry);
+  const bubble = messageBubble(
+    key,
+    item.entry.data,
+    message?.content,
+    messageImages(message?.content, item.entry)
+  );
 
-  const files = (data?.files ?? [])
-    .filter(({ type }) => type === 'file')
-    .map(({ name, uploadId }) => ({ name, uploadId }));
-
-  if (!text && images.length === 0 && files.length === 0) {
+  if (!bubble.text && bubble.images.length === 0 && bubble.files.length === 0) {
     return [];
   }
 
-  return [
-    {
-      bubble: { files, id: key, images, text },
-      entryId: item.entry.id,
-      key,
-      kind: 'user',
-    },
-  ];
+  return [{ bubble, entryId: item.entry.id, key, kind: 'user' }];
+}
+
+function messageBubble(
+  id: string,
+  data: unknown,
+  content: Parameters<typeof contentText>[0],
+  images: string[]
+) {
+  const message = messageDataSchema.safeParse(data).data;
+
+  const files = (message?.files ?? [])
+    .filter(({ type }) => type === 'file')
+    .map(({ name, uploadId }) => ({ name, uploadId }));
+
+  return { files, id, images, text: message?.text ?? contentText(content) };
+}
+
+export function queuedMessages(inbox: InboxState | undefined) {
+  return (inbox?.items ?? []).flatMap((item) => {
+    if (item.mode === 'write') {
+      return [];
+    }
+
+    const bubble = messageBubble(
+      `queued-${item.id}`,
+      item.entry?.data,
+      item.content,
+      imageParts(item.content).map(imageSource)
+    );
+
+    return [{ bubble, submission: Number(item.id) }];
+  });
 }
 
 export function ownsPlan(row: Row, callId: string | null | undefined) {
