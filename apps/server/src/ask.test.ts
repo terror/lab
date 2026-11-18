@@ -1,7 +1,7 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
-import { signIn } from '../test/auth';
+import { signIn, signInAdmin } from '../test/auth';
 import { call, pendingToolCall, settle, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 
@@ -173,4 +173,65 @@ test('an answer only settles the call it was given for', async () => {
   const { tasks } = (await call(headers, 'GET', '/schedules')).body;
 
   expect(tasks.map(({ title }: { title: string }) => title)).toEqual(['foo']);
+});
+
+test('a chat stops waiting once its approval is answered', async () => {
+  const headers = await signInAdmin();
+
+  const reached = Promise.withResolvers<void>();
+
+  const released = Promise.withResolvers<void>();
+
+  const server = Bun.serve({
+    fetch: async () => {
+      reached.resolve();
+
+      await released.promise;
+
+      return new Response(null, { status: 500 });
+    },
+    hostname: '127.0.0.1',
+    port: 0,
+  });
+
+  script(
+    toolCall(
+      'connector_add',
+      { name: 'Foo', url: `${server.url.href}mcp` },
+      'foo'
+    ),
+    fauxAssistantMessage('bar')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'foo',
+  });
+
+  await reached.promise;
+
+  const { list, unread } = await lists(headers);
+
+  released.resolve();
+
+  await settle(body.id);
+
+  server.stop(true);
+
+  for (const { id } of (await call(headers, 'GET', '/connectors')).body
+    .connectors) {
+    await call(headers, 'DELETE', `/connectors/${id}`);
+  }
+
+  expect({
+    listed: list.conversations.find(({ id }: { id: number }) => id === body.id)
+      ?.waiting,
+    waiting: unread.waiting,
+  }).toEqual({ listed: false, waiting: [] });
 });
