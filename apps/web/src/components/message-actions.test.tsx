@@ -30,6 +30,7 @@ async function press(personality: 'default' | 'quiet') {
         latest
         model={undefined}
         onRetry={() => undefined}
+        spin
         text='foo'
         versions={null}
       />
