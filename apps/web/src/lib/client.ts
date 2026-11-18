@@ -17,12 +17,23 @@ export async function call<T extends ClientResponse<unknown>>(
   try {
     return await parseResponse(response);
   } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        'Couldn’t reach Lab. Check your connection and try again.',
+        {
+          cause: error,
+        }
+      );
+    }
+
     if (!(error instanceof DetailedError)) {
       throw error;
     }
 
     const body = errorSchema.safeParse(error.detail?.data);
 
-    throw new Error(body.data?.error ?? error.message, { cause: error });
+    throw new Error(body.data?.error ?? 'Something went wrong. Try again.', {
+      cause: error,
+    });
   }
 }
