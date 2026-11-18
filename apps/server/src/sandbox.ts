@@ -75,6 +75,10 @@ const policies = {
 
 type VercelCredentials = { projectId: string; teamId: string; token: string };
 
+function quoted(value: string) {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 const desired = new Map<string, NetworkMode>();
 
 function vercel(auth: VercelCredentials): SandboxProvider {
@@ -136,7 +140,7 @@ function vercel(auth: VercelCredentials): SandboxProvider {
       const finished = await sandbox.runCommand({
         args: [
           '-lc',
-          `mkdir -p ${JSON.stringify(cwd)} && cd ${JSON.stringify(cwd)} && ${command}`,
+          `mkdir -p ${quoted(cwd)} && cd ${quoted(cwd)} && ${command}`,
         ],
         cmd: 'bash',
         signal,
@@ -355,7 +359,7 @@ export function createSandboxAccess(
     list: async (conversationId, path) => {
       const computer = await computerOf(conversationId);
 
-      const target = JSON.stringify(resolvePath(computer, path));
+      const target = quoted(resolvePath(computer, path));
 
       const { exitCode, output } = await run(
         computer,

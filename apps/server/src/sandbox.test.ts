@@ -1,5 +1,9 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { afterEach, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { signIn, signInAdmin } from '../test/auth';
 import { call, chat, toolDetails, toolOutputs } from '../test/client';
@@ -158,6 +162,30 @@ function memoryProvider(): SandboxProvider & {
     },
   };
 }
+
+test('listed paths are not run by the shell', async () => {
+  const headers = await signIn();
+
+  const dir = await mkdtemp(join(tmpdir(), 'lab-'));
+
+  useSandboxProvider({
+    ...memoryProvider(),
+    run: async (_computer, { command }) => {
+      await Bun.$`bash -c ${command}`.cwd(dir).nothrow().quiet();
+
+      return { exitCode: 0 };
+    },
+  });
+
+  script(
+    toolCall('sandbox_list', { path: '$(touch foo)' }),
+    fauxAssistantMessage('bar')
+  );
+
+  await chat(headers, { content: 'baz' });
+
+  expect(existsSync(join(dir, 'foo'))).toBe(false);
+});
 
 test('files move between the computer and the library', async () => {
   const headers = await signIn();
