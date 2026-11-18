@@ -43,3 +43,21 @@ test('user files are sandboxed except pdfs', async () => {
 
   expect(pdfPolicy?.startsWith('sandbox')).toBe(false);
 });
+
+test('user files are cached per session', async () => {
+  const headers = await signIn();
+
+  const ownerId = (await conversationOwner(await create(headers))) ?? '';
+
+  const [row] = await db
+    .insert(schema.upload)
+    .values({ content: new Uint8Array([1]), mimeType: 'image/png', ownerId })
+    .returning({ id: schema.upload.id });
+
+  const response = await raw(headers, `/uploads/${row?.id}`);
+
+  expect([
+    response.headers.get('cache-control'),
+    response.headers.get('vary'),
+  ]).toEqual(['private, max-age=31536000, immutable', 'cookie']);
+});

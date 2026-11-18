@@ -5,6 +5,7 @@ export function fileHeaders(mimeType: string) {
   return {
     'cache-control': 'private, max-age=31536000, immutable',
     'content-type': mimeType,
+    vary: 'cookie',
     'x-content-type-options': 'nosniff',
     ...(mimeType !== 'application/pdf' && {
       'content-security-policy': sandboxed,
