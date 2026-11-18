@@ -31,3 +31,22 @@ test('a saved memory shows in the reply', async () => {
 
   expect(screen.container.textContent).toBe('RememberedfooManage');
 });
+
+test('a forget that failed shows no chip', () => {
+  expect(
+    toolRenderer('forget').inline?.({
+      active: false,
+      args: { id: 'baz' },
+      callId: 'bar',
+      details: undefined,
+      history: [
+        {
+          args: { text: 'foo' },
+          details: { id: 'baz', text: 'foo' },
+          name: 'remember',
+        },
+      ],
+      output: 'No memory has the id baz.',
+    })
+  ).toBeUndefined();
+});

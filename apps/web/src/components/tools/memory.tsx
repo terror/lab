@@ -85,7 +85,7 @@ export const memoryRenderers = {
     inline: (view) => {
       const note = forgottenText(view);
 
-      return !view.active && note ? (
+      return !view.active && view.details && note ? (
         <MemoryChip forgotten text={note} />
       ) : undefined;
     },
