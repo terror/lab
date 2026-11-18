@@ -71,6 +71,16 @@ test('concurrent uploads cannot go over the storage limit together', async () =>
   }
 });
 
+test('many concurrent uploads all finish', async () => {
+  const headers = await signIn();
+
+  const statuses = await Promise.all(
+    Array.from({ length: 20 }, async () => (await upload(headers)).status)
+  );
+
+  expect(statuses).toEqual(Array.from({ length: 20 }, () => 201));
+});
+
 test('message attachments count toward the storage limit', async () => {
   env.LAB_STORAGE_LIMIT = 0.000_001;
 

@@ -6,8 +6,10 @@ import { allowed, isAdmin } from './auth';
 import { db } from './db';
 import { env } from './env';
 
-export async function policy(ownerId: string) {
-  const [owner] = await db
+type Reader = Pick<typeof db, 'select'>;
+
+export async function policy(ownerId: string, reader: Reader = db) {
+  const [owner] = await reader
     .select({
       email: schema.user.email,
       emailVerified: schema.user.emailVerified,
