@@ -53,12 +53,12 @@ export function DocumentCard({
     <>
       <button
         aria-label={`Open ${name}`}
-        className='group relative h-44 w-36 overflow-hidden rounded-xl bg-muted text-left'
+        className='group relative h-44 w-36 overflow-hidden rounded-card bg-muted text-left'
         onClick={() => setOpen(true)}
         type='button'
       >
         <DocumentThumbnail
-          className='flex size-full items-center justify-center bg-white object-cover object-top transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
+          className='flex size-full items-center justify-center bg-white object-cover object-top transition-transform duration-base group-hover:scale-102 motion-reduce:transition-none'
           uploadId={uploadId}
         />
         <span className='absolute top-2 left-2 rounded-md bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground'>

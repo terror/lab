@@ -1,4 +1,6 @@
 import { DocumentCard } from '@/components/document-card';
+import { FileChip } from '@/components/file-chip';
+import { ImageCard } from '@/components/image-card';
 import { formatBytes } from '@/lib/format';
 import { uploadUrl } from '@/lib/uploads';
 import {
@@ -43,11 +45,7 @@ export function SavedFile({ details }: ToolView) {
 
   if (type.startsWith('image/')) {
     return (
-      <img
-        alt={name}
-        className='max-h-72 self-start rounded-xl border object-contain'
-        src={uploadUrl(uploadId)}
-      />
+      <ImageCard className='max-h-72' name={name} src={uploadUrl(uploadId)} />
     );
   }
 
@@ -55,21 +53,7 @@ export function SavedFile({ details }: ToolView) {
     return <DocumentCard name={name} uploadId={uploadId} />;
   }
 
-  return (
-    <a
-      className='flex items-center gap-3 self-start rounded-xl border px-3 py-2 text-sm transition-colors hover:bg-muted/50'
-      download={name}
-      href={uploadUrl(uploadId)}
-    >
-      <FileText aria-hidden='true' className='size-4 text-muted-foreground' />
-      <span className='truncate'>{name}</span>
-      {size !== undefined && (
-        <span className='text-xs text-muted-foreground'>
-          {formatBytes(size)}
-        </span>
-      )}
-    </a>
-  );
+  return <FileChip href={uploadUrl(uploadId)} name={name} size={size} />;
 }
 
 function Listing({ output }: ToolView) {
