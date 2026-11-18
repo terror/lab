@@ -102,6 +102,7 @@ export function connectorSettings(access: ConnectorAccess) {
 
   const connectorAdd = defineTool({
     name: 'connector_add',
+    callers: ['model'],
     description:
       'Add a connector: a remote MCP server, by its URL, whose tools you can then find with tool_search. The user approves it first.',
     parameters: obj({
@@ -134,6 +135,7 @@ export function connectorSettings(access: ConnectorAccess) {
 
   const connectorUpdate = defineTool({
     name: 'connector_update',
+    callers: ['model'],
     description:
       'Rename a connector or turn it on or off. Only the fields you pass change. The user approves turning one on.',
     parameters: obj({
@@ -170,6 +172,7 @@ export function connectorSettings(access: ConnectorAccess) {
 
   const connectorRemove = defineTool({
     name: 'connector_remove',
+    callers: ['model'],
     description: 'Remove a connector. The user approves it first.',
     parameters: obj({ id }),
     execute: async (args, api, context) => {
