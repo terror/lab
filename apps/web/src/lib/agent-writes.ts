@@ -1,83 +1,33 @@
-import type { ToolName } from '@/components/tools/names';
+import { type ToolResource, toolWrites } from '@/components/tools/names';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
 import { connectorsQueryOptions } from './connectors';
 import { conversationsQueryKey } from './conversations';
 import { libraryQueryKey } from './library';
 import { memoryQueryOptions } from './memory';
+import { invalidateAll } from './mutations';
 import { preferencesQueryOptions } from './preferences';
 import { projectsQueryOptions } from './projects';
 import { schedulesQueryOptions } from './schedules';
 import { skillsQueryOptions } from './skills';
 import { trashQueryKey } from './trash';
 
-const toolWrites = {
-  artifact_create: [],
-  artifact_read: [],
-  artifact_state_read: [],
-  artifact_update: [],
-  ask_user: [],
-  chat_delete: [conversationsQueryKey, trashQueryKey],
-  chat_move: [conversationsQueryKey],
-  chat_pin: [conversationsQueryKey],
-  chat_read: [],
-  chat_rename: [conversationsQueryKey],
-  chat_search: [],
-  codemode: [],
-  connector_add: [connectorsQueryOptions.queryKey],
-  connector_list: [],
-  connector_remove: [connectorsQueryOptions.queryKey],
-  connector_update: [connectorsQueryOptions.queryKey],
-  delegate: [],
-  forget: [memoryQueryOptions.queryKey],
-  image_generate: [libraryQueryKey],
-  library_read: [],
-  library_search: [],
-  plan_update: [],
-  preferences_update: [preferencesQueryOptions.queryKey],
-  project_create: [projectsQueryOptions.queryKey],
-  project_delete: [
-    conversationsQueryKey,
-    projectsQueryOptions.queryKey,
-    trashQueryKey,
-  ],
-  project_list: [],
-  project_update: [projectsQueryOptions.queryKey],
-  remember: [memoryQueryOptions.queryKey],
-  sandbox_exec: [],
-  sandbox_list: [],
-  sandbox_read: [],
-  sandbox_save: [libraryQueryKey],
-  sandbox_upload: [],
-  sandbox_write: [],
-  schedule_create: [schedulesQueryOptions.queryKey],
-  schedule_delete: [schedulesQueryOptions.queryKey],
-  schedule_list: [],
-  schedule_update: [schedulesQueryOptions.queryKey],
-  skill_create: [skillsQueryOptions.queryKey],
-  skill_delete: [skillsQueryOptions.queryKey],
-  skill_read: [],
-  skill_update: [skillsQueryOptions.queryKey],
-  tool_output_read: [],
-  trash_list: [],
-  trash_purge: [
-    conversationsQueryKey,
-    projectsQueryOptions.queryKey,
-    trashQueryKey,
-  ],
-  trash_restore: [
-    conversationsQueryKey,
-    projectsQueryOptions.queryKey,
-    trashQueryKey,
-  ],
-  web_fetch: [],
-  web_search: [],
-} satisfies Record<ToolName, readonly QueryKey[]>;
+const resourceKeys = {
+  connectors: connectorsQueryOptions.queryKey,
+  conversations: conversationsQueryKey,
+  library: libraryQueryKey,
+  memory: memoryQueryOptions.queryKey,
+  preferences: preferencesQueryOptions.queryKey,
+  projects: projectsQueryOptions.queryKey,
+  schedules: schedulesQueryOptions.queryKey,
+  skills: skillsQueryOptions.queryKey,
+  trash: trashQueryKey,
+} satisfies Record<ToolResource, QueryKey>;
 
-const agentWritable = [...new Set<QueryKey>(Object.values(toolWrites).flat())];
+const agentWritable = [...new Set(Object.values(toolWrites).flat())].map(
+  (resource) => resourceKeys[resource]
+);
 
 export function refreshAgentWrites(queryClient: QueryClient) {
-  return Promise.all(
-    agentWritable.map((queryKey) => queryClient.invalidateQueries({ queryKey }))
-  );
+  return invalidateAll(queryClient, agentWritable);
 }
