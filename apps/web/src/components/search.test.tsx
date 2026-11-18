@@ -27,6 +27,12 @@ function stubWorkspace() {
       return Response.json({ error: 'bar' }, { status: 400 });
     }
 
+    if (pathname === '/api/projects') {
+      return Response.json({
+        projects: [{ chats: 0, id: 7, instructions: '', name: 'baz' }],
+      });
+    }
+
     if (pathname === '/api/conversations') {
       return Response.json({
         conversations:
@@ -73,7 +79,7 @@ function values() {
   );
 }
 
-test('an empty query lists pinned chats before recent ones', async () => {
+test('an empty query lists chats, places to go, and actions', async () => {
   stubWorkspace();
 
   await openSearch();
@@ -86,11 +92,34 @@ test('an empty query lists pinned chats before recent ones', async () => {
       'recent-2',
       'recent-3',
       'recent-4',
+      'go-library',
+      'go-scheduled',
+      'go-trash',
+      'go-settings',
+      'go-project-7',
       'new-chat',
       'new-project',
       'theme',
-      'settings',
     ]);
+});
+
+test('a query lists the places to go whose title matches it', async () => {
+  stubWorkspace();
+
+  const { router, screen } = await openSearch();
+
+  await screen.getByRole('combobox', { name: 'Search Lab' }).fill('trash');
+
+  await expect.poll(values).toEqual(['go-trash', 'ask']);
+
+  await userEvent.keyboard('{Enter}');
+
+  await expect
+    .poll(() => ({
+      pathname: router.state.location.pathname,
+      search: router.state.location.search,
+    }))
+    .toEqual({ pathname: '/settings', search: { section: 'trash' } });
 });
 
 test('asking Lab reports a failure to start the chat', async () => {
@@ -113,7 +142,7 @@ test('the search box points at the selected result', async () => {
 
   await input.fill('trash');
 
-  await expect.poll(values).toEqual(['settings-trash', 'ask']);
+  await expect.poll(values).toEqual(['go-trash', 'ask']);
 
   await userEvent.keyboard('{ArrowDown}');
 

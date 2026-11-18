@@ -34,6 +34,7 @@ import {
   File,
   Folder,
   FolderPlus,
+  LibraryBig,
   type LucideIcon,
   MessageSquare,
   MessageSquarePlus,
@@ -43,6 +44,7 @@ import {
   Search,
   Settings,
   Sun,
+  Trash2,
 } from 'lucide-react';
 import {
   type KeyboardEvent,
@@ -64,9 +66,16 @@ export function useSearch() {
   return useContext(SearchContext);
 }
 
-type Scope = 'chats' | 'files' | 'projects' | 'scheduled' | 'settings';
+type Scope =
+  | 'chats'
+  | 'files'
+  | 'pages'
+  | 'projects'
+  | 'scheduled'
+  | 'settings';
 
 const scopes: { id: Scope; label: string }[] = [
+  { id: 'pages', label: 'Go to' },
   { id: 'chats', label: 'Chats' },
   { id: 'projects', label: 'Projects' },
   { id: 'scheduled', label: 'Scheduled' },
@@ -77,6 +86,34 @@ const scopes: { id: Scope; label: string }[] = [
 const PREVIEW = 3;
 
 const RECENT = 5;
+
+type Destination = {
+  icon: LucideIcon;
+  key: string;
+  keys?: string[];
+  section?: SettingsSection;
+  title: string;
+  to: '/library' | '/scheduled' | '/settings';
+};
+
+const destinations: Destination[] = [
+  { icon: LibraryBig, key: 'library', title: 'Library', to: '/library' },
+  { icon: Clock, key: 'scheduled', title: 'Scheduled', to: '/scheduled' },
+  {
+    icon: Trash2,
+    key: 'trash',
+    section: 'trash',
+    title: 'Trash',
+    to: '/settings',
+  },
+  {
+    icon: Settings,
+    key: 'settings',
+    keys: ['⌘', ','],
+    title: 'Settings',
+    to: '/settings',
+  },
+];
 
 type Row = {
   chip?: string;
@@ -194,6 +231,23 @@ function useGo(onDone: () => void) {
   );
 }
 
+function destinationRow(
+  { icon, key, keys, section, title, to }: Destination,
+  go: ReturnType<typeof useGo>
+): Row {
+  return {
+    icon,
+    key: `go-${key}`,
+    keys,
+    onSelect: () => (section ? go.settings(section) : go.route(to)),
+    title,
+  };
+}
+
+function matches(text: string, query: string) {
+  return query !== '' && text.toLowerCase().includes(query.toLowerCase());
+}
+
 function useProjectNames() {
   const projects = useProjects();
 
@@ -213,8 +267,6 @@ function useResultGroups(query: string, onDone: () => void) {
   const sections = useSettingsSections();
 
   const data = query ? results.data : undefined;
-
-  const lower = query.toLowerCase();
 
   return useMemo<Record<Scope, Row[]>>(
     () => ({
@@ -237,6 +289,9 @@ function useResultGroups(query: string, onDone: () => void) {
         onSelect: () => go.route('/library'),
         title: file.name,
       })),
+      pages: destinations
+        .filter(({ title }) => matches(title, query))
+        .map((destination) => destinationRow(destination, go)),
       projects: (data?.projects ?? []).map((project) => ({
         icon: Folder,
         key: `project-${project.id}`,
@@ -257,21 +312,21 @@ function useResultGroups(query: string, onDone: () => void) {
             : go.chat(task.conversationId),
         title: task.title,
       })),
-      settings: query
-        ? sections
-            .filter((id) =>
-              settingsSectionInfo[id].label.toLowerCase().includes(lower)
-            )
-            .map((id) => ({
-              icon: settingsSectionInfo[id].icon,
-              key: `settings-${id}`,
-              meta: 'Settings',
-              onSelect: () => go.settings(id),
-              title: settingsSectionInfo[id].label,
-            }))
-        : [],
+      settings: sections
+        .filter(
+          (id) =>
+            !destinations.some(({ section }) => section === id) &&
+            matches(settingsSectionInfo[id].label, query)
+        )
+        .map((id) => ({
+          icon: settingsSectionInfo[id].icon,
+          key: `settings-${id}`,
+          meta: 'Settings',
+          onSelect: () => go.settings(id),
+          title: settingsSectionInfo[id].label,
+        })),
     }),
-    [data, go, lower, projectNames, query, sections]
+    [data, go, projectNames, query, sections]
   );
 }
 
@@ -284,6 +339,7 @@ function EmptyQuery({
 }) {
   const pinned = usePinnedConversations();
   const recents = useConversations();
+  const projects = useProjects();
   const projectNames = useProjectNames();
   const go = useGo(onDone);
   const [, setTheme] = useTheme();
@@ -310,6 +366,16 @@ function EmptyQuery({
       title: conversationTitle(chat.title),
     }));
 
+  const destinationRows: Row[] = [
+    ...destinations.map((destination) => destinationRow(destination, go)),
+    ...(projects.data?.projects ?? []).map((project) => ({
+      icon: Folder,
+      key: `go-project-${project.id}`,
+      onSelect: () => go.project(project.id),
+      title: project.name,
+    })),
+  ];
+
   const actions: Row[] = [
     {
       icon: Plus,
@@ -333,18 +399,12 @@ function EmptyQuery({
       },
       title: dark ? 'Switch to light theme' : 'Switch to dark theme',
     },
-    {
-      icon: Settings,
-      key: 'settings',
-      keys: ['⌘', ','],
-      onSelect: () => go.route('/settings'),
-      title: 'Settings',
-    },
   ];
 
   return (
     <>
       <Group heading='Recent' rows={recent} />
+      <Group heading='Go to' rows={destinationRows} />
       <Group heading='Actions' rows={actions} />
     </>
   );
@@ -422,6 +482,7 @@ function Palette({
   const counts: Record<Scope, number> = {
     chats: groups.chats.length,
     files: groups.files.length,
+    pages: groups.pages.length,
     projects: groups.projects.length,
     scheduled: groups.scheduled.length,
     settings: groups.settings.length,
