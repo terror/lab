@@ -171,6 +171,13 @@ function FullScreen({
     <Dialog onOpenChange={(open) => !open && onClose()} open>
       <DialogContent
         className='flex flex-col gap-3'
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+
+          if (event.currentTarget instanceof HTMLElement) {
+            event.currentTarget.focus();
+          }
+        }}
         style={{ height: '90dvh', maxWidth: 'min(72rem, calc(100vw - 2rem))' }}
       >
         <DialogHeader>
