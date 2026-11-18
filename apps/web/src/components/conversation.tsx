@@ -666,9 +666,26 @@ function ConversationView({ id }: { id: number }) {
   });
 
   useEffect(() => {
-    if (!running) {
-      markRead();
+    if (running) {
+      return undefined;
     }
+
+    if (!document.hidden) {
+      markRead();
+
+      return undefined;
+    }
+
+    const read = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', read);
+        markRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', read);
+
+    return () => document.removeEventListener('visibilitychange', read);
   }, [markRead, running]);
 
   const thinking =
