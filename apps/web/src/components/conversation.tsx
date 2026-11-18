@@ -238,10 +238,12 @@ function VersionSwitcher({ chats, index }: Versions) {
 
 function UserMessage({
   bubble,
+  editable = false,
   onEdit,
   versions,
 }: {
   bubble: Bubble;
+  editable?: boolean;
   onEdit?: (content: string) => void;
   versions?: ReactNode;
 }) {
@@ -293,8 +295,8 @@ function UserMessage({
             </BubbleContent>
           </Bubble>
         )}
-        {!editing && (onEdit || versions) && (
-          <MessageFooter className='gap-0.5 px-0'>
+        {!editing && (editable || versions) && (
+          <MessageFooter className='min-h-8 gap-0.5 px-0'>
             {onEdit && (
               <div className='opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'>
                 <Action label='Edit' onClick={() => setEditing(true)}>
@@ -710,6 +712,7 @@ const TranscriptRow = memo(function TranscriptRow({
   return (
     <UserMessage
       bubble={row.bubble}
+      editable
       onEdit={
         onBranch &&
         ((content) => onBranch({ content, entryId: row.entryId, kind: 'edit' }))

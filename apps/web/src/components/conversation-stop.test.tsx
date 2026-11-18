@@ -7,6 +7,7 @@ import {
   createRouter,
 } from '@tanstack/react-router';
 import { expect, test, vi } from 'vitest';
+import '@/index.css';
 
 import { Conversation } from './conversation';
 
@@ -32,7 +33,7 @@ class FakeEventSource {
   }
 }
 
-test('a stopped turn shows its status above what to do next', async () => {
+test('a stopped turn ends in place with its status above what to do next', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);
 
   stubFetch(({ pathname }) =>
@@ -96,6 +97,8 @@ test('a stopped turn shows its status above what to do next', async () => {
 
   await expect.poll(reply).not.toBeNull();
 
+  const top = reply()?.getBoundingClientRect().top;
+
   FakeEventSource.current?.emit('ops', [
     [
       's',
@@ -111,8 +114,10 @@ test('a stopped turn shows its status above what to do next', async () => {
       ...(reply()?.querySelectorAll('[data-slot=message-footer] button') ?? []),
     ].map((button) => button.getAttribute('aria-label')),
     status: reply()?.querySelector('[role=alert]')?.textContent,
+    top: reply()?.getBoundingClientRect().top,
   }).toEqual({
     actions: ['Retry', 'Retry with another model'],
     status: 'Stopped.',
+    top,
   });
 });
