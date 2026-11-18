@@ -1,5 +1,15 @@
 import { schema } from '@lab/db';
-import { and, eq, isNotNull, lt, ne, notInArray, sql } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  inArray,
+  isNotNull,
+  lt,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
 import { db } from './db';
@@ -118,7 +128,10 @@ export async function storeUpload(
   });
 }
 
-export async function pruneUploads(ownerId: string) {
+export async function pruneUploads(
+  ownerId: string,
+  released: readonly string[] = []
+) {
   const [owner] = await db
     .select({ image: schema.user.image })
     .from(schema.user)
@@ -129,7 +142,10 @@ export async function pruneUploads(ownerId: string) {
   await db.delete(table).where(
     and(
       eq(table.ownerId, ownerId),
-      lt(table.createdAt, sql`now() - interval '1 day'`),
+      or(
+        lt(table.createdAt, sql`now() - interval '1 day'`),
+        inArray(table.id, [...released])
+      ),
       notInArray(
         table.id,
         db
