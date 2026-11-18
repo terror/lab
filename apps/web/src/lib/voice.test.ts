@@ -1,6 +1,11 @@
-import { expect, test } from 'vitest';
+import { preferencesQueryOptions } from '@/lib/preferences';
+import { renderHookWithQuery } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
+import { QueryClient } from '@tanstack/react-query';
+import { act } from 'react';
+import { expect, test, vi } from 'vitest';
 
-import { say } from './voice';
+import { say, useThinking } from './voice';
 
 function check(at: Date, absent: number, expected: string[]) {
   const greetings = Array.from({ length: 40 }, (_, index) =>
@@ -77,4 +82,53 @@ test('a quiet greeting is the plain one for the hour', () => {
     'Good afternoon, Foo',
     'Good evening, Foo',
   ]);
+});
+
+test('a long wait climbs from thinking to a note that it can be left', async () => {
+  vi.useFakeTimers();
+
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  try {
+    let turn = 'foo';
+
+    const { rerender, result } = await renderHookWithQuery(
+      () => useThinking(turn),
+      client
+    );
+
+    const lines = [result.current];
+
+    for (const after of [4_000, 16_000, 70_000]) {
+      await act(() => vi.advanceTimersByTime(after));
+
+      lines.push(result.current);
+    }
+
+    turn = 'bar';
+
+    await rerender();
+
+    lines.push(result.current);
+
+    expect(lines).toEqual([
+      'Thinking',
+      'Stirring it in',
+      'Still on it',
+      'You can leave this, I’ll mark it when it’s done',
+      'Thinking',
+    ]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a quiet wait always says thinking', () => {
+  expect(
+    [0, 1, 2, 3].map((tier) =>
+      say('thinking', tier, { quiet: true, seed: 'foo' })
+    )
+  ).toEqual(['Thinking', 'Thinking', 'Thinking', 'Thinking']);
 });

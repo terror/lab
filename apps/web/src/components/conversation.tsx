@@ -77,6 +77,7 @@ import {
 } from '@/lib/transcript';
 import { uploadUrl } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
+import { useThinking } from '@/lib/voice';
 import {
   type AgentState,
   type InboxState,
@@ -696,8 +697,10 @@ function ConversationView({ id }: { id: number }) {
     return () => document.removeEventListener('visibilitychange', read);
   }, [markRead, running]);
 
+  const waiting = useThinking(running ? anchor?.key : undefined);
+
   const thinking =
-    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
+    phase.kind === 'thinking' ? (activity ?? waiting) : undefined;
 
   const last = rows.at(-1)?.row;
 
