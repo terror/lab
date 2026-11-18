@@ -1,5 +1,9 @@
 import {
+  type ConversationId,
+  type Cursor,
+  type EntryRecord,
   type ToolExecutionResult,
+  type Tx,
   defineExtension,
   defineTool,
   section,
@@ -23,6 +27,80 @@ export type Artifact = {
 export const ArtifactsDoc = conversationDoc<{
   artifacts: Record<string, Artifact>;
 }>('lab.artifacts', () => ({ artifacts: {} }));
+
+type Message = NonNullable<EntryRecord['model']>[number];
+
+type Rewind = {
+  artifacts: Record<string, Artifact>;
+  created: Record<string, string>;
+};
+
+const artifactTools = new Set(['artifact_create', 'artifact_update']);
+
+function rewound({ artifacts, created }: Rewind, message?: Message): Rewind {
+  if (message?.role === 'assistant') {
+    const calls = message.content.flatMap((part) =>
+      part.type === 'toolCall' && part.name === 'artifact_create'
+        ? [[part.id, String(part.arguments.content)]]
+        : []
+    );
+
+    return { artifacts, created: { ...created, ...Object.fromEntries(calls) } };
+  }
+
+  if (
+    message?.role !== 'toolResult' ||
+    message.isError ||
+    !artifactTools.has(message.toolName)
+  ) {
+    return { artifacts, created };
+  }
+
+  const {
+    content = created[message.toolCallId] ?? '',
+    id,
+    title,
+    version,
+  } = message.details as Omit<Artifact, 'kind' | 'content'> & {
+    content?: string;
+    id: string;
+  };
+
+  return {
+    artifacts: {
+      ...artifacts,
+      [id]: { content, kind: 'html', title, version },
+    },
+    created,
+  };
+}
+
+async function artifactsBefore(
+  tx: Tx,
+  conversationId: ConversationId,
+  rewind: Rewind = { artifacts: {}, created: {} },
+  cursor?: Cursor
+): Promise<Record<string, Artifact>> {
+  const page = await tx.scanEntries(
+    { conversationId, order: 'ascending' },
+    100,
+    cursor
+  );
+
+  const next = page.items.reduce(
+    (current, { model }) => rewound(current, model?.[0]),
+    rewind
+  );
+
+  return page.next === undefined
+    ? next.artifacts
+    : artifactsBefore(tx, conversationId, next, page.next);
+}
+
+export async function rewindArtifacts(tx: Tx, conversationId: ConversationId) {
+  (await tx.doc(ArtifactsDoc, conversationId)).artifacts =
+    await artifactsBefore(tx, conversationId);
+}
 
 const artifactCreate = defineTool({
   name: 'artifact_create',
