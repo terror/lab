@@ -4,15 +4,7 @@ import {
   defineExtension,
   defineTool,
 } from '@earendil-works/pi-durable';
-import {
-  bool,
-  int,
-  lit,
-  obj,
-  opt,
-  str,
-  union,
-} from '@earendil-works/pi-schema';
+import { bool, int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
 import { failure, once, text } from './results';
@@ -69,12 +61,9 @@ const chatId = int({
   minimum: 1,
 });
 
-const kind = union(
-  trashKinds.map((value) => lit(value)),
-  {
-    description: 'Whether the item is a chat or a project.',
-  }
-);
+const kind = oneOf(trashKinds, {
+  description: 'Whether the item is a chat or a project.',
+});
 
 const trashId = int({ description: 'The id from trash_list.', minimum: 1 });
 

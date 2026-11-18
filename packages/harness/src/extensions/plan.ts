@@ -8,7 +8,7 @@ import {
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
-import { arr, lit, obj, str, union } from '@earendil-works/pi-schema';
+import { arr, obj, oneOf, str } from '@earendil-works/pi-schema';
 
 import {
   PLAN_LIMIT,
@@ -109,13 +109,10 @@ const planUpdate = defineTool({
   parameters: obj({
     steps: arr(
       obj({
-        status: union(
-          PLAN_STATUSES.map((status) => lit(status)),
-          {
-            description:
-              'pending before you start it, active while you work on it, done once it is finished.',
-          }
-        ),
+        status: oneOf(PLAN_STATUSES, {
+          description:
+            'pending before you start it, active while you work on it, done once it is finished.',
+        }),
         text: str({
           description: 'What the step does, in a few words.',
           maxLength: STEP_LENGTH,

@@ -4,7 +4,7 @@ import {
   defineExtension,
   defineTool,
 } from '@earendil-works/pi-durable';
-import { int, obj, opt, str, union, lit } from '@earendil-works/pi-schema';
+import { int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
 import { failure, text } from './results';
 
@@ -64,7 +64,7 @@ export function library(access: LibraryAccess) {
     description:
       'Search the images and files the user has attached in any chat. Returns ids to pass to library_read.',
     parameters: obj({
-      kind: opt(union([lit('file'), lit('image')])),
+      kind: opt(oneOf(['file', 'image'])),
       query: opt(
         str({ description: 'Words to match in file names.', maxLength: 200 })
       ),
