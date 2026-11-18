@@ -93,7 +93,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   return (
     <li className='group flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-muted/50'>
       <button
-        className='flex min-w-0 flex-1 items-center gap-3 text-left outline-none disabled:cursor-default'
+        className='flex min-w-0 flex-1 items-center gap-3 rounded-control text-left disabled:cursor-default'
         disabled={task.conversationId === null}
         onClick={open}
         type='button'
@@ -112,7 +112,7 @@ function TaskRow({ task }: { task: ScheduledTask }) {
         <DropdownMenuTrigger asChild>
           <button
             aria-label={`Actions for ${task.title}`}
-            className='flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground'
+            className='flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground'
             type='button'
           >
             <Ellipsis aria-hidden='true' className='size-4' />
@@ -161,7 +161,7 @@ function FilterMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className='flex items-center gap-1 rounded-full border px-3 py-1 text-sm outline-none hover:bg-muted'
+          className='flex items-center gap-1 rounded-full border px-3 py-1 text-sm hover:bg-muted'
           type='button'
         >
           {filters[filter].label}

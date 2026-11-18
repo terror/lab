@@ -1,21 +1,110 @@
-import { Meta } from '@storybook/addon-docs/blocks';
+import { Meta, Unstyled } from '@storybook/addon-docs/blocks';
+
+import { spring, stagger } from '../lib/motion';
+import { TokenTable } from './token-table';
 
 <Meta title='Foundations/Motion' />
 
 # Motion
 
-Motion explains change; it never decorates.
+Motion explains change. It never decorates. Frequent interactions get fast,
+quiet feedback, and a rare moment gets one short flourish.
 
-| Duration  | Use                                |
-| --------- | ---------------------------------- |
-| 100–150ms | Hover, press, color changes        |
-| 200ms     | Popovers, menus, status text swaps |
-| 300ms     | Panels and sidebars                |
+## Durations
 
-- Ease out for things that enter, and ease in for things that leave.
+The values below are read from the stylesheet. The CSS variables behind them are
+`--motion-fast`, `--motion-base`, `--motion-slow`, and `--motion-story`.
+
+<Unstyled>
+  <TokenTable
+    property='transitionDuration'
+    rows={[
+      {
+        name: 'duration-fast',
+        use: 'Hover, press, color changes. The default for every transition utility.',
+      },
+      {
+        name: 'duration-base',
+        use: 'Menus, popovers, tooltips, dialogs, and status text swaps.',
+      },
+      { name: 'duration-slow', use: 'Sheets, panels, large surfaces.' },
+      {
+        name: 'duration-story',
+        use: 'One-off entrances only: the greeting, sign-in.',
+      },
+    ]}
+  />
+</Unstyled>
+
+## Easings
+
+<Unstyled>
+  <TokenTable
+    property='transitionTimingFunction'
+    rows={[
+      {
+        name: 'ease-out',
+        use: 'Things that enter. The default for every transition utility.',
+      },
+      { name: 'ease-in', use: 'Things that leave.' },
+    ]}
+  />
+</Unstyled>
+
+An overlay opens with `duration-base ease-out` and closes with
+`data-closed:ease-in`.
+
+## Springs
+
+`src/lib/motion.ts` exports the presets for `motion/react`. The values below are
+read from that module.
+
+<Unstyled>
+  <TokenTable
+    rows={[
+      {
+        name: 'spring.snap',
+        use: 'Toggles, small nudges, rows that enter a list.',
+        value: `${spring.snap.visualDuration}s, bounce ${spring.snap.bounce}`,
+      },
+      {
+        name: 'spring.glide',
+        use: 'Layout and panels. The MotionConfig default.',
+        value: `${spring.glide.visualDuration}s, bounce ${spring.glide.bounce}`,
+      },
+      {
+        name: 'spring.lively',
+        use: 'New agent content and reorders.',
+        value: `${spring.lively.visualDuration}s, bounce ${spring.lively.bounce}`,
+      },
+      {
+        name: 'spring.pop',
+        use: 'Signature moments only.',
+        value: `${spring.pop.visualDuration}s, bounce ${spring.pop.bounce}`,
+      },
+      {
+        name: 'stagger',
+        use: 'The delay between list items, for six items at most.',
+        value: `${stagger}s`,
+      },
+    ]}
+  />
+</Unstyled>
+
+Springs move position, size, and layout. Opacity and color use the `fade.fast`
+and `fade.base` tweens from the same module, and they never bounce.
+
+## Guidelines
+
 - Use the `shimmer` utility for live status text, like the activity line while a
   reply is thinking.
 - Stream answers with Streamdown's word fade rather than animating whole blocks.
-- Respect reduced motion: `MotionConfig reducedMotion='user'` covers Motion
-  components, `motion-safe:` covers CSS animations, and `shimmer` turns itself
-  off.
+- Slow a loop down once it has run for 5 seconds.
+
+## Reduced motion
+
+- `MotionConfig reducedMotion='user'` drops transforms and layout animation from
+  Motion components and keeps opacity.
+- One media query in `index.css` removes travel and zoom from every `animate-in`
+  and `animate-out`, keeps the fade, and makes accordions instant.
+- Guard a CSS loop with `motion-safe:`. `shimmer` turns itself off.

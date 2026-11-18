@@ -4,39 +4,75 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 # Lab design system
 
-Lab is a quiet, monochrome tool. The interface should disappear behind the
-conversation.
+Lab's chrome is calm and monochrome so the conversation leads. Color and motion
+belong to the agent. They appear when Lab is working, when it finishes
+something, or when it needs you.
 
 ## Principles
 
-- **Monochrome first.** Color comes from the neutral scale. The only hue is
-  `destructive`, for errors and irreversible actions.
-- **Tokens, not values.** Every color, radius, and shadow comes from
+- **Chrome is monochrome. Color belongs to the agent.** Navigation, buttons, and
+  borders use the neutral scale. The spark palette marks agent activity, and
+  `destructive` marks errors and irreversible actions.
+- **Tokens, not values.** Every color, radius, duration, and easing comes from
   `src/index.css`. Tailwind's default palette is removed, and
   `oxlint-tailwindcss` rejects arbitrary values like `pb-[12vh]` and default
   palette colors outside `components/ui`.
 - **Content over chrome.** Prefer whitespace and type weight to borders and
   boxes. Use a border only when it separates two surfaces.
 - **One way to do each thing.** Reach for an existing component before writing
-  markup, and add new primitives with `bunx shadcn add` so they follow the same
-  conventions.
+  markup. Lint rejects a raw `<button>` in a new file: use `Button`, or add a
+  component to `components/ui`.
 
 ## Accessibility
 
 - Text meets WCAG 2.2 AA contrast: 4.5:1, or 3:1 at 24px and above.
-- Focus is always visible. Rings use the `ring` token, which stays above 3:1
-  even at half opacity.
-- Interactive targets are at least 24px, and 32px or more for primary actions.
-- Motion respects `prefers-reduced-motion` through `MotionConfig` and
-  `motion-safe:`.
+- Motion respects `prefers-reduced-motion` through `MotionConfig`, one media
+  query in `index.css`, and `motion-safe:`.
 
 Every story is a test. `bun run --filter @lab/web test` renders each story in
 Chromium and fails on axe violations.
+
+### Keyboard focus
+
+Press Tab and whatever has focus draws a 2px ring in `ring`, offset by 2px. The
+ring comes from one `:focus-visible` rule in `index.css`, so a new control needs
+no class.
+
+A click or a tap never draws the ring. `:focus-visible` alone can't promise
+that, because a text field matches it on click, and so does a button that gets
+focus back from a dialog. `watchModality` in `src/lib/modality.ts` records
+whether the last input was Tab or a pointer, and the stylesheet hides the ring
+after a pointer press.
+
+- `focus-ring-inset` draws the ring inside the edge. Use it on rows in a scroll
+  container, where an offset ring would clip.
+- `focus-ring-within` goes on a shell that wraps a text field, like `InputGroup`
+  and the message box. The shell draws the ring and the field inside it draws
+  none.
+- Keep `outline-none` for a text field that is the only field in a popover and
+  for one that edits text in place. The caret marks focus there. Don't put
+  `outline-none` on anything else.
+
+### Touch
+
+- Interactive targets are at least 24px.
+- On a touch screen every `Button` and `Switch` has a hit area of at least 44px
+  in both directions. The control doesn't grow. A pseudo-element extends past
+  its edge.
+- `hit-area` gives any other control the same 44px touch target. The control
+  needs `relative`.
+- Hit areas of close neighbours overlap, and the later control takes the tap. On
+  a touch screen, leave a gap of 44px minus the control's size. Two 32px buttons
+  need 12px.
+- `hover-reveal` hides a control until you add a hover trigger such as
+  `group-hover:opacity-100`. It keeps the control visible on a touch screen, on
+  keyboard focus, and while its menu is open.
 
 ## Working with components
 
 - `components/ui` holds shadcn components. Edit them in place; don't wrap them
   to restyle.
 - Variants live in `cva` definitions next to the component, and `cn` merges
-  overrides.
+  overrides. Import `cn` from `@/lib/utils`. That one knows the radius and
+  duration tokens, so `rounded-full` on a `Button` replaces `rounded-control`.
 - App components live in `components/` and get a story under **Patterns**.

@@ -59,7 +59,7 @@ type Side = 'bottom' | 'right';
 const collapsedSchema = z.boolean();
 
 const headerButton =
-  'flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground';
+  'flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground';
 
 const sorts: { label: string; value: ConversationSort }[] = [
   { label: 'Recent activity', value: 'activity' },
@@ -89,7 +89,7 @@ function RailButton({
           aria-keyshortcuts={shortcut?.keys}
           aria-label={label}
           className={cn(
-            'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground outline-none hover:bg-sidebar-accent',
+            'flex size-9 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent',
             active && 'bg-sidebar-accent text-sidebar-accent-foreground'
           )}
           onClick={onClick}
@@ -254,7 +254,7 @@ function NavButton({
       aria-current={active ? 'page' : undefined}
       aria-expanded={expanded}
       className={cn(
-        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors outline-none hover:bg-sidebar-accent',
+        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm focus-ring-inset transition-colors hover:bg-sidebar-accent',
         active && 'bg-sidebar-accent text-sidebar-accent-foreground'
       )}
       onClick={onClick}
@@ -284,7 +284,7 @@ function openProject(path: string, chatProject: number | null | undefined) {
 function ShowMore({ onClick }: { onClick: () => void }) {
   return (
     <button
-      className='w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground outline-none hover:bg-sidebar-accent hover:text-foreground'
+      className='w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground focus-ring-inset hover:bg-sidebar-accent hover:text-foreground'
       onClick={onClick}
       type='button'
     >
@@ -419,7 +419,7 @@ function ProjectsSection({
                   <span className='truncate pr-6'>{project.name}</span>
                 </NavButton>
                 <ProjectMenu
-                  className='absolute right-1 p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100'
+                  className='absolute right-1 p-1 opacity-0 focus-ring-inset group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100'
                   onRename={() => setEditing({ kind: 'rename', project })}
                   project={project}
                 />
@@ -675,7 +675,7 @@ function SidebarPanel({
       <div className='flex items-center justify-between px-1'>
         <button
           aria-label='New chat'
-          className='flex rounded-md outline-none'
+          className='flex rounded-md'
           onClick={() => onNavigate('/')}
           type='button'
         >

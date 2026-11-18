@@ -47,7 +47,7 @@ function download(title: string, html: string) {
 }
 
 const action =
-  'flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground';
+  'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 
 type Shown = { html: string; id: string; title: string; version: number };
 
@@ -218,7 +218,7 @@ function Errors({
           {errors.length === 1 ? '1 error' : `${errors.length} errors`}
         </span>
         <button
-          className='ml-auto rounded-md px-2 py-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground'
+          className='ml-auto rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground'
           onClick={onFix}
           type='button'
         >

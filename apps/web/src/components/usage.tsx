@@ -70,7 +70,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
             <TooltipTrigger asChild>
               <button
                 aria-label={`${date(entry.date)}: ${formatSpend(entry.cost)}`}
-                className='group flex h-full min-w-0 flex-1 items-end outline-none focus-visible:bg-accent'
+                className='group flex h-full min-w-0 flex-1 items-end focus-ring-inset'
                 type='button'
               >
                 <span

@@ -57,7 +57,7 @@ function TileContent({ item }: { item: LibraryItem }) {
           loading='lazy'
           src={libraryItemUrl(item.id)}
         />
-        <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
+        <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white hover-reveal group-hover:opacity-100 group-focus-visible:opacity-100'>
           {item.name}
         </span>
       </>
@@ -87,7 +87,7 @@ export function Tile({
       aria-label={item.name}
       aria-pressed={selected}
       className={cn(
-        'group relative aspect-square overflow-hidden rounded-xl bg-muted outline-none disabled:opacity-40',
+        'group relative aspect-square overflow-hidden rounded-xl bg-muted disabled:opacity-40',
         selected && 'ring-2 ring-foreground'
       )}
       disabled={disabled}

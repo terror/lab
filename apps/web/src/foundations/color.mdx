@@ -6,35 +6,41 @@ import { Swatches } from './swatches';
 
 # Color
 
-Colors are OKLCH neutrals defined in `:root` and `.dark`, then mapped to
-utilities in `@theme inline`. Use the semantic token, never a raw value. Switch
-the toolbar theme to compare light and dark.
+Neutrals are OKLCH values defined in `:root` and `.dark`, then mapped to
+utilities in `@theme inline`. Use the semantic token, never a raw value. Each
+swatch reads its value from the stylesheet and shows it in light and in dark.
 
 ## Surfaces
 
 <Unstyled>
   <Swatches
     tokens={[
-      { description: 'Page and chat background', name: 'background' },
-      { description: 'Sidebar and app chrome', name: 'sidebar' },
-      { description: 'Popovers, menus, dialogs', name: 'popover' },
+      { description: 'Page and chat background.', name: 'background' },
+      { description: 'Sidebar and app chrome.', name: 'sidebar' },
+      { description: 'Popovers, menus, dialogs.', name: 'popover' },
       {
-        description: 'Quiet fills: bubbles, inline code, tiles',
+        description: 'Quiet fills and hover: bubbles, tiles, hovered rows.',
         name: 'muted',
       },
-      { description: 'Hover and selected rows', name: 'accent' },
+      {
+        description: 'Hovered and selected sidebar rows.',
+        name: 'sidebar-accent',
+      },
     ]}
   />
 </Unstyled>
+
+Use `hover:bg-muted` for every hover fill outside the sidebar. `accent` and
+`secondary` are aliases of `muted`, kept because shadcn components name them.
 
 ## Text
 
 <Unstyled>
   <Swatches
     tokens={[
-      { description: 'Primary text and icons', name: 'foreground' },
+      { description: 'Primary text and icons.', name: 'foreground' },
       {
-        description: 'Secondary text, metadata, placeholders',
+        description: 'Secondary text, metadata, placeholders.',
         name: 'muted-foreground',
       },
     ]}
@@ -46,9 +52,9 @@ the toolbar theme to compare light and dark.
 <Unstyled>
   <Swatches
     tokens={[
-      { description: 'Dividers between surfaces', name: 'border' },
-      { description: 'Form control borders', name: 'input' },
-      { description: 'Focus rings', name: 'ring' },
+      { description: 'Dividers between surfaces.', name: 'border' },
+      { description: 'Form control borders.', name: 'input' },
+      { description: 'The keyboard focus ring.', name: 'ring' },
     ]}
   />
 </Unstyled>
@@ -58,10 +64,57 @@ the toolbar theme to compare light and dark.
 <Unstyled>
   <Swatches
     tokens={[
-      { description: 'Primary buttons', name: 'primary' },
-      { description: 'Text on primary', name: 'primary-foreground' },
-      { description: 'Secondary buttons', name: 'secondary' },
-      { description: 'Errors and irreversible actions', name: 'destructive' },
+      { description: 'Primary buttons.', name: 'primary' },
+      { description: 'Text on primary.', name: 'primary-foreground' },
+      { description: 'Errors and irreversible actions.', name: 'destructive' },
     ]}
   />
 </Unstyled>
+
+## Spark
+
+Chrome is monochrome. Color belongs to the agent. The spark palette is the three
+hues of the Lab mark. A spark hue appears only when Lab is working, when it
+finishes something, when it needs you, or in an illustration. Never use one on
+navigation, buttons, or borders, and use at most one hue in a component.
+
+- **Coral** means Lab needs you: an unread chat, a question that waits.
+- **Blue** means Lab is working: a live run, a step that just finished.
+- **Yellow** means done: completion, celebration, something remembered.
+
+Each hue has three tiers.
+
+- **Raw** is for decoration only: the mark, dots, confetti, illustration. It
+  fails contrast as text on light surfaces.
+- **Ink** is for text and icons. `contrast.test.ts` fails if an ink drops below
+  4.5:1 on any surface, or on its own wash, in either theme.
+- **Wash** is a tinted background. Put only ink of the same hue on it.
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Raw.', name: 'spark-coral' },
+      { description: 'Ink.', name: 'spark-coral-ink', pair: 'background' },
+      {
+        description: 'Wash.',
+        name: 'spark-coral-wash',
+        pair: 'spark-coral-ink',
+      },
+      { description: 'Raw.', name: 'spark-blue' },
+      { description: 'Ink.', name: 'spark-blue-ink', pair: 'background' },
+      { description: 'Wash.', name: 'spark-blue-wash', pair: 'spark-blue-ink' },
+      { description: 'Raw.', name: 'spark-yellow' },
+      { description: 'Ink.', name: 'spark-yellow-ink', pair: 'background' },
+      {
+        description: 'Wash.',
+        name: 'spark-yellow-wash',
+        pair: 'spark-yellow-ink',
+      },
+    ]}
+  />
+</Unstyled>
+
+Lint rejects spark utilities outside `components/ui`. To put a spark color on a
+screen, use a component that carries it, or add one to `components/ui`. Inside
+`components/ui`, lint rejects raw or wash as a text color and any spark on a
+border, ring, or outline.

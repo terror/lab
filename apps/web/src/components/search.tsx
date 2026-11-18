@@ -359,7 +359,7 @@ function ScopePills({
           key={id}
           aria-pressed={scope === id}
           className={cn(
-            'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground outline-none hover:text-foreground',
+            'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground',
             scope === id && 'bg-muted font-medium text-foreground'
           )}
           onClick={() => onScope(id)}

@@ -1,5 +1,5 @@
+import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from 'cn';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
 
@@ -73,7 +73,7 @@ function BubbleContent({
     <Comp
       data-slot='bubble-content'
       className={cn(
-        'w-fit max-w-full min-w-0 overflow-hidden rounded-xl border border-transparent px-3 py-2 text-sm leading-relaxed wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none',
+        'w-fit max-w-full min-w-0 overflow-hidden rounded-xl border border-transparent px-3 py-2 text-sm leading-relaxed wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors',
         className
       )}
       {...props}

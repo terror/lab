@@ -59,7 +59,7 @@ function Chip({
       <div className='group flex h-8 items-center rounded-full bg-muted text-sm transition-colors hover:bg-foreground/10'>
         <HoverCardTrigger asChild>
           <button
-            className='flex h-8 items-center gap-2 rounded-full pl-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+            className='flex h-8 items-center gap-2 rounded-full pl-3'
             onClick={onOpen}
             type='button'
           >
@@ -69,7 +69,7 @@ function Chip({
         </HoverCardTrigger>
         <button
           aria-label={`Mark ${title} as read`}
-          className='relative mr-1 grid h-6 min-w-6 place-items-center rounded-full px-2 text-muted-foreground tabular-nums outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50'
+          className='relative mr-1 grid h-6 min-w-6 place-items-center rounded-full px-2 text-muted-foreground tabular-nums hover:text-foreground'
           onClick={onRead}
           type='button'
         >
@@ -107,7 +107,7 @@ function More({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={`${chats.length} more finished chats`}
-          className='flex h-8 items-center rounded-full bg-muted px-3 text-sm font-medium tabular-nums transition-colors outline-none hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50'
+          className='flex h-8 items-center rounded-full bg-muted px-3 text-sm font-medium tabular-nums transition-colors hover:bg-foreground/10'
           type='button'
         >
           +{chats.length}

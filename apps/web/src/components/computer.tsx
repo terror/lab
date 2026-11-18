@@ -60,7 +60,7 @@ function NetworkPicker({ value }: { value: ComputerStatus['network'] }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className='flex shrink-0 items-center gap-1 text-sm text-muted-foreground outline-none'
+            className='flex shrink-0 items-center gap-1 rounded-control text-sm text-muted-foreground'
             disabled={update.isPending}
             type='button'
           >

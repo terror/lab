@@ -55,7 +55,7 @@ function Appearance() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className='flex items-center gap-1 text-sm text-muted-foreground outline-none'
+              className='flex items-center gap-1 rounded-control text-sm text-muted-foreground'
               type='button'
             >
               {label}
@@ -156,7 +156,7 @@ export function Settings() {
                 key={id}
                 aria-current={section === id ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm focus-ring-inset transition-colors hover:bg-accent',
                   section === id &&
                     'bg-accent font-medium text-accent-foreground'
                 )}

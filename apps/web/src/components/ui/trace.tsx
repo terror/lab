@@ -3,7 +3,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { cn } from 'cn';
+import { cn } from '@/lib/utils';
 import { ChevronRightIcon } from 'lucide-react';
 import * as React from 'react';
 
@@ -12,7 +12,7 @@ function Trace({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot='trace'
       className={cn(
-        'flex w-full min-w-0 flex-col gap-2 *:has-[>[data-slot=trace-line]]:flex *:has-[>[data-slot=trace-line]]:w-fit *:has-[>[data-slot=trace-line]]:max-w-full *:has-[>[data-slot=trace-line]]:min-w-0 *:has-[>[data-slot=trace-line]]:rounded-md *:has-[>[data-slot=trace-line]]:text-left *:has-[>[data-slot=trace-line]]:outline-none',
+        'flex w-full min-w-0 flex-col gap-2 *:has-[>[data-slot=trace-line]]:flex *:has-[>[data-slot=trace-line]]:w-fit *:has-[>[data-slot=trace-line]]:max-w-full *:has-[>[data-slot=trace-line]]:min-w-0 *:has-[>[data-slot=trace-line]]:rounded-control *:has-[>[data-slot=trace-line]]:text-left',
         className
       )}
       {...props}
@@ -111,7 +111,7 @@ function TraceCollapsibleTrigger({
     <CollapsibleTrigger
       data-slot='trace-collapsible-trigger'
       className={cn(
-        'group/trace-collapsible-trigger flex w-fit max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-md text-left text-muted-foreground transition-colors outline-none hover:text-foreground has-[[data-status=error]]:text-destructive',
+        'group/trace-collapsible-trigger flex w-fit max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-control text-left text-muted-foreground transition-colors hover:text-foreground has-[[data-status=error]]:text-destructive',
         className
       )}
       {...props}
@@ -132,7 +132,7 @@ function TraceCollapsibleContent({
   return (
     <CollapsibleContent
       data-slot='trace-collapsible-content'
-      className='min-w-0 overflow-hidden duration-200 [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-open:animate-accordion-down data-closed:animate-accordion-up'
+      className='min-w-0 overflow-hidden duration-base [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-open:animate-accordion-down data-closed:animate-accordion-up'
       {...props}
     >
       <div

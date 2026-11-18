@@ -26,7 +26,7 @@ export function AppLink({
         className:
           'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
       }}
-      className='flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none hover:bg-sidebar-accent'
+      className='flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm focus-ring-inset hover:bg-sidebar-accent'
       onClick={onSelect}
       params={{
         artifactId: app.artifactId,

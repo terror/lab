@@ -326,7 +326,7 @@ export function Action({
       <TooltipTrigger asChild>
         <button
           aria-label={label}
-          className='flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground'
+          className='flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
           type='button'
           {...props}
         >
@@ -461,8 +461,7 @@ function MessageActions({
       <div
         className={cn(
           'flex items-center gap-0.5 transition-opacity',
-          !latest &&
-            'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100'
+          !latest && 'hover-reveal group-hover/message:opacity-100'
         )}
       >
         {text && <CopyAction text={text} />}
