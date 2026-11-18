@@ -1,17 +1,8 @@
 import { UserAvatar } from '@/components/account-menu';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
 import { SettingsPage } from '@/components/settings-page';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { signOut, useUser } from '@/lib/auth';
@@ -169,26 +160,14 @@ export function YourData() {
         )}
       </div>
       {remove.error && <ErrorMessage>{remove.error.message}</ErrorMessage>}
-      <AlertDialog onOpenChange={setConfirming} open={confirming}>
-        <AlertDialogContent size='sm'>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your chats, projects, files, memories, connectors, and computer
-              will be permanently deleted. This can’t be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => remove.mutate()}
-              variant='destructive'
-            >
-              Delete account
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        action='Delete account'
+        description='Your chats, projects, files, memories, connectors, and computer will be permanently deleted. This can’t be undone.'
+        onConfirm={() => remove.mutate()}
+        onOpenChange={setConfirming}
+        open={confirming}
+        title='Delete your account?'
+      />
     </section>
   );
 }
