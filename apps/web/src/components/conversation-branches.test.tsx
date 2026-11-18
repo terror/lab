@@ -210,3 +210,20 @@ test('versions link the chats that branch at a message', async () => {
     .element(reply.getByRole('button', { name: 'Previous version' }))
     .toBeDisabled();
 });
+
+test('cancelling an edit gives focus back to Edit', async () => {
+  const { screen } = await open();
+
+  await screen.getByRole('button', { name: 'Edit' }).click();
+
+  await screen
+    .getByRole('form', { name: 'Edit message' })
+    .getByRole('button', { name: 'Cancel' })
+    .click();
+
+  await expect
+    .element(screen.getByRole('button', { name: 'Edit' }))
+    .toHaveFocus();
+
+  await screen.unmount();
+});

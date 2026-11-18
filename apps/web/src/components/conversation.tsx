@@ -246,6 +246,15 @@ function UserMessage({
 }) {
   const [editing, setEditing] = useState(false);
 
+  const cancelled = useRef(false);
+
+  const editButton = useCallback((node: HTMLButtonElement | null) => {
+    if (node && cancelled.current) {
+      cancelled.current = false;
+      node.focus();
+    }
+  }, []);
+
   return (
     <Message align='end'>
       <MessageContent>
@@ -271,7 +280,10 @@ function UserMessage({
         {editing && (
           <EditMessage
             initial={bubble.text}
-            onCancel={() => setEditing(false)}
+            onCancel={() => {
+              cancelled.current = true;
+              setEditing(false);
+            }}
             onSubmit={onEdit}
           />
         )}
@@ -286,7 +298,11 @@ function UserMessage({
           <MessageFooter className='min-h-8 gap-0.5 px-0'>
             {onEdit && (
               <div className='hover-reveal group-hover/message:opacity-100'>
-                <IconButton label='Edit' onClick={() => setEditing(true)}>
+                <IconButton
+                  label='Edit'
+                  onClick={() => setEditing(true)}
+                  ref={editButton}
+                >
                   <Pencil aria-hidden='true' className='size-4' />
                 </IconButton>
               </div>
