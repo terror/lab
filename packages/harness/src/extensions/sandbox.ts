@@ -7,8 +7,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
+import { type Owner, userDoc } from './docs';
 import { errorMessage, failure, once, text } from './results';
-import { type Owner, userDoc } from './users';
 
 export const SANDBOX_OUTPUT_LENGTH = 100_000;
 

@@ -10,6 +10,7 @@ import { codemode } from './codemode';
 import { compaction } from './compaction';
 import { type ConnectorAccess, connectorSettings } from './connector-settings';
 import { type Admit, delegate } from './delegate';
+import type { Owner } from './docs';
 import { type HistoryAccess, history } from './history';
 import { type ImageAccess, images } from './images';
 import { type LibraryAccess, library } from './library';
@@ -22,7 +23,6 @@ import { type SandboxAccess, sandbox } from './sandbox';
 import { type ScheduleAccess, schedule } from './schedule';
 import { skills } from './skills';
 import { title } from './title';
-import type { Owner } from './users';
 import { type WebAccess, web } from './web';
 
 export {
@@ -115,7 +115,7 @@ export {
 } from './chats';
 export { PlanDoc, editPlan } from './plan';
 export { PreferencesDoc } from './preferences';
-export { type Owner, userDoc } from './users';
+export { type Owner, userDoc } from './docs';
 export { TitleDoc, plainTitle, titleChat } from './title';
 export {
   type WebAccess,

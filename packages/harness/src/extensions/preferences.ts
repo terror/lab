@@ -12,8 +12,8 @@ import {
   type Preferences,
   defaultPreferences,
 } from '../preferences';
+import { type Owner, userDoc } from './docs';
 import { failure, text } from './results';
-import { type Owner, userDoc } from './users';
 
 export const PreferencesDoc = userDoc<Preferences>(
   'lab.user.preferences',

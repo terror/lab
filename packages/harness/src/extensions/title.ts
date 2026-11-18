@@ -4,7 +4,6 @@ import {
   type Conversation,
   GenerationTask,
   type RegistryReader,
-  defineDoc,
   defineExtension,
   defineTask,
   hook,
@@ -12,6 +11,7 @@ import {
 } from '@earendil-works/pi-durable';
 
 import { type HelperUsage, completeHelper, helperModel } from '../helper';
+import { conversationDoc } from './docs';
 
 const MESSAGE_LIMIT = 2_000;
 
@@ -31,15 +31,10 @@ export function plainTitle(value: string) {
     .trim();
 }
 
-export const TitleDoc = defineDoc<{ title: string | null }>({
-  kind: 'lab.title',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ title: null }),
-  checkpointWhen: () => true,
-});
+export const TitleDoc = conversationDoc<{ title: string | null }>(
+  'lab.title',
+  () => ({ title: null })
+);
 
 function text(message: Message) {
   if (typeof message.content === 'string') {

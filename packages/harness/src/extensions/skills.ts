@@ -6,8 +6,8 @@ import {
 import { obj, opt, str } from '@earendil-works/pi-schema';
 import { randomUUID } from 'node:crypto';
 
+import { type Owner, userDoc } from './docs';
 import { failure, text } from './results';
-import { type Owner, userDoc } from './users';
 
 export const SKILL_LIMIT = 50;
 

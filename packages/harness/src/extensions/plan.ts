@@ -3,7 +3,6 @@ import {
   type Cursor,
   type ToolExecutionResult,
   type Tx,
-  defineDoc,
   defineExtension,
   defineTool,
   section,
@@ -17,17 +16,14 @@ import {
   type PlanStep,
   STEP_LENGTH,
 } from '../plan';
+import { conversationDoc } from './docs';
 import { failure, text } from './results';
 
-export const PlanDoc = defineDoc<Plan>({
-  kind: 'lab.plan',
-  version: 1,
-  scope: 'conversation',
-  history: 'latest',
-  fork: 'current',
-  initial: () => ({ author: 'agent', callId: null, steps: [] }),
-  checkpointWhen: () => true,
-});
+export const PlanDoc = conversationDoc<Plan>('lab.plan', () => ({
+  author: 'agent',
+  callId: null,
+  steps: [],
+}));
 
 const GUIDANCE =
   'When a task takes several steps, call plan_update with a short checklist before you start, then update it as you go: mark a step active when you start it and done as soon as it is finished. The user sees the checklist live and can edit it while you work.';
