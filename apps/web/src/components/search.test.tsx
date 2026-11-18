@@ -73,6 +73,10 @@ async function openSearch(client?: QueryClient) {
   return { router, screen };
 }
 
+function hints() {
+  return document.querySelector('[cmdk-root] > :last-child')?.textContent;
+}
+
 function values() {
   return [...document.querySelectorAll('[cmdk-item]')].map((item) =>
     item.getAttribute('data-value')
@@ -101,6 +105,8 @@ test('an empty query lists chats, places to go, and actions', async () => {
       'new-project',
       'theme',
     ]);
+
+  expect(hints()).toBe('↑↓navigate↵openescclose');
 });
 
 test('a query lists the places to go whose title matches it', async () => {
@@ -111,6 +117,8 @@ test('a query lists the places to go whose title matches it', async () => {
   await screen.getByRole('combobox', { name: 'Search Lab' }).fill('trash');
 
   await expect.poll(values).toEqual(['go-trash', 'ask']);
+
+  expect(hints()).toBe('↑↓navigate↵open⇥scope⌘↵ask Labescclose');
 
   await userEvent.keyboard('{Enter}');
 

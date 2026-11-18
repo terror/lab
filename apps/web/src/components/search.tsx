@@ -439,23 +439,25 @@ function ScopePills({
   );
 }
 
-function Footer() {
-  const hints: [string[], string][] = [
-    [['↑', '↓'], 'navigate'],
-    [['↵'], 'open'],
-    [['⇥'], 'scope'],
-    [['⌘', '↵'], 'ask Lab'],
-    [['esc'], 'close'],
+function Footer({ ask, scope }: { ask: boolean; scope: boolean }) {
+  const hints: [string[], string, boolean][] = [
+    [['↑', '↓'], 'navigate', true],
+    [['↵'], 'open', true],
+    [['⇥'], 'scope', scope],
+    [['⌘', '↵'], 'ask Lab', ask],
+    [['esc'], 'close', true],
   ];
 
   return (
-    <div className='flex h-9 items-center gap-4 border-t px-4 text-xs text-muted-foreground'>
-      {hints.map(([keys, label]) => (
-        <span key={label} className='flex items-center gap-1.5'>
-          <Keys keys={keys} />
-          {label}
-        </span>
-      ))}
+    <div className='flex h-9 items-center gap-4 border-t px-4 text-xs text-muted-foreground pointer-coarse:hidden'>
+      {hints
+        .filter(([, , shown]) => shown)
+        .map(([keys, label]) => (
+          <span key={label} className='flex items-center gap-1.5'>
+            <Keys keys={keys} />
+            {label}
+          </span>
+        ))}
     </div>
   );
 }
@@ -515,6 +517,8 @@ function Palette({
     'all',
     ...scopes.filter(({ id }) => counts[id] > 0).map(({ id }) => id),
   ];
+
+  const scoped = visible.length > 1;
 
   const ask = () => {
     if (!query) {
@@ -607,7 +611,7 @@ function Palette({
           </CommandGroup>
         )}
       </CommandList>
-      <Footer />
+      <Footer ask={query !== ''} scope={scoped} />
     </Command>
   );
 }
