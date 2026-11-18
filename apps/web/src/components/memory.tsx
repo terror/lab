@@ -1,4 +1,5 @@
 import { LoadError } from '@/components/load-error';
+import { SettingRow } from '@/components/setting-row';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,17 +9,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
+import { SectionHeading } from '@/components/ui/section-heading';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  type MemoryState,
   addMemory,
   memoryQueryOptions,
   removeMemory,
@@ -27,7 +30,7 @@ import {
 } from '@/lib/memory';
 import { undoToast } from '@/lib/undo';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
 function MemoryForm({ onClose }: { onClose: () => void }) {
@@ -99,72 +102,31 @@ function AddMemoryDialog({
   );
 }
 
-function Memories({ memories }: { memories: MemoryState['memories'] }) {
+function MemoryRow({ id, text }: { id: string; text: string }) {
   const remove = useMemoryUpdate(removeMemory);
   const restore = useMemoryUpdate(addMemory);
 
   return (
-    <div className='flex flex-col gap-3'>
-      <div className='space-y-1'>
-        <h2 className='text-sm font-medium'>Memories</h2>
-        <p className='text-sm text-muted-foreground'>
-          Facts Lab remembers across chats. Ask it to remember or forget
-          something, or delete them here.
-        </p>
-      </div>
-      {memories.length === 0 && (
-        <p className='text-sm text-muted-foreground'>No memories yet.</p>
-      )}
-      <ul className='-mx-3 flex flex-col'>
-        {memories.map(({ id, text: memory }) => (
-          <li
-            key={id}
-            className='flex items-center gap-3 rounded-2xl px-3 py-1.5 transition-colors hover:bg-muted/50'
-          >
-            <span className='min-w-0 flex-1 text-sm'>{memory}</span>
-            <Button
-              aria-label={`Delete ${memory}`}
-              disabled={remove.isPending}
-              onClick={() =>
-                remove.mutate(id, {
-                  onSuccess: () =>
-                    undoToast('Memory deleted.', () => restore.mutate(memory)),
-                })
-              }
-              size='sm'
-              variant='ghost'
-            >
-              Delete
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function ReferenceChats({ enabled }: { enabled: boolean }) {
-  const update = useMemoryUpdate((referenceChats: boolean) =>
-    updateMemory({ referenceChats })
-  );
-
-  return (
-    <div className='flex items-start justify-between gap-6'>
-      <div className='space-y-1'>
-        <label className='text-sm font-medium' htmlFor='reference-chats'>
-          Reference other chats
-        </label>
-        <p className='text-sm text-muted-foreground'>
-          Let Lab search and read your earlier chats when they would help.
-        </p>
-      </div>
-      <Switch
-        checked={enabled}
-        disabled={update.isPending}
-        id='reference-chats'
-        onCheckedChange={(checked) => update.mutate(checked)}
-      />
-    </div>
+    <ListRow
+      actions={
+        <Button
+          aria-label={`Forget ${text}`}
+          disabled={remove.isPending}
+          onClick={() =>
+            remove.mutate(id, {
+              onSuccess: () =>
+                undoToast('Memory forgotten.', () => restore.mutate(text)),
+            })
+          }
+          size='icon-sm'
+          variant='quiet'
+        >
+          <Trash2 aria-hidden='true' />
+        </Button>
+      }
+    >
+      <span className='min-w-0 flex-1'>{text}</span>
+    </ListRow>
   );
 }
 
@@ -173,23 +135,59 @@ export function Memory() {
 
   const [adding, setAdding] = useState(false);
 
+  const update = useMemoryUpdate((referenceChats: boolean) =>
+    updateMemory({ referenceChats })
+  );
+
+  const add = (
+    <Button onClick={() => setAdding(true)} size='sm'>
+      <Plus aria-hidden='true' />
+      Add memory
+    </Button>
+  );
+
   return (
     <>
       <PageHeader
-        actions={
-          <Button onClick={() => setAdding(true)} size='sm'>
-            <Plus aria-hidden='true' />
-            Add memory
-          </Button>
-        }
-        description='What Lab remembers about you across chats.'
+        actions={add}
+        description='Facts Lab remembers about you across chats. Ask it to remember or forget something in any chat, or change them here.'
         title='Memory'
       />
-      {memory.isError && <LoadError subject='memory' />}
+      {memory.isPending && <ListSkeleton />}
+      {memory.isLoadingError && (
+        <LoadError onRetry={() => memory.refetch()} subject='memory' />
+      )}
       {memory.data && (
         <>
-          <ReferenceChats enabled={memory.data.referenceChats} />
-          <Memories memories={memory.data.memories} />
+          <ul className='flex flex-col gap-0.5'>
+            <SettingRow
+              control={
+                <Switch
+                  checked={memory.data.referenceChats}
+                  disabled={update.isPending}
+                  id='reference-chats'
+                  onCheckedChange={(checked) => update.mutate(checked)}
+                />
+              }
+              description='Let Lab search and read your earlier chats when they would help.'
+              htmlFor='reference-chats'
+              label='Reference other chats'
+            />
+          </ul>
+          <section className='flex flex-col gap-2'>
+            <SectionHeading>Memories</SectionHeading>
+            {memory.data.memories.length === 0 && (
+              <EmptyState
+                description='Tell it something worth remembering in any chat, or add a memory here.'
+                title='Lab hasn’t learned anything yet'
+              />
+            )}
+            <ul className='flex flex-col gap-0.5'>
+              {memory.data.memories.map(({ id, text }) => (
+                <MemoryRow key={id} id={id} text={text} />
+              ))}
+            </ul>
+          </section>
         </>
       )}
       <AddMemoryDialog onOpenChange={setAdding} open={adding} />
