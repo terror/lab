@@ -1,13 +1,52 @@
 import { LiveMark } from '@/components/ui/live-mark';
 import { useDraft, useUnreadChats } from '@/lib/conversations';
 import { spring } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
-import { m, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import {
+  LazyMotion,
+  animate,
+  m,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+  useVelocity,
+} from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 
 const DOZE_MS = 360_000;
 
 const LEAN_MS = 1_600;
+
+const LEASH = 52;
+
+const SHAKES = 5;
+
+const SHAKE_MS = 1_600;
+
+const fizzedKey = 'lab:fizzed';
+
+const loadDrag = () =>
+  import('@/lib/motion-max').then((features) => features.default);
+
+function leash(offset: number) {
+  return LEASH * Math.tanh(offset / LEASH);
+}
+
+function release(reversals: readonly number[]) {
+  const now = performance.now();
+
+  const shaken = reversals.filter((at) => now - at < SHAKE_MS).length >= SHAKES;
+
+  if (!shaken || window.sessionStorage.getItem(fizzedKey) !== null) {
+    return 'bubble';
+  }
+
+  window.sessionStorage.setItem(fizzedKey, 'true');
+
+  return 'fizz';
+}
 
 const poses = {
   leaning: { scaleX: 1.06, scaleY: 0.94, y: 1.875 },
@@ -106,13 +145,68 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
     wake: 'wake',
   } as const;
 
+  const playful = !quiet && !reduced;
+
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const leashX = useTransform(x, leash);
+  const leashY = useTransform(y, leash);
+  const tilt = useSpring(
+    useTransform(useVelocity(x), [-300, 300], [-16, 16]),
+    spring.snap
+  );
+  const shake = useRef({ direction: 0, reversals: [] as number[] });
+  const [toy, setToy] = useState<'bubble' | 'fizz' | 'held'>();
+  const [posed, setPosed] = useState(pose);
+
+  if (posed !== pose) {
+    setPosed(pose);
+    setToy(undefined);
+  }
+
   return (
-    <m.span
-      animate={leaning ? poses.leaning : poses.upright}
-      className='flex origin-bottom'
-      transition={spring.lively}
-    >
-      <LiveMark className='size-10' state={states[pose]} />
-    </m.span>
+    <LazyMotion features={loadDrag}>
+      <m.span
+        _dragX={x}
+        _dragY={y}
+        className={cn(
+          'flex select-none',
+          playful && 'cursor-grab touch-none active:cursor-grabbing'
+        )}
+        drag={playful}
+        dragMomentum={false}
+        onDrag={(_, { delta }) => {
+          const direction = Math.abs(delta.x) > 0.8 ? Math.sign(delta.x) : 0;
+
+          if (direction === 0 || direction === shake.current.direction) {
+            return;
+          }
+
+          if (shake.current.direction !== 0) {
+            shake.current.reversals.push(performance.now());
+          }
+
+          shake.current.direction = direction;
+        }}
+        onDragEnd={() => {
+          void animate(x, 0, spring.pop);
+          void animate(y, 0, spring.pop);
+          setToy(release(shake.current.reversals));
+        }}
+        onDragStart={() => {
+          shake.current = { direction: 0, reversals: [] };
+          setToy('held');
+        }}
+        style={{ originY: 0.9, rotate: tilt, x: leashX, y: leashY }}
+      >
+        <m.span
+          animate={leaning ? poses.leaning : poses.upright}
+          className='flex origin-bottom'
+          transition={spring.lively}
+        >
+          <LiveMark className='size-10' state={toy ?? states[pose]} />
+        </m.span>
+      </m.span>
+    </LazyMotion>
   );
 }

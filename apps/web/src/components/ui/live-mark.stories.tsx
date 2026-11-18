@@ -23,6 +23,9 @@ const meta = preview.meta({
         'recover',
         'doze',
         'wake',
+        'held',
+        'bubble',
+        'fizz',
       ],
     },
   },
@@ -104,4 +107,16 @@ export const Doze = meta.story({
 
 export const Wake = meta.story({
   args: { className: 'size-10', state: 'wake' },
+});
+
+export const Held = meta.story({
+  args: { className: 'size-10', state: 'held' },
+});
+
+export const Bubble = meta.story({
+  args: { className: 'size-10', state: 'bubble' },
+});
+
+export const Fizz = meta.story({
+  args: { className: 'size-10', state: 'fizz' },
 });

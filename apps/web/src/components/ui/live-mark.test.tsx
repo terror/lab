@@ -35,6 +35,9 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'recover',
     'doze',
     'wake',
+    'held',
+    'bubble',
+    'fizz',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -47,10 +50,22 @@ test('each state of the mark runs its own animation and idle runs none', async (
     ahem: ['live-mark-ahem', 'live-mark-ping-ahem'],
     assemble: ['live-mark-assemble', 'live-mark-fade'],
     broken: [],
+    bubble: [
+      'live-mark-bubble',
+      'live-mark-slosh-blue',
+      'live-mark-slosh-yellow',
+    ],
     done: ['live-mark-hop', 'live-mark-sparkle'],
     doze: ['live-mark-doze', 'live-mark-doze-lid', 'live-mark-z'],
     drift: ['live-mark-ping-away'],
     error: ['live-mark-slip', 'live-mark-slip-coral'],
+    fizz: [
+      'live-mark-bubble',
+      'live-mark-gulp',
+      'live-mark-lid-jump',
+      'live-mark-slosh-blue',
+      'live-mark-slosh-yellow',
+    ],
     gulp: ['live-mark-gulp', 'live-mark-ping-drop'],
     handoff: [
       'live-mark-dot',
@@ -58,6 +73,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
       'live-mark-hop',
       'live-mark-sparkle',
     ],
+    held: ['live-mark-slosh-blue', 'live-mark-slosh-yellow'],
     idle: [],
     proud: ['live-mark-hop-big', 'live-mark-lid', 'live-mark-sparkle'],
     recover: ['live-mark-assemble', 'live-mark-mend'],
@@ -115,6 +131,9 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     'recover',
     'doze',
     'wake',
+    'held',
+    'bubble',
+    'fizz',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -145,13 +164,16 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       ahem: [],
       assemble: ['live-mark-fade'],
       broken: [],
+      bubble: [],
       done: [],
       dot: [],
       doze: [],
       drift: [],
       error: [],
+      fizz: [],
       gulp: [],
       handoff: ['live-mark-hide', 'live-mark-show'],
+      held: [],
       proud: [],
       recover: [],
       thinking: ['live-mark-dim'],
