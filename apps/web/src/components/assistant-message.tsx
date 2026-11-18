@@ -152,7 +152,13 @@ type CallProps = {
   working: boolean;
 };
 
-function ToolStep({ call, progress, result, working }: CallProps) {
+function ToolStep({
+  call,
+  progress,
+  result,
+  tick = false,
+  working,
+}: CallProps & { tick?: boolean }) {
   const { status, ...view } = useToolView(call, progress, result, working);
 
   const renderer = toolRenderer(call.name);
@@ -162,6 +168,8 @@ function ToolStep({ call, progress, result, working }: CallProps) {
   const summary = step.label ?? renderer.summary?.(view);
 
   const Icon = renderer.icon;
+
+  const ticked = tick && status === 'done';
 
   const active = renderer.title({ ...view, active: true });
 
@@ -175,13 +183,10 @@ function ToolStep({ call, progress, result, working }: CallProps) {
   return (
     <TraceCollapsible>
       <TraceCollapsibleTrigger>
-        <TraceLine className='h-6.5' status={step.line}>
-          <TraceIcon>
-            {status === 'done' ? (
-              <Icon aria-hidden='true' />
-            ) : (
-              <StatusIcon status={status} />
-            )}
+        <TraceLine className='h-6.5' status={step.line} tick={ticked}>
+          <TraceIcon className='relative'>
+            {ticked && <Icon aria-hidden='true' className='absolute' />}
+            <StatusIcon status={status} />
           </TraceIcon>
           <TraceTitle>{titles[status]}</TraceTitle>
           {summary && (
@@ -223,6 +228,41 @@ function ToolCards({ call, progress, result, working }: CallProps) {
   );
 }
 
+function LiveSteps({
+  calls,
+  progress,
+  results,
+}: {
+  calls: readonly Call[];
+  progress: ReadonlyMap<string, ToolProgress>;
+  results: ReadonlyMap<string, ToolResult>;
+}) {
+  const [settled] = useState(() => new Set(calls.map(({ id }) => id)));
+
+  return (
+    <Trace className='gap-0'>
+      <AnimatePresence initial={false}>
+        {calls.map((call) => (
+          <m.div
+            key={call.id}
+            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 6 }}
+            transition={{ ...fade.base, y: spring.snap }}
+          >
+            <ToolStep
+              call={call}
+              progress={progress.get(call.id)}
+              result={results.get(call.id)}
+              tick={!settled.has(call.id)}
+              working
+            />
+          </m.div>
+        ))}
+      </AnimatePresence>
+    </Trace>
+  );
+}
+
 function StepStatus({
   activity,
   call,
@@ -251,7 +291,9 @@ function StepStatus({
     );
   }
 
-  return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
+  const status = view.active ? toolRenderer(call.name).title(view) : 'Thinking';
+
+  return <Activity status={activity ?? status} />;
 }
 
 function waited(span: Span, waits: readonly Span[]) {
@@ -629,7 +671,13 @@ export function AssistantMessage({
 
   const last = calls.at(-1);
 
-  const inSlot = last !== undefined && !replying;
+  const current = calls.findLast(({ id }) => !results.has(id)) ?? last;
+
+  const inSlot = current !== undefined && !replying;
+
+  const live = working && !replying;
+
+  const finished = calls.filter(({ id }) => results.has(id));
 
   const shared = { parts, progress, results, streaming, working };
 
@@ -637,16 +685,28 @@ export function AssistantMessage({
     <Message>
       <MessageContent className='gap-3 text-base'>
         <Segments segments={all.slice(0, split)} {...shared} />
-        {inSlot && (working || activity !== undefined) && (
-          <StepStatus
-            activity={activity}
-            call={last}
-            progress={progress.get(last.id)}
-            result={results.get(last.id)}
-            working={working}
-          />
-        )}
-        {last && (!working || replying) && (
+        <AnimatePresence initial={false}>
+          {live && (
+            <m.div
+              key='steps'
+              animate={{ height: 'auto', opacity: 1 }}
+              className={cn(
+                '-m-1 overflow-hidden p-1',
+                finished.length === 0 && 'hidden'
+              )}
+              exit={{ height: 0, opacity: 0 }}
+              initial={{ height: 0, opacity: 0 }}
+              transition={{ ...fade.fast, height: spring.glide }}
+            >
+              <LiveSteps
+                calls={finished}
+                progress={progress}
+                results={results}
+              />
+            </m.div>
+          )}
+        </AnimatePresence>
+        {last && !live && (
           <Worked
             span={span}
             statuses={calls.map(({ id }) =>
@@ -666,6 +726,15 @@ export function AssistantMessage({
           </Worked>
         )}
         {plan && <Plan {...plan} />}
+        {inSlot && (working || activity !== undefined) && (
+          <StepStatus
+            activity={activity}
+            call={current}
+            progress={progress.get(current.id)}
+            result={results.get(current.id)}
+            working={working}
+          />
+        )}
         <Segments segments={all.slice(split)} {...shared} />
         {activity !== undefined && !inSlot && <Activity status={activity} />}
         {failure && <RunFailure reason={failure} />}
