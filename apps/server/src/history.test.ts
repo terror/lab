@@ -45,3 +45,49 @@ test('other chats can be searched and read only when allowed', async () => {
     searched: `[${earlier}] foo (date): **zebracorn** plans`,
   });
 });
+
+test('a branched chat is read with the messages it shares', async () => {
+  const headers = await signIn();
+
+  const id = await chat(headers, { content: 'foo' });
+
+  await call(headers, 'POST', `/conversations/${id}/messages`, {
+    content: 'bar',
+  });
+
+  await settle(id);
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  const { body: branch } = await call(
+    headers,
+    'POST',
+    `/conversations/${id}/branches`,
+    {
+      content: 'baz',
+      entryId: body.items.findLast(
+        ({ kind }: { kind: string }) => kind === 'lab.message'
+      ).id,
+      kind: 'edit',
+    }
+  );
+
+  await settle(branch.id);
+
+  await call(headers, 'PATCH', '/memory', { referenceChats: true });
+
+  script(
+    toolCall('chat_read', { id: branch.id }),
+    fauxAssistantMessage('qux')
+  );
+
+  const reader = await chat(headers, { content: 'quux' });
+
+  expect(await toolOutputs(headers, reader)).toEqual([
+    'foo\n\nuser: foo\n\nassistant: foo\n\nuser: baz\n\nassistant: foo',
+  ]);
+});
