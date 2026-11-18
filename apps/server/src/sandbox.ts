@@ -215,6 +215,8 @@ function computerName(ownerId: string) {
 
 const MAX_READ_BYTES = 5_000_000;
 
+const OUTPUT_LIMIT = 4_000_000;
+
 const mimeTypes: Record<string, string> = {
   csv: 'text/csv',
   gif: 'image/gif',
@@ -320,18 +322,32 @@ async function run(
 ) {
   const chunks: string[] = [];
 
+  let length = 0;
+
   const { exitCode } = await computer.provider.run(computer.name, {
     command,
     cwd: computer.chat,
     onOutput: (chunk) => {
-      chunks.push(chunk);
+      if (length < OUTPUT_LIMIT) {
+        chunks.push(chunk.slice(0, OUTPUT_LIMIT - length));
+      }
+
+      length += chunk.length;
       onOutput?.(chunk);
     },
     signal,
     timeoutMs,
   });
 
-  return { exitCode, output: chunks.join('') };
+  const output = chunks.join('');
+
+  return {
+    exitCode,
+    output:
+      length > OUTPUT_LIMIT
+        ? `${output}\n\n[Output cut at ${OUTPUT_LIMIT} characters.]`
+        : output,
+  };
 }
 
 export function createSandboxAccess(

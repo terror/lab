@@ -99,6 +99,34 @@ test('long tool output is shown in pages the agent can keep reading', async () =
   ]);
 });
 
+test('command output past four million characters is cut', async () => {
+  const headers = await signIn();
+
+  useSandboxProvider({
+    ...memoryProvider(),
+    run: async (_computer, { onOutput }) => {
+      for (let chunk = 0; chunk < 5; chunk += 1) {
+        onOutput('a'.repeat(1_000_000));
+      }
+
+      return { exitCode: 0 };
+    },
+  });
+
+  script(
+    toolCall('sandbox_exec', { command: 'foo' }, 'bar'),
+    fauxAssistantMessage('baz')
+  );
+
+  const id = await chat(headers, { content: 'qux' });
+
+  const text = `Exit code 0\n\n${'a'.repeat(4_000_000)}\n\n[Output cut at 4000000 characters.]`;
+
+  expect(await toolOutputs(headers, id)).toEqual([
+    `${text.slice(0, 100_000)}\n\n[Showing characters 0–100000 of ${text.length}. Call tool_output_read with call_id "bar" and offset 100000 to read more.]`,
+  ]);
+});
+
 function memoryProvider(): SandboxProvider & {
   computers: Map<string, string>;
   files: Map<string, Uint8Array>;
