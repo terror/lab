@@ -200,3 +200,39 @@ test('on a touch screen the buttons sit far enough apart that their hit areas ne
     edges.slice(1).map((edge, index) => edge.left - (edges[index]?.right ?? 0))
   ).toEqual([12, 12]);
 });
+
+test('on a phone the attach menu opens as a sheet', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
+    matchMedia(
+      query === '(pointer: coarse) and (max-width: 767px)' ? 'all' : query
+    )
+  );
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft=''
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={() => undefined}
+      />
+    </TooltipProvider>
+  );
+
+  await screen.getByRole('button', { name: 'Add photos and files' }).click();
+
+  const sheet = screen.getByRole('dialog', { name: 'Add to your message' });
+
+  await expect.element(sheet).toBeVisible();
+
+  expect(
+    [...sheet.element().querySelectorAll('button')].map(
+      (button) => button.textContent
+    )
+  ).toEqual(['Add photos & files', 'Add from library']);
+});

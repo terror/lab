@@ -9,6 +9,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
+import { ListRow } from '@/components/ui/list-row';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import {
   Tooltip,
   TooltipContent,
@@ -28,7 +37,7 @@ import {
 } from '@/lib/commands';
 import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
-import { useMediaQuery } from '@/lib/media';
+import { useMediaQuery, usePhone } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
 import { useAdmin } from '@/lib/profile';
@@ -40,6 +49,7 @@ import {
   CornerDownRight,
   FileText,
   LibraryBig,
+  type LucideIcon,
   Mic,
   Paperclip,
   Plus,
@@ -116,6 +126,92 @@ function AttachmentPreview({
         <X aria-hidden='true' />
       </Button>
     </div>
+  );
+}
+
+type Source = { icon: LucideIcon; label: string; run: () => void };
+
+function AttachMenu({
+  disabled,
+  onCloseAutoFocus,
+  sources,
+}: {
+  disabled: boolean;
+  onCloseAutoFocus: (event: Event) => void;
+  sources: Source[];
+}) {
+  const phone = usePhone();
+  const [open, setOpen] = useState(false);
+
+  const trigger = (
+    <Button
+      aria-label='Add photos and files'
+      className='rounded-full'
+      disabled={disabled}
+      size='icon'
+      type='button'
+      variant='quiet'
+    >
+      <Plus aria-hidden='true' />
+    </Button>
+  );
+
+  if (!phone) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        <DropdownMenuContent
+          align='start'
+          onCloseAutoFocus={onCloseAutoFocus}
+          side='top'
+        >
+          {sources.map(({ icon: Icon, label, run }) => (
+            <DropdownMenuItem key={label} onSelect={run}>
+              <Icon aria-hidden='true' />
+              {label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
+        className='gap-0 rounded-t-dialog'
+        onCloseAutoFocus={onCloseAutoFocus}
+        showCloseButton={false}
+        side='bottom'
+      >
+        <SheetHeader className='pb-2'>
+          <SheetTitle>Add to your message</SheetTitle>
+          <SheetDescription className='sr-only'>
+            Attach photos and files
+          </SheetDescription>
+        </SheetHeader>
+        <ul className='px-4 pb-4'>
+          {sources.map(({ icon: Icon, label, run }) => (
+            <ListRow key={label} asChild>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  run();
+                }}
+                type='button'
+              >
+                <Icon
+                  aria-hidden='true'
+                  className='size-4 text-muted-foreground'
+                />
+                {label}
+              </button>
+            </ListRow>
+          ))}
+        </ul>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -558,39 +654,23 @@ export function Composer({
             ref={input}
             type='file'
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label='Add photos and files'
-                className='rounded-full'
-                disabled={disabled || room <= 0}
-                size='icon'
-                type='button'
-                variant='quiet'
-              >
-                <Plus aria-hidden='true' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align='start'
-              onCloseAutoFocus={(event) => {
-                if (openingPicker.current) {
-                  openingPicker.current = false;
-                  event.preventDefault();
-                }
-              }}
-              side='top'
-            >
-              <DropdownMenuItem onSelect={() => input.current?.click()}>
-                <Paperclip aria-hidden='true' />
-                Add photos & files
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openPicker}>
-                <LibraryBig aria-hidden='true' />
-                Add from library
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AttachMenu
+            disabled={disabled || room <= 0}
+            onCloseAutoFocus={(event) => {
+              if (openingPicker.current) {
+                openingPicker.current = false;
+                event.preventDefault();
+              }
+            }}
+            sources={[
+              {
+                icon: Paperclip,
+                label: 'Add photos & files',
+                run: () => input.current?.click(),
+              },
+              { icon: LibraryBig, label: 'Add from library', run: openPicker },
+            ]}
+          />
           {pickerOpened && (
             <Suspense fallback={null}>
               <LibraryPicker

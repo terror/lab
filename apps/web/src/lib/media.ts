@@ -12,3 +12,7 @@ export function useMediaQuery(query: string) {
     () => window.matchMedia(query).matches
   );
 }
+
+export function usePhone() {
+  return useMediaQuery('(pointer: coarse) and (max-width: 767px)');
+}
