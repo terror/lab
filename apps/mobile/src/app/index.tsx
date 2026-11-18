@@ -1,15 +1,20 @@
-import { authClient } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
 import { call, client } from '@/lib/client';
 import { useColors } from '@/lib/theme';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Stack } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
 
 function SignOut() {
   const colors = useColors();
 
+  const queryClient = useQueryClient();
+
   return (
-    <Pressable accessibilityRole='button' onPress={() => authClient.signOut()}>
+    <Pressable
+      accessibilityRole='button'
+      onPress={() => void signOut(queryClient)}
+    >
       <Text style={{ color: colors.mutedForeground }}>Sign out</Text>
     </Pressable>
   );

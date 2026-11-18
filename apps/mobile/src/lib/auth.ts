@@ -1,4 +1,5 @@
 import { expoClient } from '@better-auth/expo/client';
+import type { QueryClient } from '@tanstack/react-query';
 import { createAuthClient } from 'better-auth/react';
 import * as SecureStore from 'expo-secure-store';
 
@@ -14,3 +15,9 @@ export const authClient = createAuthClient({
   baseURL: origin,
   plugins: [expoClient({ storage: SecureStore, storagePrefix: 'lab' })],
 });
+
+export async function signOut(queryClient: QueryClient) {
+  await authClient.signOut().catch(() => undefined);
+
+  queryClient.clear();
+}
