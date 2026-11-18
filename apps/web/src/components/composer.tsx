@@ -1,3 +1,4 @@
+import { CommandMenu, useCommandMenu } from '@/components/command-menu';
 import { DocumentThumbnail } from '@/components/document-card';
 import { ErrorMessage } from '@/components/error-message';
 import { ModelPicker } from '@/components/model-picker';
@@ -30,11 +31,7 @@ import {
   readLibraryItem,
   textLimit,
 } from '@/lib/attachments';
-import {
-  type CommandContext,
-  type SlashCommand,
-  matchCommands,
-} from '@/lib/commands';
+import { type CommandContext, type SlashCommand } from '@/lib/commands';
 import { useDictation } from '@/lib/dictation';
 import type { LibraryItem } from '@/lib/library';
 import { useMediaQuery, usePhone } from '@/lib/media';
@@ -389,8 +386,6 @@ export function Composer({
   const [attachError, setAttachError] = useState<string>();
   const [picking, setPicking] = useState(false);
   const [pickerOpened, setPickerOpened] = useState(false);
-  const [active, setActive] = useState(0);
-  const [dismissed, setDismissed] = useState<string>();
   const touch = useMediaQuery('(pointer: coarse)');
   const openingPicker = useRef(false);
 
@@ -464,17 +459,8 @@ export function Composer({
     onSubmit(content);
   };
 
-  const matches = matchCommands(draft, commandContext);
-
-  const menu = matches.length > 0 && dismissed !== draft;
-
-  const current = Math.min(active, matches.length - 1);
-
-  const selected = matches[current];
-
   const runCommand = async (command: SlashCommand) => {
     onDraftChange('');
-    setActive(0);
     setAttachError(undefined);
 
     try {
@@ -490,29 +476,14 @@ export function Composer({
     }
   };
 
-  const onMenuKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    const keys: Record<string, () => void> = {
-      ArrowDown: () => setActive((current + 1) % matches.length),
-      ArrowUp: () => setActive((current - 1 + matches.length) % matches.length),
-      Enter: () => selected && void runCommand(selected),
-      Escape: () => setDismissed(draft),
-      Tab: () => selected && void runCommand(selected),
-    };
-
-    const handle = keys[event.key];
-
-    if (!handle || event.shiftKey || event.nativeEvent.isComposing) {
-      return false;
-    }
-
-    event.preventDefault();
-    handle();
-
-    return true;
-  };
+  const commands = useCommandMenu(
+    draft,
+    commandContext,
+    (command) => void runCommand(command)
+  );
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (menu && onMenuKey(event)) {
+    if (commands.onKeyDown(event)) {
       return;
     }
 
@@ -562,49 +533,12 @@ export function Composer({
 
   return (
     <form onSubmit={onFormSubmit} className='relative w-full'>
-      {menu && (
-        <div className='absolute inset-x-2 bottom-full mb-2 flex animate-in flex-col rounded-menu bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-base ease-out fade-in-0 zoom-in-95 slide-in-from-bottom-2'>
-          <ul aria-label='Commands' className='flex flex-col'>
-            {matches.map((command) => (
-              <li key={command.name}>
-                <button
-                  aria-current={command === selected ? 'true' : undefined}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground',
-                    command === selected && 'bg-accent text-accent-foreground'
-                  )}
-                  onClick={() => void runCommand(command)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  type='button'
-                >
-                  <command.icon
-                    aria-hidden='true'
-                    className='size-4 shrink-0 text-muted-foreground'
-                  />
-                  <span className='font-medium'>/{command.name}</span>
-                  <span className='truncate text-muted-foreground'>
-                    {command.description}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className='flex gap-3 px-1.5 pt-1.5 pb-0.5 text-xs text-muted-foreground pointer-coarse:hidden'>
-            <span className='flex items-center gap-1'>
-              <Kbd>↑</Kbd>
-              <Kbd>↓</Kbd>
-              to choose
-            </span>
-            <span className='flex items-center gap-1'>
-              <Kbd>↵</Kbd>
-              to run
-            </span>
-            <span className='flex items-center gap-1'>
-              <Kbd>esc</Kbd>
-              to close
-            </span>
-          </p>
-        </div>
+      {commands.open && (
+        <CommandMenu
+          matches={commands.matches}
+          onRun={commands.run}
+          selected={commands.selected}
+        />
       )}
       <div className='flex flex-col rounded-3xl border bg-background shadow-sm focus-ring-within'>
         {attachments.length > 0 && (

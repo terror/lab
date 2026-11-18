@@ -137,6 +137,56 @@ test('slash commands run from the composer', async () => {
   });
 });
 
+test('arrow keys move through slash commands and escape closes them', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        commandContext={{
+          conversationId: 7,
+          lastReply: 'foo',
+          newChat: () => undefined,
+        }}
+        draft='/'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={() => undefined}
+      />
+    </TooltipProvider>
+  );
+
+  const current = () =>
+    screen.container.querySelector('[aria-current="true"]')?.textContent;
+
+  await screen.getByLabelText('Message').click();
+
+  const selected = [current()];
+
+  for (const key of ['{ArrowUp}', '{ArrowDown}', '{ArrowDown}']) {
+    await userEvent.keyboard(key);
+    selected.push(current());
+  }
+
+  await userEvent.keyboard('{Escape}');
+
+  expect({
+    open: screen.container.querySelector('[aria-label="Commands"]') !== null,
+    selected,
+  }).toEqual({
+    open: false,
+    selected: [
+      '/compactSummarize earlier messages to free up context',
+      '/newStart a new chat',
+      '/compactSummarize earlier messages to free up context',
+      '/copyCopy the last reply',
+    ],
+  });
+});
+
 function composer(running: boolean) {
   return (
     <TooltipProvider>
