@@ -113,7 +113,7 @@ export {
   type TrashKind,
   trashKinds,
 } from './chats';
-export { PlanDoc, editPlan } from './plan';
+export { PlanDoc, editPlan, rewindPlan } from './plan';
 export { PreferencesDoc } from './preferences';
 export { type Owner, userDoc } from './docs';
 export { TitleDoc, plainTitle, titleChat } from './title';

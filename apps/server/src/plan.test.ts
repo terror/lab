@@ -170,3 +170,63 @@ test('the event stream follows the plan', async () => {
     },
   ]);
 });
+
+test('a retried reply starts from the plan it had before it', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall(
+      'plan_update',
+      { steps: [{ status: 'pending', text: 'foo' }] },
+      'bar'
+    ),
+    fauxAssistantMessage('baz'),
+    toolCall('plan_update', { steps: [{ status: 'done', text: 'foo' }] }),
+    fauxAssistantMessage('qux')
+  );
+
+  const id = await chat(headers, { content: 'quux' });
+
+  await call(headers, 'POST', `/conversations/${id}/messages`, {
+    content: 'corge',
+  });
+
+  await settle(id);
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  const retried = (body.items as { id: number; model?: { role: string }[] }[])
+    .filter(({ model }) => model?.[0]?.role === 'assistant')
+    .at(2);
+
+  prompts.length = 0;
+
+  const { body: branch } = await call(
+    headers,
+    'POST',
+    `/conversations/${id}/branches`,
+    { entryId: retried?.id, kind: 'retry' }
+  );
+
+  await settle(branch.id);
+
+  expect({
+    plan: await harness.snapshot(
+      PlanDoc,
+      branch.id as ConversationId,
+      BACKGROUND_CONTEXT
+    ),
+    prompts: prompts.map(({ plan }) => plan),
+  }).toEqual({
+    plan: {
+      author: 'agent',
+      callId: 'bar',
+      steps: [{ status: 'pending', text: 'foo' }],
+    },
+    prompts: [`<plan>\n${guidance}\n\nThe plan:\n1. [pending] foo\n</plan>`],
+  });
+});

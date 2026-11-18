@@ -8,7 +8,7 @@ import {
   type EntryRecord,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { TitleDoc } from '@lab/harness';
+import { TitleDoc, rewindPlan } from '@lab/harness';
 import { and, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -285,11 +285,15 @@ async function openBranch(parent: Parent, agent: AgentChange | undefined) {
     'Conversation not found'
   );
 
-  return origin.fork(
+  const branch = await origin.fork(
     parent.entryId as EntryId,
     { agent, ownership: { kind: 'ownerless' } },
     BACKGROUND_CONTEXT
   );
+
+  await branch.commit((tx) => rewindPlan(tx, branch.id), BACKGROUND_CONTEXT);
+
+  return branch;
 }
 
 const roles = { edit: 'user', retry: 'assistant' } as const;
