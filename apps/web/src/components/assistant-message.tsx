@@ -37,7 +37,12 @@ import { cn } from '@/lib/utils';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useContext, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useContext,
+  useState,
+} from 'react';
 
 export type { ToolProgress, ToolResult };
 
