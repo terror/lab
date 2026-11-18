@@ -1,5 +1,6 @@
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
+import '@/index.css';
 
 import { Markdown } from './markdown';
 
@@ -69,4 +70,40 @@ test('finished messages are not patched as if they were cut off', async () => {
   await expect.element(screen.getByText('foo')).toBeVisible();
 
   expect(screen.container.textContent).toBe('foo *bar');
+});
+
+test('single line breaks are kept', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>{'foo\nbar'}</Markdown>
+  );
+
+  await expect
+    .poll(() => screen.container.querySelector('p')?.innerHTML)
+    .toBe('foo<br>\nbar');
+});
+
+test('streamed words fade in', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming>{'foo bar'}</Markdown>
+  );
+
+  await expect
+    .poll(() =>
+      [...screen.container.querySelectorAll('[data-sd-animate]')].map(
+        (word) => getComputedStyle(word).animationName
+      )
+    )
+    .toEqual(['sd-fadeIn', 'sd-fadeIn']);
 });
