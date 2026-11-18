@@ -357,7 +357,7 @@ function ProjectsSection({
   const showing = closed === open ? undefined : open;
 
   const select = (id: number) => {
-    if (id !== open) {
+    if (path !== `/projects/${id}`) {
       setClosed(undefined);
       onProject(id);
       return;
@@ -405,15 +405,14 @@ function ProjectsSection({
         {projects.isError && <LoadError className='px-2' subject='projects' />}
         {shown.map((project) => {
           const Icon = project.id === showing ? FolderOpen : Folder;
+          const page = path === `/projects/${project.id}`;
 
           return (
             <div key={project.id} className='flex flex-col gap-0.5'>
               <div className='group relative flex items-center'>
                 <NavButton
-                  active={path === `/projects/${project.id}`}
-                  expanded={
-                    project.id === open ? project.id === showing : undefined
-                  }
+                  active={page}
+                  expanded={page ? project.id === showing : undefined}
                   onClick={() => select(project.id)}
                 >
                   <Icon aria-hidden='true' className='size-4 shrink-0' />
