@@ -8,7 +8,13 @@ import {
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
-import { ANSWER_LENGTH, QuestionsDoc, TitleDoc } from '@lab/harness';
+import {
+  ANSWER_LENGTH,
+  PlanDoc,
+  QuestionsDoc,
+  TitleDoc,
+  editPlan,
+} from '@lab/harness';
 import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -34,7 +40,7 @@ import {
 } from './messages';
 import { defaultModel, findModel, modelChange, models } from './models';
 import { moveChat } from './project-access';
-import { thinkingLevelSchema } from './schemas';
+import { planStepsSchema, thinkingLevelSchema } from './schemas';
 import { checkSpend } from './spend';
 import { subscribeStatus } from './status';
 import { moveToTrash } from './trash';
@@ -96,6 +102,8 @@ const answering = validator(
     callId: z.string().min(1).max(200),
   })
 );
+
+const planning = validator('json', z.object({ steps: planStepsSchema }));
 
 const modelSelection = validator(
   'json',
@@ -183,6 +191,14 @@ type BunServer = {
 type Conversation = NonNullable<
   Awaited<ReturnType<typeof harness.conversation>>
 >;
+
+async function watchPlan(conversation: Conversation) {
+  await conversation.commit(async (tx) => {
+    await tx.doc(PlanDoc, conversation.id);
+  }, BACKGROUND_CONTEXT);
+
+  return harness.watchDoc(PlanDoc, conversation.id, BACKGROUND_CONTEXT);
+}
 
 const owned = createMiddleware<{
   Variables: {
@@ -329,6 +345,8 @@ const conversations = new Hono()
 
       const watch = await conversation.watch(BACKGROUND_CONTEXT);
 
+      const plan = await watchPlan(conversation);
+
       const status = subscribeStatus(conversation.id, (value) =>
         stream.writeSSE({ event: 'status', data: value })
       );
@@ -336,6 +354,7 @@ const conversations = new Hono()
       const stop = () => {
         status.unsubscribe();
         void watch.stop();
+        void plan?.stop();
       };
 
       if (closed.signal.aborted) {
@@ -364,6 +383,22 @@ const conversations = new Hono()
           void status.report(view);
         }
       });
+
+      if (plan) {
+        await stream.writeSSE({
+          event: 'plan',
+          data: JSON.stringify(plan.value),
+        });
+
+        plan.start(async (call) => {
+          if (call.kind === 'value') {
+            await stream.writeSSE({
+              event: 'plan',
+              data: JSON.stringify(call.value),
+            });
+          }
+        });
+      }
 
       const heartbeat = setInterval(() => {
         void stream.write(': ping\n\n');
@@ -467,6 +502,21 @@ const conversations = new Hono()
       return c.body(null, 204);
     }
   )
+  .put('/:id/plan', idParam, owned, planning, async (c) => {
+    const { conversation } = c.var;
+
+    const { steps } = c.req.valid('json');
+
+    found(
+      await conversation.commit(
+        (tx) => editPlan(tx, conversation.id, steps),
+        BACKGROUND_CONTEXT
+      ),
+      'Plan not found'
+    );
+
+    return c.body(null, 204);
+  })
   .post('/:id/compact', rateLimit('messages'), idParam, owned, async (c) => {
     await checkSpend(c.get('user').id);
 

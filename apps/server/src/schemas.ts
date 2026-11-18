@@ -1,6 +1,8 @@
 import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
+import { PLAN_LIMIT, PLAN_STATUSES, STEP_LENGTH } from '@lab/harness/plan';
 import { CHAT_SORTS, type Preferences, THEMES } from '@lab/harness/preferences';
 
+export { PLAN_STATUSES, type PlanStatus } from '@lab/harness/plan';
 export { defaultPreferences } from '@lab/harness/preferences';
 import { z } from 'zod';
 
@@ -58,3 +60,12 @@ export const preferencesSchema = z.object({
 }) satisfies z.ZodType<Preferences>;
 
 export const thinkingLevelSchema = z.enum(MODEL_THINKING_LEVELS);
+
+export const planStepsSchema = z
+  .array(
+    z.object({
+      status: z.enum(PLAN_STATUSES),
+      text: z.string().trim().min(1).max(STEP_LENGTH),
+    })
+  )
+  .max(PLAN_LIMIT);

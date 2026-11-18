@@ -1,36 +1,43 @@
 import {
-  type AssistantMessage,
+  type FauxResponseFactory,
   type FauxResponseStep,
   fauxAssistantMessage,
   fauxToolCall,
 } from '@earendil-works/pi-ai';
+import { getCurrentSystemMessage } from '@earendil-works/pi-ai/utils/transcript';
 
-const scripted: AssistantMessage[] = [];
+const scripted: FauxResponseStep[] = [];
 
 export const prompts: Record<string, string>[] = [];
 
-function sections(context: { messages: { role: string }[] }) {
-  const [system] = context.messages.filter(
-    (message) => message.role === 'system'
-  );
-
-  return system && 'sections' in system
-    ? (system.sections as Record<string, string>)
-    : {};
+function sections(context: Parameters<FauxResponseFactory>[0]) {
+  return (getCurrentSystemMessage(context.messages)?.sections ?? {}) as Record<
+    string,
+    string
+  >;
 }
 
-export function script(...messages: AssistantMessage[]) {
-  scripted.push(...messages);
+export function script(...steps: FauxResponseStep[]) {
+  scripted.push(...steps);
 }
 
-export const respond: FauxResponseStep = (context, options) => {
+export const respond: FauxResponseFactory = (
+  context,
+  options,
+  state,
+  model
+) => {
   if (options?.sessionId === undefined) {
     return fauxAssistantMessage('foo');
   }
 
   prompts.push(sections(context));
 
-  return scripted.shift() ?? fauxAssistantMessage('foo');
+  const next = scripted.shift() ?? fauxAssistantMessage('foo');
+
+  return typeof next === 'function'
+    ? next(context, options, state, model)
+    : next;
 };
 
 export function toolCall(
