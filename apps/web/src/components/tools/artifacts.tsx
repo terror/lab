@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useDraft } from '@/lib/conversations';
+import { useLibraryImages } from '@/lib/library';
 import {
   Code,
   Download,
@@ -151,6 +152,8 @@ function FullScreen({
   artifact: Shown;
   onClose: () => void;
 }) {
+  const html = useLibraryImages(artifact.html);
+
   return (
     <Dialog onOpenChange={(open) => !open && onClose()} open>
       <DialogContent
@@ -164,7 +167,9 @@ function FullScreen({
           </DialogDescription>
         </DialogHeader>
         <div className='min-h-0 flex-1 overflow-y-auto'>
-          <SandboxFrame html={artifact.html} title={artifact.title} />
+          {html !== undefined && (
+            <SandboxFrame html={html} title={artifact.title} />
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -236,7 +241,9 @@ function Live({ artifact }: { artifact: Shown }) {
     );
   }, []);
 
-  const { html, title, version } = artifact;
+  const { title, version } = artifact;
+
+  const html = useLibraryImages(artifact.html);
 
   return (
     <section
@@ -268,7 +275,7 @@ function Live({ artifact }: { artifact: Shown }) {
           <button
             aria-label='Download'
             className={action}
-            onClick={() => download(title, html)}
+            onClick={() => download(title, html ?? artifact.html)}
             type='button'
           >
             <Download aria-hidden='true' className='size-4' />
@@ -284,14 +291,16 @@ function Live({ artifact }: { artifact: Shown }) {
         </div>
       </header>
       <div className='px-4 pb-4'>
-        {showCode && <PreviewCode>{html}</PreviewCode>}
+        {showCode && <PreviewCode>{artifact.html}</PreviewCode>}
         <div hidden={showCode}>
-          <SandboxFrame
-            html={html}
-            onError={onError}
-            onSend={addToDraft}
-            title={title}
-          />
+          {html !== undefined && (
+            <SandboxFrame
+              html={html}
+              onError={onError}
+              onSend={addToDraft}
+              title={title}
+            />
+          )}
         </div>
       </div>
       {errors.length > 0 && (

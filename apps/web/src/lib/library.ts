@@ -1,8 +1,10 @@
+import { imageTypes } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
   keepPreviousData,
   queryOptions,
   useInfiniteQuery,
+  useQueries,
 } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 import { useEffect, useState } from 'react';
@@ -113,4 +115,48 @@ export function libraryTextQueryOptions(id: number) {
     },
     staleTime: Infinity,
   });
+}
+
+const LIBRARY_IMAGE = /lab-image:(\d+)/g;
+
+function libraryImageQueryOptions(id: number) {
+  return queryOptions({
+    queryKey: ['library-image', id],
+    queryFn: async ({ signal }) => {
+      const response = await fetch(libraryItemUrl(id), { signal });
+
+      const type = response.headers.get('content-type');
+
+      if (!response.ok || !imageTypes.some((imageType) => imageType === type)) {
+        throw new Error('Unable to load image');
+      }
+
+      const data = new Uint8Array(await response.arrayBuffer()).toBase64();
+
+      return `data:${type};base64,${data}`;
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
+export function useLibraryImages(html: string) {
+  const ids = [
+    ...new Set(
+      Array.from(html.matchAll(LIBRARY_IMAGE), ([, id]) => Number(id))
+    ),
+  ];
+
+  const images = useQueries({ queries: ids.map(libraryImageQueryOptions) });
+
+  if (images.some(({ isPending }) => isPending)) {
+    return undefined;
+  }
+
+  const urls = new Map(ids.map((id, index) => [id, images[index]?.data]));
+
+  return html.replaceAll(
+    LIBRARY_IMAGE,
+    (reference, id: string) => urls.get(Number(id)) ?? reference
+  );
 }
