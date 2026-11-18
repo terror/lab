@@ -121,3 +121,67 @@ test('a stopped turn ends in place with its status above what to do next', async
     top,
   });
 });
+
+test('stopping puts queued messages back in the composer', async () => {
+  vi.stubGlobal('EventSource', FakeEventSource);
+
+  stubFetch(({ pathname }) => {
+    if (pathname === '/api/conversations/2/abort') {
+      return new Response(null, { status: 204 });
+    }
+
+    return Response.json(
+      pathname === '/api/conversations/2'
+        ? { forks: [], id: 2, projectId: null, running: true }
+        : { default: null, models: [] }
+    );
+  });
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => (
+        <TooltipProvider>
+          <Conversation id={2} />
+        </TooltipProvider>
+      ),
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await expect.poll(() => FakeEventSource.current).toBeDefined();
+
+  FakeEventSource.current?.emit('value', {
+    conversation: { id: 2 },
+    docs: {
+      'pi.inbox': {
+        items: [
+          {
+            content: 'foo\n\n<file name="bar.txt">\nbaz\n</file>',
+            entry: {
+              data: {
+                files: [{ name: 'bar.txt', text: 'baz', type: 'file' }],
+                text: 'foo',
+              },
+              kind: 'lab.message',
+            },
+            id: 3,
+            mode: 'followUp',
+          },
+        ],
+      },
+      'pi.live': { run: {} },
+    },
+    entries: [],
+  });
+
+  await screen.getByRole('button', { name: 'Stop' }).click();
+
+  await expect
+    .element(screen.getByRole('textbox', { name: 'Message' }))
+    .toHaveValue('foo');
+  await expect
+    .element(screen.getByRole('button', { name: 'Remove bar.txt' }))
+    .toBeVisible();
+});

@@ -6,6 +6,7 @@ import {
   type LiveState,
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
+import { attachmentSchema } from '@lab/server/schemas';
 import { z } from 'zod';
 
 import { imageSource } from './attachments';
@@ -265,6 +266,28 @@ function messageBubble(
   return { files, id, images, text: message?.text ?? contentText(content) };
 }
 
+const draftFilesSchema = z.object({
+  files: z.array(z.looseObject({ type: z.enum(['file', 'image']) })),
+});
+
+function draftAttachments(data: unknown, content: unknown) {
+  const files = draftFilesSchema.safeParse(data).data?.files ?? [];
+
+  const images = imageParts(content);
+
+  const pictures = files.filter(({ type }) => type === 'image');
+
+  return files.flatMap((file) => {
+    const attachment = attachmentSchema.safeParse(
+      file.type === 'image'
+        ? { ...images[pictures.indexOf(file)], ...file }
+        : file
+    );
+
+    return attachment.success ? [attachment.data] : [];
+  });
+}
+
 export function queuedMessages(inbox: InboxState | undefined) {
   return (inbox?.items ?? []).flatMap((item) => {
     if (item.mode === 'write') {
@@ -278,7 +301,13 @@ export function queuedMessages(inbox: InboxState | undefined) {
       imageParts(item.content).map(imageSource)
     );
 
-    return [{ bubble, submission: Number(item.id) }];
+    return [
+      {
+        attachments: draftAttachments(item.entry?.data, item.content),
+        bubble,
+        submission: Number(item.id),
+      },
+    ];
   });
 }
 
