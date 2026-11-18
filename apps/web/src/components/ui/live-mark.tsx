@@ -17,13 +17,17 @@ function LiveMark({
   ...props
 }: Omit<React.ComponentProps<'svg'>, 'children'> & {
   state?:
+    | 'ahem'
     | 'assemble'
     | 'done'
+    | 'drift'
     | 'error'
+    | 'gulp'
     | 'handoff'
     | 'idle'
     | 'proud'
-    | 'thinking';
+    | 'thinking'
+    | 'waiting';
 }) {
   return (
     <svg
@@ -75,6 +79,14 @@ function LiveMark({
           width='4'
           x='14'
           y='10'
+        />
+        <rect
+          className='fill-spark-coral'
+          data-part='ping'
+          height='4'
+          width='4'
+          x='14'
+          y='-5'
         />
         {sparkles.map(({ dx, dy, part, size, x, y }) => (
           <rect
