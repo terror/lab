@@ -456,3 +456,24 @@ test('a pending approval keeps its plain dot when Lab is quiet', async () => {
     )
   ).toEqual(['trace-line', 'trace-icon', 'dot', 'trace-title']);
 });
+
+test('a finished turn shows no mark when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const { screen } = await renderWithQuery(reply(false), client);
+
+  await expect
+    .element(
+      screen.getByRole('button', {
+        name: 'Worked for 2m 31s · 2 actions · 1 failed',
+      })
+    )
+    .toBeVisible();
+
+  expect(screen.container.querySelector('[data-slot=live-mark]')).toBeNull();
+});
