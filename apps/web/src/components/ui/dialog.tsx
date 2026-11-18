@@ -47,11 +47,15 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  onCloseAutoFocus,
+  onOpenAutoFocus,
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const opener = React.useRef<Element>(null);
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -61,6 +65,27 @@ function DialogContent({
           'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog bg-popover p-5 text-sm text-popover-foreground shadow-lg duration-base ease-out outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:ease-in data-closed:fade-out-0 data-closed:zoom-out-95',
           className
         )}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+
+          const target = opener.current;
+
+          if (
+            event.defaultPrevented ||
+            !(target instanceof HTMLElement) ||
+            target === document.body ||
+            !target.isConnected
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+          target.focus();
+        }}
+        onOpenAutoFocus={(event) => {
+          opener.current = document.activeElement;
+          onOpenAutoFocus?.(event);
+        }}
         {...props}
       >
         {children}
