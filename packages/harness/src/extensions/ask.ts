@@ -23,9 +23,7 @@ const askUser = defineTool({
     }),
   }),
   execute: async ({ options, question }, api, context) => {
-    await api.details({ options, question }, context);
-
-    const answer = await waitForAnswer(api, context);
+    const answer = await waitForAnswer(api, context, { options, question });
 
     if (answer === undefined) {
       return failure('Unable to ask the user.');

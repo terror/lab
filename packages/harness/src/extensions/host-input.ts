@@ -1,6 +1,7 @@
 import { type Context, awaitWithContext } from '@earendil-works/chord/context';
 import {
   type DocumentWatch,
+  type JsonObject,
   type ToolExecutionApi,
   defineDoc,
 } from '@earendil-works/pi-durable';
@@ -11,7 +12,10 @@ export const APPROVED = 'approved';
 
 export const DENIED = 'denied';
 
-type Answers = { answers: Record<string, string> };
+type Answers = {
+  answers: Record<string, string>;
+  asked?: Record<string, number>;
+};
 
 export const QuestionsDoc = defineDoc<Answers>({
   kind: 'lab.questions',
@@ -45,11 +49,23 @@ function answerFor(watch: DocumentWatch<Answers>, callId: string) {
 
 export async function waitForAnswer(
   api: ToolExecutionApi,
-  context: Context
+  context: Context,
+  details: JsonObject
 ): Promise<string | undefined> {
   await api.commit(async (tx) => {
-    await tx.doc(QuestionsDoc, api.conversationId);
+    const doc = await tx.doc(QuestionsDoc, api.conversationId);
+
+    const asked = doc.asked?.[api.callId];
+
+    if (asked !== undefined && asked !== api.taskId) {
+      delete doc.answers[api.callId];
+    }
+
+    doc.asked ??= {};
+    doc.asked[api.callId] = api.taskId;
   }, context);
+
+  await api.details(details, context);
 
   const watch = await api.watchDoc(QuestionsDoc, api.conversationId, context);
 
@@ -71,9 +87,7 @@ export async function requestApproval(
   context: Context,
   request: ApprovalRequest
 ) {
-  await api.details({ approval: request }, context);
-
-  const answer = await waitForAnswer(api, context);
+  const answer = await waitForAnswer(api, context, { approval: request });
 
   return {
     approval: { ...request, decision: answer === APPROVED ? APPROVED : DENIED },

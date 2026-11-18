@@ -126,3 +126,51 @@ test('a chat is listed as waiting while its question is unanswered', async () =>
     },
   });
 });
+
+test('an answer only settles the call it was given for', async () => {
+  const headers = await signIn();
+
+  const task = {
+    cron: '0 9 * * *',
+    description: 'Every day at 9am',
+    prompt: 'bar',
+    title: 'foo',
+  };
+
+  script(toolCall('schedule_create', task, 'baz'), fauxAssistantMessage('qux'));
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  script(
+    toolCall('schedule_create', { ...task, title: 'quux' }, 'baz'),
+    fauxAssistantMessage('qux')
+  );
+
+  await call(headers, 'POST', `/conversations/${body.id}/messages`, {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'denied',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  const { tasks } = (await call(headers, 'GET', '/schedules')).body;
+
+  expect(tasks.map(({ title }: { title: string }) => title)).toEqual(['foo']);
+});
