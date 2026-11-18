@@ -68,6 +68,12 @@ export const preferencesSchema = z.object({
 
 export const thinkingLevelSchema = z.enum(MODEL_THINKING_LEVELS);
 
+export const modelSchema = z.object({
+  id: z.string().min(1),
+  provider: z.string().min(1),
+  thinkingLevel: thinkingLevelSchema.optional(),
+});
+
 export const planStepsSchema = z
   .array(
     z.object({

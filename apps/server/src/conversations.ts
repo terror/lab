@@ -1,11 +1,9 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { applyImmutable } from '@earendil-works/chord/delta';
 import {
-  type AgentChange,
   AgentDoc,
   type ConversationId,
   type EntryId,
-  type EntryRecord,
   type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
@@ -33,8 +31,8 @@ import { ASK_PROMPT_LENGTH, askModel } from './artifact-ask';
 import { listPins, pinArtifact, unpinArtifact } from './artifact-pins';
 import { deleteValue, readValue, saveValue } from './artifact-state';
 import { type User, requireUser } from './auth';
-import { type Parent, branchPoint, chatForks } from './branches';
-import { pinChat, readChat, renameChat } from './chat-actions';
+import { branchChat, branchSchema, chatForks } from './branches';
+import { createChat, pinChat, readChat, renameChat } from './chat-actions';
 import { db } from './db';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
@@ -45,7 +43,6 @@ import { listConversations, listSchema, listUnread, running } from './listing';
 import {
   draftSchema,
   emptyMessage,
-  entryAttachments,
   nonEmpty,
   checkAttachments,
   submitMessage,
@@ -53,7 +50,7 @@ import {
 import { defaultModel, findModel, modelChange, models } from './models';
 import { moveChat } from './project-access';
 import { registry } from './registry';
-import { planStepsSchema, thinkingLevelSchema } from './schemas';
+import { modelSchema, planStepsSchema, thinkingLevelSchema } from './schemas';
 import { checkSpend } from './spend';
 import { subscribeStatus } from './status';
 import { moveToTrash } from './trash';
@@ -146,26 +143,7 @@ const answering = validator(
 
 const planning = validator('json', z.object({ steps: planStepsSchema }));
 
-const modelSchema = z.object({
-  id: z.string().min(1),
-  provider: z.string().min(1),
-  thinkingLevel: thinkingLevelSchema.optional(),
-});
-
 const modelSelection = validator('json', modelSchema);
-
-const branchSchema = z.discriminatedUnion('kind', [
-  z.object({
-    content: z.string().trim().min(1, 'A message needs text'),
-    entryId: z.number().int().positive(),
-    kind: z.literal('edit'),
-  }),
-  z.object({
-    entryId: z.number().int().positive(),
-    kind: z.literal('retry'),
-    model: modelSchema.optional(),
-  }),
-]);
 
 const branching = validator('json', branchSchema);
 
@@ -188,177 +166,6 @@ const update = validator(
 type Conversation = NonNullable<
   Awaited<ReturnType<typeof harness.conversation>>
 >;
-
-async function startChat(
-  ownerId: string,
-  conversation: Conversation,
-  {
-    parent,
-    projectId,
-    title,
-  }: { parent?: Parent; projectId?: number; title?: string },
-  start: () => Promise<unknown>
-) {
-  await db.insert(schema.conversation).values({
-    id: conversation.id,
-    ownerId,
-    parentEntryId: parent?.entryId,
-    parentId: parent?.conversationId,
-    title,
-  });
-
-  try {
-    if (
-      projectId !== undefined &&
-      !(await moveChat(ownerId, conversation.id, projectId))
-    ) {
-      throw new HTTPException(404, { message: 'Project not found' });
-    }
-
-    if (title) {
-      await conversation.commit(async (tx) => {
-        (await tx.doc(TitleDoc, conversation.id)).title = title;
-      }, BACKGROUND_CONTEXT);
-    }
-
-    await start();
-  } catch (error) {
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(schema.conversation)
-        .where(eq(schema.conversation.id, conversation.id));
-
-      await tx
-        .insert(schema.conversationDeletion)
-        .values({ id: conversation.id })
-        .onConflictDoNothing();
-    });
-
-    throw error;
-  }
-
-  return conversation.id;
-}
-
-export async function createChat(
-  ownerId: string,
-  {
-    change,
-    draft,
-    projectId,
-    title,
-  }: {
-    change: ReturnType<typeof modelChange>;
-    draft: Parameters<typeof submitMessage>[1];
-    projectId?: number;
-    title?: string;
-  }
-) {
-  const conversation = await harness.createConversation(
-    { agent: change, ownership: { kind: 'ownerless' } },
-    BACKGROUND_CONTEXT
-  );
-
-  return startChat(ownerId, conversation, { projectId, title }, () =>
-    submitMessage(conversation, draft)
-  );
-}
-
-async function resend(
-  source: Conversation,
-  entry: EntryRecord,
-  content: string
-) {
-  const agent = await harness.snapshot(AgentDoc, source.id, BACKGROUND_CONTEXT);
-
-  const draft = { attachments: entryAttachments(entry), content };
-
-  checkAttachments(
-    agent?.model && models.getModel(agent.model.provider, agent.model.modelId),
-    draft.attachments
-  );
-
-  return {
-    change: agent?.model && {
-      model: agent.model,
-      thinkingLevel: agent.thinkingLevel,
-    },
-    start: (conversation: Conversation) => submitMessage(conversation, draft),
-  };
-}
-
-async function regenerate(
-  ownerId: string,
-  model: z.infer<typeof modelSchema> | undefined
-) {
-  return {
-    change:
-      model &&
-      modelChange(
-        await findModel(model.provider, model.id),
-        model.thinkingLevel
-      ),
-    start: async (conversation: Conversation) => {
-      await checkSpend(ownerId);
-
-      await conversation.submit({ type: 'continue' }, BACKGROUND_CONTEXT);
-    },
-  };
-}
-
-async function openBranch(parent: Parent, agent: AgentChange | undefined) {
-  if (parent.entryId === null) {
-    return harness.createConversation(
-      { agent, ownership: { kind: 'ownerless' } },
-      BACKGROUND_CONTEXT
-    );
-  }
-
-  const origin = found(
-    await harness.conversation(
-      parent.conversationId as ConversationId,
-      BACKGROUND_CONTEXT
-    ),
-    'Conversation not found'
-  );
-
-  return origin.fork(
-    parent.entryId as EntryId,
-    { agent, ownership: { kind: 'ownerless' } },
-    BACKGROUND_CONTEXT
-  );
-}
-
-const roles = { edit: 'user', retry: 'assistant' } as const;
-
-async function branchChat(
-  ownerId: string,
-  source: Conversation,
-  projectId: number | undefined,
-  request: z.infer<typeof branchSchema>
-) {
-  const { entry, parent } = await branchPoint(
-    source,
-    request.entryId,
-    roles[request.kind]
-  );
-
-  const plan =
-    request.kind === 'edit'
-      ? await resend(source, entry, request.content)
-      : await regenerate(ownerId, request.model);
-
-  const title = await harness.snapshot(TitleDoc, source.id, BACKGROUND_CONTEXT);
-
-  const conversation = await openBranch(parent, plan.change);
-
-  return startChat(
-    ownerId,
-    conversation,
-    { parent, projectId, title: title?.title ?? undefined },
-    () => plan.start(conversation)
-  );
-}
 
 type BunServer = {
   timeout(request: Request, seconds: number): void;

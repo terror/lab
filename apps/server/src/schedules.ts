@@ -8,7 +8,7 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
-import { createChat } from './conversations';
+import { createChat } from './chat-actions';
 import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
