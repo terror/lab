@@ -1,6 +1,10 @@
+import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
+import type { InferResponseType } from 'hono/client';
 import { z } from 'zod';
 
 import { call, client } from './client';
+import { conversationsQueryKey } from './conversations';
+import { useRefreshMutation } from './mutations';
 
 type Method = (args: unknown, active: boolean) => Promise<unknown>;
 
@@ -76,4 +80,75 @@ export function artifactCalls(conversationId: number, artifactId: string) {
 
     return run(args, active);
   };
+}
+
+export type PinnedApp = InferResponseType<
+  typeof client.conversations.pins.$get,
+  200
+>['pins'][number];
+
+const pinsQueryOptions = queryOptions({
+  queryKey: [...conversationsQueryKey, 'pins'],
+  queryFn: ({ signal }) =>
+    call(client.conversations.pins.$get(undefined, { init: { signal } })),
+});
+
+export function usePins(projectId: number | null) {
+  return useQuery({
+    ...pinsQueryOptions,
+    select: ({ pins }) => pins.filter((pin) => pin.projectId === projectId),
+  });
+}
+
+export function usePin(conversationId: number, artifactId: string) {
+  return useQuery({
+    ...pinsQueryOptions,
+    select: ({ pins }) =>
+      pins.find(
+        (pin) =>
+          pin.conversationId === conversationId && pin.artifactId === artifactId
+      ),
+  });
+}
+
+export function usePinUpdate(conversationId: number, artifactId: string) {
+  const param = { artifactId, id: String(conversationId) };
+
+  const { pin } = client.conversations[':id'].artifacts[':artifactId'];
+
+  const options = { invalidate: [pinsQueryOptions.queryKey] };
+
+  return {
+    pin: useRefreshMutation(
+      (projectId: number | null) =>
+        call(pin.$put({ json: { projectId }, param })),
+      options
+    ),
+    unpin: useRefreshMutation(() => call(pin.$delete({ param })), options),
+  };
+}
+
+export function useArtifact(
+  conversationId: number | undefined,
+  artifactId: string | undefined
+) {
+  return useQuery({
+    queryKey: [
+      ...conversationsQueryKey,
+      conversationId,
+      'artifacts',
+      artifactId,
+    ],
+    queryFn:
+      conversationId === undefined || artifactId === undefined
+        ? skipToken
+        : ({ signal }) =>
+            call(
+              client.conversations[':id'].artifacts[':artifactId'].$get(
+                { param: { artifactId, id: String(conversationId) } },
+                { init: { signal } }
+              )
+            ),
+    retry: false,
+  });
 }

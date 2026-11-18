@@ -1,0 +1,116 @@
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
+import { expect, test } from 'vitest';
+
+import { ArtifactPage } from './artifact-page';
+
+function renderPage(artifactId: string) {
+  const fetch = stubFetch(({ pathname }) => {
+    if (pathname === '/api/projects') {
+      return Response.json({
+        projects: [{ chats: 0, id: 7, instructions: '', name: 'foo' }],
+      });
+    }
+
+    if (pathname === '/api/conversations/pins') {
+      return Response.json({
+        pins: [
+          { artifactId: 'bar', conversationId: 1, projectId: 7, title: 'baz' },
+        ],
+      });
+    }
+
+    if (pathname === '/api/conversations/1/artifacts/bar') {
+      return Response.json({ content: '<p>foo</p>', title: 'baz', version: 1 });
+    }
+
+    if (pathname === '/api/conversations/1/artifacts/bar/pin') {
+      return new Response(null, { status: 204 });
+    }
+
+    return Response.json({ error: 'Conversation not found' }, { status: 404 });
+  });
+
+  const root = createRootRoute();
+
+  const chat = createRoute({ getParentRoute: () => root, id: 'chat' });
+
+  const page = createRoute({
+    component: ArtifactPage,
+    getParentRoute: () => chat,
+    params: {
+      parse: (params) => ({
+        artifactId: params.artifactId,
+        conversationId: Number(params.conversationId),
+      }),
+    },
+    path: '/apps/$conversationId/$artifactId',
+  });
+
+  const router = createRouter({
+    history: createMemoryHistory({
+      initialEntries: [`/apps/1/${artifactId}`],
+    }),
+    routeTree: root.addChildren([chat.addChildren([page])]),
+  });
+
+  return {
+    fetch,
+    rendered: renderWithQuery(<RouterProvider router={router} />),
+  };
+}
+
+test('a pinned app opens as a page that moves or drops its pin', async () => {
+  const { fetch, rendered } = renderPage('bar');
+
+  const { screen } = await rendered;
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'baz' }))
+    .toBeVisible();
+  await expect.element(screen.getByTitle('baz')).toBeInTheDocument();
+  await expect
+    .element(screen.getByRole('link', { name: 'Open chat' }))
+    .toHaveAttribute('href', '/c/1');
+
+  await screen.getByRole('button', { name: 'Pinned' }).click();
+
+  await expect
+    .element(screen.getByRole('menuitemradio', { name: 'foo' }))
+    .toHaveAttribute('aria-checked', 'true');
+
+  await screen.getByRole('menuitemradio', { name: 'Sidebar' }).click();
+
+  await screen.getByRole('button', { name: 'Pinned' }).click();
+
+  await screen.getByRole('menuitem', { name: 'Unpin' }).click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'PUT' || init?.method === 'DELETE'
+          ? [[init.method, requestUrl(input).pathname, init.body]]
+          : []
+      )
+    )
+    .toEqual([
+      ['PUT', '/api/conversations/1/artifacts/bar/pin', '{"projectId":null}'],
+      ['DELETE', '/api/conversations/1/artifacts/bar/pin', undefined],
+    ]);
+});
+
+test('an app from a deleted chat is unavailable', async () => {
+  const { rendered } = renderPage('qux');
+
+  const { screen } = await rendered;
+
+  await expect
+    .element(screen.getByText("This app isn't available"))
+    .toBeVisible();
+});

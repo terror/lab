@@ -10,11 +10,25 @@ import { expect, test } from 'vitest';
 
 import { Sidebar } from './sidebar';
 
-test('clicking the open project collapses and expands its chats', async () => {
+function renderSidebar() {
   stubFetch(({ pathname, searchParams }) => {
     if (pathname === '/api/projects') {
       return Response.json({
         projects: [{ chats: 1, id: 7, instructions: '', name: 'foo' }],
+      });
+    }
+
+    if (pathname === '/api/conversations/pins') {
+      return Response.json({
+        pins: [
+          {
+            artifactId: 'qux',
+            conversationId: 2,
+            projectId: null,
+            title: 'baz',
+          },
+          { artifactId: 'quux', conversationId: 3, projectId: 7, title: 'qux' },
+        ],
       });
     }
 
@@ -59,7 +73,11 @@ test('clicking the open project collapses and expands its chats', async () => {
     }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  return renderWithQuery(<RouterProvider router={router} />);
+}
+
+test('clicking the open project collapses and expands its chats', async () => {
+  const { screen } = await renderSidebar();
 
   const project = screen.getByRole('button', { name: 'foo', exact: true });
 
@@ -73,4 +91,14 @@ test('clicking the open project collapses and expands its chats', async () => {
   await project.click();
 
   await expect.element(screen.getByText('bar')).toBeVisible();
+});
+
+test('apps pinned to the sidebar link to their pages', async () => {
+  const { screen } = await renderSidebar();
+
+  await expect
+    .element(screen.getByRole('link', { name: 'baz' }))
+    .toHaveAttribute('href', '/apps/2/qux');
+
+  await expect.element(screen.getByText('qux')).not.toBeInTheDocument();
 });

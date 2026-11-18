@@ -1,3 +1,4 @@
+import { AppLink } from '@/components/artifact-apps';
 import { ConversationItem } from '@/components/conversation-item';
 import { LoadError } from '@/components/load-error';
 import { LoadMore } from '@/components/load-more';
@@ -9,6 +10,7 @@ import { ProjectInstructions } from '@/components/project-instructions';
 import { ProjectMenu } from '@/components/project-menu';
 import { StartComposer } from '@/components/start-composer';
 import { Unavailable } from '@/components/unavailable';
+import { usePins } from '@/lib/artifacts';
 import { useConversations } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
 import { useParams } from '@tanstack/react-router';
@@ -52,6 +54,25 @@ function ProjectChats({ id }: { id: number }) {
   );
 }
 
+function ProjectApps({ id }: { id: number }) {
+  const apps = usePins(id);
+
+  if ((apps.data?.length ?? 0) === 0) {
+    return null;
+  }
+
+  return (
+    <section className='flex flex-col gap-2'>
+      <h2 className='px-2 text-sm font-medium text-muted-foreground'>Apps</h2>
+      <nav aria-label='Project apps' className='flex flex-col gap-1'>
+        {apps.data?.map((app) => (
+          <AppLink key={`${app.conversationId}/${app.artifactId}`} app={app} />
+        ))}
+      </nav>
+    </section>
+  );
+}
+
 export function Project() {
   const id = Number(useParams({ from: '/chat/projects/$projectId' }).projectId);
 
@@ -92,6 +113,7 @@ export function Project() {
         </div>
         <ProjectComposer id={id} name={current.name} />
         <ProjectInstructions project={current} />
+        <ProjectApps id={id} />
         <section className='flex flex-col gap-2'>
           <h2 className='px-2 text-sm font-medium text-muted-foreground'>
             Chats

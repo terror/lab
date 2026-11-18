@@ -1,4 +1,5 @@
 import { AccountMenu } from '@/components/account-menu';
+import { AppLink } from '@/components/artifact-apps';
 import { ConversationItem } from '@/components/conversation-item';
 import { LabMark } from '@/components/lab-mark';
 import { LoadError } from '@/components/load-error';
@@ -23,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePins } from '@/lib/artifacts';
 import type { User } from '@/lib/auth';
 import {
   type ConversationSort,
@@ -447,6 +449,47 @@ function ProjectsSection({
   );
 }
 
+function AppsSection({ onSelect }: { onSelect?: () => void }) {
+  const list = useId();
+  const apps = usePins(null);
+
+  const [collapsed, setCollapsed] = useCollapsed('apps-collapsed');
+
+  if (apps.isError) {
+    return <LoadError className='px-2' subject='apps' />;
+  }
+
+  if ((apps.data?.length ?? 0) === 0) {
+    return null;
+  }
+
+  return (
+    <div className='flex flex-col gap-1'>
+      <SectionHeader
+        collapsed={collapsed}
+        controls={list}
+        onToggle={() => setCollapsed(!collapsed)}
+        subject='apps'
+        title='Apps'
+      />
+      <nav
+        aria-label='Apps'
+        className='flex flex-col gap-0.5'
+        hidden={collapsed}
+        id={list}
+      >
+        {apps.data?.map((app) => (
+          <AppLink
+            key={`${app.conversationId}/${app.artifactId}`}
+            app={app}
+            onSelect={onSelect}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
 function PinnedSection({
   onSelect,
   selected,
@@ -665,6 +708,7 @@ function SidebarPanel({
         onSelect={onSelect}
         selected={selected}
       />
+      <AppsSection onSelect={onSelect} />
       <PinnedSection onSelect={onSelect} selected={selected} />
       <div className='flex min-h-0 flex-col gap-1'>
         {(error || (conversations?.length ?? 0) > 0) && (
