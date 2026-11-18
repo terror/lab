@@ -23,7 +23,11 @@ async function owner(conversationId: number) {
 
 async function summaries(ownerId: string) {
   return (await listConnectors(ownerId)).connectors.map(
-    ({ tools, ...connector }) => ({ ...connector, tools: tools.length })
+    ({ tools, url, ...connector }) => ({
+      ...connector,
+      host: new URL(url).host,
+      tools: tools.length,
+    })
   );
 }
 
