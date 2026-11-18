@@ -1,6 +1,7 @@
 import { schema } from '@lab/db';
 import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
+import { createCipheriv, randomBytes } from 'node:crypto';
 
 import {
   deriveKey,
@@ -19,15 +20,15 @@ test('credentials sealed with an older key open as stale', () => {
 
   const credential = { key: 'qux', type: 'api_key' as const };
 
-  const sealed = seal(credential, bar!);
+  const sealed = seal(credential, bar!, 'provider:foo');
 
   expect([
-    unsealWith(sealed, [bar!]),
-    unsealWith(sealed, [foo!, bar!]),
-    unsealWith(sealed, [foo!, baz!]),
+    unsealWith(sealed, 'provider:foo', [bar!]),
+    unsealWith(sealed, 'provider:foo', [foo!, bar!]),
+    unsealWith(sealed, 'provider:foo', [foo!, baz!]),
   ]).toEqual([
-    { credential, stale: false },
-    { credential, stale: true },
+    { stale: false, value: credential },
+    { stale: true, value: credential },
     undefined,
   ]);
 });
@@ -40,9 +41,11 @@ test('new credentials are sealed with the current key, never the previous one', 
   const credential = { key: 'qux', type: 'api_key' as const };
 
   function sealedWith(secrets: Parameters<typeof keyring>[0], secret: string) {
-    return unsealWith(seal(credential, keyring(secrets).current), [
-      deriveKey(secret),
-    ]);
+    return unsealWith(
+      seal(credential, keyring(secrets).current, 'provider:foo'),
+      'provider:foo',
+      [deriveKey(secret)]
+    );
   }
 
   expect([
@@ -60,14 +63,41 @@ test('new credentials are sealed with the current key, never the previous one', 
       baz!
     ),
   ]).toEqual([
-    { credential, stale: false },
-    { credential, stale: false },
-    { credential, stale: false },
+    { stale: false, value: credential },
+    { stale: false, value: credential },
+    { stale: false, value: credential },
   ]);
 });
 
-test('stored secrets sealed with an older key are resealed with the current key', async () => {
+test('a sealed secret opens only for the row it was sealed for', () => {
+  const key = deriveKey('foo'.repeat(11));
+
+  const sealed = seal('bar', key, 'connector:1');
+
+  expect([
+    unsealWith(sealed, 'connector:1', [key]),
+    unsealWith(sealed, 'connector:2', [key]),
+    unsealWith(sealed, 'provider:1', [key]),
+  ]).toEqual([{ stale: false, value: 'bar' }, undefined, undefined]);
+});
+
+function unbound(value: unknown, key: Buffer) {
+  const iv = randomBytes(12);
+
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+
+  const data = Buffer.concat([
+    cipher.update(JSON.stringify(value)),
+    cipher.final(),
+  ]);
+
+  return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
+}
+
+test('stored secrets sealed with an older key or format are resealed with the current key', async () => {
   const older = deriveKey(env.BETTER_AUTH_SECRET);
+
+  const newer = deriveKey(env.LAB_CREDENTIALS_KEY!);
 
   const credential = { key: 'foo', type: 'api_key' as const };
 
@@ -84,32 +114,38 @@ test('stored secrets sealed with an older key are resealed with the current key'
     .values({ name: 'foo', ownerId: 'foo', url: 'https://foo.test' })
     .returning();
 
-  await db
-    .insert(schema.providerCredential)
-    .values({ credential: seal(credential, older), providerId: 'foo' });
+  await db.insert(schema.providerCredential).values([
+    { credential: seal(credential, older, 'provider:foo'), providerId: 'foo' },
+    { credential: unbound(credential, newer), providerId: 'bar' },
+  ]);
 
   await db
     .insert(schema.connectorAuth)
-    .values({ connectorId: connector!.id, state: seal(credential, older) });
+    .values({ connectorId: connector!.id, state: unbound(credential, older) });
 
   await resealSecrets();
 
-  const [provider] = await db
-    .select({ sealed: schema.providerCredential.credential })
+  const providers = await db
+    .select({
+      id: schema.providerCredential.providerId,
+      sealed: schema.providerCredential.credential,
+    })
     .from(schema.providerCredential)
-    .where(eq(schema.providerCredential.providerId, 'foo'));
+    .orderBy(schema.providerCredential.providerId);
 
   const [auth] = await db
     .select({ sealed: schema.connectorAuth.state })
     .from(schema.connectorAuth)
     .where(eq(schema.connectorAuth.connectorId, connector!.id));
 
-  expect(
-    [provider!, auth!].map(({ sealed }) =>
-      unsealWith(sealed, [deriveKey(env.LAB_CREDENTIALS_KEY!)])
-    )
-  ).toEqual([
-    { credential, stale: false },
-    { credential, stale: false },
+  expect([
+    ...providers.map(({ id, sealed }) =>
+      unsealWith(sealed, `provider:${id}`, [newer])
+    ),
+    unsealWith(auth!.sealed, `connector:${connector!.id}`, [newer]),
+  ]).toEqual([
+    { stale: false, value: credential },
+    { stale: false, value: credential },
+    { stale: false, value: credential },
   ]);
 });

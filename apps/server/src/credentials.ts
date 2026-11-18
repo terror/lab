@@ -37,20 +37,38 @@ export function keyring(secrets: Secrets) {
 
 const { current, keys } = keyring(env);
 
-function encrypt(text: string, key: Buffer) {
+type Binding = `connector:${number}` | `provider:${string}`;
+
+const VERSION = 'v2:';
+
+export function seal(value: unknown, key: Buffer, binding: Binding) {
   const iv = randomBytes(12);
 
   const cipher = createCipheriv('aes-256-gcm', key, iv);
 
-  const data = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  cipher.setAAD(Buffer.from(binding));
 
-  return Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64');
+  const data = Buffer.concat([
+    cipher.update(JSON.stringify(value), 'utf8'),
+    cipher.final(),
+  ]);
+
+  return `${VERSION}${Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64')}`;
 }
 
-function decrypt(sealed: string, key: Buffer) {
-  const bytes = Buffer.from(sealed, 'base64');
+function decrypt(sealed: string, key: Buffer, binding: Binding) {
+  const bound = sealed.startsWith(VERSION);
+
+  const bytes = Buffer.from(
+    bound ? sealed.slice(VERSION.length) : sealed,
+    'base64'
+  );
 
   const decipher = createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
+
+  if (bound) {
+    decipher.setAAD(Buffer.from(binding));
+  }
 
   decipher.setAuthTag(bytes.subarray(12, 28));
 
@@ -60,22 +78,17 @@ function decrypt(sealed: string, key: Buffer) {
   ]).toString('utf8');
 }
 
-export function seal(credential: Credential, key: Buffer) {
-  return encrypt(JSON.stringify(credential), key);
-}
-
-function open(sealed: string, key: Buffer) {
-  return JSON.parse(decrypt(sealed, key)) as Credential;
-}
-
-export function sealSecret(value: unknown) {
-  return encrypt(JSON.stringify(value), current);
-}
-
-export function openSecret(sealed: string): unknown {
-  for (const key of keys) {
+export function unsealWith(
+  sealed: string,
+  binding: Binding,
+  candidates: readonly Buffer[]
+) {
+  for (const [index, key] of candidates.entries()) {
     try {
-      return JSON.parse(decrypt(sealed, key));
+      return {
+        stale: index > 0 || !sealed.startsWith(VERSION),
+        value: JSON.parse(decrypt(sealed, key, binding)) as unknown,
+      };
     } catch {
       continue;
     }
@@ -84,18 +97,18 @@ export function openSecret(sealed: string): unknown {
   return undefined;
 }
 
-function resealed(sealed: string) {
-  for (const [index, key] of keys.entries()) {
-    try {
-      const text = decrypt(sealed, key);
+export function sealSecret(value: unknown, binding: Binding) {
+  return seal(value, current, binding);
+}
 
-      return index > 0 ? encrypt(text, current) : undefined;
-    } catch {
-      continue;
-    }
-  }
+export function openSecret(sealed: string, binding: Binding) {
+  return unsealWith(sealed, binding, keys)?.value;
+}
 
-  return undefined;
+function resealed(sealed: string, binding: Binding) {
+  const opened = unsealWith(sealed, binding, keys);
+
+  return opened?.stale ? seal(opened.value, current, binding) : undefined;
 }
 
 export async function resealSecrets() {
@@ -107,7 +120,7 @@ export async function resealSecrets() {
   ]);
 
   for (const { id, sealed } of providers) {
-    const credential = resealed(sealed);
+    const credential = resealed(sealed, `provider:${id}`);
 
     if (credential) {
       await db
@@ -118,7 +131,7 @@ export async function resealSecrets() {
   }
 
   for (const { id, sealed } of connectors) {
-    const state = resealed(sealed);
+    const state = resealed(sealed, `connector:${id}`);
 
     if (state) {
       await db
@@ -129,26 +142,16 @@ export async function resealSecrets() {
   }
 }
 
-export function unsealWith(sealed: string, candidates: readonly Buffer[]) {
-  for (const [index, key] of candidates.entries()) {
-    try {
-      return { credential: open(sealed, key), stale: index > 0 };
-    } catch {
-      continue;
-    }
-  }
-
-  return undefined;
-}
-
 function unseal(providerId: string, sealed: string) {
-  const opened = unsealWith(sealed, keys);
+  const opened = unsealWith(sealed, `provider:${providerId}`, keys);
 
   if (!opened) {
     console.error(`Unable to decrypt the ${providerId} credential`);
   }
 
-  return opened;
+  return (
+    opened && { credential: opened.value as Credential, stale: opened.stale }
+  );
 }
 
 const cache = new Map<string, Credential | undefined>();
@@ -170,7 +173,7 @@ async function read(providerId: string) {
   if (opened?.stale && credential) {
     await db
       .update(table)
-      .set({ credential: seal(credential, current) })
+      .set({ credential: seal(credential, current, `provider:${providerId}`) })
       .where(eq(table.providerId, providerId));
   }
 
@@ -197,7 +200,7 @@ export const credentials: CredentialStore = {
       return read(providerId);
     }
 
-    const credential = seal(next, current);
+    const credential = seal(next, current, `provider:${providerId}`);
 
     await db
       .insert(table)
