@@ -3,7 +3,8 @@ import { expect } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
 import { themes } from '../../.storybook/themes';
-import { Activity, AssistantMessage } from './assistant-message';
+import { AssistantMessage } from './assistant-message';
+import { Activity } from './tool-steps';
 
 const answer = `Here is a **three day** plan.
 
