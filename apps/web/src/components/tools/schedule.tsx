@@ -2,7 +2,7 @@ import { plural } from '@/lib/format';
 import { untilRun } from '@/lib/time';
 import { CalendarClock } from 'lucide-react';
 
-import { count, field, namedTitle, text } from './format';
+import { count, declined, field, namedTitle, text } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import type { ToolRenderer, ToolView } from './types';
 
@@ -44,15 +44,10 @@ export const scheduleRenderers = {
   schedule_create: {
     icon: CalendarClock,
     preview: taskPreview,
-    title: (view) => {
-      const decision = text(field(field(view.details, 'approval'), 'decision'));
-
-      if (decision === 'denied') {
-        return 'Didn’t schedule a task';
-      }
-
-      return taskTitle('Scheduling a task', 'Scheduled')(view);
-    },
+    title: declined(
+      taskTitle('Scheduling a task', 'Scheduled'),
+      'Didn’t schedule a task'
+    ),
   },
   schedule_delete: {
     icon: CalendarClock,
