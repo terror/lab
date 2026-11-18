@@ -7,7 +7,7 @@ const meta = preview.meta({
   argTypes: {
     state: {
       control: 'select',
-      options: ['idle', 'assemble', 'thinking', 'done', 'error'],
+      options: ['idle', 'assemble', 'thinking', 'done', 'proud', 'error'],
     },
   },
   decorators: [themes],
@@ -44,6 +44,10 @@ export const Thinking = meta.story({
 
 export const Done = meta.story({
   args: { className: 'size-10', state: 'done' },
+});
+
+export const Proud = meta.story({
+  args: { className: 'size-10', state: 'proud' },
 });
 
 export const Error = meta.story({

@@ -157,3 +157,50 @@ export const LiveSteps = meta.story({
   decorators: [themes],
   render: () => <Steps />,
 });
+
+const turns = [
+  { seconds: 4, steps: 1 },
+  { seconds: 38, steps: 3 },
+  { seconds: 372, steps: 3 },
+];
+
+function Finishes() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setStep((current) => current + 1), 2_400);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const turn = turns[Math.floor(step / 2) % turns.length] ?? turns[0];
+
+  const working = step % 2 === 0;
+
+  const calls = searches.slice(0, turn?.steps);
+
+  return (
+    <AssistantMessage
+      key={Math.floor(step / 2)}
+      latest={!working}
+      parts={[
+        ...calls,
+        { text: 'Príncipe Real is the quietest.', type: 'text' },
+      ]}
+      progress={new Map()}
+      results={
+        new Map(
+          calls.map(({ id }) => [id, { output: '', status: 'done' } as const])
+        )
+      }
+      span={{ end: (turn?.seconds ?? 0) * 1_000, start: 0 }}
+      streaming={working}
+      working={working}
+    />
+  );
+}
+
+export const Finishing = meta.story({
+  decorators: [themes],
+  render: () => <Finishes />,
+});

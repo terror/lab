@@ -35,6 +35,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
+import { cheerFor, useCheer } from '@/lib/cheer';
 import { plural } from '@/lib/format';
 import type { ModelChoice } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
@@ -320,14 +321,14 @@ function waitingSpans(
 
 export function Worked({
   children,
-  span,
+  mark,
   statuses,
-  waits,
+  worked,
 }: {
   children: ReactNode;
-  span: Span | undefined;
+  mark: ComponentProps<typeof LiveMark>['state'];
   statuses: readonly CallStatus[];
-  waits: readonly Span[];
+  worked: number | undefined;
 }) {
   const failed = statuses.filter((status) => status === 'failed').length;
 
@@ -338,10 +339,15 @@ export function Worked({
       <TraceCollapsible>
         <TraceCollapsibleTrigger>
           <TraceLine className='h-6.5'>
+            {mark && (
+              <TraceIcon>
+                <LiveMark className='size-3.5' state={mark} />
+              </TraceIcon>
+            )}
             <TraceTitle>
-              {span
-                ? `Worked for ${duration(span.end - span.start - waited(span, waits))}`
-                : 'Worked'}
+              {worked === undefined
+                ? 'Worked'
+                : `Worked for ${duration(worked)}`}
             </TraceTitle>
             <TraceDescription className='text-muted-foreground'>
               {` · ${plural(statuses.length, 'action')}`}
@@ -645,6 +651,8 @@ export function AssistantMessage({
   versions?: ReactNode;
   working?: boolean;
 }) {
+  const cheer = useCheer(working);
+
   const text = replyText(parts);
 
   const answer = !streaming && (text.length > 0 || failure !== undefined);
@@ -670,6 +678,18 @@ export function AssistantMessage({
   const finished = calls.filter(({ id }) => results.has(id));
 
   const shared = { parts, progress, results, streaming, working };
+
+  const worked =
+    span && span.end - span.start - waited(span, waitingSpans(calls, results));
+
+  const marks = {
+    cheer: cheerFor(worked ?? 0, calls.length),
+    held: 'idle',
+    rest: 'idle',
+    working: 'thinking',
+  } as const;
+
+  const marked = working || (latest && failure === undefined);
 
   return (
     <Message>
@@ -698,11 +718,11 @@ export function AssistantMessage({
         </AnimatePresence>
         {last && !live && (
           <Worked
-            span={span}
+            mark={marked ? marks[cheer] : undefined}
             statuses={calls.map(({ id }) =>
               callStatus(results.get(id), working)
             )}
-            waits={waitingSpans(calls, results)}
+            worked={worked}
           >
             {calls.map((call) => (
               <ToolStep

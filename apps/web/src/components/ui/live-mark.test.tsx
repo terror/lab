@@ -24,6 +24,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'assemble',
     'thinking',
     'done',
+    'proud',
     'error',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
@@ -38,6 +39,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
     done: ['live-mark-hop', 'live-mark-sparkle'],
     error: ['live-mark-slip', 'live-mark-slip-coral'],
     idle: [],
+    proud: ['live-mark-hop-big', 'live-mark-lid', 'live-mark-sparkle'],
     thinking: [
       'live-mark-bubble',
       'live-mark-slosh-blue',
@@ -75,7 +77,13 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
 
   const seen = new Map<string, string[]>();
 
-  for (const state of ['assemble', 'thinking', 'done', 'error'] as const) {
+  for (const state of [
+    'assemble',
+    'thinking',
+    'done',
+    'proud',
+    'error',
+  ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
     seen.set(state, animations(screen.getByTestId('foo').element()));
@@ -106,6 +114,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       done: [],
       dot: [],
       error: [],
+      proud: [],
       thinking: ['live-mark-dim'],
     },
     pose: [

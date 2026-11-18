@@ -3,10 +3,12 @@ import { cn } from '@/lib/utils';
 import * as React from 'react';
 
 const sparkles = [
-  { dx: -5, dy: -5, size: 3, x: 5, y: 4 },
-  { dx: 5, dy: -5, size: 3, x: 24, y: 4 },
-  { dx: -6, dy: 0, size: 2, x: 2, y: 13 },
-  { dx: 6, dy: 0, size: 2, x: 28, y: 13 },
+  { dx: -5, dy: -5, part: 'sparkle', size: 3, x: 5, y: 4 },
+  { dx: 5, dy: -5, part: 'sparkle', size: 3, x: 24, y: 4 },
+  { dx: -6, dy: 0, part: 'sparkle', size: 2, x: 2, y: 13 },
+  { dx: 6, dy: 0, part: 'sparkle', size: 2, x: 28, y: 13 },
+  { dx: -3, dy: -6, part: 'sparkle-proud', size: 2, x: 10, y: -3 },
+  { dx: 3, dy: -6, part: 'sparkle-proud', size: 2, x: 20, y: -3 },
 ];
 
 function LiveMark({
@@ -14,7 +16,7 @@ function LiveMark({
   state = 'idle',
   ...props
 }: Omit<React.ComponentProps<'svg'>, 'children'> & {
-  state?: 'assemble' | 'done' | 'error' | 'idle' | 'thinking';
+  state?: 'assemble' | 'done' | 'error' | 'idle' | 'proud' | 'thinking';
 }) {
   return (
     <svg
@@ -58,11 +60,11 @@ function LiveMark({
           x='14'
           y='10'
         />
-        {sparkles.map(({ dx, dy, size, x, y }) => (
+        {sparkles.map(({ dx, dy, part, size, x, y }) => (
           <rect
             key={`${x}-${y}`}
             className='fill-spark-yellow'
-            data-part='sparkle'
+            data-part={part}
             height={size}
             style={
               { '--dx': `${dx}px`, '--dy': `${dy}px` } as React.CSSProperties
