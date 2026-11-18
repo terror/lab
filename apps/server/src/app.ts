@@ -23,6 +23,7 @@ import { env } from './env';
 import frame from './frame';
 import { harness } from './harness';
 import library from './library';
+import mcp from './mcp';
 import memory from './memory';
 import { defaultModel, listModels } from './models';
 import { errorResponse, errorResponses, tagByResource } from './openapi';
@@ -119,6 +120,7 @@ const api = new Hono()
   .route('/providers', providers)
   .route('/library', library)
   .route('/memory', memory)
+  .route('/mcp', mcp)
   .route('/schedules', schedules)
   .route('/search', search)
   .route('/skills', skills)
@@ -146,6 +148,7 @@ app.get('/api/openapi.json', requireUser, async (c) =>
         exclude: [
           '/api/openapi.json',
           '/api/docs',
+          '/api/mcp',
           /^\/frame/,
           /^\/api\/auth\//,
         ],

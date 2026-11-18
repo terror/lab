@@ -184,7 +184,7 @@ export async function createChat(
   return conversation.id;
 }
 
-type BunServer = {
+export type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
 
