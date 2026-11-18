@@ -26,6 +26,7 @@ type Chat = {
 
 type Suggestion = {
   icon: LucideIcon;
+  key: string;
   label: string;
   meta?: string;
   run: () => void;
@@ -88,11 +89,13 @@ function useSuggestions(onPrompt: (prompt: string) => void): Suggestion[] {
   const found = [
     chat && {
       icon: MessageSquare,
+      key: 'chat',
       label: chat.title ?? '',
       run: () => void navigate({ params: { id: chat.id }, to: '/c/$id' }),
     },
     project && {
       icon: Folder,
+      key: 'project',
       label: project.name,
       run: () =>
         void navigate({
@@ -102,12 +105,17 @@ function useSuggestions(onPrompt: (prompt: string) => void): Suggestion[] {
     },
     task && {
       icon: Clock,
+      key: 'task',
       label: task.title,
       meta: untilRun(task.nextRunAt),
-      run: () =>
-        void (task.conversationId === null
-          ? navigate({ to: '/scheduled' })
-          : navigate({ params: { id: task.conversationId }, to: '/c/$id' })),
+      run: () => {
+        if (task.conversationId === null) {
+          void navigate({ to: '/scheduled' });
+          return;
+        }
+
+        void navigate({ params: { id: task.conversationId }, to: '/c/$id' });
+      },
     },
   ].filter((suggestion) => suggestion !== undefined);
 
@@ -117,6 +125,7 @@ function useSuggestions(onPrompt: (prompt: string) => void): Suggestion[] {
 
   return starters.map(({ icon, label, prompt }) => ({
     icon,
+    key: label,
     label,
     run: () => onPrompt(prompt),
   }));
@@ -138,8 +147,8 @@ export function Suggestions({
       aria-label='Suggestions'
       className='flex flex-wrap justify-center gap-1.5'
     >
-      {suggestions.map(({ icon: Icon, label, meta, run }, index) => (
-        <m.li key={label} {...rise(index)}>
+      {suggestions.map(({ icon: Icon, key, label, meta, run }, index) => (
+        <m.li key={key} {...rise(index)}>
           <Button className='rounded-full' onClick={run} variant='outline'>
             <Icon
               aria-hidden='true'
