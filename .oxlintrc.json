@@ -141,7 +141,7 @@
         "apps/web/src/components/approval-card.tsx",
         "apps/web/src/components/artifact-apps.tsx",
         "apps/web/src/components/command-menu.tsx",
-        "apps/web/src/components/composer.tsx",
+        "apps/web/src/components/composer-attachments.tsx",
         "apps/web/src/components/conversation-item.tsx",
         "apps/web/src/components/document-card.tsx",
         "apps/web/src/components/library-tile.tsx",
