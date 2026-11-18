@@ -52,7 +52,7 @@ test('a deleted memory comes back with Undo', async () => {
     </>
   );
 
-  await screen.getByRole('button', { name: 'Delete foo' }).click();
+  await screen.getByRole('button', { name: 'Forget foo' }).click();
   await screen.getByRole('button', { name: 'Undo' }).click();
 
   await expect

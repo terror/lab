@@ -73,7 +73,7 @@ test('deleting a connector asks first', async () => {
 
   const { screen } = await renderWithQuery(<Connectors />);
 
-  await screen.getByRole('button', { name: 'Options for foo' }).click();
+  await screen.getByRole('button', { name: 'Actions for foo' }).click();
   await screen.getByRole('menuitem', { name: 'Delete' }).click();
   await screen
     .getByRole('alertdialog')

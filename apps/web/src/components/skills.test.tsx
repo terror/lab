@@ -79,7 +79,8 @@ test('a deleted skill comes back with Undo', async () => {
     </>
   );
 
-  await screen.getByRole('button', { name: 'Delete foo' }).click();
+  await screen.getByRole('button', { name: 'Actions for foo' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete' }).click();
   await screen.getByRole('button', { name: 'Undo' }).click();
 
   await expect

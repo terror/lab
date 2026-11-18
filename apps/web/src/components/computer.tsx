@@ -1,22 +1,20 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
+import { SettingRow } from '@/components/setting-row';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
+import { Pills } from '@/components/ui/pills';
 import {
   type ComputerStatus,
   computerQueryOptions,
   useComputerAction,
   useNetworkMode,
 } from '@/lib/computer';
+import { useAdmin } from '@/lib/profile';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
 type State = NonNullable<ComputerStatus['computer']>['state'];
@@ -40,7 +38,7 @@ const networks: {
   {
     description:
       'Only package registries such as PyPI, npm, GitHub, and crates.io.',
-    label: 'Package registries',
+    label: 'Registries',
     value: 'registries',
   },
   { description: 'No outside connections.', label: 'None', value: 'none' },
@@ -52,42 +50,48 @@ function NetworkPicker({ value }: { value: ComputerStatus['network'] }) {
   const current = networks.find((network) => network.value === value);
 
   return (
-    <div className='flex items-start justify-between gap-6'>
-      <div className='space-y-1'>
-        <p className='text-sm font-medium'>Internet access</p>
-        <p className='text-sm text-muted-foreground'>{current?.description}</p>
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            className='flex shrink-0 items-center gap-1 rounded-control text-sm text-muted-foreground'
+    <ul className='flex flex-col gap-0.5'>
+      <SettingRow
+        control={
+          <Pills
             disabled={update.isPending}
-            type='button'
-          >
-            {current?.label}
-            <ChevronDown aria-hidden='true' className='size-4' />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end'>
-          <DropdownMenuRadioGroup
-            onValueChange={(next) => {
-              const choice = networks.find((network) => network.value === next);
-
-              if (choice) {
-                update.mutate(choice.value);
-              }
-            }}
+            label='Internet access'
+            onValueChange={(next) => update.mutate(next)}
+            options={networks}
             value={value}
-          >
-            {networks.map(({ label, value: option }) => (
-              <DropdownMenuRadioItem key={option} value={option}>
-                {label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+          />
+        }
+        description={current?.description}
+        label='Internet access'
+      />
+    </ul>
+  );
+}
+
+function NoComputer() {
+  const admin = useAdmin();
+
+  if (!admin) {
+    return (
+      <EmptyState
+        description='Ask your Lab admin to connect a computer provider such as Vercel Sandbox.'
+        title='No computer yet'
+      />
+    );
+  }
+
+  return (
+    <EmptyState
+      action={
+        <Button asChild size='sm' variant='outline'>
+          <Link search={{ section: 'providers' }} to='/settings'>
+            Open Providers
+          </Link>
+        </Button>
+      }
+      description='Connect a computer provider such as Vercel Sandbox, and Lab sets one up the first time it needs it.'
+      title='No computer yet'
+    />
   );
 }
 
@@ -115,12 +119,7 @@ function Details({ status }: { status: ComputerStatus }) {
   const { computer, provider } = status;
 
   if (!provider) {
-    return (
-      <p className='text-sm text-muted-foreground'>
-        No computer is set up. Connect a computer provider such as Vercel
-        Sandbox in Providers.
-      </p>
-    );
+    return <NoComputer />;
   }
 
   return (
@@ -180,7 +179,10 @@ export function Computer() {
         }
         title='Computer'
       />
-      {status.isError && <LoadError subject='the computer' />}
+      {status.isPending && <ListSkeleton />}
+      {status.isLoadingError && (
+        <LoadError onRetry={() => status.refetch()} subject='the computer' />
+      )}
       {status.data && <Details status={status.data} />}
     </>
   );

@@ -23,7 +23,8 @@ test('deleting a provider asks first', async () => {
 
   const { screen } = await renderWithQuery(<Providers />);
 
-  await screen.getByRole('button', { name: 'Delete baz' }).click();
+  await screen.getByRole('button', { name: 'Actions for baz' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete' }).click();
   await screen
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete' })
@@ -36,4 +37,42 @@ test('deleting a provider asks first', async () => {
       )
     )
     .toEqual(['/api/providers/foo']);
+});
+
+test('a provider is picked by searching for it', async () => {
+  stubFetch(() =>
+    Response.json({
+      providers: [
+        {
+          configured: false,
+          fields: [{ id: 'apiKey', label: 'API key', secret: true }],
+          id: 'foo',
+          kind: 'model',
+          kindLabel: 'bar',
+          name: 'Foo',
+        },
+        {
+          configured: false,
+          fields: [],
+          id: 'baz',
+          kind: 'model',
+          kindLabel: 'bar',
+          name: 'Baz',
+        },
+      ],
+    })
+  );
+
+  const { screen } = await renderWithQuery(<Providers />);
+
+  await screen.getByRole('button', { name: 'Add provider' }).click();
+  await screen.getByRole('combobox', { name: 'Search providers' }).fill('fo');
+
+  await expect
+    .element(screen.getByRole('option', { name: 'Baz' }))
+    .not.toBeInTheDocument();
+
+  await screen.getByRole('option', { name: 'Foo' }).click();
+
+  await expect.element(screen.getByLabelText('API key')).toBeVisible();
 });

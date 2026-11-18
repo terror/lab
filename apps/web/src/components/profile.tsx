@@ -4,6 +4,8 @@ import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { signOut, useUser } from '@/lib/auth';
 import {
@@ -36,15 +38,8 @@ function Instructions({ initial }: { initial: string }) {
 
   return (
     <form className='flex flex-col gap-3' onSubmit={onSubmit}>
-      <div className='space-y-1'>
-        <label className='text-sm font-medium' htmlFor='instructions'>
-          Custom instructions
-        </label>
-        <p className='text-sm text-muted-foreground'>
-          What Lab should know about you and how it should respond.
-        </p>
-      </div>
       <Textarea
+        aria-label='Custom instructions'
         id='instructions'
         maxLength={4_000}
         onChange={(event) => setValue(event.target.value)}
@@ -77,12 +72,7 @@ function Picture() {
 
   return (
     <section className='flex flex-col gap-3'>
-      <div className='space-y-1'>
-        <h2 className='text-sm font-medium'>Profile picture</h2>
-        <p className='text-sm text-muted-foreground'>
-          Shown in the sidebar next to your name.
-        </p>
-      </div>
+      <SectionHeading>Picture</SectionHeading>
       <div className='flex items-center gap-4'>
         <UserAvatar className='size-16 text-lg' user={user} />
         <div className='flex gap-2'>
@@ -144,14 +134,12 @@ export function YourData() {
 
   return (
     <section className='flex flex-col gap-3'>
-      <div className='space-y-1'>
-        <h2 className='text-sm font-medium'>Your data</h2>
-        <p className='text-sm text-muted-foreground'>
-          {admin
-            ? 'Download your chats, settings, and memories.'
-            : 'Download your chats, settings, and memories, or delete your account and everything in it.'}
-        </p>
-      </div>
+      <SectionHeading>Your data</SectionHeading>
+      <p className='text-sm text-muted-foreground'>
+        {admin
+          ? 'Download your chats, settings, and memories.'
+          : 'Download your chats, settings, and memories, or delete your account and everything in it.'}
+      </p>
       <div className='flex gap-2'>
         <Button asChild size='sm' variant='outline'>
           <a download href={exportUrl}>
@@ -192,13 +180,25 @@ export function Profile() {
         title='Profile'
       />
       <Picture />
-      {memory.isError && <LoadError subject='your profile' />}
-      {memory.data && (
-        <Instructions
-          key={memory.data.instructions}
-          initial={memory.data.instructions}
-        />
-      )}
+      <section className='flex flex-col gap-3'>
+        <SectionHeading>Custom instructions</SectionHeading>
+        <p className='text-sm text-muted-foreground'>
+          What Lab should know about you and how it should respond.
+        </p>
+        {memory.isPending && <Skeleton className='h-30 w-full rounded-md' />}
+        {memory.isLoadingError && (
+          <LoadError
+            onRetry={() => memory.refetch()}
+            subject='your instructions'
+          />
+        )}
+        {memory.data && (
+          <Instructions
+            key={memory.data.instructions}
+            initial={memory.data.instructions}
+          />
+        )}
+      </section>
       <YourData />
     </>
   );

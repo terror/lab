@@ -3,6 +3,14 @@ import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
 import { Button } from '@/components/ui/button';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -11,23 +19,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { modelsQueryOptions } from '@/lib/models';
 import {
   type Provider,
@@ -36,7 +44,7 @@ import {
   removeProviderKey,
 } from '@/lib/providers';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Ellipsis, Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
 function kindGroups(providers: readonly Provider[]) {
@@ -96,6 +104,75 @@ function ProviderFields({
   );
 }
 
+function ProviderPicker({
+  editing,
+  onChange,
+  provider,
+  providers,
+}: {
+  editing: boolean;
+  onChange: (id: string | undefined) => void;
+  provider: Provider | undefined;
+  providers: Provider[];
+}) {
+  if (provider) {
+    return (
+      <Field>
+        <FieldTitle>Provider</FieldTitle>
+        <div className='flex items-center gap-3'>
+          <ProviderLogo id={provider.id} name={provider.name} />
+          <span className='flex-1 truncate text-sm font-medium'>
+            {provider.name}
+          </span>
+          {!editing && (
+            <Button
+              onClick={() => onChange(undefined)}
+              size='sm'
+              type='button'
+              variant='quiet'
+            >
+              Change
+            </Button>
+          )}
+        </div>
+      </Field>
+    );
+  }
+
+  return (
+    <Command className='border p-0'>
+      <CommandInput
+        aria-label='Search providers'
+        placeholder='Search providers'
+      />
+      <CommandList className='max-h-64'>
+        <CommandEmpty>No providers match that search.</CommandEmpty>
+        {kindGroups(providers).map(({ kind, label }) => (
+          <CommandGroup key={kind} heading={label}>
+            {providers
+              .filter((candidate) => candidate.kind === kind)
+              .map(({ configured, id, name }) => (
+                <CommandItem
+                  key={id}
+                  onSelect={() => onChange(id)}
+                  value={name}
+                >
+                  <ProviderLogo id={id} name={name} size='sm' />
+                  <span className='flex-1 truncate'>{name}</span>
+                  {configured && (
+                    <span className='text-xs text-muted-foreground'>
+                      Connected
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </Command>
+  );
+}
+
 function ConnectDialog({
   initial,
   onOpenChange,
@@ -149,36 +226,15 @@ function ConnectDialog({
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor='provider'>Provider</FieldLabel>
-              <Select
-                disabled={initial !== undefined}
-                onValueChange={(value) => {
-                  setSelected(value);
-                  setValues({});
-                }}
-                value={selected}
-              >
-                <SelectTrigger className='w-full' id='provider'>
-                  <SelectValue placeholder='Choose a provider' />
-                </SelectTrigger>
-                <SelectContent>
-                  {kindGroups(providers).map(({ kind, label }) => (
-                    <SelectGroup key={kind}>
-                      <SelectLabel>{label}</SelectLabel>
-                      {providers
-                        .filter((candidate) => candidate.kind === kind)
-                        .map(({ id, name }) => (
-                          <SelectItem key={id} value={id}>
-                            <ProviderLogo id={id} name={name} size='sm' />
-                            {name}
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <ProviderPicker
+              editing={initial !== undefined}
+              onChange={(id) => {
+                setSelected(id);
+                setValues({});
+              }}
+              provider={provider}
+              providers={providers}
+            />
             {provider && (
               <ProviderFields
                 onChange={(id, value) =>
@@ -231,40 +287,54 @@ function ConnectedProvider({
   });
 
   return (
-    <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
+    <ListRow
+      actions={
+        <>
+          <Button
+            aria-label={`Edit ${provider.name}`}
+            onClick={onEdit}
+            size='sm'
+            variant='quiet'
+          >
+            Edit
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={`Actions for ${provider.name}`}
+                size='icon-sm'
+                variant='quiet'
+              >
+                <Ellipsis aria-hidden='true' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuItem
+                disabled={remove.isPending}
+                onSelect={() => setConfirming(true)}
+                variant='destructive'
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ConfirmDialog
+            action='Delete'
+            description={`Lab will delete the saved API key for ${provider.name}. This can’t be undone.`}
+            onConfirm={() => remove.mutate()}
+            onOpenChange={setConfirming}
+            open={confirming}
+            title={`Delete ${provider.name}?`}
+          />
+        </>
+      }
+    >
       <ProviderLogo id={provider.id} name={provider.name} />
-      <div className='flex min-w-0 flex-col'>
-        <span className='truncate text-sm font-medium'>{provider.name}</span>
-        <span className='truncate text-xs text-muted-foreground'>API key</span>
-      </div>
-      <div className='ml-auto flex shrink-0 items-center gap-1'>
-        <Button
-          aria-label={`Delete ${provider.name}`}
-          disabled={remove.isPending}
-          onClick={() => setConfirming(true)}
-          size='sm'
-          variant='ghost'
-        >
-          Delete
-        </Button>
-        <Button
-          aria-label={`Edit ${provider.name}`}
-          onClick={onEdit}
-          size='sm'
-          variant='secondary'
-        >
-          Edit
-        </Button>
-      </div>
-      <ConfirmDialog
-        action='Delete'
-        description={`Lab will delete the saved API key for ${provider.name}. This can’t be undone.`}
-        onConfirm={() => remove.mutate()}
-        onOpenChange={setConfirming}
-        open={confirming}
-        title={`Delete ${provider.name}?`}
-      />
-    </li>
+      <span className='flex min-w-0 flex-col'>
+        <span className='truncate font-medium'>{provider.name}</span>
+        <span className='truncate text-muted-foreground'>API key</span>
+      </span>
+    </ListRow>
   );
 }
 
@@ -289,13 +359,17 @@ export function Providers() {
         description='Connect the services Lab uses for models, web search, and its computer.'
         title='Providers'
       />
-      {providers.isError && <LoadError subject='providers' />}
-      {providers.isSuccess && connected.length === 0 && (
-        <p className='text-sm text-muted-foreground'>
-          No providers are connected yet.
-        </p>
+      {providers.isPending && <ListSkeleton />}
+      {providers.isLoadingError && (
+        <LoadError onRetry={() => providers.refetch()} subject='providers' />
       )}
-      <ul className='-mx-3 flex flex-col'>
+      {providers.isSuccess && connected.length === 0 && (
+        <EmptyState
+          description='Lab needs a model provider before it can answer.'
+          title='No providers yet'
+        />
+      )}
+      <ul className='flex flex-col gap-0.5'>
         {connected.map((provider) => (
           <ConnectedProvider
             key={provider.id}
