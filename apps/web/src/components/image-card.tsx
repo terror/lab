@@ -32,7 +32,7 @@ export function ImageCard({
         <img
           alt={name}
           className={cn(
-            'block max-w-full object-contain opacity-0 blur-lg transition duration-story data-loaded:opacity-100 data-loaded:blur-none',
+            'block max-w-full object-contain opacity-0 transition-opacity duration-base data-loaded:opacity-100 motion-safe:data-loaded:animate-develop',
             className
           )}
           data-loaded={loaded || undefined}
