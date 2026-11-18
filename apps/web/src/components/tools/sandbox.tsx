@@ -20,7 +20,7 @@ function Terminal({ active, args, output }: ToolView) {
   const body = active ? output : output.replace(/^Exit code[^\n]*\n*/, '');
 
   return (
-    <pre className='max-h-80 overflow-auto rounded-xl bg-muted/40 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
+    <pre className='max-h-80 overflow-auto rounded-card bg-foreground/4 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
       <span className='text-muted-foreground'>$ </span>
       {command}
       {body && `\n${body.trimEnd()}`}
@@ -74,7 +74,7 @@ export function SavedFile({ details }: ToolView) {
 
 function Listing({ output }: ToolView) {
   return output ? (
-    <pre className='max-h-64 overflow-auto rounded-xl bg-muted/40 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
+    <pre className='max-h-64 overflow-auto rounded-card bg-foreground/4 px-3.5 py-3 font-mono text-xs/relaxed whitespace-pre-wrap text-foreground/80'>
       {output}
     </pre>
   ) : undefined;

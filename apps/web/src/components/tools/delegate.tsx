@@ -1,4 +1,6 @@
 import { Markdown } from '@/components/markdown';
+import { Card } from '@/components/ui/card';
+import { StatusIcon } from '@/components/ui/status-icon';
 import {
   TraceCollapsible,
   TraceCollapsibleContent,
@@ -8,7 +10,7 @@ import {
   TraceTitle,
 } from '@/components/ui/trace';
 import { plural } from '@/lib/format';
-import { Ban, Check, LoaderCircle, Split, X } from 'lucide-react';
+import { Split } from 'lucide-react';
 
 import { field } from './format';
 import { type ToolRenderer, type ToolView } from './types';
@@ -20,10 +22,10 @@ type Subagent = {
 };
 
 const states = {
-  done: { icon: Check, label: 'Done', line: undefined },
-  failed: { icon: X, label: 'Failed', line: 'error' },
-  running: { icon: LoaderCircle, label: 'Running', line: 'running' },
-  stopped: { icon: Ban, label: 'Stopped', line: 'pending' },
+  done: { label: 'Done', line: undefined },
+  failed: { label: 'Failed', line: 'error' },
+  running: { label: 'Running', line: undefined },
+  stopped: { label: 'Stopped', line: 'pending' },
 } as const;
 
 function subagents({ args, details }: ToolView): Subagent[] {
@@ -39,6 +41,10 @@ function subagents({ args, details }: ToolView): Subagent[] {
   );
 }
 
+function finished(list: readonly Subagent[]) {
+  return list.filter(({ status }) => status === 'done').length;
+}
+
 function Row({
   active,
   subagent: { status, summary, title },
@@ -48,16 +54,12 @@ function Row({
 }) {
   const state = !active && status === 'running' ? 'stopped' : status;
 
-  const { icon: Icon, label, line } = states[state];
+  const { label, line } = states[state];
 
   const heading = (
     <TraceLine className='h-6.5' status={line}>
       <TraceIcon>
-        <Icon
-          aria-hidden='true'
-          className='size-3.5 motion-safe:data-[running=true]:animate-spin'
-          data-running={state === 'running'}
-        />
+        <StatusIcon status={state} />
       </TraceIcon>
       <TraceTitle>{title}</TraceTitle>
       <span className='sr-only'>{label}</span>
@@ -86,13 +88,24 @@ function Subagents(view: ToolView) {
   }
 
   return (
-    <ul className='flex flex-col gap-1 rounded-2xl border px-4 py-3'>
-      {list.map((subagent, index) => (
-        <li key={index} className='flex min-w-0 flex-col'>
-          <Row active={view.active} subagent={subagent} />
-        </li>
-      ))}
-    </ul>
+    <Card className='gap-2 py-3.5' variant='inset'>
+      <div className='flex items-center justify-between gap-3 text-sm'>
+        <span className='flex items-center gap-2 font-medium'>
+          <Split aria-hidden='true' className='size-4 text-muted-foreground' />
+          {plural(list.length, 'subagent')}
+        </span>
+        <span className='text-xs text-muted-foreground tabular-nums'>
+          {finished(list)} of {list.length} done
+        </span>
+      </div>
+      <ul className='flex flex-col'>
+        {list.map((subagent, index) => (
+          <li key={index} className='flex min-w-0 flex-col'>
+            <Row active={view.active} subagent={subagent} />
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -103,9 +116,9 @@ export const delegateRenderers = {
     summary: (view) => {
       const list = subagents(view);
 
-      const done = list.filter(({ status }) => status === 'done').length;
-
-      return list.length > 0 ? `${done} of ${list.length} done` : undefined;
+      return list.length > 0
+        ? `${finished(list)} of ${list.length} done`
+        : undefined;
     },
     title: (view) => {
       const count = subagents(view).length;

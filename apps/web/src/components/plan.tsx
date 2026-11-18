@@ -1,18 +1,14 @@
 import { ErrorMessage } from '@/components/error-message';
 import { ToolConversation } from '@/components/tools';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dot } from '@/components/ui/dot';
 import { editPlan } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { PLAN_LIMIT, type PlanStep, STEP_LENGTH } from '@lab/server/schemas';
 import { useMutation } from '@tanstack/react-query';
-import {
-  ArrowDown,
-  ArrowUp,
-  LoaderCircle,
-  Pencil,
-  Plus,
-  X,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
 import {
   type KeyboardEvent,
   type SubmitEvent,
@@ -23,11 +19,8 @@ import {
   useState,
 } from 'react';
 
-const action =
-  'flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40';
-
 const field =
-  'h-7 min-w-0 flex-1 rounded-md bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50';
+  'h-7 min-w-0 flex-1 rounded-control bg-transparent px-1.5 text-sm placeholder:text-muted-foreground';
 
 function keys(steps: readonly PlanStep[]) {
   const seen = new Map<string, number>();
@@ -125,14 +118,22 @@ function Step({
 
   return (
     <li className='group/step flex min-h-8 items-center gap-2.5 text-sm'>
-      <Checkbox
-        checked={done}
-        disabled={!editable}
-        id={id}
-        onCheckedChange={() =>
-          onChange({ ...step, status: done ? 'pending' : 'done' })
-        }
-      />
+      <span className='relative flex'>
+        <Checkbox
+          checked={done}
+          disabled={!editable}
+          id={id}
+          onCheckedChange={() =>
+            onChange({ ...step, status: done ? 'pending' : 'done' })
+          }
+        />
+        {step.status === 'active' && (
+          <Dot
+            className='pointer-events-none absolute inset-0 m-auto size-1.25'
+            tone='live'
+          />
+        )}
+      </span>
       {editing ? (
         <StepText
           label={`Edit “${step.text}”`}
@@ -153,48 +154,42 @@ function Step({
           )}
         </label>
       )}
-      {step.status === 'active' && (
-        <LoaderCircle
-          aria-hidden='true'
-          className='size-3.5 shrink-0 text-muted-foreground motion-safe:animate-spin'
-        />
-      )}
       {editable && !editing && (
-        <div className='flex shrink-0 items-center opacity-0 transition-opacity group-focus-within/step:opacity-100 group-hover/step:opacity-100 pointer-coarse:opacity-100'>
-          <button
+        <div className='flex shrink-0 items-center hover-reveal group-focus-within/step:opacity-100 group-hover/step:opacity-100'>
+          <Button
             aria-label={`Edit “${step.text}”`}
-            className={action}
             onClick={() => setEditing(true)}
-            type='button'
+            size='icon-xs'
+            variant='quiet'
           >
-            <Pencil aria-hidden='true' className='size-3.5' />
-          </button>
-          <button
+            <Pencil aria-hidden='true' />
+          </Button>
+          <Button
             aria-label={`Move “${step.text}” up`}
-            className={action}
             disabled={first}
             onClick={() => onMove(-1)}
-            type='button'
+            size='icon-xs'
+            variant='quiet'
           >
-            <ArrowUp aria-hidden='true' className='size-3.5' />
-          </button>
-          <button
+            <ArrowUp aria-hidden='true' />
+          </Button>
+          <Button
             aria-label={`Move “${step.text}” down`}
-            className={action}
             disabled={last}
             onClick={() => onMove(1)}
-            type='button'
+            size='icon-xs'
+            variant='quiet'
           >
-            <ArrowDown aria-hidden='true' className='size-3.5' />
-          </button>
-          <button
+            <ArrowDown aria-hidden='true' />
+          </Button>
+          <Button
             aria-label={`Remove “${step.text}”`}
-            className={action}
             onClick={onRemove}
-            type='button'
+            size='icon-xs'
+            variant='quiet'
           >
-            <X aria-hidden='true' className='size-3.5' />
-          </button>
+            <X aria-hidden='true' />
+          </Button>
         </div>
       )}
     </li>
@@ -266,38 +261,37 @@ export function Plan({
   const stepKeys = keys(shown);
 
   return (
-    <section
-      aria-labelledby={heading}
-      className='flex flex-col gap-1 rounded-2xl border px-4 py-3'
-    >
-      <div className='flex items-baseline justify-between gap-3'>
-        <h3 className='text-sm font-medium' id={heading}>
-          Plan
-        </h3>
-        <span className='text-xs text-muted-foreground tabular-nums'>
-          {done} of {shown.length} done
-        </span>
-      </div>
-      <ol className='flex flex-col'>
-        {shown.map((step, index) => (
-          <Step
-            key={stepKeys[index]}
-            editable={editable}
-            first={index === 0}
-            last={index === shown.length - 1}
-            onChange={(next) => change(shown.with(index, next))}
-            onMove={(offset) => change(swapped(shown, index, index + offset))}
-            onRemove={() => change(shown.toSpliced(index, 1))}
-            step={step}
+    <section aria-labelledby={heading}>
+      <Card className='gap-1 py-3.5' variant='inset'>
+        <div className='flex items-baseline justify-between gap-3'>
+          <h3 className='text-sm font-medium' id={heading}>
+            Plan
+          </h3>
+          <span className='text-xs text-muted-foreground tabular-nums'>
+            {done} of {shown.length} done
+          </span>
+        </div>
+        <ol className='flex flex-col'>
+          {shown.map((step, index) => (
+            <Step
+              key={stepKeys[index]}
+              editable={editable}
+              first={index === 0}
+              last={index === shown.length - 1}
+              onChange={(next) => change(shown.with(index, next))}
+              onMove={(offset) => change(swapped(shown, index, index + offset))}
+              onRemove={() => change(shown.toSpliced(index, 1))}
+              step={step}
+            />
+          ))}
+        </ol>
+        {editable && shown.length < PLAN_LIMIT && (
+          <AddStep
+            onAdd={(text) => change([...shown, { status: 'pending', text }])}
           />
-        ))}
-      </ol>
-      {editable && shown.length < PLAN_LIMIT && (
-        <AddStep
-          onAdd={(text) => change([...shown, { status: 'pending', text }])}
-        />
-      )}
-      {save.error && <ErrorMessage>{save.error.message}</ErrorMessage>}
+        )}
+        {save.error && <ErrorMessage>{save.error.message}</ErrorMessage>}
+      </Card>
     </section>
   );
 }

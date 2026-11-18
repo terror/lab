@@ -52,11 +52,13 @@ test('a finished turn folds only its steps behind how long it worked', async () 
   await expect.element(fold).toHaveAttribute('aria-expanded', 'false');
   await expect.element(screen.getByText('bar')).toBeVisible();
   await expect.element(screen.getByText('baz')).toBeVisible();
-  await expect.element(screen.getByText('Read a page')).not.toBeInTheDocument();
+  await expect
+    .element(screen.getByText('Couldn’t read a page'))
+    .not.toBeInTheDocument();
 
   await fold.click();
 
-  await expect.element(screen.getByText('Read a page')).toBeVisible();
+  await expect.element(screen.getByText('Couldn’t read a page')).toBeVisible();
 });
 
 test('a running turn keeps its text and shows only its current step', async () => {
@@ -81,6 +83,29 @@ test('a running turn keeps its text and shows only its current step', async () =
     .toHaveTextContent('Reading a page');
   await expect.element(screen.getByRole('button')).not.toBeInTheDocument();
   await expect.element(screen.getByText('bar')).toBeVisible();
+});
+
+test('a pending question waits for an answer instead of working', async () => {
+  const { screen } = await renderWithQuery(
+    <AssistantMessage
+      parts={[
+        {
+          arguments: { options: ['foo'], question: 'bar' },
+          id: 'a',
+          name: 'ask_user',
+          type: 'toolCall',
+        },
+      ]}
+      progress={new Map()}
+      results={new Map()}
+      streaming
+      working
+    />
+  );
+
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('Waiting for your answer');
 });
 
 test('a turn shows how long it worked as soon as its reply starts', async () => {

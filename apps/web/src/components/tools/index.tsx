@@ -12,6 +12,7 @@ export {
   ToolConversation,
   ToolHistory,
 } from './types';
+export { failedTitle } from './format';
 export { toolRenderer } from './registry';
 
 export function ToolBody(props: ToolView & { name: string }) {

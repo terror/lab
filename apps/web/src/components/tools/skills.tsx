@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { WandSparkles } from 'lucide-react';
 
@@ -25,17 +26,18 @@ function SkillCard({
   }
 
   return (
-    <div
+    <Card
       className={cn(
-        'flex flex-col gap-0.5 rounded-xl bg-muted/40 px-3.5 py-3 text-sm',
+        'gap-0.5 text-sm',
         deleted && 'text-muted-foreground line-through'
       )}
+      variant='inset'
     >
       <span className='font-medium'>{name}</span>
       {description && (
         <span className='text-muted-foreground'>{description}</span>
       )}
-    </div>
+    </Card>
   );
 }
 

@@ -1,5 +1,6 @@
+import { StatusIcon } from '@/components/ui/status-icon';
 import { plural } from '@/lib/format';
-import { Check, Code, LoaderCircle, X } from 'lucide-react';
+import { Code } from 'lucide-react';
 
 import { field, parse, text } from './format';
 import { Block } from './previews';
@@ -13,12 +14,12 @@ type NestedCall = {
   status: 'cancelled' | 'error' | 'ok' | 'running';
 };
 
-const statusIcons = {
-  cancelled: X,
-  error: X,
-  ok: Check,
-  running: LoaderCircle,
-};
+const statuses = {
+  cancelled: 'stopped',
+  error: 'failed',
+  ok: 'done',
+  running: 'running',
+} as const;
 
 function Script({ args, details, output }: ToolView) {
   const calls = (field(details, 'calls') as NestedCall[] | undefined) ?? [];
@@ -28,8 +29,6 @@ function Script({ args, details, output }: ToolView) {
       {calls.length > 0 && (
         <ul className='flex flex-col gap-1 text-sm text-muted-foreground'>
           {calls.map((call) => {
-            const Icon = statusIcons[call.status];
-
             const view = {
               active: call.status === 'running',
               args: parse(call.args),
@@ -41,11 +40,9 @@ function Script({ args, details, output }: ToolView) {
 
             return (
               <li key={call.id} className='flex items-center gap-2'>
-                <Icon
-                  aria-hidden='true'
-                  className='size-3.5 shrink-0 motion-safe:data-[running=true]:animate-spin'
-                  data-running={call.status === 'running'}
-                />
+                <span className='flex size-4 shrink-0 items-center justify-center'>
+                  <StatusIcon status={statuses[call.status]} />
+                </span>
                 {toolRenderer(call.name).title(view)}
               </li>
             );
