@@ -4,7 +4,9 @@ import {
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
+  useParams,
 } from '@tanstack/react-router';
 import { expect, test, vi } from 'vitest';
 
@@ -14,12 +16,12 @@ function renderSidebar({
   collapsed = false,
   onProject = () => undefined,
   path = '/projects/7',
-  selected,
+  pending,
 }: {
   collapsed?: boolean;
   onProject?: (id: number) => void;
   path?: string;
-  selected?: number;
+  pending?: 'chat' | 'summary';
 } = {}) {
   stubFetch(({ pathname, searchParams }) => {
     if (pathname === '/api/projects') {
@@ -51,7 +53,9 @@ function renderSidebar({
     }
 
     if (pathname === '/api/conversations/1') {
-      return Response.json({ projectId: 7 });
+      return pending === 'summary'
+        ? new Promise<Response>(() => undefined)
+        : Response.json({ projectId: 7 });
     }
 
     const conversations =
@@ -72,30 +76,47 @@ function renderSidebar({
     return Response.json({ conversations, next: null });
   });
 
+  function Root() {
+    return (
+      <TooltipProvider>
+        <Sidebar
+          collapsed={collapsed}
+          onNavigate={() => undefined}
+          onProject={onProject}
+          onSelect={() => undefined}
+          onToggle={() => undefined}
+          selected={useParams({ strict: false }).id}
+          user={{
+            createdAt: new Date(0),
+            email: 'foo@bar.com',
+            emailVerified: true,
+            id: 'foo',
+            name: 'foo',
+            updatedAt: new Date(0),
+          }}
+        />
+      </TooltipProvider>
+    );
+  }
+
+  const root = createRootRoute({ component: Root });
+
+  const chat = createRoute({
+    getParentRoute: () => root,
+    loader: () =>
+      pending === 'chat' ? new Promise<void>(() => undefined) : undefined,
+    params: { parse: ({ id }) => ({ id: Number(id) }) },
+    path: '/c/$id',
+  });
+
+  const project = createRoute({
+    getParentRoute: () => root,
+    path: '/projects/$projectId',
+  });
+
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: [path] }),
-    routeTree: createRootRoute({
-      component: () => (
-        <TooltipProvider>
-          <Sidebar
-            collapsed={collapsed}
-            onNavigate={() => undefined}
-            onProject={onProject}
-            onSelect={() => undefined}
-            onToggle={() => undefined}
-            selected={selected}
-            user={{
-              createdAt: new Date(0),
-              email: 'foo@bar.com',
-              emailVerified: true,
-              id: 'foo',
-              name: 'foo',
-              updatedAt: new Date(0),
-            }}
-          />
-        </TooltipProvider>
-      ),
-    }),
+    routeTree: root.addChildren([chat, project]),
   });
 
   return renderWithQuery(<RouterProvider router={router} />);
@@ -121,11 +142,7 @@ test('clicking the open project collapses and expands its chats', async () => {
 test('clicking a project from one of its chats opens the project', async () => {
   const onProject = vi.fn();
 
-  const { screen } = await renderSidebar({
-    onProject,
-    path: '/c/1',
-    selected: 1,
-  });
+  const { screen } = await renderSidebar({ onProject, path: '/c/1' });
 
   await expect.element(screen.getByText('bar')).toBeVisible();
 
@@ -134,6 +151,42 @@ test('clicking a project from one of its chats opens the project', async () => {
   expect(onProject.mock.calls).toEqual([[7]]);
 
   await expect.element(screen.getByText('bar')).toBeVisible();
+});
+
+test('a project keeps its chats open while one of them loads', async () => {
+  const { screen } = await renderSidebar({ pending: 'chat' });
+
+  const project = screen.getByRole('button', { name: 'foo', exact: true });
+
+  await expect.element(screen.getByText('bar')).toBeVisible();
+
+  screen
+    .getByRole('link', { name: 'bar' })
+    .element()
+    .dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    );
+
+  await expect.element(project).not.toHaveAttribute('aria-current');
+
+  expect(screen.getByRole('link', { name: 'bar' }).query()).not.toBeNull();
+});
+
+test('a project keeps its chats open while the opened chat loads', async () => {
+  const { screen } = await renderSidebar({ pending: 'summary' });
+
+  await expect.element(screen.getByText('bar')).toBeVisible();
+
+  screen
+    .getByRole('link', { name: 'bar' })
+    .element()
+    .dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    );
+
+  await expect
+    .element(screen.getByRole('link', { name: 'bar' }))
+    .toHaveAttribute('aria-current', 'page');
 });
 
 test('projects, apps and recent chats scroll together', async () => {

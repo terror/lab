@@ -46,6 +46,7 @@ import { usePath } from '@/lib/location';
 import { useProjects } from '@/lib/projects';
 import { usePersistentState } from '@/lib/storage';
 import { cn } from '@/lib/utils';
+import { useParams } from '@tanstack/react-router';
 import {
   ArrowDownUp,
   ChevronDown,
@@ -270,10 +271,13 @@ export type NavPath = (typeof navPages)[number]['to'];
 
 const PREVIEW = 5;
 
-function openProject(path: string, chatProject: number | null | undefined) {
-  const match = /^\/projects\/(\d+)$/.exec(path);
-
-  return match ? Number(match[1]) : (chatProject ?? undefined);
+function openProject(
+  projectId: string | undefined,
+  chatProject: number | null | undefined
+) {
+  return projectId === undefined
+    ? (chatProject ?? undefined)
+    : Number(projectId);
 }
 
 function ShowMore({ onClick }: { onClick: () => void }) {
@@ -341,9 +345,14 @@ function ProjectsSection({
   const [editing, setEditing] = useState<ProjectEditing>();
   const [closed, setClosed] = useState<number>();
 
-  const open = openProject(path, summary.data?.projectId);
+  const { projectId } = useParams({ strict: false });
 
-  const [previous, setPrevious] = useState(open);
+  const [previous, setPrevious] = useState<number>();
+
+  const open =
+    selected !== undefined && summary.isPending
+      ? previous
+      : openProject(projectId, summary.data?.projectId);
 
   if (open !== previous) {
     setPrevious(open);
