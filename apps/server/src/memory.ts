@@ -10,7 +10,7 @@ import { found } from './found';
 import { harness } from './harness';
 import { keyParam, validator } from './validator';
 
-async function read(ownerId: string) {
+export async function readMemory(ownerId: string) {
   const doc = await harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT);
 
   return {
@@ -18,6 +18,38 @@ async function read(ownerId: string) {
     memories: [...(doc?.memories ?? [])],
     referenceChats: doc?.referenceChats ?? false,
   };
+}
+
+export async function addMemory(ownerId: string, text: string) {
+  return harness.commit(async (tx) => {
+    const doc = await tx.doc(MemoryDoc, ownerId, null);
+
+    if (doc.memories.length >= MEMORY_LIMIT) {
+      return false;
+    }
+
+    doc.memories.push({
+      createdAt: Date.now(),
+      id: randomUUID().slice(0, 8),
+      text,
+    });
+
+    return true;
+  }, BACKGROUND_CONTEXT);
+}
+
+export async function removeMemory(ownerId: string, id: string) {
+  return harness.commit(async (tx) => {
+    const doc = await tx.doc(MemoryDoc, ownerId, null);
+
+    const index = doc.memories.findIndex((entry) => entry.id === id);
+
+    if (index >= 0) {
+      doc.memories.splice(index, 1);
+    }
+
+    return index >= 0;
+  }, BACKGROUND_CONTEXT);
 }
 
 const settings = validator(
@@ -35,7 +67,7 @@ const addition = validator(
 
 const memory = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json(await read(c.get('user').id)))
+  .get('/', async (c) => c.json(await readMemory(c.get('user').id)))
   .patch('/', settings, async (c) => {
     const { instructions, referenceChats } = c.req.valid('json');
 
@@ -51,51 +83,23 @@ const memory = new Hono()
       }
     }, BACKGROUND_CONTEXT);
 
-    return c.json(await read(c.get('user').id));
+    return c.json(await readMemory(c.get('user').id));
   })
   .post('/', addition, async (c) => {
     const { text } = c.req.valid('json');
 
-    const added = await harness.commit(async (tx) => {
-      const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
-
-      if (doc.memories.length >= MEMORY_LIMIT) {
-        return false;
-      }
-
-      doc.memories.push({
-        createdAt: Date.now(),
-        id: randomUUID().slice(0, 8),
-        text,
-      });
-
-      return true;
-    }, BACKGROUND_CONTEXT);
-
-    if (!added) {
+    if (!(await addMemory(c.get('user').id, text))) {
       throw new HTTPException(400, { message: 'Memory is full' });
     }
 
-    return c.json(await read(c.get('user').id), 201);
+    return c.json(await readMemory(c.get('user').id), 201);
   })
   .delete('/:id', keyParam, async (c) => {
     const { id } = c.req.valid('param');
 
-    const removed = await harness.commit(async (tx) => {
-      const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
+    found(await removeMemory(c.get('user').id, id), 'Memory not found');
 
-      const index = doc.memories.findIndex((entry) => entry.id === id);
-
-      if (index >= 0) {
-        doc.memories.splice(index, 1);
-      }
-
-      return index >= 0;
-    }, BACKGROUND_CONTEXT);
-
-    found(removed, 'Memory not found');
-
-    return c.json(await read(c.get('user').id));
+    return c.json(await readMemory(c.get('user').id));
   });
 
 export default memory;

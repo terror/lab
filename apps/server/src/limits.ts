@@ -11,35 +11,55 @@ const buckets = {
   uploads: 30,
 };
 
+type Bucket = keyof typeof buckets;
+
 const hits = new Map<string, number[]>();
 
-export function rateLimit(bucket: keyof typeof buckets) {
+function retryAfter(bucket: Bucket, user: User) {
+  if (isAdmin(user)) {
+    return undefined;
+  }
+
+  const key = `${bucket}:${user.id}`;
+
+  const now = Date.now();
+
+  const recent = (hits.get(key) ?? []).filter((at) => at > now - MINUTE);
+
+  const [oldest] = recent;
+
+  if (oldest !== undefined && recent.length >= buckets[bucket]) {
+    return Math.max(1, Math.ceil((oldest + MINUTE - now) / 1000));
+  }
+
+  hits.set(key, [...recent, now]);
+
+  return undefined;
+}
+
+function tooOften(seconds: number) {
+  return new HTTPException(429, {
+    message: `You’re doing that too often. Try again in ${seconds} seconds.`,
+  });
+}
+
+export function checkRate(bucket: Bucket, user: User) {
+  const seconds = retryAfter(bucket, user);
+
+  if (seconds !== undefined) {
+    throw tooOften(seconds);
+  }
+}
+
+export function rateLimit(bucket: Bucket) {
   return createMiddleware<{ Variables: { user: User } }>(async (c, next) => {
-    const user = c.get('user');
+    const seconds = retryAfter(bucket, c.get('user'));
 
-    if (isAdmin(user)) {
-      return next();
-    }
-
-    const key = `${bucket}:${user.id}`;
-
-    const now = Date.now();
-
-    const recent = (hits.get(key) ?? []).filter((at) => at > now - MINUTE);
-
-    const [oldest] = recent;
-
-    if (oldest !== undefined && recent.length >= buckets[bucket]) {
-      const seconds = Math.max(1, Math.ceil((oldest + MINUTE - now) / 1000));
-
+    if (seconds !== undefined) {
       c.header('Retry-After', String(seconds));
 
-      throw new HTTPException(429, {
-        message: `You’re doing that too often. Try again in ${seconds} seconds.`,
-      });
+      throw tooOften(seconds);
     }
-
-    hits.set(key, [...recent, now]);
 
     return next();
   });
