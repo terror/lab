@@ -271,3 +271,24 @@ export const scheduledTask = pgTable(
     index('scheduled_task_nextRunAt_idx').on(table.nextRunAt),
   ]
 );
+
+export const artifactState = pgTable(
+  'artifact_state',
+  {
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    artifactId: text('artifact_id').notNull(),
+    key: text('key').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    value: text('value').notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.conversationId, table.artifactId, table.key],
+    }),
+    index('artifact_state_ownerId_idx').on(table.ownerId),
+  ]
+);

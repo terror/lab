@@ -8,6 +8,7 @@ import {
 } from '@lab/harness';
 import { inArray, sql } from 'drizzle-orm';
 
+import { artifactStateAccess } from './artifact-state';
 import { chatsAccess } from './chat-access';
 import { connectorAccess } from './connector-access';
 import { db } from './db';
@@ -49,6 +50,7 @@ await purgeDeleted(env.LAB_STORAGE_PATH);
 export const harness = await openHarness({
   admit: async (conversationId) =>
     checkSpend(await requireOwner(conversationId)),
+  artifactState: artifactStateAccess,
   history: historyAccess,
   images: imageAccess,
   library: libraryAccess,

@@ -12,8 +12,11 @@ import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import {
   ANSWER_LENGTH,
+  ArtifactsDoc,
   PlanDoc,
   QuestionsDoc,
+  STORE_KEY_LENGTH,
+  STORE_VALUE_LENGTH,
   TitleDoc,
   editPlan,
 } from '@lab/harness';
@@ -24,6 +27,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
+import { deleteValue, readValue, saveValue } from './artifact-state';
 import { type User, requireUser } from './auth';
 import { type Parent, branchPoint, chatForks } from './branches';
 import { pinChat, readChat, renameChat } from './chat-actions';
@@ -98,6 +102,24 @@ const entriesQuery = validator(
 );
 
 const listQuery = validator('query', listSchema);
+
+const artifactParams = validator(
+  'param',
+  z.object({
+    artifactId: z.string().regex(/^[a-z0-9-]{1,40}$/),
+    id: positiveId,
+  })
+);
+
+const stateKey = validator(
+  'query',
+  z.object({ key: z.string().min(1).max(STORE_KEY_LENGTH) })
+);
+
+const stateValue = validator(
+  'json',
+  z.object({ value: z.string().max(STORE_VALUE_LENGTH) })
+);
 
 const answering = validator(
   'json',
@@ -369,6 +391,20 @@ const owned = createMiddleware<{
 
   c.set('conversation', conversation);
   c.set('projectId', record.projectId);
+
+  await next();
+});
+
+const artifact = createMiddleware<{
+  Variables: { conversation: Conversation };
+}>(async (c, next) => {
+  const doc = await harness.snapshot(
+    ArtifactsDoc,
+    c.var.conversation.id,
+    BACKGROUND_CONTEXT
+  );
+
+  found(doc?.artifacts[c.req.param('artifactId') ?? ''], 'Artifact not found');
 
   await next();
 });
@@ -691,6 +727,58 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
+  .get(
+    '/:id/artifacts/:artifactId/state',
+    artifactParams,
+    owned,
+    artifact,
+    stateKey,
+    async (c) => {
+      const { artifactId } = c.req.valid('param');
+
+      return c.json({
+        value: await readValue(
+          c.var.conversation.id,
+          artifactId,
+          c.req.valid('query').key
+        ),
+      });
+    }
+  )
+  .put(
+    '/:id/artifacts/:artifactId/state',
+    artifactParams,
+    owned,
+    artifact,
+    stateKey,
+    stateValue,
+    async (c) => {
+      await saveValue(
+        c.get('user').id,
+        c.var.conversation.id,
+        c.req.valid('param').artifactId,
+        { key: c.req.valid('query').key, value: c.req.valid('json').value }
+      );
+
+      return c.body(null, 204);
+    }
+  )
+  .delete(
+    '/:id/artifacts/:artifactId/state',
+    artifactParams,
+    owned,
+    artifact,
+    stateKey,
+    async (c) => {
+      await deleteValue(
+        c.var.conversation.id,
+        c.req.valid('param').artifactId,
+        c.req.valid('query').key
+      );
+
+      return c.body(null, 204);
+    }
+  )
   .patch('/:id', idParam, owned, update, async (c) => {
     const { conversation } = c.var;
 

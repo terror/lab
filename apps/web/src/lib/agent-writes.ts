@@ -14,6 +14,7 @@ import { trashQueryKey } from './trash';
 const toolWrites = {
   artifact_create: [],
   artifact_read: [],
+  artifact_state_read: [],
   artifact_update: [],
   ask_user: [],
   chat_delete: [conversationsQueryKey, trashQueryKey],

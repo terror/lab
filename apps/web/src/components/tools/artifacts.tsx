@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useDraft } from '@/lib/conversations';
+import { plural } from '@/lib/format';
 import { useLibraryImages } from '@/lib/library';
 import {
   Code,
@@ -373,6 +374,25 @@ export const artifactRenderers = {
       ) : undefined;
     },
     title: artifactTitle('Reading an artifact', 'Read'),
+  },
+  artifact_state_read: {
+    icon: LayoutTemplate,
+    preview: ({ details }) => {
+      const title = text(field(details, 'title'));
+
+      return title ? (
+        <PreviewList
+          items={[
+            {
+              key: title,
+              label: title,
+              meta: plural(count(field(details, 'keys')) ?? 0, 'saved value'),
+            },
+          ]}
+        />
+      ) : undefined;
+    },
+    title: artifactTitle('Reading saved data', 'Read saved data from'),
   },
   artifact_update: {
     icon: LayoutTemplate,

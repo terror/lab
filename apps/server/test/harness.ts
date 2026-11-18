@@ -1,5 +1,6 @@
 import type { ExtensionDeps } from '@lab/harness';
 
+import { artifactStateAccess } from '../src/artifact-state';
 import { chatsAccess } from '../src/chat-access';
 import { connectorAccess } from '../src/connector-access';
 import { projectAccess } from '../src/project-access';
@@ -10,6 +11,7 @@ import { scheduleAccess } from '../src/schedule-access';
 export function emptyDeps(): ExtensionDeps {
   return {
     admit: async () => undefined,
+    artifactState: artifactStateAccess,
     history: { read: async () => undefined, search: async () => [] },
     images: {
       available: async () => false,
