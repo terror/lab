@@ -20,6 +20,7 @@ import {
   trashQueryOptions,
   useTrashAction,
 } from '@/lib/trash';
+import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Ellipsis, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
@@ -112,6 +113,8 @@ export function Trash() {
 
   const count = trash.data?.length ?? 0;
 
+  const emptyState = useEmpty('trash');
+
   return (
     <>
       <PageHeader
@@ -134,12 +137,7 @@ export function Trash() {
       {trash.isLoadingError && (
         <LoadError onRetry={() => trash.refetch()} subject='the trash' />
       )}
-      {trash.isSuccess && count === 0 && (
-        <EmptyState
-          description='Chats and projects you delete land here.'
-          title='All clean'
-        />
-      )}
+      {trash.isSuccess && count === 0 && <EmptyState {...emptyState} />}
       {count > 0 && (
         <ul className='flex flex-col gap-0.5'>
           {trash.data?.map((item) => (

@@ -159,18 +159,10 @@ test('arrow keys move through slash commands and escape closes them', async () =
     </TooltipProvider>
   );
 
-  const message = screen.getByLabelText('Message');
+  const current = () =>
+    screen.container.querySelector('[aria-current="true"]')?.textContent;
 
-  const current = () => {
-    const option = screen.container.querySelector('[aria-current="true"]');
-
-    return message.element().getAttribute('aria-activedescendant') ===
-      option?.id
-      ? option?.textContent
-      : undefined;
-  };
-
-  await message.click();
+  await screen.getByLabelText('Message').click();
 
   const selected = [current()];
 

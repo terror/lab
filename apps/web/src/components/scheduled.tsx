@@ -24,6 +24,7 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
+import { type EmptyView, useEmpty } from '@/lib/voice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Clock, Ellipsis } from 'lucide-react';
@@ -34,32 +35,23 @@ type Filter = 'active' | 'all' | 'paused';
 const filters: Record<
   Filter,
   {
-    empty: { description: string; title: string };
+    empty: EmptyView;
     keep: (task: ScheduledTask) => boolean;
     label: string;
   }
 > = {
   active: {
-    empty: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No active tasks',
-    },
+    empty: 'active',
     keep: (task) => task.enabled,
     label: 'Active',
   },
   paused: {
-    empty: {
-      description: 'A task you pause waits here until you resume it.',
-      title: 'No paused tasks',
-    },
+    empty: 'paused',
     keep: (task) => !task.enabled,
     label: 'Paused',
   },
   all: {
-    empty: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No scheduled tasks yet',
-    },
+    empty: 'tasks',
     keep: () => true,
     label: 'All',
   },
@@ -196,6 +188,8 @@ export function Scheduled() {
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
 
+  const emptyState = useEmpty(filters[filter].empty);
+
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
       <Page>
@@ -225,7 +219,7 @@ export function Scheduled() {
             />
           )}
           {schedules.isSuccess && tasks.length === 0 && (
-            <EmptyState {...filters[filter].empty} />
+            <EmptyState {...emptyState} />
           )}
           <ul className='flex flex-col gap-0.5'>
             {tasks.map((task) => (

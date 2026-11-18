@@ -108,6 +108,7 @@ async function listTools(
     description: tool.description ?? tool.title ?? tool.name,
     name: tool.name,
     parameters: tool.inputSchema,
+    readOnly: tool.annotations?.readOnlyHint === true,
     title: tool.title ?? tool.annotations?.title ?? tool.name,
   }));
 

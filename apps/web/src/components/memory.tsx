@@ -29,6 +29,7 @@ import {
   useMemoryUpdate,
 } from '@/lib/memory';
 import { undoToast } from '@/lib/undo';
+import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
@@ -135,6 +136,8 @@ export function Memory() {
 
   const [adding, setAdding] = useState(false);
 
+  const emptyState = useEmpty('memory');
+
   const update = useMemoryUpdate((referenceChats: boolean) =>
     updateMemory({ referenceChats })
   );
@@ -177,10 +180,7 @@ export function Memory() {
           <section className='flex flex-col gap-2'>
             <SectionHeading>Memories</SectionHeading>
             {memory.data.memories.length === 0 && (
-              <EmptyState
-                description='Tell it something worth remembering in any chat, or add a memory here.'
-                title='Lab hasn’t learned anything yet'
-              />
+              <EmptyState {...emptyState} />
             )}
             <ul className='flex flex-col gap-0.5'>
               {memory.data.memories.map(({ id, text }) => (

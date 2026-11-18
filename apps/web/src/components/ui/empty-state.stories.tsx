@@ -45,3 +45,23 @@ export const LoadError = meta.story({
     title: 'Couldn’t load memories',
   },
 });
+
+const poses = [
+  ['default', 'Empty shelves'],
+  ['drained', 'Nothing to throw out'],
+  ['asleep', 'Nothing on the clock'],
+  ['puzzled', 'No matches'],
+  ['stretching', 'A fresh project'],
+  ['tipped', 'Couldn’t load your library'],
+] as const;
+
+export const Poses = meta.story({
+  args: { description: 'Foo bar.', title: 'Foo' },
+  render: (args) => (
+    <div className='grid grid-cols-3'>
+      {poses.map(([pose, title]) => (
+        <EmptyState key={pose} {...args} pose={pose} title={title} />
+      ))}
+    </div>
+  ),
+});
