@@ -345,6 +345,18 @@
   }
 }
 
+@property --caret-alpha {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+@keyframes caret-pulse {
+  50% {
+    --caret-alpha: 0.35;
+  }
+}
+
 @keyframes caret-out {
   to {
     margin-inline-start: 0;
@@ -368,13 +380,15 @@
   height: 0.5rem;
   vertical-align: 1px;
   content: var(--caret);
+  opacity: var(--caret-alpha);
   animation: var(--caret-motion);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   [data-streaming='true'] {
-    --caret-motion:
-      dot-pulse 1.2s ease-in-out 0s 4, dot-pulse 2.4s ease-in-out 4.8s infinite;
+    animation:
+      caret-pulse 1.2s ease-in-out 0s 4,
+      caret-pulse 2.4s ease-in-out 4.8s infinite;
   }
 
   [data-streaming='false'] {

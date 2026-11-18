@@ -81,20 +81,24 @@ function Reply() {
   const words = reply.split(' ');
   const [count, setCount] = useState(0);
 
+  const streaming = count < words.length;
+
   useEffect(() => {
+    if (!streaming) {
+      return undefined;
+    }
+
     const timer = setInterval(() => setCount((current) => current + 1), 70);
 
     return () => clearInterval(timer);
-  }, []);
-
-  const shown = Math.min(count, words.length);
+  }, [streaming]);
 
   return (
     <AssistantMessage
-      parts={[{ text: words.slice(0, shown).join(' '), type: 'text' }]}
+      parts={[{ text: words.slice(0, count).join(' '), type: 'text' }]}
       progress={new Map()}
       results={new Map()}
-      streaming={shown < words.length}
+      streaming={streaming}
     />
   );
 }

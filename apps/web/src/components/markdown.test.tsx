@@ -56,7 +56,7 @@ test('mermaid diagrams follow theme switches', async () => {
   document.documentElement.classList.remove('dark');
 });
 
-test('a streaming reply ends in a caret that fades once it finishes', async () => {
+test('a streaming reply ends in a pulsing caret that fades once it finishes', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -70,18 +70,29 @@ test('a streaming reply ends in a caret that fades once it finishes', async () =
     </>
   );
 
-  const carets = () =>
-    [...screen.container.querySelectorAll('p')].map((paragraph) => {
-      const caret = getComputedStyle(paragraph, '::after');
+  const carets = () => {
+    const streamed = screen.container.querySelector('[data-streaming]');
 
-      return [paragraph.textContent, caret.content, caret.animationName];
-    });
+    return {
+      paragraphs: [...screen.container.querySelectorAll('p')].map(
+        (paragraph) => {
+          const caret = getComputedStyle(paragraph, '::after');
 
-  await expect.poll(carets).toEqual([
-    ['foo', 'none', 'none'],
-    ['bar', '""', 'dot-pulse, dot-pulse'],
-    ['baz', 'none', 'none'],
-  ]);
+          return [paragraph.textContent, caret.content, caret.animationName];
+        }
+      ),
+      pulse: streamed && getComputedStyle(streamed).animationName,
+    };
+  };
+
+  await expect.poll(carets).toEqual({
+    paragraphs: [
+      ['foo', 'none', 'none'],
+      ['bar', '""', 'none'],
+      ['baz', 'none', 'none'],
+    ],
+    pulse: 'caret-pulse, caret-pulse',
+  });
 
   await screen.rerender(
     <>
@@ -90,11 +101,14 @@ test('a streaming reply ends in a caret that fades once it finishes', async () =
     </>
   );
 
-  await expect.poll(carets).toEqual([
-    ['foo', 'none', 'none'],
-    ['bar', '""', 'caret-out'],
-    ['baz', 'none', 'none'],
-  ]);
+  await expect.poll(carets).toEqual({
+    paragraphs: [
+      ['foo', 'none', 'none'],
+      ['bar', '""', 'caret-out'],
+      ['baz', 'none', 'none'],
+    ],
+    pulse: 'none',
+  });
 });
 
 test('finished messages are not patched as if they were cut off', async () => {

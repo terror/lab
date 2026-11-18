@@ -100,11 +100,7 @@ export function Markdown({
   streaming: boolean;
 }) {
   const [lineNumbers] = usePreference('lineNumbers');
-  const [streamed, setStreamed] = useState(streaming);
-
-  if (streaming && !streamed) {
-    setStreamed(true);
-  }
+  const [streamed] = useState(streaming);
 
   return (
     <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
