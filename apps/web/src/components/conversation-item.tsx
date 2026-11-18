@@ -1,4 +1,8 @@
-import { SidebarRow, rowAction } from '@/components/sidebar-row';
+import {
+  MotionSidebarRow,
+  rowAction,
+  useRowPresence,
+} from '@/components/sidebar-row';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -263,6 +267,8 @@ export function ConversationItem({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const presence = useRowPresence();
+
   const [editing, setEditing] = useState(false);
   const renaming = useRef(false);
 
@@ -359,7 +365,8 @@ export function ConversationItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <SidebarRow
+        <MotionSidebarRow
+          {...presence}
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -398,7 +405,7 @@ export function ConversationItem({
             <span className='truncate'>{title}</span>
             {indicator && <span className='sr-only'>{indicator.label}</span>}
           </Link>
-        </SidebarRow>
+        </MotionSidebarRow>
       </ContextMenuTrigger>
       <ContextMenuContent onCloseAutoFocus={onCloseAutoFocus}>
         <MenuItems

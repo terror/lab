@@ -10,7 +10,12 @@ import {
 } from '@/components/project-dialog';
 import { ProjectMenu } from '@/components/project-menu';
 import { useSearch } from '@/components/search';
-import { SidebarRow, rowAction } from '@/components/sidebar-row';
+import {
+  MotionSidebarRow,
+  SidebarRow,
+  rowAction,
+  useRowPresence,
+} from '@/components/sidebar-row';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -282,14 +287,18 @@ function ProjectChats({
 
   return (
     <ul className='flex flex-col gap-0.5 pl-6'>
-      {all.slice(0, PREVIEW).map((conversation) => (
-        <ConversationItem
-          key={conversation.id}
-          conversation={conversation}
-          onSelect={onSelect}
-          selected={conversation.id === selected}
-        />
-      ))}
+      {chats.data && (
+        <AnimatePresence initial={false}>
+          {all.slice(0, PREVIEW).map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              onSelect={onSelect}
+              selected={conversation.id === selected}
+            />
+          ))}
+        </AnimatePresence>
+      )}
       {(all.length > PREVIEW || chats.hasNextPage) && (
         <ShowMore onClick={() => onProject(id)} />
       )}
@@ -312,6 +321,8 @@ function ProjectsSection({
   const summary = useConversationSummary(selected);
 
   const [collapsed, setCollapsed] = useCollapsed('projects-collapsed');
+
+  const presence = useRowPresence();
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
@@ -371,46 +382,49 @@ function ProjectsSection({
       <nav aria-label='Projects' hidden={collapsed} id={list}>
         {projects.isError && <LoadError className='px-2' subject='projects' />}
         <ul className='flex flex-col gap-0.5'>
-          {shown.map((project) => {
-            const Icon = project.id === showing ? FolderOpen : Folder;
-            const page = path === `/projects/${project.id}`;
+          <AnimatePresence initial={false}>
+            {shown.map((project) => {
+              const Icon = project.id === showing ? FolderOpen : Folder;
+              const page = path === `/projects/${project.id}`;
 
-            return (
-              <Fragment key={project.id}>
-                <SidebarRow
-                  actions={
-                    <ProjectMenu
-                      className={rowAction}
-                      onRename={() => setEditing({ kind: 'rename', project })}
-                      project={project}
-                    />
-                  }
-                  asChild
-                  selected={page}
-                >
-                  <button
-                    aria-current={page ? 'page' : undefined}
-                    aria-expanded={page ? project.id === showing : undefined}
-                    onClick={() => select(project.id)}
-                    type='button'
+              return (
+                <Fragment key={project.id}>
+                  <MotionSidebarRow
+                    {...presence}
+                    actions={
+                      <ProjectMenu
+                        className={rowAction}
+                        onRename={() => setEditing({ kind: 'rename', project })}
+                        project={project}
+                      />
+                    }
+                    asChild
+                    selected={page}
                   >
-                    <Icon aria-hidden='true' />
-                    <span className='truncate'>{project.name}</span>
-                  </button>
-                </SidebarRow>
-                {project.id === showing && (
-                  <li>
-                    <ProjectChats
-                      id={project.id}
-                      onProject={onProject}
-                      onSelect={onSelect}
-                      selected={selected}
-                    />
-                  </li>
-                )}
-              </Fragment>
-            );
-          })}
+                    <button
+                      aria-current={page ? 'page' : undefined}
+                      aria-expanded={page ? project.id === showing : undefined}
+                      onClick={() => select(project.id)}
+                      type='button'
+                    >
+                      <Icon aria-hidden='true' />
+                      <span className='truncate'>{project.name}</span>
+                    </button>
+                  </MotionSidebarRow>
+                  {project.id === showing && (
+                    <li>
+                      <ProjectChats
+                        id={project.id}
+                        onProject={onProject}
+                        onSelect={onSelect}
+                        selected={selected}
+                      />
+                    </li>
+                  )}
+                </Fragment>
+              );
+            })}
+          </AnimatePresence>
           {!expanded && all.length > shown.length && (
             <ShowMore onClick={() => setExpanded(true)} />
           )}
@@ -450,13 +464,15 @@ function AppsSection({ onSelect }: { onSelect?: () => void }) {
       />
       <nav aria-label='Apps' hidden={collapsed} id={list}>
         <ul className='flex flex-col gap-0.5'>
-          {apps.data?.map((app) => (
-            <AppLink
-              key={`${app.conversationId}/${app.artifactId}`}
-              app={app}
-              onSelect={onSelect}
-            />
-          ))}
+          <AnimatePresence initial={false}>
+            {apps.data?.map((app) => (
+              <AppLink
+                key={`${app.conversationId}/${app.artifactId}`}
+                app={app}
+                onSelect={onSelect}
+              />
+            ))}
+          </AnimatePresence>
         </ul>
       </nav>
     </div>
@@ -496,14 +512,16 @@ function PinnedSection({
       </SectionHeader>
       <nav aria-label='Pinned chats' hidden={collapsed} id={list}>
         <ul className='flex flex-col gap-0.5'>
-          {pinned.data?.map((conversation) => (
-            <ConversationItem
-              key={conversation.id}
-              conversation={conversation}
-              onSelect={onSelect}
-              selected={conversation.id === selected}
-            />
-          ))}
+          <AnimatePresence initial={false}>
+            {pinned.data?.map((conversation) => (
+              <ConversationItem
+                key={conversation.id}
+                conversation={conversation}
+                onSelect={onSelect}
+                selected={conversation.id === selected}
+              />
+            ))}
+          </AnimatePresence>
         </ul>
       </nav>
     </div>
@@ -726,14 +744,18 @@ function RecentsSection({
       <nav aria-label='Chats' hidden={collapsed} id={list}>
         {error && <LoadError className='px-2' subject='chats' />}
         <ul className='flex flex-col gap-0.5'>
-          {conversations?.map((conversation) => (
-            <ConversationItem
-              key={conversation.id}
-              conversation={conversation}
-              onSelect={onSelect}
-              selected={conversation.id === selected}
-            />
-          ))}
+          {conversations && (
+            <AnimatePresence initial={false}>
+              {conversations.map((conversation) => (
+                <ConversationItem
+                  key={conversation.id}
+                  conversation={conversation}
+                  onSelect={onSelect}
+                  selected={conversation.id === selected}
+                />
+              ))}
+            </AnimatePresence>
+          )}
         </ul>
         {onLoadMore && <LoadMore onLoadMore={onLoadMore} />}
       </nav>
