@@ -2,7 +2,7 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
+import { call, chat, idle, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
 
 test('the agent can run code that calls other tools', async () => {
@@ -38,5 +38,27 @@ test('the agent can run code that calls other tools', async () => {
 
   expect(outputs[0]).toMatch(
     /^Script completed\nWall time \d+\.\d seconds\nOutput:\n\[3,"No matching files\."\]$/
+  );
+});
+
+test('scripts cannot grow past the memory cap', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall('codemode', {
+      code: 'return "a".repeat(300 * 1024 * 1024).length;',
+    }),
+    fauxAssistantMessage('bar')
+  );
+
+  const outputs = await toolOutputs(
+    headers,
+    await chat(headers, { content: 'foo' })
+  );
+
+  expect(outputs).toHaveLength(1);
+
+  expect(outputs[0]).toMatch(
+    /^Script failed\nWall time \d+\.\d seconds\nOutput:\nScript error:\nInternalError: out of memory\n {4}at <anonymous> \(codemode\.js:1:\d+\)\n\nNo tool calls were made\.$/
   );
 });
