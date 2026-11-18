@@ -14,6 +14,7 @@ export const toolNames = [
   'connector_list',
   'connector_remove',
   'connector_update',
+  'delegate',
   'forget',
   'image_generate',
   'library_read',

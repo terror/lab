@@ -8,6 +8,7 @@ import { type ChatsAccess, chats } from './chats';
 import { codemode } from './codemode';
 import { compaction } from './compaction';
 import { type ConnectorAccess, connectorSettings } from './connector-settings';
+import { delegate } from './delegate';
 import { type HistoryAccess, history } from './history';
 import { type ImageAccess, images } from './images';
 import { type LibraryAccess, library } from './library';
@@ -169,5 +170,6 @@ export function extensions(deps: ExtensionDeps) {
     skills(deps.owner),
     title(deps.onHelperUsage),
     web(deps.web),
+    delegate,
   ].map(ownLimits);
 }
