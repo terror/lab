@@ -9,12 +9,17 @@ import {
 import { ProjectInstructions } from '@/components/project-instructions';
 import { ProjectMenu } from '@/components/project-menu';
 import { StartComposer } from '@/components/start-composer';
+import { buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/list-row';
+import { Page, PageHeader } from '@/components/ui/page';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Unavailable } from '@/components/unavailable';
 import { usePins } from '@/lib/artifacts';
 import { useConversations } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
 import { useParams } from '@tanstack/react-router';
-import { Folder } from 'lucide-react';
 import { useState } from 'react';
 
 function ProjectComposer({ id, name }: { id: number; name: string }) {
@@ -30,20 +35,25 @@ function ProjectComposer({ id, name }: { id: number; name: string }) {
 function ProjectChats({ id }: { id: number }) {
   const chats = useConversations({ project: id });
 
-  if (chats.isError) {
-    return <LoadError className='px-2' subject='chats' />;
+  if (chats.isPending) {
+    return <ListSkeleton />;
   }
 
-  if (chats.isSuccess && chats.data.length === 0) {
+  if (chats.isLoadingError) {
+    return <LoadError onRetry={() => chats.refetch()} subject='chats' />;
+  }
+
+  if (chats.data?.length === 0) {
     return (
-      <p className='px-2 py-6 text-sm text-muted-foreground'>
-        No chats in this project yet.
-      </p>
+      <EmptyState
+        description='Start one above and it lands here.'
+        title='No chats in this project yet'
+      />
     );
   }
 
   return (
-    <nav aria-label='Project chats' className='flex flex-col gap-1'>
+    <nav aria-label='Project chats' className='-mx-2 flex flex-col gap-1'>
       {chats.data?.map((chat) => (
         <ConversationItem key={chat.id} conversation={chat} selected={false} />
       ))}
@@ -63,13 +73,23 @@ function ProjectApps({ id }: { id: number }) {
 
   return (
     <section className='flex flex-col gap-2'>
-      <h2 className='px-2 text-sm font-medium text-muted-foreground'>Apps</h2>
-      <nav aria-label='Project apps' className='flex flex-col gap-1'>
+      <SectionHeading>Apps</SectionHeading>
+      <nav aria-label='Project apps' className='-mx-2 flex flex-col gap-1'>
         {apps.data?.map((app) => (
           <AppLink key={`${app.conversationId}/${app.artifactId}`} app={app} />
         ))}
       </nav>
     </section>
+  );
+}
+
+function ProjectSkeleton() {
+  return (
+    <div aria-busy='true' className='flex flex-col gap-8'>
+      <Skeleton className='h-8 w-1/3' />
+      <Skeleton className='h-24 rounded-card' />
+      <ListSkeleton />
+    </div>
   );
 }
 
@@ -84,43 +104,39 @@ export function Project() {
     return <Unavailable subject='project' />;
   }
 
-  if (project.isError) {
-    return <LoadError className='m-6' subject='this project' />;
-  }
-
-  if (!project.data) {
-    return null;
-  }
-
   const current = project.data;
 
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
-      <div className='mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-8'>
-        <div className='flex items-center gap-3'>
-          <Folder
-            aria-hidden='true'
-            className='size-6 shrink-0 text-muted-foreground'
-          />
-          <h1 className='truncate text-2xl font-semibold tracking-tight'>
-            {current.name}
-          </h1>
-          <ProjectMenu
-            className='size-8 hover:bg-muted'
-            onRename={() => setEditing({ kind: 'rename', project: current })}
-            project={current}
-          />
-        </div>
-        <ProjectComposer id={id} name={current.name} />
-        <ProjectInstructions project={current} />
-        <ProjectApps id={id} />
-        <section className='flex flex-col gap-2'>
-          <h2 className='px-2 text-sm font-medium text-muted-foreground'>
-            Chats
-          </h2>
-          <ProjectChats id={id} />
-        </section>
-      </div>
+      <Page>
+        {project.isPending && <ProjectSkeleton />}
+        {project.isLoadingError && (
+          <LoadError onRetry={() => project.refetch()} subject='this project' />
+        )}
+        {current && (
+          <>
+            <PageHeader
+              actions={
+                <ProjectMenu
+                  className={buttonVariants({ size: 'icon', variant: 'quiet' })}
+                  onRename={() =>
+                    setEditing({ kind: 'rename', project: current })
+                  }
+                  project={current}
+                />
+              }
+              title={current.name}
+            />
+            <ProjectComposer id={id} name={current.name} />
+            <ProjectInstructions project={current} />
+            <ProjectApps id={id} />
+            <section className='flex flex-col gap-2'>
+              <SectionHeading>Chats</SectionHeading>
+              <ProjectChats id={id} />
+            </section>
+          </>
+        )}
+      </Page>
       <ProjectDialog editing={editing} onClose={() => setEditing(undefined)} />
     </div>
   );
