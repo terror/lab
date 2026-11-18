@@ -262,3 +262,34 @@ test('uploaded pdfs keep their original and thumbnail', async () => {
     upload: { id: mine.body.id, mimeType: 'application/pdf', thumbnail: true },
   });
 });
+
+test('text with null characters still reaches the library and search', async () => {
+  const headers = await signIn();
+
+  const id = await chat(headers, {
+    attachments: [{ name: 'foo\u0000.txt', text: 'bar\u0000', type: 'file' }],
+    content: 'baz\u0000',
+  });
+
+  const [library, search] = await Promise.all([
+    call(headers, 'GET', '/library'),
+    call(headers, 'GET', '/search?q=baz'),
+  ]);
+
+  expect({
+    library: contents(library.body.items),
+    search: search.body.chats.map((found: { id: number }) => found.id),
+  }).toEqual({
+    library: [
+      {
+        conversation: { id, title: 'foo' },
+        kind: 'file',
+        mimeType: 'text/plain',
+        name: 'foo.txt',
+        preview: 'bar',
+        size: 4,
+      },
+    ],
+    search: [id],
+  });
+});

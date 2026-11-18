@@ -4,6 +4,7 @@ import { schema } from '@lab/db';
 import { db } from './db';
 import { isMessage, messageData } from './message-entry';
 import { entryPipeline } from './pipeline';
+import { storable } from './text';
 
 const table = schema.messageText;
 
@@ -49,7 +50,7 @@ export const historyPipeline = entryPipeline({
               entryId: entry.id,
               ownerId,
               role: content.role,
-              text: content.text,
+              text: storable(content.text),
             },
           ]
         : [];
