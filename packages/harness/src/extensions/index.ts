@@ -33,6 +33,7 @@ export {
   STORE_VALUE_LENGTH,
 } from './artifact-apps';
 export { type Artifact, ArtifactsDoc, rewindArtifacts } from './artifacts';
+export { DeadlineSandbox } from './codemode';
 export {
   type ConnectorAccess,
   type ConnectorChange,
