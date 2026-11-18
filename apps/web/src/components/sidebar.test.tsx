@@ -21,12 +21,14 @@ function renderSidebar({
   onProject = () => undefined,
   path = '/projects/7',
   pending,
+  recents = [],
 }: {
   chats?: unknown[];
   collapsed?: boolean;
   onProject?: (id: number) => void;
   path?: string;
   pending?: 'chat' | 'summary';
+  recents?: unknown[];
 } = {}) {
   stubFetch(({ pathname, searchParams }) => {
     if (pathname === '/api/projects') {
@@ -61,6 +63,10 @@ function renderSidebar({
       return pending === 'summary'
         ? new Promise<Response>(() => undefined)
         : Response.json({ projectId: 7 });
+    }
+
+    if (searchParams.get('filter') === 'recent') {
+      return Response.json({ conversations: recents, next: null });
     }
 
     const conversations =
@@ -233,6 +239,45 @@ test('hiding a section folds its list away', async () => {
   await show.click();
 
   await expect.element(projects).toBeVisible();
+});
+
+test('the recents header sorts chats from a menu', async () => {
+  const { screen } = await renderSidebar({
+    recents: [
+      {
+        id: 4,
+        pinned: false,
+        projectId: null,
+        running: false,
+        title: 'quux',
+        unread: false,
+        waiting: false,
+      },
+    ],
+  });
+
+  const sort = screen.getByRole('button', { name: 'Sort chats' });
+
+  await sort.hover();
+
+  await expect
+    .element(screen.getByRole('tooltip', { name: 'Sort chats' }))
+    .toBeInTheDocument();
+
+  await sort.click();
+
+  await expect.element(screen.getByRole('menu')).toBeVisible();
+
+  expect(
+    screen
+      .getByRole('menuitemradio')
+      .elements()
+      .map((item) => [item.textContent, item.getAttribute('aria-checked')])
+  ).toEqual([
+    ['Recent activity', 'true'],
+    ['Date created', 'false'],
+    ['Title', 'false'],
+  ]);
 });
 
 test('apps pinned to the sidebar link to their pages', async () => {

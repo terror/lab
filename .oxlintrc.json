@@ -148,6 +148,7 @@
         "apps/web/src/components/model-picker.tsx",
         "apps/web/src/components/project-instructions.tsx",
         "apps/web/src/components/project-menu.tsx",
+        "apps/web/src/components/sidebar-sections.tsx",
         "apps/web/src/components/sidebar.tsx",
         "apps/web/src/components/tools/previews.tsx",
         "apps/web/src/components/unread-chips.tsx",
