@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { type ToolRecord, toolRenderer } from './tools';
+import { failedTitle, type ToolRecord, toolRenderer } from './tools';
 
 function line(
   name: string,
@@ -96,5 +96,17 @@ test('tools describe themselves while running and when done', () => {
     ['Ran foo', undefined],
     ['Finding tools', undefined],
     ['Used bar from foo', undefined],
+  ]);
+});
+
+test('a failed tool says what it couldn’t do', () => {
+  expect([
+    failedTitle('Running foo'),
+    failedTitle('Searching the web for “foo”'),
+    failedTitle('Foo bar'),
+  ]).toEqual([
+    'Couldn’t run foo',
+    'Couldn’t search the web for “foo”',
+    'Foo bar failed',
   ]);
 });

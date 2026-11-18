@@ -68,6 +68,44 @@ export function namedTitle(
   };
 }
 
+const bases: Record<string, string> = {
+  Adding: 'add',
+  Asking: 'ask',
+  Building: 'build',
+  Changing: 'change',
+  Checking: 'check',
+  Copying: 'copy',
+  Creating: 'create',
+  Delegating: 'delegate',
+  Deleting: 'delete',
+  Editing: 'edit',
+  Finding: 'find',
+  Forgetting: 'forget',
+  Listing: 'list',
+  Moving: 'move',
+  Pinning: 'pin',
+  Reading: 'read',
+  Remembering: 'remember',
+  Removing: 'remove',
+  Renaming: 'rename',
+  Restoring: 'restore',
+  Running: 'run',
+  Saving: 'save',
+  Scheduling: 'schedule',
+  Searching: 'search',
+  Updating: 'update',
+  Using: 'use',
+  Writing: 'write',
+};
+
+export function failedTitle(active: string) {
+  const [verb = '', ...rest] = active.split(' ');
+
+  const base = bases[verb];
+
+  return base ? `Couldn’t ${[base, ...rest].join(' ')}` : `${active} failed`;
+}
+
 export function seconds(value: unknown) {
   const ms = count(value);
 

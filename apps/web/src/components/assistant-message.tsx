@@ -3,6 +3,7 @@ import { Markdown } from '@/components/markdown';
 import { ModelPicker } from '@/components/model-picker';
 import { Plan } from '@/components/plan';
 import {
+  failedTitle,
   ToolBody,
   ToolConversation,
   ToolHistory,
@@ -10,11 +11,15 @@ import {
   toolRenderer,
   type ToolResult,
 } from '@/components/tools';
+import { Button } from '@/components/ui/button';
+import { Dot } from '@/components/ui/dot';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   Message,
   MessageContent,
   MessageFooter,
 } from '@/components/ui/message';
+import { StatusIcon } from '@/components/ui/status-icon';
 import {
   Tooltip,
   TooltipContent,
@@ -32,23 +37,14 @@ import {
 } from '@/components/ui/trace';
 import { plural } from '@/lib/format';
 import type { ModelChoice } from '@/lib/models';
+import { fade, spring } from '@/lib/motion';
 import { runFailureTitles } from '@/lib/run-failure';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
-import {
-  Ban,
-  Check,
-  Copy,
-  type LucideIcon,
-  RotateCcw,
-  Shuffle,
-  Square,
-  TriangleAlert,
-  Volume2,
-} from 'lucide-react';
+import { Check, Copy, RotateCcw, Shuffle, Square, Volume2 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import {
   type ComponentProps,
@@ -105,17 +101,12 @@ type CallStatus = ToolResult['status'] | 'running';
 
 const steps: Record<
   CallStatus,
-  {
-    finished: boolean;
-    icon?: LucideIcon;
-    label?: string;
-    line?: 'error' | 'pending' | 'running';
-  }
+  { label?: string; line?: 'error' | 'pending' | 'running' }
 > = {
-  done: { finished: true },
-  failed: { finished: true, icon: TriangleAlert, line: 'error' },
-  running: { finished: false, line: 'running' },
-  stopped: { finished: false, icon: Ban, label: 'Stopped', line: 'pending' },
+  done: {},
+  failed: { line: 'error' },
+  running: { line: 'running' },
+  stopped: { label: 'Stopped', line: 'pending' },
 };
 
 type Call = Extract<Part, { type: 'toolCall' }>;
@@ -168,20 +159,31 @@ function ToolStep({ call, progress, result, working }: CallProps) {
 
   const step = steps[status];
 
-  const Icon = step.icon ?? renderer.icon;
-
   const summary = step.label ?? renderer.summary?.(view);
 
-  const title = renderer.title({ ...view, active: !step.finished });
+  const Icon = renderer.icon;
+
+  const active = renderer.title({ ...view, active: true });
+
+  const titles: Record<CallStatus, string> = {
+    done: renderer.title({ ...view, active: false }),
+    failed: failedTitle(active),
+    running: active,
+    stopped: active,
+  };
 
   return (
     <TraceCollapsible>
       <TraceCollapsibleTrigger>
         <TraceLine className='h-6.5' status={step.line}>
           <TraceIcon>
-            <Icon aria-hidden='true' />
+            {status === 'done' ? (
+              <Icon aria-hidden='true' />
+            ) : (
+              <StatusIcon status={status} />
+            )}
           </TraceIcon>
-          <TraceTitle>{title}</TraceTitle>
+          <TraceTitle>{titles[status]}</TraceTitle>
           {summary && (
             <span className='shrink-0 text-muted-foreground/70'>
               · {summary}
@@ -229,6 +231,25 @@ function StepStatus({
   working,
 }: CallProps & { activity: string | undefined }) {
   const view = useToolView(call, progress, result, working);
+
+  const approval = approvalOf(view.details);
+
+  const asking =
+    call.name === 'ask_user' ||
+    (approval !== undefined && approval.decision === undefined);
+
+  if (view.active && asking) {
+    return (
+      <output className='flex'>
+        <TraceLine>
+          <TraceIcon>
+            <Dot tone='attention' />
+          </TraceIcon>
+          <TraceTitle>Waiting for your answer</TraceTitle>
+        </TraceLine>
+      </output>
+    );
+  }
 
   return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
 }
@@ -280,12 +301,6 @@ export function Worked({
 
   const stopped = statuses.filter((status) => status === 'stopped').length;
 
-  const details = [
-    plural(statuses.length, 'action'),
-    failed > 0 ? `${failed} failed` : undefined,
-    stopped > 0 ? `${stopped} stopped` : undefined,
-  ].filter((detail) => detail !== undefined);
-
   return (
     <Trace className='gap-0'>
       <TraceCollapsible>
@@ -297,7 +312,14 @@ export function Worked({
                 : 'Worked'}
             </TraceTitle>
             <TraceDescription className='text-muted-foreground'>
-              {` · ${details.join(' · ')}`}
+              {` · ${plural(statuses.length, 'action')}`}
+              {failed > 0 && (
+                <>
+                  {' · '}
+                  <span className='text-destructive'>{failed} failed</span>
+                </>
+              )}
+              {stopped > 0 && ` · ${stopped} stopped`}
             </TraceDescription>
           </TraceLine>
         </TraceCollapsibleTrigger>
@@ -324,14 +346,15 @@ export function Action({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
+        <Button
           aria-label={label}
-          className='flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+          size='icon'
           type='button'
+          variant='quiet'
           {...props}
         >
           {children}
-        </button>
+        </Button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -478,7 +501,10 @@ export function Activity({ status }: { status: string }) {
   const label = useSteady(status, STATUS_HOLD_MS);
 
   return (
-    <output className='flex'>
+    <output className='flex items-center gap-2'>
+      <TraceIcon>
+        <LiveMark className='size-3.5' state='thinking' />
+      </TraceIcon>
       <AnimatePresence initial={false} mode='wait'>
         <m.span
           key={label}
@@ -486,7 +512,7 @@ export function Activity({ status }: { status: string }) {
           className='min-w-0'
           exit={{ opacity: 0, y: -4 }}
           initial={{ opacity: 0, y: 4 }}
-          transition={{ duration: 0.2 }}
+          transition={{ ...fade.base, y: spring.snap }}
         >
           <TraceLine status='running'>
             <TraceTitle>{label}</TraceTitle>
@@ -500,12 +526,10 @@ export function Activity({ status }: { status: string }) {
 export function RunFailure({ reason }: { reason: RunFailureReason }) {
   const stopped = reason === 'aborted';
 
-  const Icon = stopped ? Ban : TriangleAlert;
-
   return (
     <TraceLine role='alert' status={stopped ? undefined : 'error'}>
       <TraceIcon>
-        <Icon aria-hidden='true' />
+        <StatusIcon status={stopped ? 'stopped' : 'failed'} />
       </TraceIcon>
       <TraceTitle>{runFailureTitles[reason]}</TraceTitle>
     </TraceLine>
