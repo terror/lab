@@ -142,7 +142,6 @@
         "apps/web/src/components/artifact-apps.tsx",
         "apps/web/src/components/assistant-message.tsx",
         "apps/web/src/components/composer.tsx",
-        "apps/web/src/components/computer.tsx",
         "apps/web/src/components/conversation-item.tsx",
         "apps/web/src/components/document-card.tsx",
         "apps/web/src/components/library-tile.tsx",
