@@ -49,6 +49,7 @@ test('the frame runner relays calls and returns each reply to the frame that cal
   frame.call({ args: 'bar', id: 7, method: 'baz' });
   frame.render('foo', true);
   frame.render('foo', true);
+  frame.navigator.userActivation.isActive = true;
   frame.call({ args: 'qux', id: 7, method: 'baz' });
   frame.reply({ id: 1, value: 'stale' });
   frame.reply({ id: 2, value: 'quux' });
@@ -57,14 +58,14 @@ test('the frame runner relays calls and returns each reply to the frame that cal
   expect({ posted: frame.posted, received: frame.received() }).toEqual({
     posted: [
       { type: 'ready' },
-      { args: 'bar', id: 1, method: 'baz', type: 'call' },
-      { args: 'qux', id: 2, method: 'baz', type: 'call' },
+      { active: false, args: 'bar', id: 1, method: 'baz', type: 'call' },
+      { active: true, args: 'qux', id: 2, method: 'baz', type: 'call' },
     ],
     received: [{ error: undefined, id: 7, type: 'reply', value: 'quux' }],
   });
 });
 
-test('frame content stores JSON values through calls to its runner', async () => {
+test('frame content stores JSON values and asks the model through calls to its runner', async () => {
   const { lab, posted, reply } = await bridge();
 
   const saved = lab?.store.set('foo', { bar: 1 });
@@ -72,17 +73,21 @@ test('frame content stores JSON values through calls to its runner', async () =>
   const failed = lab?.store
     .delete('foo')
     .catch((error: Error) => error.message);
+  const answered = lab?.ask('qux');
 
   reply({ id: 1 });
   reply({ id: 2, value: '{"bar":1}' });
   reply({ error: 'baz', id: 3 });
+  reply({ id: 4, value: 'quux' });
 
   expect({
+    answered: await answered,
     failed: await failed,
     loaded: await loaded,
     posted,
     saved: await saved,
   }).toEqual({
+    answered: 'quux',
     failed: 'baz',
     loaded: { bar: 1 },
     posted: [
@@ -94,6 +99,7 @@ test('frame content stores JSON values through calls to its runner', async () =>
       },
       { args: { key: 'foo' }, id: 2, method: 'store.get', type: 'call' },
       { args: { key: 'foo' }, id: 3, method: 'store.delete', type: 'call' },
+      { args: { prompt: 'qux' }, id: 4, method: 'ask', type: 'call' },
     ],
     saved: undefined,
   });

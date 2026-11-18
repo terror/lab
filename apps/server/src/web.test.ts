@@ -108,6 +108,8 @@ test('web searches count toward the user’s usage', async () => {
 
   const id = await chat(headers, { content: 'foo' });
 
+  await call(headers, 'DELETE', '/providers/exa');
+
   expect(
     await db
       .select({

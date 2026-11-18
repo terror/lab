@@ -6,6 +6,7 @@ import { type User, isAdmin } from './auth';
 const MINUTE = 60_000;
 
 const buckets = {
+  asks: 10,
   connectors: 10,
   messages: 30,
   uploads: 30,

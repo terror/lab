@@ -37,8 +37,8 @@ test('calls from the frame get the handler’s answer or its error', async () =>
   await render(
     <SandboxFrame
       html='foo'
-      onCall={async (method, args) => {
-        if (method === 'bar') {
+      onCall={async (method, args, active) => {
+        if (method === 'bar' && active) {
           return args;
         }
 
@@ -56,8 +56,20 @@ test('calls from the frame get the handler’s answer or its error', async () =>
 
   port?.addEventListener('message', ({ data }) => replies.push(data));
   port?.start();
-  port?.postMessage({ args: 'foo', id: 1, method: 'bar', type: 'call' });
-  port?.postMessage({ args: 'foo', id: 2, method: 'qux', type: 'call' });
+  port?.postMessage({
+    active: true,
+    args: 'foo',
+    id: 1,
+    method: 'bar',
+    type: 'call',
+  });
+  port?.postMessage({
+    active: true,
+    args: 'foo',
+    id: 2,
+    method: 'qux',
+    type: 'call',
+  });
 
   await expect
     .poll(() => replies)

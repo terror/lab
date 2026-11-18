@@ -38,7 +38,11 @@ const bridge = `<script>
       await call('store.set', { key: String(key), value: JSON.stringify(value) ?? 'null' });
     },
   };
-  window.lab = { send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }), store };
+  window.lab = {
+    ask: (prompt) => call('ask', { prompt: String(prompt) }),
+    send: (text) => send({ type: 'send', text: String(text).slice(0, 2000) }),
+    store,
+  };
   const size = () => send({ type: 'size', height: Math.ceil(document.documentElement.getBoundingClientRect().height) });
   new ResizeObserver(size).observe(document.documentElement);
   addEventListener('load', size);
@@ -117,7 +121,7 @@ const runner = `(() => {
     if (data.type === 'call' && typeof data.method === 'string' && Number.isInteger(data.id)) {
       called += 1;
       calls.set(called, { id: data.id, source: event.source });
-      port.postMessage({ args: data.args, id: called, method: data.method, type: 'call' });
+      port.postMessage({ active: navigator.userActivation.isActive, args: data.args, id: called, method: data.method, type: 'call' });
     }
   });
 })();`;

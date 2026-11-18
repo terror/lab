@@ -5,6 +5,7 @@ import app from '../src/app';
 type Listener = (event: unknown) => void;
 
 type Lab = {
+  ask: (prompt: string) => Promise<string>;
   store: {
     delete: (key: string) => Promise<void>;
     get: (key: string) => Promise<unknown>;

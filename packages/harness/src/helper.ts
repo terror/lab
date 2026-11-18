@@ -1,7 +1,7 @@
 import type { AssistantMessage, Models } from '@earendil-works/pi-ai';
 import type { ConversationId, ModelRef } from '@earendil-works/pi-durable';
 
-export type HelperKind = 'compaction' | 'status' | 'title';
+export type HelperKind = 'artifact' | 'compaction' | 'status' | 'title';
 
 export type HelperUsage = (
   conversationId: ConversationId,

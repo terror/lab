@@ -11,6 +11,7 @@ const messageSchema = z.discriminatedUnion('type', [
   z.object({ message: z.string().max(500), type: z.literal('error') }),
   z.object({ text: z.string().max(2_000), type: z.literal('send') }),
   z.object({
+    active: z.boolean(),
     args: z.unknown(),
     id: z.number(),
     method: z.string().max(100),
@@ -44,15 +45,22 @@ function themed(html: string) {
   return `<style>:root{${variables};color-scheme:${dark() ? 'dark' : 'light'}}body{margin:0;background:transparent;color:var(--foreground);font-family:system-ui,sans-serif}</style>${html}`;
 }
 
-export type FrameCall = (method: string, args: unknown) => Promise<unknown>;
+export type FrameCall = (
+  method: string,
+  args: unknown,
+  active: boolean
+) => Promise<unknown>;
 
-async function answer(method: string, args: unknown, onCall?: FrameCall) {
+async function answer(
+  { active, args, method }: { active: boolean; args: unknown; method: string },
+  onCall?: FrameCall
+) {
   try {
     if (!onCall) {
       throw new Error(`lab.${method} isn’t available here.`);
     }
 
-    return { value: await onCall(method, args) };
+    return { value: await onCall(method, args, active) };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
@@ -137,13 +145,12 @@ export function SandboxFrame({
       }
 
       if (message?.type === 'call') {
-        void answer(message.method, message.args, handle.current).then(
-          (reply) =>
-            channel.port1.postMessage({
-              ...reply,
-              id: message.id,
-              type: 'reply',
-            })
+        void answer(message, handle.current).then((reply) =>
+          channel.port1.postMessage({
+            ...reply,
+            id: message.id,
+            type: 'reply',
+          })
         );
       }
     });
