@@ -1,5 +1,4 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
 import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
@@ -34,6 +33,7 @@ import providers from './providers';
 import schedules from './schedules';
 import search from './search';
 import { contentSecurityPolicy, docsSecurityPolicy } from './security';
+import { site } from './site';
 import skills from './skills';
 import trash from './trash';
 import uploads from './uploads';
@@ -193,16 +193,7 @@ app.all('/api/*', (c) => c.notFound());
 
 app.route('/frame', frame);
 
-app.use('/assets/*', async (c, next) => {
-  await next();
-
-  if (c.res.ok) {
-    c.header('cache-control', 'public, max-age=31536000, immutable');
-  }
-});
-
-app.get('*', serveStatic({ root: web }));
-app.get('*', serveStatic({ root: web, path: 'index.html' }));
+app.route('/', site(web));
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 
