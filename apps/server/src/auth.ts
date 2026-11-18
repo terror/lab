@@ -2,6 +2,7 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
@@ -41,6 +42,8 @@ const origin = new URL(env.LAB_ORIGIN).origin;
 
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+const openedDirectly = new Set([null, 'none']);
+
 function fromElsewhere(request: Request) {
   if (safeMethods.has(request.method)) {
     return false;
@@ -60,6 +63,18 @@ export const auth = betterAuth({
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
   database: drizzleAdapter(db, { provider: 'pg', schema }),
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (
+        ctx.path === '/expo-authorization-proxy' &&
+        !openedDirectly.has(ctx.headers?.get('sec-fetch-site') ?? null)
+      ) {
+        throw new APIError('FORBIDDEN', {
+          message: 'Open sign-in from the Lab app.',
+        });
+      }
+    }),
+  },
   plugins: [expo()],
   secret: env.BETTER_AUTH_SECRET,
   socialProviders: {
