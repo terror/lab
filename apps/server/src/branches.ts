@@ -16,6 +16,7 @@ import { startChat } from './chat-actions';
 import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
+import { type Parent, type Segment, lineage, parentOf } from './lineage';
 import { checkAttachments, entryAttachments, submitMessage } from './messages';
 import { findModel, modelChange, models } from './models';
 import { modelSchema } from './schemas';
@@ -23,11 +24,9 @@ import { checkSpend } from './spend';
 
 const table = schema.conversation;
 
-export type Parent = { conversationId: number; entryId: number | null };
+export type { Parent };
 
 type Fork = { after: number | null; chats: number[] };
-
-type Segment = { cutoff: number | undefined; id: number; parent?: Parent };
 
 type Group = { after: number | null; branches: number[]; original: number };
 
@@ -46,19 +45,6 @@ async function newestEntry(
   );
 
   return items[0];
-}
-
-async function parentOf(id: number): Promise<Parent | undefined> {
-  const [row] = await db
-    .select({ entryId: table.parentEntryId, parentId: table.parentId })
-    .from(table)
-    .where(eq(table.id, id));
-
-  if (!row || row.parentId === null) {
-    return undefined;
-  }
-
-  return { conversationId: row.parentId, entryId: row.entryId };
 }
 
 export async function branchPoint(
@@ -97,18 +83,6 @@ export async function branchPoint(
       entryId: null,
     },
   };
-}
-
-async function lineage(id: number, cutoff?: number): Promise<Segment[]> {
-  const parent = await parentOf(id);
-
-  const segment = { cutoff, id, parent };
-
-  if (parent === undefined || parent.entryId === null) {
-    return [segment];
-  }
-
-  return [segment, ...(await lineage(parent.conversationId, parent.entryId))];
 }
 
 function current(group: Group, segments: readonly Segment[]) {
