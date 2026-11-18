@@ -17,12 +17,15 @@ test('responses carry security headers', async () => {
 
   expect({
     frame: response.headers.get('x-frame-options'),
+    permissions: response.headers.get('permissions-policy'),
     policy: response.headers.get('content-security-policy')?.split('; ')[0],
     referrer: response.headers.get('referrer-policy'),
     sniff: response.headers.get('x-content-type-options'),
     transport: response.headers.get('strict-transport-security'),
   }).toEqual({
     frame: 'DENY',
+    permissions:
+      'bluetooth=(), camera=(), clipboard-read=(), clipboard-write=(self), display-capture=(), geolocation=(), hid=(), idle-detection=(), microphone=(self), midi=(), payment=(), screen-wake-lock=(), serial=(), usb=()',
     policy: "base-uri 'self'",
     referrer: 'strict-origin-when-cross-origin',
     sniff: 'nosniff',
