@@ -52,7 +52,7 @@ const shell = await readFile(`${web}/index.html`, 'utf8').catch(() => '');
 const app = new Hono();
 
 export function logRequest(line: string) {
-  console.log(line);
+  console.log(line.replace(/\?\S*/, ''));
 }
 
 if (process.env.NODE_ENV !== 'test') {
