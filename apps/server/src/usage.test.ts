@@ -75,6 +75,41 @@ test('usage is summarized from assistant responses', async () => {
   });
 });
 
+test('models outside the catalog get a readable name', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await settle();
+
+  await db.insert(schema.usageEvent).values({
+    cacheRead: 0,
+    cacheWrite: 0,
+    conversationId: id,
+    cost: 0,
+    createdAt: new Date(),
+    input: 0,
+    kind: 'image',
+    model: 'foo/bar-1.5-baz',
+    output: 0,
+    ownerId: (await conversationOwner(id)) ?? '',
+    provider: 'vercel-ai-gateway',
+  });
+
+  const { body } = await call(headers, 'GET', '/usage?days=7');
+
+  expect(
+    body.models.map(({ model, name }: { model: string; name: string }) => [
+      model,
+      name,
+    ])
+  ).toEqual([
+    ['anthropic/claude-haiku-5.5', 'anthropic/claude-haiku-5.5'],
+    ['anthropic/claude-sonnet-5.5', 'anthropic/claude-sonnet-5.5'],
+    ['foo/bar-1.5-baz', 'Bar 1.5 Baz'],
+  ]);
+});
+
 test('a monthly budget tracks spend this month', async () => {
   const headers = await signIn();
 
