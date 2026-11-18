@@ -5,13 +5,14 @@ import {
   matchCommands,
 } from '@/lib/commands';
 import { cn } from '@/lib/utils';
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, useId, useState } from 'react';
 
 export function useCommandMenu(
   draft: string,
   context: CommandContext,
   onRun: (command: SlashCommand) => void
 ) {
+  const id = useId();
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState<string>();
 
@@ -49,21 +50,35 @@ export function useCommandMenu(
     return true;
   };
 
-  return { matches, onKeyDown, open, run, selected };
+  const textbox = open
+    ? {
+        'aria-activedescendant': selected && commandId(id, selected),
+        'aria-autocomplete': 'list' as const,
+        'aria-controls': id,
+      }
+    : {};
+
+  return { id, matches, onKeyDown, open, run, selected, textbox };
+}
+
+function commandId(id: string, command: SlashCommand) {
+  return `${id}-${command.name}`;
 }
 
 export function CommandMenu({
+  id,
   matches,
   onRun,
   selected,
 }: {
+  id: string;
   matches: readonly SlashCommand[];
   onRun: (command: SlashCommand) => void;
   selected: SlashCommand | undefined;
 }) {
   return (
     <div className='absolute inset-x-2 bottom-full mb-2 flex animate-in flex-col rounded-menu bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-base ease-out fade-in-0 zoom-in-95 slide-in-from-bottom-2'>
-      <ul aria-label='Commands' className='flex flex-col'>
+      <ul aria-label='Commands' className='flex flex-col' id={id}>
         {matches.map((command) => (
           <li key={command.name}>
             <button
@@ -72,6 +87,7 @@ export function CommandMenu({
                 'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground',
                 command === selected && 'bg-accent text-accent-foreground'
               )}
+              id={commandId(id, command)}
               onClick={() => onRun(command)}
               onMouseDown={(event) => event.preventDefault()}
               type='button'

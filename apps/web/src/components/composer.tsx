@@ -526,6 +526,7 @@ export function Composer({
     <form onSubmit={onFormSubmit} className='relative w-full'>
       {commands.open && (
         <CommandMenu
+          id={commands.id}
           matches={commands.matches}
           onRun={commands.run}
           selected={commands.selected}
@@ -548,6 +549,7 @@ export function Composer({
           </div>
         )}
         <TextareaAutosize
+          {...commands.textbox}
           aria-label='Message'
           className='max-h-72 resize-none bg-transparent px-5 pt-4 pb-2 leading-relaxed placeholder:text-muted-foreground disabled:opacity-50'
           disabled={disabled}
