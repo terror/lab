@@ -26,6 +26,7 @@ import {
   updateSkill,
   useSkillsUpdate,
 } from '@/lib/skills';
+import { undoToast } from '@/lib/undo';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
@@ -159,9 +160,17 @@ function SkillForm({
   );
 }
 
-function SkillRow({ onEdit, skill }: { onEdit: () => void; skill: Skill }) {
-  const remove = useSkillsUpdate(deleteSkill);
-
+function SkillRow({
+  deleting,
+  onDelete,
+  onEdit,
+  skill,
+}: {
+  deleting: boolean;
+  onDelete: () => void;
+  onEdit: () => void;
+  skill: Skill;
+}) {
   return (
     <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
       <div className='min-w-0 flex-1'>
@@ -173,8 +182,8 @@ function SkillRow({ onEdit, skill }: { onEdit: () => void; skill: Skill }) {
       <div className='flex shrink-0 items-center gap-1'>
         <Button
           aria-label={`Delete ${skill.name}`}
-          disabled={remove.isPending}
-          onClick={() => remove.mutate(skill.id)}
+          disabled={deleting}
+          onClick={onDelete}
           size='sm'
           variant='ghost'
         >
@@ -196,7 +205,18 @@ function SkillRow({ onEdit, skill }: { onEdit: () => void; skill: Skill }) {
 export function Skills() {
   const skills = useQuery(skillsQueryOptions);
 
+  const remove = useSkillsUpdate(deleteSkill);
+  const restore = useSkillsUpdate(createSkill);
+
   const [editing, setEditing] = useState<Editing>();
+
+  const onDelete = ({ description, id, instructions, name }: Skill) =>
+    remove.mutate(id, {
+      onSuccess: () =>
+        undoToast('Skill deleted.', () =>
+          restore.mutate({ description, instructions, name })
+        ),
+    });
 
   return (
     <SettingsPage
@@ -220,6 +240,8 @@ export function Skills() {
           {skills.data.skills.map((skill) => (
             <SkillRow
               key={skill.id}
+              deleting={remove.isPending}
+              onDelete={() => onDelete(skill)}
               onEdit={() => setEditing({ kind: 'edit', skill })}
               skill={skill}
             />

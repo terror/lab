@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePersistentState } from '@/lib/storage';
+import { undoToast } from '@/lib/undo';
 import {
   type Budget,
   budgetLevel,
@@ -85,6 +86,19 @@ function BudgetForm({ budget }: { budget: Budget }) {
     save.mutate(limit);
   };
 
+  const remove = (previous: number) => {
+    setValue('');
+    save.mutate(null, {
+      onSuccess: () =>
+        undoToast('Budget removed.', () => {
+          setValue(String(previous));
+          save.mutate(previous);
+        }),
+    });
+  };
+
+  const { limit: saved } = budget;
+
   return (
     <form className='flex items-center gap-2' onSubmit={onSubmit}>
       <Input
@@ -106,13 +120,10 @@ function BudgetForm({ budget }: { budget: Budget }) {
       >
         Save
       </Button>
-      {budget.limit !== null && (
+      {saved !== null && (
         <Button
           disabled={save.isPending}
-          onClick={() => {
-            setValue('');
-            save.mutate(null);
-          }}
+          onClick={() => remove(saved)}
           size='sm'
           type='button'
           variant='ghost'
