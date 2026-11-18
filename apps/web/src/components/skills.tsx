@@ -9,12 +9,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -28,7 +36,7 @@ import {
 } from '@/lib/skills';
 import { undoToast } from '@/lib/undo';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Ellipsis, Plus, WandSparkles } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
 const blank: SkillFields = { description: '', instructions: '', name: '' };
@@ -172,33 +180,51 @@ function SkillRow({
   skill: Skill;
 }) {
   return (
-    <li className='flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
-      <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm font-medium'>{skill.name}</p>
-        <p className='truncate text-sm text-muted-foreground'>
+    <ListRow
+      actions={
+        <>
+          <Button
+            aria-label={`Edit ${skill.name}`}
+            onClick={onEdit}
+            size='sm'
+            variant='quiet'
+          >
+            Edit
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={`Actions for ${skill.name}`}
+                size='icon-sm'
+                variant='quiet'
+              >
+                <Ellipsis aria-hidden='true' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuItem
+                disabled={deleting}
+                onSelect={onDelete}
+                variant='destructive'
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      }
+    >
+      <WandSparkles
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground'
+      />
+      <span className='flex min-w-0 flex-col'>
+        <span className='truncate font-medium'>{skill.name}</span>
+        <span className='truncate text-muted-foreground'>
           {skill.description}
-        </p>
-      </div>
-      <div className='flex shrink-0 items-center gap-1'>
-        <Button
-          aria-label={`Delete ${skill.name}`}
-          disabled={deleting}
-          onClick={onDelete}
-          size='sm'
-          variant='ghost'
-        >
-          Delete
-        </Button>
-        <Button
-          aria-label={`Edit ${skill.name}`}
-          onClick={onEdit}
-          size='sm'
-          variant='secondary'
-        >
-          Edit
-        </Button>
-      </div>
-    </li>
+        </span>
+      </span>
+    </ListRow>
   );
 }
 
@@ -227,28 +253,30 @@ export function Skills() {
             New skill
           </Button>
         }
-        description={
-          'Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
-        }
+        description='Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
         title='Skills'
       />
-      {skills.isError && <LoadError subject='skills' />}
+      {skills.isPending && <ListSkeleton />}
+      {skills.isLoadingError && (
+        <LoadError onRetry={() => skills.refetch()} subject='skills' />
+      )}
       {skills.data?.skills.length === 0 && (
-        <p className='text-sm text-muted-foreground'>No skills yet.</p>
+        <EmptyState
+          description='Ask Lab to write one in any chat, or add one here.'
+          title='No skills yet'
+        />
       )}
-      {skills.data && skills.data.skills.length > 0 && (
-        <ul className='-mx-3 flex flex-col'>
-          {skills.data.skills.map((skill) => (
-            <SkillRow
-              key={skill.id}
-              deleting={remove.isPending}
-              onDelete={() => onDelete(skill)}
-              onEdit={() => setEditing({ kind: 'edit', skill })}
-              skill={skill}
-            />
-          ))}
-        </ul>
-      )}
+      <ul className='flex flex-col gap-0.5'>
+        {skills.data?.skills.map((skill) => (
+          <SkillRow
+            key={skill.id}
+            deleting={remove.isPending}
+            onDelete={() => onDelete(skill)}
+            onEdit={() => setEditing({ kind: 'edit', skill })}
+            skill={skill}
+          />
+        ))}
+      </ul>
       <SkillDialog editing={editing} onClose={() => setEditing(undefined)} />
     </>
   );

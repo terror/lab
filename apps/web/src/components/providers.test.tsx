@@ -23,7 +23,8 @@ test('deleting a provider asks first', async () => {
 
   const { screen } = await renderWithQuery(<Providers />);
 
-  await screen.getByRole('button', { name: 'Delete baz' }).click();
+  await screen.getByRole('button', { name: 'Actions for baz' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete' }).click();
   await screen
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete' })

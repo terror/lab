@@ -2,11 +2,6 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,8 +13,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Field,
   FieldError,
@@ -27,6 +24,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -39,8 +37,9 @@ import {
   setConnectorEnabled,
   useConnectorsUpdate,
 } from '@/lib/connectors';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Ellipsis, Plus } from 'lucide-react';
+import { ChevronRight, Ellipsis, Plug, Plus } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
 function AddConnector({ onClose }: { onClose: () => void }) {
@@ -122,25 +121,39 @@ const statuses: Record<Connector['status'], (connector: Connector) => string> =
     unauthorized: () => 'Sign in to use this connector',
   };
 
-function Status({ connector }: { connector: Connector }) {
+function Status({
+  connector,
+  onToggle,
+  open,
+}: {
+  connector: Connector;
+  onToggle: () => void;
+  open: boolean;
+}) {
   const status = statuses[connector.status](connector);
 
   if (connector.status === 'error') {
-    return <p className='text-sm text-destructive'>{status}</p>;
+    return <span className='truncate text-destructive'>{status}</span>;
   }
 
   if (connector.tools.length === 0) {
-    return <p className='text-sm text-muted-foreground'>{status}</p>;
+    return <span className='truncate text-muted-foreground'>{status}</span>;
   }
 
   return (
-    <CollapsibleTrigger className='group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'>
+    <Button
+      aria-expanded={open}
+      className='-ml-2 self-start'
+      onClick={onToggle}
+      size='sm'
+      variant='quiet'
+    >
       {status}
       <ChevronRight
         aria-hidden='true'
-        className='size-3.5 transition-transform group-data-[state=open]:rotate-90'
+        className={cn('transition-transform', open && 'rotate-90')}
       />
-    </CollapsibleTrigger>
+    </Button>
   );
 }
 
@@ -150,59 +163,82 @@ function ConnectorRow({ connector }: { connector: Connector }) {
   const remove = useConnectorsUpdate(deleteConnector);
 
   const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <li className='rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted/50'>
-      <Collapsible>
-        <div className='flex items-center gap-3'>
-          <div className='min-w-0 flex-1'>
-            <p className='truncate text-sm font-medium'>{connector.name}</p>
-            <p className='truncate text-sm text-muted-foreground'>
-              {connector.url}
-            </p>
-            <Status connector={connector} />
-          </div>
-          {connector.status === 'unauthorized' && (
-            <Button asChild size='sm' variant='secondary'>
-              <a href={`/api/connectors/${connector.id}/authorize`}>Sign in</a>
-            </Button>
-          )}
-          <Switch
-            aria-label={`Use ${connector.name}`}
-            checked={connector.enabled}
-            disabled={toggle.isPending}
-            onCheckedChange={(enabled) =>
-              toggle.mutate({ enabled, id: connector.id })
-            }
+    <>
+      <ListRow
+        actions={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label={`Actions for ${connector.name}`}
+                  size='icon-sm'
+                  variant='quiet'
+                >
+                  <Ellipsis aria-hidden='true' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end'>
+                <DropdownMenuItem
+                  disabled={!connector.enabled}
+                  onSelect={() => reconnect.mutate(connector.id)}
+                >
+                  Reconnect
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => setConfirming(true)}
+                  variant='destructive'
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ConfirmDialog
+              action='Delete'
+              description={`Lab will disconnect from ${connector.name} and forget its sign-in. This can’t be undone.`}
+              onConfirm={() => remove.mutate(connector.id)}
+              onOpenChange={setConfirming}
+              open={confirming}
+              title={`Delete ${connector.name}?`}
+            />
+          </>
+        }
+      >
+        <Plug
+          aria-hidden='true'
+          className='size-4 shrink-0 text-muted-foreground'
+        />
+        <span className='flex min-w-0 flex-1 flex-col'>
+          <span className='truncate font-medium'>{connector.name}</span>
+          <span className='truncate text-muted-foreground'>
+            {connector.url}
+          </span>
+          <Status
+            connector={connector}
+            onToggle={() => setOpen(!open)}
+            open={open}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label={`Options for ${connector.name}`}
-                size='icon-sm'
-                variant='ghost'
-              >
-                <Ellipsis aria-hidden='true' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end'>
-              <DropdownMenuItem
-                disabled={!connector.enabled}
-                onSelect={() => reconnect.mutate(connector.id)}
-              >
-                Reconnect
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => setConfirming(true)}
-                variant='destructive'
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <CollapsibleContent>
-          <ul className='mt-2 flex flex-col gap-1.5 border-l pl-3'>
+        </span>
+        {connector.status === 'unauthorized' && (
+          <Button asChild size='sm' variant='outline'>
+            <a href={`/api/connectors/${connector.id}/authorize`}>Sign in</a>
+          </Button>
+        )}
+        <Switch
+          aria-label={`Use ${connector.name}`}
+          checked={connector.enabled}
+          disabled={toggle.isPending}
+          onCheckedChange={(enabled) =>
+            toggle.mutate({ enabled, id: connector.id })
+          }
+        />
+      </ListRow>
+      {open && (
+        <li className='pb-2 pl-7'>
+          <ul className='flex flex-col gap-1.5 border-l pl-3'>
             {connector.tools.map((tool) => (
               <li key={tool.name} className='text-sm'>
                 <span className='font-mono text-xs'>{tool.name}</span>
@@ -212,17 +248,9 @@ function ConnectorRow({ connector }: { connector: Connector }) {
               </li>
             ))}
           </ul>
-        </CollapsibleContent>
-      </Collapsible>
-      <ConfirmDialog
-        action='Delete'
-        description={`Lab will disconnect from ${connector.name} and forget its sign-in. This can’t be undone.`}
-        onConfirm={() => remove.mutate(connector.id)}
-        onOpenChange={setConfirming}
-        open={confirming}
-        title={`Delete ${connector.name}?`}
-      />
-    </li>
+        </li>
+      )}
+    </>
   );
 }
 
@@ -243,17 +271,21 @@ export function Connectors() {
         description='Give Lab tools from remote MCP servers. Lab asks before using a tool that can change something.'
         title='Connectors'
       />
-      {connectors.isError && <LoadError subject='connectors' />}
+      {connectors.isPending && <ListSkeleton />}
+      {connectors.isLoadingError && (
+        <LoadError onRetry={() => connectors.refetch()} subject='connectors' />
+      )}
       {connectors.data?.connectors.length === 0 && (
-        <p className='text-sm text-muted-foreground'>No connectors yet.</p>
+        <EmptyState
+          description='Add a remote MCP server by its URL to give Lab its tools.'
+          title='No connectors yet'
+        />
       )}
-      {connectors.data && connectors.data.connectors.length > 0 && (
-        <ul className='-mx-3 flex flex-col'>
-          {connectors.data.connectors.map((connector) => (
-            <ConnectorRow key={connector.id} connector={connector} />
-          ))}
-        </ul>
-      )}
+      <ul className='flex flex-col gap-0.5'>
+        {connectors.data?.connectors.map((connector) => (
+          <ConnectorRow key={connector.id} connector={connector} />
+        ))}
+      </ul>
       <Dialog onOpenChange={setAdding} open={adding}>
         <DialogContent className='sm:max-w-lg'>
           {adding && <AddConnector onClose={() => setAdding(false)} />}
