@@ -1,4 +1,4 @@
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
 
 import { Connectors } from './connectors';
@@ -66,4 +66,25 @@ test('a connector that needs sign-in links to signing in', async () => {
   await expect
     .element(screen.getByRole('link', { name: 'Sign in' }))
     .toHaveAttribute('href', '/api/connectors/1/authorize');
+});
+
+test('deleting a connector asks first', async () => {
+  const fetch = stubFetch(() => Response.json({ connectors: [connector] }));
+
+  const { screen } = await renderWithQuery(<Connectors />);
+
+  await screen.getByRole('button', { name: 'Options for foo' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete' }).click();
+  await screen
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'DELETE' ? [requestUrl(input).pathname] : []
+      )
+    )
+    .toEqual(['/api/connectors/1']);
 });
