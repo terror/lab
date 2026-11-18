@@ -1,6 +1,10 @@
-import { LabMark } from '@/components/lab-mark';
 import { StartComposer } from '@/components/start-composer';
+import { LiveMark } from '@/components/ui/live-mark';
 import { UnreadChips } from '@/components/unread-chips';
+import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+
+const greetedKey = 'lab:greeted';
 
 function greeting(name: string) {
   const hour = new Date().getHours();
@@ -21,12 +25,31 @@ function greeting(name: string) {
   return `Good evening, ${first}`;
 }
 
+function useFirstVisit() {
+  const [first] = useState(
+    () => window.sessionStorage.getItem(greetedKey) === null
+  );
+
+  useEffect(() => {
+    window.sessionStorage.setItem(greetedKey, 'true');
+  }, []);
+
+  return first;
+}
+
 export function NewChat({ user }: { user: { name: string } }) {
+  const first = useFirstVisit();
+
   return (
     <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-24'>
       <div className='flex w-full max-w-3xl flex-col items-center gap-8'>
-        <div className='flex animate-in flex-col items-center gap-4 text-center duration-500 fade-in slide-in-from-bottom-2'>
-          <LabMark className='size-10' />
+        <div
+          className={cn(
+            'flex flex-col items-center gap-4 text-center',
+            first && 'animate-in duration-story fade-in slide-in-from-bottom-2'
+          )}
+        >
+          <LiveMark className='size-10' state={first ? 'assemble' : 'idle'} />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
             {greeting(user.name)}
           </h1>
