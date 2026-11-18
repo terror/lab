@@ -75,7 +75,7 @@ export async function reserveStorage(
   ownerId: string,
   adding: number
 ) {
-  const { storageLimit } = await policy(ownerId);
+  const { storageLimit } = await policy(ownerId, tx);
 
   if (storageLimit === undefined || adding <= 0) {
     return;
