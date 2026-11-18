@@ -53,3 +53,53 @@ test('closing the event stream right away stops the watch', async () => {
 
   expect(stop).toHaveBeenCalledTimes(1);
 });
+
+async function follow(headers: Headers, id: number) {
+  const response = await raw(headers, `/conversations/${id}/events`);
+
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    throw new Error('missing event stream');
+  }
+
+  await reader.read();
+
+  return reader;
+}
+
+async function ended(reader: Awaited<ReturnType<typeof follow>>) {
+  for (;;) {
+    const next = await Promise.race([reader.read(), Bun.sleep(500)]);
+
+    if (!next) {
+      return false;
+    }
+
+    if (next.done) {
+      return true;
+    }
+  }
+}
+
+test('opening more than 20 event streams closes the oldest', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  const oldest = await follow(headers, id);
+
+  const next = await follow(headers, id);
+
+  const rest = [];
+
+  for (let index = 0; index < 19; index++) {
+    rest.push(await follow(headers, id));
+  }
+
+  const closed = [await ended(oldest), await ended(next)];
+
+  await Promise.all([oldest, next, ...rest].map((reader) => reader.cancel()));
+
+  expect(closed).toEqual([true, false]);
+});
