@@ -127,9 +127,11 @@ export type Retry = (model?: ModelChoice) => void;
 function RetryActions({
   model,
   onRetry,
+  spin,
 }: {
   model: ModelChoice | undefined;
   onRetry: Retry;
+  spin: boolean;
 }) {
   const [turns, setTurns] = useState(0);
   const quiet = useQuiet();
@@ -148,7 +150,7 @@ function RetryActions({
           aria-hidden='true'
           className={cn(
             'size-4',
-            turns > 0 && !quiet && 'motion-safe:animate-retry'
+            turns > 0 && spin && !quiet && 'motion-safe:animate-retry'
           )}
         />
       </IconButton>
@@ -169,12 +171,14 @@ export function MessageActions({
   latest,
   model,
   onRetry,
+  spin,
   text,
   versions,
 }: {
   latest: boolean;
   model: ModelChoice | undefined;
   onRetry: Retry | undefined;
+  spin: boolean;
   text: string;
   versions: ReactNode;
 }) {
@@ -189,7 +193,9 @@ export function MessageActions({
       >
         {text && <CopyAction text={text} />}
         {text && 'speechSynthesis' in window && <SpeakAction text={text} />}
-        {onRetry && <RetryActions model={model} onRetry={onRetry} />}
+        {onRetry && (
+          <RetryActions model={model} onRetry={onRetry} spin={spin} />
+        )}
       </div>
     </MessageFooter>
   );

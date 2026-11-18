@@ -5,6 +5,7 @@ import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
+import '@/index.css';
 
 import { AssistantMessage, type ToolResult } from './assistant-message';
 
@@ -558,4 +559,41 @@ test('a failed run keeps its plain icon when Lab is quiet', async () => {
       ...screen.getByRole('alert').element().querySelectorAll('[data-slot]'),
     ].map((part) => part.getAttribute('data-slot'))
   ).toEqual(['trace-icon', 'status-icon', 'trace-title']);
+});
+
+async function spin(failure: 'aborted' | 'model_error') {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <AssistantMessage
+        failure={failure}
+        latest
+        onRetry={() => undefined}
+        parts={[{ text: 'foo', type: 'text' }]}
+        progress={new Map()}
+        results={new Map()}
+        streaming={false}
+      />
+    </TooltipProvider>
+  );
+
+  const retry = screen.getByRole('button', { name: 'Retry' });
+
+  await retry.click();
+
+  const icon = retry.element().querySelector('svg');
+
+  const name = icon && getComputedStyle(icon).animationName;
+
+  await screen.unmount();
+
+  return name;
+}
+
+test('Retry spins on a stopped reply but leaves a failed one to its mended mark', async () => {
+  expect([await spin('aborted'), await spin('model_error')]).toEqual([
+    'retry',
+    'none',
+  ]);
 });

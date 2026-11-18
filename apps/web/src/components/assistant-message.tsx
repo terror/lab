@@ -260,6 +260,7 @@ export function AssistantMessage({
             latest={latest}
             model={model}
             onRetry={onRetry}
+            spin={failure === undefined || failure === 'aborted'}
             text={text}
             versions={versions}
           />
