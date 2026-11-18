@@ -1,5 +1,4 @@
 import {
-  Activity,
   AssistantMessage,
   RunFailure,
   replyText,
@@ -15,6 +14,7 @@ import { FileChip } from '@/components/file-chip';
 import { ImageCard } from '@/components/image-card';
 import { LoadMore } from '@/components/load-more';
 import { Action } from '@/components/message-actions';
+import { Activity } from '@/components/tool-steps';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
