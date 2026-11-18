@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useDark } from '@/lib/theme';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 const MIN_HEIGHT = 48;
@@ -31,18 +32,14 @@ const THEME_VARIABLES = [
   '--primary-foreground',
 ];
 
-function dark() {
-  return document.documentElement.classList.contains('dark');
-}
-
-function themed(html: string) {
+function themed(html: string, dark: boolean) {
   const style = getComputedStyle(document.documentElement);
 
   const variables = THEME_VARIABLES.map(
     (name) => `${name}:${style.getPropertyValue(name).trim()}`
   ).join(';');
 
-  return `<style>:root{${variables};color-scheme:${dark() ? 'dark' : 'light'}}body{margin:0;background:transparent;color:var(--foreground);font-family:system-ui,sans-serif}</style>${html}`;
+  return `<style>:root{${variables};color-scheme:${dark ? 'dark' : 'light'}}body{margin:0;background:transparent;color:var(--foreground);font-family:system-ui,sans-serif}</style>${html}`;
 }
 
 export type FrameCall = (
@@ -83,9 +80,12 @@ export function SandboxFrame({
   scripts?: boolean;
   title: string;
 }) {
+  const dark = useDark();
+  const content = useMemo(() => themed(html, dark), [dark, html]);
+
   const frame = useRef<HTMLIFrameElement>(null);
   const port = useRef<MessagePort>(undefined);
-  const latest = useRef(html);
+  const latest = useRef(content);
   const report = useRef(onError);
   const sendText = useRef(onSend);
   const handle = useRef(onCall);
@@ -100,9 +100,9 @@ export function SandboxFrame({
   }, [onCall, onError, onSend]);
 
   useEffect(() => {
-    latest.current = html;
-    port.current?.postMessage({ html: themed(html), scripts, type: 'render' });
-  }, [html, scripts]);
+    latest.current = content;
+    port.current?.postMessage({ html: content, scripts, type: 'render' });
+  }, [content, scripts]);
 
   useEffect(() => () => port.current?.close(), []);
 
@@ -126,7 +126,7 @@ export function SandboxFrame({
 
       if (message?.type === 'ready') {
         channel.port1.postMessage({
-          html: themed(latest.current),
+          html: latest.current,
           scripts,
           type: 'render',
         });
@@ -180,7 +180,7 @@ export function SandboxFrame({
       sandbox={FRAME_SANDBOX}
       src='/frame'
       style={{
-        colorScheme: dark() ? 'dark' : 'light',
+        colorScheme: dark ? 'dark' : 'light',
         height: fixed ?? height,
       }}
       title={title}
