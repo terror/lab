@@ -19,6 +19,7 @@ function LiveMark({
   state?:
     | 'ahem'
     | 'assemble'
+    | 'broken'
     | 'done'
     | 'drift'
     | 'error'
@@ -26,6 +27,7 @@ function LiveMark({
     | 'handoff'
     | 'idle'
     | 'proud'
+    | 'recover'
     | 'thinking'
     | 'waiting';
 }) {

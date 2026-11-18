@@ -10,13 +10,14 @@ import {
   Worked,
 } from '@/components/tool-steps';
 import type { ToolProgress, ToolResult } from '@/components/tools';
+import { LiveMark } from '@/components/ui/live-mark';
 import { Message, MessageContent } from '@/components/ui/message';
 import { StatusIcon } from '@/components/ui/status-icon';
 import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
 import { cheerFor, useCheer } from '@/lib/cheer';
 import type { ModelChoice } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
-import { runFailureTitles } from '@/lib/run-failure';
+import { runFailureTitles, useSlip } from '@/lib/run-failure';
 import type { Part, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
@@ -57,13 +58,25 @@ function segments(parts: readonly Part[]) {
   }, []);
 }
 
-export function RunFailure({ reason }: { reason: RunFailureReason }) {
+export function RunFailure({
+  mark = 'broken',
+  reason,
+}: {
+  mark?: 'broken' | 'error' | 'recover';
+  reason: RunFailureReason;
+}) {
+  const quiet = useQuiet();
+
   const stopped = reason === 'aborted';
 
   return (
     <TraceLine role='alert' status={stopped ? undefined : 'error'}>
       <TraceIcon>
-        <StatusIcon status={stopped ? 'stopped' : 'failed'} />
+        {stopped || quiet ? (
+          <StatusIcon status={stopped ? 'stopped' : 'failed'} />
+        ) : (
+          <LiveMark className='size-3.5' state={mark} />
+        )}
       </TraceIcon>
       <TraceTitle>{runFailureTitles[reason]}</TraceTitle>
     </TraceLine>
@@ -128,6 +141,7 @@ export function AssistantMessage({
   plan,
   progress,
   results,
+  retrying = false,
   span,
   streaming,
   versions,
@@ -142,6 +156,7 @@ export function AssistantMessage({
   plan?: ShownPlan;
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
+  retrying?: boolean;
   span?: Span;
   streaming: boolean;
   versions?: ReactNode;
@@ -149,6 +164,7 @@ export function AssistantMessage({
 }) {
   const cheer = useCheer(working);
   const quiet = useQuiet();
+  const slip = useSlip(cheer === 'held' || cheer === 'cheer', failure);
 
   const text = replyText(parts);
 
@@ -186,6 +202,8 @@ export function AssistantMessage({
   } as const;
 
   const marked = !quiet && (working || (latest && failure === undefined));
+
+  const broken = slip ? 'error' : 'broken';
 
   return (
     <Message>
@@ -234,7 +252,9 @@ export function AssistantMessage({
         )}
         <Segments segments={all.slice(split)} {...shared} />
         {activity !== undefined && !inSlot && <Activity status={activity} />}
-        {failure && <RunFailure reason={failure} />}
+        {failure && (
+          <RunFailure mark={retrying ? 'recover' : broken} reason={failure} />
+        )}
         {answer && (
           <MessageActions
             latest={latest}

@@ -19,6 +19,8 @@ const meta = preview.meta({
         'gulp',
         'drift',
         'error',
+        'broken',
+        'recover',
       ],
     },
   },
@@ -84,4 +86,12 @@ export const Drift = meta.story({
 
 export const Error = meta.story({
   args: { className: 'size-10', state: 'error' },
+});
+
+export const Broken = meta.story({
+  args: { className: 'size-10', state: 'broken' },
+});
+
+export const Recover = meta.story({
+  args: { className: 'size-10', state: 'recover' },
 });

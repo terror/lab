@@ -263,3 +263,55 @@ export const Asking = meta.story({
   decorators: [themes],
   render: () => <Asks />,
 });
+
+const tries = [
+  { key: 'a', state: 'working', until: 2 },
+  { key: 'a', state: 'worked', until: 4 },
+  { key: 'a', state: 'working', until: 6 },
+  { key: 'a', state: 'failed', until: 9.5 },
+  { key: 'a', state: 'retrying', until: 10.5 },
+  { key: 'b', state: 'working', until: 12.5 },
+  { key: 'b', state: 'failed', until: 16 },
+] as const;
+
+const outcomes = {
+  failed: { failure: 'model_error', retrying: false, working: false },
+  retrying: { failure: 'model_error', retrying: true, working: false },
+  worked: { failure: undefined, retrying: false, working: false },
+  working: { failure: undefined, retrying: false, working: true },
+} as const;
+
+function Tries() {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((current) => current + 1), 500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const attempt =
+    tries.find(({ until }) => (tick % 32) / 2 < until) ?? tries[0];
+
+  const { failure, retrying, working } = outcomes[attempt.state];
+
+  return (
+    <AssistantMessage
+      key={`${Math.floor(tick / 32)}-${attempt.key}`}
+      failure={failure}
+      latest={!working}
+      onRetry={failure && !retrying ? () => undefined : undefined}
+      parts={[{ text: 'Príncipe Real is the quietest.', type: 'text' }]}
+      progress={new Map()}
+      results={new Map()}
+      retrying={retrying}
+      streaming={working}
+      working={working}
+    />
+  );
+}
+
+export const Failing = meta.story({
+  decorators: [themes],
+  render: () => <Tries />,
+});
