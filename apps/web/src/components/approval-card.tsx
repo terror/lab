@@ -1,3 +1,4 @@
+import { Answered } from '@/components/answered';
 import { ErrorMessage } from '@/components/error-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -52,6 +53,11 @@ function ClampedText({ children }: { children: string }) {
   );
 }
 
+const decisions = {
+  approved: { icon: Check, label: 'Approved' },
+  denied: { icon: X, label: 'Denied' },
+};
+
 export function approvalOf(details: unknown) {
   return z.object({ approval: approvalSchema }).safeParse(details).data
     ?.approval;
@@ -75,15 +81,27 @@ export function ApprovalCard({
   const decision =
     approval.decision ?? (send.isSuccess ? send.variables : undefined);
 
+  const shown = decision === undefined ? undefined : decisions[decision];
+
   return (
-    <Card className='gap-3' variant='outline'>
-      <div className='flex flex-col gap-1'>
-        <p className='text-sm font-medium'>{approval.action}</p>
-        {approval.summary.map((line) => (
-          <ClampedText key={line}>{line}</ClampedText>
-        ))}
-      </div>
-      {decision === undefined ? (
+    <Answered
+      answer={
+        shown && (
+          <>
+            <shown.icon aria-hidden='true' className='size-4 shrink-0' />
+            {shown.label}
+          </>
+        )
+      }
+      prompt={approval.action}
+    >
+      <Card className='gap-3' variant='outline'>
+        <div className='flex flex-col gap-1'>
+          <p className='text-sm font-medium'>{approval.action}</p>
+          {approval.summary.map((line) => (
+            <ClampedText key={line}>{line}</ClampedText>
+          ))}
+        </div>
         <div className='flex gap-2'>
           <Button
             disabled={send.isPending || conversationId === undefined}
@@ -101,17 +119,8 @@ export function ApprovalCard({
             Deny
           </Button>
         </div>
-      ) : (
-        <p className='flex items-center gap-1.5 text-sm text-muted-foreground'>
-          {decision === 'approved' ? (
-            <Check aria-hidden='true' className='size-4' />
-          ) : (
-            <X aria-hidden='true' className='size-4' />
-          )}
-          {decision === 'approved' ? 'Approved' : 'Denied'}
-        </p>
-      )}
-      {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
-    </Card>
+        {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
+      </Card>
+    </Answered>
   );
 }

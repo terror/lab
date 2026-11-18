@@ -18,22 +18,17 @@ test('choosing an option answers the question once', async () => {
 
   await screen.getByRole('button', { name: 'baz' }).click();
 
-  await expect
-    .element(screen.getByRole('button', { name: 'baz' }))
-    .toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => screen.container.textContent).toBe('foobaz');
 
   const [input, init] = fetch.mock.calls[0] ?? [];
 
   expect({
-    bar: screen
-      .getByRole('button', { name: 'bar' })
-      .element()
-      .hasAttribute('disabled'),
     body: typeof init?.body === 'string' && JSON.parse(init.body),
+    calls: fetch.mock.calls.length,
     path: input && requestUrl(input).pathname,
   }).toEqual({
-    bar: true,
     body: { answer: 'baz', callId: 'qux' },
+    calls: 1,
     path: '/api/conversations/7/answers',
   });
 });
