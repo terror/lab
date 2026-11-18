@@ -52,3 +52,30 @@ test('a delegate call lists its subagents and opens their reports', async () => 
     ['fooDone', 'barFailed', 'bobStopped'],
   ]);
 });
+
+function lanes(status: 'done' | 'running') {
+  return toolRenderer('delegate').inline?.({
+    ...view,
+    active: true,
+    details: {
+      subagents: [
+        { status: 'done', title: 'foo' },
+        { status, title: 'bar' },
+      ],
+    },
+  } satisfies ToolView);
+}
+
+test('a delegate call folds its lanes once every subagent is done', async () => {
+  const { screen } = await renderWithQuery(lanes('running'));
+
+  await screen.rerender(lanes('done'));
+
+  await expect.element(screen.getByRole('list')).not.toBeInTheDocument();
+
+  await screen.getByRole('button', { name: /2 subagents/ }).click();
+
+  await expect
+    .element(screen.getByRole('list'))
+    .toHaveTextContent('fooDonebarDone');
+});
