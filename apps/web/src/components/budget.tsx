@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
 import {
   type Budget,
@@ -13,11 +14,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { type SubmitEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-const currency = new Intl.NumberFormat('en-US', {
-  currency: 'USD',
-  style: 'currency',
-});
 
 const messages = {
   near: 'You’ve used over 80% of your monthly budget.',
@@ -35,9 +31,9 @@ function Meter({ limit, spent }: { limit: number; spent: number }) {
     <div className='flex flex-col gap-2'>
       <div className='flex items-baseline justify-between text-sm tabular-nums'>
         <span>
-          {currency.format(spent)}{' '}
+          {formatSpend(spent)}{' '}
           <span className='text-muted-foreground'>
-            of {currency.format(limit)} this month
+            of {formatSpend(limit)} this month
           </span>
         </span>
         <span className='text-muted-foreground'>

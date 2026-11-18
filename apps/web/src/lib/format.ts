@@ -3,6 +3,18 @@ const shortDateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'short',
 });
 
+const currency = new Intl.NumberFormat('en-US', {
+  currency: 'USD',
+  style: 'currency',
+});
+
+const precise = new Intl.NumberFormat('en-US', {
+  currency: 'USD',
+  maximumFractionDigits: 4,
+  minimumFractionDigits: 4,
+  style: 'currency',
+});
+
 const sizeUnits = ['B', 'KB', 'MB', 'GB'] as const;
 
 const sizeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
@@ -20,6 +32,12 @@ export function formatBytes(size: number) {
   );
 
   return `${sizeNumber.format(size / 1000 ** power)} ${sizeUnits[power]}`;
+}
+
+export function formatSpend(value: number) {
+  return value > 0 && value < 1
+    ? precise.format(value)
+    : currency.format(value);
 }
 
 export function plural(count: number, noun: string) {

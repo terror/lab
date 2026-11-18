@@ -50,6 +50,17 @@ export const usagePipeline = entryPipeline({
 
 export const flushUsage = usagePipeline.flush;
 
+function modelName(provider: string, id: string) {
+  return (
+    catalog.getModel(provider, id)?.name ??
+    id
+      .slice(id.lastIndexOf('/') + 1)
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  );
+}
+
 const range = validator(
   'query',
   z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })
@@ -185,7 +196,7 @@ const usage = new Hono()
       })),
       models: models.map((row) => ({
         ...row,
-        name: catalog.getModel(row.provider, row.model)?.name ?? row.model,
+        name: modelName(row.provider, row.model),
       })),
       summary,
     });
