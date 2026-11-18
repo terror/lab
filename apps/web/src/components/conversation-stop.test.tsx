@@ -107,7 +107,7 @@ test('a stopped turn ends in place with its status above what to do next', async
     ],
   ]);
 
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('Stopped.');
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('Stopped');
 
   expect({
     actions: [
@@ -117,7 +117,7 @@ test('a stopped turn ends in place with its status above what to do next', async
     top: reply()?.getBoundingClientRect().top,
   }).toEqual({
     actions: ['Retry', 'Retry with another model'],
-    status: 'Stopped.',
+    status: 'Stopped',
     top,
   });
 });

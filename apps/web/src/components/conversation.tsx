@@ -11,6 +11,8 @@ import {
 import { Composer } from '@/components/composer';
 import { ComposerDock } from '@/components/composer-dock';
 import { DocumentCard } from '@/components/document-card';
+import { FileChip } from '@/components/file-chip';
+import { ImageCard } from '@/components/image-card';
 import { LoadMore } from '@/components/load-more';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
@@ -57,6 +59,7 @@ import {
   usePreferredModel,
 } from '@/lib/models';
 import { runPhase } from '@/lib/run-phase';
+import { uploadUrl } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
 import {
   CompactionEntry,
@@ -72,7 +75,6 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import {
   ChevronLeft,
   ChevronRight,
-  FileText,
   LoaderCircle,
   Pencil,
   X,
@@ -242,6 +244,18 @@ function VersionSwitcher({ chats, index }: Versions) {
   );
 }
 
+function AttachedFile({ name, uploadId }: BubbleFile) {
+  if (!uploadId) {
+    return <FileChip name={name} />;
+  }
+
+  if (name.toLowerCase().endsWith('.pdf')) {
+    return <DocumentCard name={name} uploadId={uploadId} />;
+  }
+
+  return <FileChip href={uploadUrl(uploadId)} name={name} />;
+}
+
 function UserMessage({
   bubble,
   editable = false,
@@ -261,10 +275,10 @@ function UserMessage({
         {(bubble.images?.length ?? 0) > 0 && (
           <div className='flex flex-wrap justify-end gap-2'>
             {bubble.images?.map((source, index) => (
-              <img
+              <ImageCard
                 key={index}
-                alt=''
-                className='max-h-48 max-w-full rounded-2xl object-cover'
+                className='max-h-48'
+                name='Image'
                 src={source}
               />
             ))}
@@ -272,19 +286,9 @@ function UserMessage({
         )}
         {(bubble.files?.length ?? 0) > 0 && (
           <div className='flex flex-wrap justify-end gap-2'>
-            {bubble.files?.map(({ name, uploadId }, index) =>
-              uploadId ? (
-                <DocumentCard key={index} name={name} uploadId={uploadId} />
-              ) : (
-                <span
-                  key={index}
-                  className='flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm'
-                >
-                  <FileText aria-hidden='true' className='size-4' />
-                  {name}
-                </span>
-              )
-            )}
+            {bubble.files?.map((attached, index) => (
+              <AttachedFile key={index} {...attached} />
+            ))}
           </div>
         )}
         {editing && (

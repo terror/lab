@@ -1,4 +1,5 @@
 import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
 import { cn } from '@/lib/utils';
 import { Lightbulb } from 'lucide-react';
 
@@ -24,6 +25,32 @@ function MemoryNote({
         {note}
       </p>
     </Card>
+  );
+}
+
+function MemoryChip({
+  forgotten = false,
+  text: note,
+}: {
+  forgotten?: boolean;
+  text: string;
+}) {
+  return (
+    <div className='flex min-w-0 animate-in items-center gap-2 text-sm duration-base fade-in'>
+      <Chip tone={forgotten ? 'neutral' : 'done'}>
+        <Lightbulb aria-hidden='true' />
+        {forgotten ? 'Forgot' : 'Remembered'}
+      </Chip>
+      <span
+        className={cn(
+          'min-w-0 truncate text-muted-foreground',
+          forgotten && 'line-through'
+        )}
+      >
+        {note}
+      </span>
+      <SettingsLink section='memory'>Manage</SettingsLink>
+    </div>
   );
 }
 
@@ -55,6 +82,13 @@ export const memoryRenderers = {
   forget: {
     actions: manageMemories,
     icon: Lightbulb,
+    inline: (view) => {
+      const note = forgottenText(view);
+
+      return !view.active && note ? (
+        <MemoryChip forgotten text={note} />
+      ) : undefined;
+    },
     preview: (view) => {
       const note = forgottenText(view);
 
@@ -81,6 +115,13 @@ export const memoryRenderers = {
   remember: {
     actions: manageMemories,
     icon: Lightbulb,
+    inline: ({ active, args, details }) => {
+      const note = text(field(details, 'text')) ?? text(args.text);
+
+      return !active && note && details ? (
+        <MemoryChip text={note} />
+      ) : undefined;
+    },
     preview: ({ args, details }) => {
       const note = text(field(details, 'text')) ?? text(args.text);
 
