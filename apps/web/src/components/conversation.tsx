@@ -470,7 +470,7 @@ export function Conversation({ id }: { id: number }) {
   return (
     <>
       <ChatHeader id={id} />
-      <MessageScrollerProvider>
+      <MessageScrollerProvider autoScroll={summary.data?.running !== true}>
         <ConversationView id={id} />
       </MessageScrollerProvider>
     </>
