@@ -9,9 +9,9 @@ type Modules = {
   streamdown: typeof import('streamdown');
 };
 
-let loaded: Modules | undefined;
+type Loading = Promise<Modules> & { status?: 'fulfilled'; value?: Modules };
 
-let loading: Promise<Modules> | undefined;
+let loading: Loading | undefined;
 
 function diagrams(theme: 'dark' | 'neutral'): DiagramPlugin {
   return {
@@ -36,14 +36,18 @@ function diagrams(theme: 'dark' | 'neutral'): DiagramPlugin {
   };
 }
 
-export function loadMarkdown() {
-  loading ??= Promise.all([
+export function loadMarkdown(): Promise<Modules> {
+  if (loading) {
+    return loading;
+  }
+
+  const started: Loading = Promise.all([
     import('streamdown'),
     import('@streamdown/code'),
     import('remark-breaks'),
   ]).then(
     ([streamdown, { code }, { default: remarkBreaks }]) => {
-      loaded = {
+      const modules: Modules = {
         plugins: {
           dark: { code, mermaid: diagrams('dark') },
           light: { code, mermaid: diagrams('neutral') },
@@ -55,7 +59,10 @@ export function loadMarkdown() {
         streamdown,
       };
 
-      return loaded;
+      started.status = 'fulfilled';
+      started.value = modules;
+
+      return modules;
     },
     (error: unknown) => {
       loading = undefined;
@@ -64,13 +71,15 @@ export function loadMarkdown() {
     }
   );
 
-  return loading;
+  loading = started;
+
+  return started;
 }
 
 const linkSafety = { enabled: false };
 
 function Streamdown(props: StreamdownProps) {
-  const { plugins, remarkPlugins, streamdown } = loaded ?? use(loadMarkdown());
+  const { plugins, remarkPlugins, streamdown } = use(loadMarkdown());
   const dark = useDark();
 
   return (

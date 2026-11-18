@@ -1,5 +1,5 @@
-import { LabMark } from '@/components/lab-mark';
 import { Button } from '@/components/ui/button';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   type ErrorComponentProps,
   Link,
@@ -33,7 +33,7 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
         className='flex w-full max-w-md animate-in flex-col items-center gap-6 text-center duration-300 fade-in slide-in-from-bottom-2'
         role='alert'
       >
-        <LabMark className='size-10' />
+        <LiveMark className='size-10' state='error' />
         <div className='space-y-2'>
           <h1 className='text-xl font-semibold tracking-tight'>
             Something went wrong
