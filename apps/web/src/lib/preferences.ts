@@ -54,8 +54,10 @@ async function load(signal: AbortSignal) {
 export const preferencesQueryOptions = queryOptions({
   queryKey: ['preferences'],
   queryFn: ({ signal }) => load(signal),
-  placeholderData: () =>
-    readStored(CACHE, preferencesSchema, defaultPreferences),
+  placeholderData: () => ({
+    ...defaultPreferences,
+    ...readStored(CACHE, preferencesSchema.partial(), {}),
+  }),
   staleTime: Infinity,
 });
 

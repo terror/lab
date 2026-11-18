@@ -1,0 +1,34 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title='Foundations/Voice' />
+
+# Voice
+
+Lab talks like a calm lab bench: flasks, jars, notes, results. It's dry and
+never zany. The facts always come first.
+
+## Personality
+
+Settings › Appearance › Personality has two levels.
+
+- **Default** is the shipped voice. Greetings, waits, and empty states may add a
+  line of character, and rare moments get a small flourish.
+- **Quiet** shows the plain copy and turns off every optional flourish: the
+  greeting assemble, plan confetti, and anything added later.
+
+Read the setting with `useQuiet()` from `src/lib/voice.ts`. Gate every new
+flourish and every line of character on it.
+
+## Six rules
+
+1. **Facts first.** A line may add character. It never replaces the information.
+2. **One quip per surface.** A screen gets one voice moment, never two.
+3. **Lab-bench register.** Dry, never zany. No “oops”, no exclamation marks, no
+   emoji.
+4. **Plain where it counts.** Approvals, billing, deletes, and anything with
+   money or files stay literal. An error says “Couldn’t …” and what happens
+   next.
+5. **Plainer the more you see it.** Every send is silent. Every visit is mild.
+   Once-ever moments get the jokes.
+6. **Seeded, never rerolled.** A line is picked from the date and its context,
+   so a refresh keeps it.

@@ -8,6 +8,7 @@ import { ProgressCount } from '@/components/ui/progress-count';
 import { confetti } from '@/lib/confetti';
 import { editPlan } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { PLAN_LIMIT, type PlanStep, STEP_LENGTH } from '@lab/server/schemas';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
@@ -271,14 +272,22 @@ export function Plan({
 
   const celebrated = useRef(false);
 
+  const quiet = useQuiet();
+
   useEffect(() => {
-    if (complete && !finished.current && !celebrated.current && count.current) {
+    if (
+      complete &&
+      !finished.current &&
+      !celebrated.current &&
+      count.current &&
+      !quiet
+    ) {
       celebrated.current = true;
       void confetti(count.current);
     }
 
     finished.current = complete;
-  }, [complete]);
+  }, [complete, quiet]);
 
   const stepKeys = keys(shown);
 

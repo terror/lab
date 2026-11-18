@@ -2,6 +2,7 @@ import '@/index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { glideOrigin } from '@/lib/glide';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -17,19 +18,26 @@ const DAY = 86_400_000;
 
 async function renderHome({
   chats = [],
+  personality = 'default',
   projects = [],
   start = () => Response.json({ id: 1 }, { status: 201 }),
   tasks = [],
 }: {
   chats?: object[];
+  personality?: string;
   projects?: object[];
   start?: () => Response | Promise<Response>;
   tasks?: object[];
 } = {}) {
+  const preferences = { ...defaultPreferences, personality };
+
+  window.localStorage.setItem('lab:preferences', JSON.stringify(preferences));
+
   const responses: Record<string, unknown> = {
     '/api/conversations': { conversations: chats, next: null },
     '/api/conversations/unread': { chats: [], running: 0 },
     '/api/models': { default: null, models: [] },
+    '/api/preferences': { preferences },
     '/api/profile': {},
     '/api/projects': { projects },
     '/api/schedules': { tasks },
@@ -87,6 +95,18 @@ test('the mark assembles on the first visit of a session and rests after', async
   }
 
   expect(states).toEqual(['assemble', 'idle']);
+});
+
+test('a quiet home shows the mark at rest on the first visit', async () => {
+  const { screen } = await renderHome({ personality: 'quiet' });
+
+  await expect.element(screen.getByRole('heading')).toBeVisible();
+
+  expect(
+    screen.container
+      .querySelector('[data-slot=live-mark]')
+      ?.getAttribute('data-state')
+  ).toBe('idle');
 });
 
 test('a new user gets starters that fill the message box', async () => {

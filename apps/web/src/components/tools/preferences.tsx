@@ -8,6 +8,7 @@ import type { ToolRenderer } from './types';
 const labels = {
   chatSort: (value) => ['Sort chats by', text(value) ?? ''],
   lineNumbers: (value) => ['Code line numbers', value ? 'On' : 'Off'],
+  personality: (value) => ['Personality', text(value) ?? ''],
   theme: (value) => ['Theme', text(value) ?? ''],
 } satisfies Record<keyof Preferences, (value: unknown) => [string, string]>;
 
