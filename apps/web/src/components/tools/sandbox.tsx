@@ -28,7 +28,7 @@ function Terminal({ active, args, output }: ToolView) {
   );
 }
 
-function SavedFile({ details }: ToolView) {
+export function SavedFile({ details }: ToolView) {
   const uploadId = text(field(details, 'uploadId'));
 
   const name = text(field(details, 'name')) ?? 'file';

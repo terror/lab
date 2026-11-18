@@ -2,7 +2,6 @@ import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
@@ -10,7 +9,7 @@ import { db } from './db';
 import { flushHelperUsage, usageFields } from './helper-usage';
 import { models as catalog } from './models';
 import { entryPipeline } from './pipeline';
-import { policy } from './policy';
+import { monthSpend } from './spend';
 import { validator } from './validator';
 
 const table = schema.usageEvent;
@@ -58,20 +57,6 @@ const budgetBody = validator(
   z.object({ limit: z.number().positive().max(1_000_000).nullable() })
 );
 
-async function monthSpend(ownerId: string) {
-  const [month] = await db
-    .select({ spent: total(sql`${table.cost}`) })
-    .from(table)
-    .where(
-      and(
-        eq(table.ownerId, ownerId),
-        gte(table.createdAt, sql`date_trunc('month', now())`)
-      )
-    );
-
-  return month?.spent ?? 0;
-}
-
 async function budget(ownerId: string) {
   const [row] = await db
     .select({ limit: schema.spendBudget.monthlyLimit })
@@ -79,21 +64,6 @@ async function budget(ownerId: string) {
     .where(eq(schema.spendBudget.ownerId, ownerId));
 
   return { limit: row?.limit ?? null, spent: await monthSpend(ownerId) };
-}
-
-const dollars = new Intl.NumberFormat('en-US', {
-  currency: 'USD',
-  style: 'currency',
-});
-
-export async function checkSpend(ownerId: string) {
-  const limit = (await policy(ownerId)).spendLimit;
-
-  if (limit !== undefined && (await monthSpend(ownerId)) >= limit) {
-    throw new HTTPException(402, {
-      message: `You’ve used this month’s ${dollars.format(limit)} limit`,
-    });
-  }
 }
 
 const usage = new Hono()

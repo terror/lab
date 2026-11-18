@@ -15,9 +15,9 @@ test('a finished run refreshes every query a tool can write', async () => {
     ['trash'],
     ['connectors'],
     ['memory'],
+    ['library'],
     ['preferences'],
     ['projects'],
-    ['library'],
     ['schedules'],
     ['skills'],
   ]);

@@ -10,6 +10,12 @@ import { scheduleAccess } from '../src/schedule-access';
 export function emptyDeps(): ExtensionDeps {
   return {
     history: { read: async () => undefined, search: async () => [] },
+    images: {
+      available: async () => false,
+      generate: async () => {
+        throw new Error('Image generation is unavailable in tests.');
+      },
+    },
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
     sandbox: createSandboxAccess(async () => 'full'),

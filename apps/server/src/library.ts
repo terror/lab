@@ -1,6 +1,15 @@
 import type { EntryRecord } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import {
+  type InferInsertModel,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  sql,
+} from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -18,7 +27,10 @@ const table = schema.libraryItem;
 
 const PREVIEW_LENGTH = 400;
 
-type Item = Omit<typeof table.$inferInsert, 'id'>;
+type Item = InferInsertModel<
+  typeof table,
+  { dbColumnNames: false; override: true }
+>;
 
 function attachments(entry: EntryRecord) {
   return messageData(entry)?.files ?? [];
@@ -149,17 +161,20 @@ async function uploadOwners(ids: readonly string[]) {
 }
 
 const savedSchema = z.object({
+  libraryId: z.number().int().positive().optional(),
   mimeType: z.string(),
   name: z.string(),
   uploadId: z.string(),
 });
+
+const savingTools = new Set(['image_generate', 'sandbox_save']);
 
 function savedFile(entry: EntryRecord) {
   const message = entry.model?.[0];
 
   if (
     message?.role !== 'toolResult' ||
-    message.toolName !== 'sandbox_save' ||
+    !savingTools.has(message.toolName) ||
     message.isError
   ) {
     return undefined;
@@ -203,6 +218,7 @@ async function savedItems(
     conversationId: entry.conversationId,
     createdAt: new Date(entry.model?.[0]?.timestamp ?? Date.now()),
     entryId: entry.id,
+    id: saved.libraryId,
     name: saved.name,
     ownerId,
     position: 0,
@@ -243,7 +259,8 @@ export const libraryPipeline = entryPipeline({
   keep: attached,
   name: 'library',
   rows: libraryRows,
-  store: (rows) => db.insert(table).values(rows).onConflictDoNothing(),
+  store: (rows) =>
+    db.insert(table).overridingSystemValue().values(rows).onConflictDoNothing(),
 });
 
 export const flushLibrary = libraryPipeline.flush;
