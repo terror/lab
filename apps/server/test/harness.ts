@@ -1,17 +1,11 @@
 import type { ExtensionDeps } from '@lab/harness';
 
-import { artifactStateAccess } from '../src/artifact-state';
-import { chatsAccess } from '../src/chat-access';
-import { connectorAccess } from '../src/connector-access';
-import { projectAccess } from '../src/project-access';
-import { requireOwner } from '../src/records';
-import { createSandboxAccess } from '../src/sandbox';
-import { scheduleAccess } from '../src/schedule-access';
+import { deps } from '../src/harness';
 
 export function emptyDeps(): ExtensionDeps {
   return {
+    ...deps,
     admit: async () => undefined,
-    artifactState: artifactStateAccess,
     history: { read: async () => undefined, search: async () => [] },
     images: {
       available: async () => false,
@@ -21,12 +15,6 @@ export function emptyDeps(): ExtensionDeps {
     },
     library: { read: async () => undefined, search: async () => [] },
     onHelperUsage: () => undefined,
-    sandbox: createSandboxAccess(async () => 'full'),
-    chats: chatsAccess,
-    connectors: connectorAccess,
-    owner: requireOwner,
-    project: projectAccess,
-    schedule: scheduleAccess,
     web: {
       available: async () => false,
       fetch: async () => {
