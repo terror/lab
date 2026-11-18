@@ -12,7 +12,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'One row recipe: 44px tall, a hover fill, and trailing actions that appear on hover and focus and stay visible on a touch screen. The fill runs 12px past the list on both sides, so row text lines up with the heading above it. Pass className mx-0 where the list has less room than that. Pass asChild with a link to make the content of the row the link.',
+          'One row recipe: 44px tall, a hover fill, and trailing actions that appear on hover and focus and stay visible on a touch screen. The fill runs 12px past the list on both sides, so row text lines up with the heading above it. The row does that itself, so take -mx-3 off a list whose rows become ListRow. Pass className mx-0 where the list has less room than that. Pass asChild with a link to make the content of the row the link.',
       },
     },
   },

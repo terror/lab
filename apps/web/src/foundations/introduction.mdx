@@ -50,8 +50,10 @@ after a pointer press.
   and the message box. The shell draws the ring and the field inside it draws
   none.
 - Keep `outline-none` for a text field that is the only field in a popover and
-  for one that edits text in place. The caret marks focus there. Don't put
-  `outline-none` on anything else.
+  for one that edits text in place. The caret marks focus there. Dialog panels,
+  menu lists, and menu items in `components/ui` drop the outline too. A panel or
+  a list takes focus only so that keys reach it, and a focused menu item gets a
+  fill. Don't put `outline-none` on anything else.
 
 ### Touch
 
@@ -61,9 +63,10 @@ after a pointer press.
   extends past its edge.
 - `hit-area` gives any other control the same 44px touch target. The control
   needs `relative`.
-- Hit areas of close neighbours overlap, and the later control takes the tap. On
-  a touch screen, leave a gap of 44px minus the control's size. Two 32px buttons
-  need 12px.
+- Hit areas of close neighbours overlap, and the later control takes the tap. A
+  hit area reaches past each edge by half of what the control lacks to 44px. So
+  on a touch screen two 32px buttons need a 12px gap, and two 28px buttons need
+  16px. A `Switch` always reaches 11px past its left and right edges.
 - `hover-reveal` hides a control until you add a hover trigger such as
   `group-hover:opacity-100`. It keeps the control visible on a touch screen, on
   keyboard focus, and while its menu is open.

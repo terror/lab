@@ -1,6 +1,6 @@
 export function watchModality(root: HTMLElement = document.documentElement) {
   const onTab = (event: KeyboardEvent) => {
-    if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) {
+    if (event.key !== 'Tab' || event.ctrlKey || event.metaKey) {
       return;
     }
 
