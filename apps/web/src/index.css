@@ -824,6 +824,12 @@
   }
 }
 
+@keyframes live-mark-mend {
+  from {
+    transform: translate(-2px, 1px) rotate(-8deg);
+  }
+}
+
 @keyframes live-mark-slip-coral {
   0%,
   36% {
@@ -911,14 +917,33 @@
   --dy: 7px;
 }
 
-[data-slot='live-mark'][data-state='error'] [data-part='blue'] {
+[data-slot='live-mark']:is(
+    [data-state='error'],
+    [data-state='broken'],
+    [data-state='recover']
+  )
+  [data-part='blue'] {
   --dx: -1px;
   --dy: 1px;
 }
 
-[data-slot='live-mark'][data-state='error'] [data-part='yellow'] {
+[data-slot='live-mark']:is(
+    [data-state='error'],
+    [data-state='broken'],
+    [data-state='recover']
+  )
+  [data-part='yellow'] {
   --dx: 4px;
   --dy: 2px;
+}
+
+[data-slot='live-mark'][data-state='broken'] [data-part='coral'] {
+  transform: translate(-2px, 1px) rotate(-8deg);
+}
+
+[data-slot='live-mark'][data-state='broken']
+  :where([data-part='blue'], [data-part='yellow']) {
+  transform: translate(var(--dx), var(--dy));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1046,6 +1071,15 @@
   [data-slot='live-mark'][data-state='error']
     :where([data-part='blue'], [data-part='yellow']) {
     animation: live-mark-slip 620ms var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='recover'] [data-part='coral'] {
+    animation: live-mark-mend var(--motion-base) var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='recover']
+    :where([data-part='blue'], [data-part='yellow']) {
+    animation: live-mark-assemble var(--motion-base) var(--ease-out) both;
   }
 
   [data-slot='dot'][data-tone='live'] {
