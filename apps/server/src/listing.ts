@@ -142,7 +142,9 @@ export async function running() {
   );
 }
 
-const approvalSchema = z.object({ approval: z.object({ action: z.string() }) });
+const approvalSchema = z.object({
+  approval: z.object({ action: z.string(), decision: z.never().optional() }),
+});
 
 type Slot =
   | NonNullable<LiveState['nestedTools']>[number]
