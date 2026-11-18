@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 import { imageSource } from './attachments';
 import { client } from './client';
-import { contentText, type Fork, type Gap } from './conversations';
+import type { Fork } from './conversations';
 import type { ModelKey } from './models';
 
 export type Part =
@@ -22,6 +22,24 @@ export type Part =
       name: string;
       arguments: Record<string, unknown>;
     };
+
+export type Gap = Extract<TranscriptItem, { kind: 'gap' }>;
+
+type Content = string | readonly { type: string; text?: string }[];
+
+function contentText(content: Content | undefined) {
+  if (content === undefined) {
+    return '';
+  }
+
+  if (typeof content === 'string') {
+    return content;
+  }
+
+  return content
+    .map((part) => (part.type === 'text' ? (part.text ?? '') : ''))
+    .join('');
+}
 
 export type BubbleFile = { name: string; uploadId?: string };
 

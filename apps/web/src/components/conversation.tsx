@@ -35,17 +35,16 @@ import {
 import { Unavailable } from '@/components/unavailable';
 import { refreshAgentWrites } from '@/lib/agent-writes';
 import { type Attachment } from '@/lib/attachments';
+import { useConversation } from '@/lib/conversation-stream';
 import {
   abortConversation,
   type BranchRequest,
   cancelSubmission,
   conversationsQueryKey,
   type Fork,
-  type Gap,
   readConversation,
   sendMessage,
   useBranch,
-  useConversation,
   useConversationSummary,
   useDraft,
 } from '@/lib/conversations';
@@ -60,6 +59,7 @@ import { runPhase } from '@/lib/run-phase';
 import {
   type BubbleFile,
   cachedRows,
+  type Gap,
   keyRows,
   mergeReplies,
   ownsPlan,

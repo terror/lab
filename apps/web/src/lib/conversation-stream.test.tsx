@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 
-import { useConversation } from './conversations';
+import { useConversation } from './conversation-stream';
 
 type Listener = (event: { data: string }) => void;
 
