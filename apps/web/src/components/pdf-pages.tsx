@@ -90,7 +90,7 @@ export function PdfPages({
         <p className='text-sm text-muted-foreground'>Loading PDF…</p>
       )}
       {status === 'error' && (
-        <ErrorMessage>Unable to load this PDF.</ErrorMessage>
+        <ErrorMessage>Couldn’t load this PDF.</ErrorMessage>
       )}
       <div ref={pages} className='flex flex-col gap-3' />
     </div>

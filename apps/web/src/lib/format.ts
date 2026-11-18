@@ -1,6 +1,12 @@
-const shortDateFormat = new Intl.DateTimeFormat('en-US', {
+const thisYear = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   month: 'short',
+});
+
+const otherYear = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
 });
 
 const currency = new Intl.NumberFormat('en-US', {
@@ -19,10 +25,23 @@ const sizeUnits = ['B', 'KB', 'MB', 'GB'] as const;
 
 const sizeNumber = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
-export function shortDate(value: string | number | Date) {
+export function shortDate(value: string | number | Date, now = new Date()) {
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime()) ? '' : shortDateFormat.format(date);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const format =
+    date.getFullYear() === now.getFullYear() ? thisYear : otherYear;
+
+  return format.format(date);
+}
+
+export function calendarDate(value: string, now = new Date()) {
+  const [year = Number.NaN, month = 1, day = 1] = value.split('-').map(Number);
+
+  return shortDate(new Date(year, month - 1, day), now);
 }
 
 export function formatBytes(size: number) {

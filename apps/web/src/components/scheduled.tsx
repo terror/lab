@@ -178,7 +178,7 @@ function SchedulePrompt() {
   return (
     <StartComposer
       draft='scheduled'
-      placeholder='Schedule a task...'
+      placeholder='Schedule a task…'
       prompt={(content) => `Schedule this task: ${content}`}
     />
   );

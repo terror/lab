@@ -6,11 +6,19 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { UsagePanel } from './usage';
 
-test('daily spend names its total and its peak day', async () => {
+test('daily spend names its total and its peak day', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  vi.useFakeTimers({ now: new Date('2026-06-01T12:00:00Z'), toFake: ['Date'] });
+
   stubFetch(({ pathname }) =>
     Response.json(
       pathname === '/api/usage/budget'

@@ -116,7 +116,7 @@ const statuses: Record<Connector['status'], (connector: Connector) => string> =
     connected: ({ tools }) =>
       `${tools.length} ${tools.length === 1 ? 'tool' : 'tools'}`,
     connecting: () => 'Connecting…',
-    error: ({ error }) => error ?? "Couldn't connect",
+    error: ({ error }) => error ?? 'Couldn’t connect',
     off: () => 'Off',
     unauthorized: () => 'Sign in to use this connector',
   };
