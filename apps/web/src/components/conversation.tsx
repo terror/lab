@@ -9,6 +9,7 @@ import {
   type ToolResult,
 } from '@/components/assistant-message';
 import { Composer } from '@/components/composer';
+import { ComposerDock } from '@/components/composer-dock';
 import { DocumentCard } from '@/components/document-card';
 import { LoadMore } from '@/components/load-more';
 import { ToolConversation, ToolHistory } from '@/components/tools';
@@ -1068,7 +1069,7 @@ function ConversationView({ id }: { id: number }) {
           size='icon'
         />
       </MessageScroller>
-      <div className='mx-auto w-full max-w-3xl px-6 pb-6'>
+      <ComposerDock className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <Composer
           attachments={attachments}
           commandContext={commandContext}
@@ -1103,7 +1104,7 @@ function ConversationView({ id }: { id: number }) {
           running={running}
           submitting={send.isPending}
         />
-      </div>
+      </ComposerDock>
     </div>
   );
 }
