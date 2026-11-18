@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { IconButton } from '@/components/ui/icon-button';
 import { Kbd } from '@/components/ui/kbd';
 import { ListRow } from '@/components/ui/list-row';
 import {
@@ -247,30 +248,20 @@ function DictateButton({
   listening: boolean;
   onClick: () => void;
 }) {
-  const label = listening ? 'Stop dictation' : 'Dictate';
-
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          aria-label={label}
-          aria-pressed={listening}
-          className={cn(
-            'rounded-full',
-            listening &&
-              'bg-foreground text-background hover:bg-foreground/90 hover:text-background motion-safe:animate-pulse'
-          )}
-          disabled={disabled}
-          onClick={onClick}
-          size='icon'
-          type='button'
-          variant='quiet'
-        >
-          <Mic aria-hidden='true' />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
+    <IconButton
+      aria-pressed={listening}
+      className={cn(
+        'rounded-full',
+        listening &&
+          'bg-foreground text-background hover:bg-foreground/90 hover:text-background motion-safe:animate-pulse'
+      )}
+      disabled={disabled}
+      label={listening ? 'Stop dictation' : 'Dictate'}
+      onClick={onClick}
+    >
+      <Mic aria-hidden='true' />
+    </IconButton>
   );
 }
 

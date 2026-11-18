@@ -1,50 +1,16 @@
 import { ModelPicker } from '@/components/model-picker';
-import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { MessageFooter } from '@/components/ui/message';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import type { ModelChoice } from '@/lib/models';
 import { cn } from '@/lib/utils';
 import { Check, Copy, RotateCcw, Shuffle, Square, Volume2 } from 'lucide-react';
-import {
-  type ComponentProps,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 function plain(markdown: string) {
   return markdown
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[*_`#>~|]/g, '');
-}
-
-export function Action({
-  children,
-  label,
-  ...props
-}: ComponentProps<'button'> & { label: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          aria-label={label}
-          size='icon'
-          type='button'
-          variant='quiet'
-          {...props}
-        >
-          {children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
 }
 
 function CopyAction({ text }: { text: string }) {
@@ -61,7 +27,7 @@ function CopyAction({ text }: { text: string }) {
   }, [copied]);
 
   return (
-    <Action
+    <IconButton
       label={copied ? 'Copied' : 'Copy'}
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => setCopied(true));
@@ -72,7 +38,7 @@ function CopyAction({ text }: { text: string }) {
       ) : (
         <Copy aria-hidden='true' className='size-4' />
       )}
-    </Action>
+    </IconButton>
   );
 }
 
@@ -114,13 +80,16 @@ function SpeakAction({ text }: { text: string }) {
   };
 
   return (
-    <Action label={speaking ? 'Stop reading' : 'Read aloud'} onClick={toggle}>
+    <IconButton
+      label={speaking ? 'Stop reading' : 'Read aloud'}
+      onClick={toggle}
+    >
       {speaking ? (
         <Square aria-hidden='true' className='size-3.5 fill-current' />
       ) : (
         <Volume2 aria-hidden='true' className='size-4' />
       )}
-    </Action>
+    </IconButton>
   );
 }
 
@@ -135,15 +104,15 @@ function RetryActions({
 }) {
   return (
     <>
-      <Action label='Retry' onClick={() => onRetry()}>
+      <IconButton label='Retry' onClick={() => onRetry()}>
         <RotateCcw aria-hidden='true' className='size-4' />
-      </Action>
+      </IconButton>
       <ModelPicker
         onChange={onRetry}
         trigger={
-          <Action label='Retry with another model'>
+          <IconButton label='Retry with another model'>
             <Shuffle aria-hidden='true' className='size-4' />
-          </Action>
+          </IconButton>
         }
         value={model}
       />
