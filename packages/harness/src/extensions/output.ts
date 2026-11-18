@@ -1,4 +1,5 @@
 import type { Context } from '@earendil-works/chord/context';
+import { contentText } from '@earendil-works/pi-ai';
 import {
   type ToolExecutionApi,
   type ToolExecutionResult,
@@ -23,12 +24,6 @@ const OutputDoc = conversationDoc<{ outputs: Record<string, string> }>(
   () => ({ outputs: {} })
 );
 
-type Output = NonNullable<ToolExecutionResult['output']>;
-
-function textOf(output: Output) {
-  return output.flatMap((part) => (part.type === 'text' ? [part.text] : []));
-}
-
 function stored(text: string, callId: string, offset: number) {
   return page(text, offset, TOOL_OUTPUT_LENGTH, {
     ending: 'output',
@@ -42,9 +37,7 @@ export async function limitOutput(
   api: ToolExecutionApi,
   context: Context
 ): Promise<ToolExecutionResult> {
-  const texts = result.output && textOf(result.output);
-
-  const text = texts?.join('\n\n') ?? '';
+  const text = result.output ? contentText(result.output, '\n\n') : '';
 
   if (!result.output || text.length <= OUTPUT_LIMIT) {
     return result;

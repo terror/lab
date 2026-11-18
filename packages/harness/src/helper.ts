@@ -1,4 +1,8 @@
-import type { AssistantMessage, Models } from '@earendil-works/pi-ai';
+import {
+  type AssistantMessage,
+  type Models,
+  contentText,
+} from '@earendil-works/pi-ai';
 import type { ConversationId, ModelRef } from '@earendil-works/pi-durable';
 
 export type HelperKind = 'artifact' | 'compaction' | 'status' | 'title';
@@ -38,10 +42,7 @@ export async function completeHelper(
     { maxTokens, signal }
   );
 
-  const text = message.content
-    .map((part) => (part.type === 'text' ? part.text : ''))
-    .join('')
-    .trim();
+  const text = contentText(message.content, '').trim();
 
   return { message, text };
 }
