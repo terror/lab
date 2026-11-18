@@ -23,9 +23,16 @@ test('messages', () => {
       { id: 3, kind: 'pi.compaction', model: [{ content: 'qux' }] },
       { id: 4, kind: 'pi.assistant', model: [{ content: [] }] },
       { id: 5, kind: 'pi.reset' },
+      {
+        data: { files: [], text: 'quux' },
+        id: 6,
+        kind: 'lab.message',
+        model: [{ content: [{ type: 'text', text: 'quux\n\ncorge' }] }],
+      },
     ])
   ).toEqual([
     { id: 1, role: 'user', text: 'foo' },
     { id: 2, role: 'assistant', text: 'bar\n\nbaz' },
+    { id: 6, role: 'user', text: 'quux' },
   ]);
 });
