@@ -3,12 +3,16 @@ import { expect, test } from 'vitest';
 
 import { artifactCalls } from './artifacts';
 
-test('artifact calls reach the store one at a time', async () => {
+test('artifact calls reach the store one at a time and ask only on a gesture', async () => {
   const pending: (() => void)[] = [];
 
   const fetch = stubFetch((_url, init) => {
     if (init?.method === 'GET') {
       return Response.json({ value: '1' });
+    }
+
+    if (init?.method === 'POST') {
+      return Response.json({ text: 'qux' });
     }
 
     return new Promise((resolve) =>
@@ -19,10 +23,13 @@ test('artifact calls reach the store one at a time', async () => {
   const calls = artifactCalls(1, 'foo');
 
   const results = Promise.all([
-    calls('store.set', { key: 'bar', value: '1' }),
-    calls('store.get', { key: 'bar' }),
-    calls('store.delete', { key: 'bar' }),
-    calls('baz', {}).catch((error: Error) => error.message),
+    calls('store.set', { key: 'bar', value: '1' }, false),
+    calls('store.get', { key: 'bar' }, false),
+    calls('store.delete', { key: 'bar' }, false),
+    calls('baz', {}, true).catch((error: Error) => error.message),
+    calls('ask', { prompt: 'bar' }, false).catch(
+      (error: Error) => error.message
+    ),
   ]);
 
   await expect.poll(() => pending.length).toBe(1);
@@ -35,7 +42,10 @@ test('artifact calls reach the store one at a time', async () => {
 
   pending[1]?.();
 
+  const answer = await calls('ask', { prompt: 'bar' }, true);
+
   expect({
+    answer,
     requests: fetch.mock.calls.map(([input, init]) => {
       const url = requestUrl(input);
 
@@ -44,6 +54,7 @@ test('artifact calls reach the store one at a time', async () => {
     results: await results,
     waiting,
   }).toEqual({
+    answer: 'qux',
     requests: [
       [
         'PUT',
@@ -52,8 +63,15 @@ test('artifact calls reach the store one at a time', async () => {
       ],
       ['GET', '/api/conversations/1/artifacts/foo/state?key=bar', undefined],
       ['DELETE', '/api/conversations/1/artifacts/foo/state?key=bar', undefined],
+      ['POST', '/api/conversations/1/artifacts/foo/ask', '{"prompt":"bar"}'],
     ],
-    results: [undefined, '1', undefined, 'lab.baz isn’t available.'],
+    results: [
+      undefined,
+      '1',
+      undefined,
+      'lab.baz isn’t available.',
+      'lab.ask needs a click or key press in the artifact.',
+    ],
     waiting: 1,
   });
 });
