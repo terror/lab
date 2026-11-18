@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { z } from 'zod';
 
-export const settingsSections = [
+const settingsSections = [
   'appearance',
   'profile',
   'computer',

@@ -26,7 +26,7 @@ declare global {
   }
 }
 
-export type DictationState =
+type DictationState =
   | { kind: 'failed'; message: string }
   | { kind: 'idle' }
   | { kind: 'listening' };
