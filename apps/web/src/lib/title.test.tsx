@@ -76,22 +76,21 @@ async function arrive(before: object, after: object, away: string[]) {
 }
 
 test('the tab marks a chat that finished or needs you while it was hidden', async () => {
+  const waiting = { chats: [], running: 1, waiting: [{ id: 2, title: 'baz' }] };
+
   await arrive(working, { chats: [chat], running: 0, waiting: [] }, [
     'Done · foo',
     mark('#f1be58'),
   ]);
 
-  await arrive(
-    working,
-    { chats: [], running: 0, waiting: [{ id: 1, title: 'baz' }] },
-    ['Needs you · foo', mark('#f09082')]
-  );
+  await arrive(working, waiting, ['Needs you · foo', mark('#f09082')]);
 
-  await arrive(
-    { chats: [], running: 1, waiting: [{ id: 2, title: 'baz' }] },
-    { chats: [], running: 1, waiting: [{ id: 2, title: 'baz' }] },
-    ['Needs you · foo', mark('#f09082')]
-  );
+  await arrive(waiting, { ...waiting, chats: [chat] }, [
+    'Done · foo',
+    mark('#f1be58'),
+  ]);
+
+  await arrive(waiting, waiting, ['Needs you · foo', mark('#f09082')]);
 
   await arrive(
     { chats: [chat], running: 1, waiting: [] },

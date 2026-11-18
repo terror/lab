@@ -8,6 +8,8 @@ import { unreadChatsQueryOptions } from './conversations';
 
 type Unread = InferResponseType<typeof client.conversations.unread.$get, 200>;
 
+type Seen = { finished: Set<string>; waiting: Set<number> };
+
 const signals = {
   done: { color: '#f1be58', prefix: 'Done · ' },
   needsYou: { color: '#f09082', prefix: 'Needs you · ' },
@@ -21,16 +23,23 @@ function finished({ chats }: Unread) {
   return chats.map(({ finishedAt, id }) => `${id} ${finishedAt}`);
 }
 
-function arrived(seen: Set<string>, unread: Unread): Signal | undefined {
-  if (unread.waiting.length > 0) {
+function seen(unread: Unread): Seen {
+  return {
+    finished: new Set(finished(unread)),
+    waiting: new Set(unread.waiting.map(({ id }) => id)),
+  };
+}
+
+function arrived(before: Seen, unread: Unread): Signal | undefined {
+  if (unread.waiting.some(({ id }) => !before.waiting.has(id))) {
     return 'needsYou';
   }
 
-  if (finished(unread).some((key) => !seen.has(key))) {
+  if (finished(unread).some((key) => !before.finished.has(key))) {
     return 'done';
   }
 
-  return undefined;
+  return unread.waiting.length > 0 ? 'needsYou' : undefined;
 }
 
 function icon(color: string) {
@@ -47,7 +56,7 @@ function subscribe(onChange: () => void) {
 
 function useTabSignal() {
   const hidden = useSyncExternalStore(subscribe, () => document.hidden);
-  const [seen, setSeen] = useState<Set<string>>();
+  const [before, setBefore] = useState<Seen>();
 
   const { data } = useQuery({
     ...unreadChatsQueryOptions,
@@ -56,15 +65,15 @@ function useTabSignal() {
     refetchIntervalInBackground: true,
   });
 
-  if (hidden && data && !seen) {
-    setSeen(new Set(finished(data)));
+  if (hidden && data && !before) {
+    setBefore(seen(data));
   }
 
-  if (!hidden && seen) {
-    setSeen(undefined);
+  if (!hidden && before) {
+    setBefore(undefined);
   }
 
-  return seen && data && arrived(seen, data);
+  return before && data && arrived(before, data);
 }
 
 export function useDocumentTitle(title: string) {
