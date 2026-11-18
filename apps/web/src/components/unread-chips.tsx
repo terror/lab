@@ -1,3 +1,4 @@
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,16 +10,19 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   conversationTitle,
   conversationsQueryKey,
   readConversation,
   useUnreadChats,
 } from '@/lib/conversations';
+import { rise } from '@/lib/motion';
 import { ago } from '@/lib/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { LoaderCircle, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { m } from 'motion/react';
 
 const VISIBLE = 3;
 
@@ -29,15 +33,6 @@ type Chat = {
   scheduled: boolean;
   title: string | null;
 };
-
-function Dot() {
-  return (
-    <span
-      aria-hidden='true'
-      className='size-2 shrink-0 rounded-full bg-foreground'
-    />
-  );
-}
 
 function Chip({
   chat,
@@ -63,7 +58,7 @@ function Chip({
             onClick={onOpen}
             type='button'
           >
-            <Dot />
+            <Dot tone='attention' />
             <span className='max-w-40 truncate font-medium'>{title}</span>
           </button>
         </HoverCardTrigger>
@@ -116,7 +111,7 @@ function More({
       <DropdownMenuContent align='center' className='w-72'>
         {chats.map((chat) => (
           <DropdownMenuItem key={chat.id} onSelect={() => onOpen(chat.id)}>
-            <Dot />
+            <Dot tone='attention' />
             <span className='min-w-0 flex-1 truncate'>
               {conversationTitle(chat.title)}
             </span>
@@ -151,35 +146,37 @@ export function UnreadChips() {
 
   const open = (id: number) => navigate({ params: { id }, to: '/c/$id' });
 
+  const shown = chats.slice(0, VISIBLE);
+
   const rest = chats.slice(VISIBLE);
 
   return (
     <ul
       aria-label='Finished while you were away'
-      className='absolute inset-x-0 top-full mt-4 flex animate-in flex-wrap justify-center gap-1.5 duration-200 fade-in slide-in-from-top-1'
+      className='flex flex-wrap justify-center gap-1.5'
     >
-      {chats.slice(0, VISIBLE).map((chat) => (
-        <li key={chat.id}>
+      {shown.map((chat, index) => (
+        <m.li key={chat.id} {...rise(index)}>
           <Chip
             chat={chat}
             onOpen={() => void open(chat.id)}
             onRead={() => read.mutate(chat.id)}
           />
-        </li>
+        </m.li>
       ))}
       {rest.length > 0 && (
-        <li>
+        <m.li {...rise(shown.length)}>
           <More chats={rest} onOpen={(id) => void open(id)} />
-        </li>
+        </m.li>
       )}
       {running > 0 && (
-        <li className='flex h-8 items-center gap-2 rounded-full px-3 text-sm text-muted-foreground tabular-nums ring-1 ring-border ring-inset'>
-          <LoaderCircle
-            aria-hidden='true'
-            className='size-3.5 motion-safe:animate-spin'
-          />
+        <m.li
+          {...rise(shown.length + 1)}
+          className='flex h-8 items-center gap-2 rounded-full px-3 text-sm text-muted-foreground tabular-nums ring-1 ring-border ring-inset'
+        >
+          <LiveMark className='size-3.5' state='thinking' />
           {running} running
-        </li>
+        </m.li>
       )}
     </ul>
   );

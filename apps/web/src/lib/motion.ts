@@ -15,3 +15,13 @@ export const fade = {
 } as const satisfies Record<string, Transition>;
 
 export const stagger = 0.03;
+
+export function rise(index: number) {
+  const delay = Math.min(index, 5) * stagger;
+
+  return {
+    animate: { opacity: 1, y: 0 },
+    initial: { opacity: 0, y: 4 },
+    transition: { ...spring.snap, delay, opacity: { ...fade.base, delay } },
+  } as const;
+}

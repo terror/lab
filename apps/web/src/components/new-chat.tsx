@@ -33,7 +33,9 @@ export function NewChat({ user }: { user: { name: string } }) {
         </div>
         <div className='relative w-full'>
           <StartComposer draft='new' />
-          <UnreadChips />
+          <div className='absolute inset-x-0 top-full mt-4 flex flex-col items-center gap-2'>
+            <UnreadChips />
+          </div>
         </div>
       </div>
     </div>
