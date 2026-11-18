@@ -3,8 +3,10 @@ import type { Conversation, ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type ChatSummary, TitleDoc } from '@lab/harness';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
+import type { User } from './auth';
 import type { Parent } from './branches';
 import { db } from './db';
 import { harness } from './harness';
@@ -22,6 +24,35 @@ function live(ownerId: string, id: number) {
     isNull(table.deletedAt)
   );
 }
+
+export const ownedChat = createMiddleware<{
+  Variables: {
+    conversation: Conversation;
+    projectId: number | null;
+    user: User;
+  };
+}>(async (c, next) => {
+  const [record] = await db
+    .select({ id: table.id, projectId: table.projectId })
+    .from(table)
+    .where(live(c.get('user').id, Number(c.req.param('id'))));
+
+  const conversation =
+    record &&
+    (await harness.conversation(
+      record.id as ConversationId,
+      BACKGROUND_CONTEXT
+    ));
+
+  if (!conversation) {
+    throw new HTTPException(404, { message: 'Conversation not found' });
+  }
+
+  c.set('conversation', conversation);
+  c.set('projectId', record.projectId);
+
+  await next();
+});
 
 export async function chatSummary(
   ownerId: string,
