@@ -70,6 +70,8 @@ test('a chat in a hidden tab stays unread until the tab returns', async () => {
   expect(posts()).toEqual([]);
 
   hide(false);
+  hide(true);
+  hide(false);
 
   await expect.poll(posts).toEqual(['/api/conversations/1/read']);
 });

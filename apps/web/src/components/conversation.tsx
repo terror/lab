@@ -49,7 +49,7 @@ import {
   useDraft,
 } from '@/lib/conversations';
 import { useArrivals } from '@/lib/glide';
-import { useMediaQuery, usePageHidden } from '@/lib/media';
+import { useMediaQuery } from '@/lib/media';
 import {
   type ModelChoice,
   setConversationModel,
@@ -665,13 +665,28 @@ function ConversationView({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
   });
 
-  const hidden = usePageHidden();
-
   useEffect(() => {
-    if (!running && !hidden) {
-      markRead();
+    if (running) {
+      return undefined;
     }
-  }, [hidden, markRead, running]);
+
+    if (!document.hidden) {
+      markRead();
+
+      return undefined;
+    }
+
+    const read = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', read);
+        markRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', read);
+
+    return () => document.removeEventListener('visibilitychange', read);
+  }, [markRead, running]);
 
   const thinking =
     phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;

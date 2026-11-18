@@ -36,7 +36,7 @@ const chat = {
   title: 'baz',
 };
 
-const idle = { chats: [], running: 1, waiting: [] };
+const working = { chats: [], running: 1, waiting: [] };
 
 const mark = (color: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><mask id="m"><rect width="32" height="32" fill="#fff"/><rect x="18" width="14" height="14"/></mask><g mask="url(#m)"><path d="M10 2H22V6H20V14H24V18H8V14H12V6H10Z" fill="#f09082"/><path d="M8 18H16V26H26V30H6V26H2V22H6V18Z" fill="#4d9abf"/><path d="M16 18H26V22H30V26H16Z" fill="#f1be58"/></g><rect x="20" width="12" height="12" fill="${color}"/></svg>`;
@@ -76,20 +76,26 @@ async function arrive(before: object, after: object, away: string[]) {
 }
 
 test('the tab marks a chat that finished or needs you while it was hidden', async () => {
-  await arrive(idle, { chats: [chat], running: 0, waiting: [] }, [
+  await arrive(working, { chats: [chat], running: 0, waiting: [] }, [
     'Done · foo',
     mark('#f1be58'),
   ]);
 
   await arrive(
-    idle,
+    working,
     { chats: [], running: 0, waiting: [{ id: 1, title: 'baz' }] },
     ['Needs you · foo', mark('#f09082')]
   );
 
   await arrive(
-    { chats: [chat], running: 1, waiting: [{ id: 2, title: 'baz' }] },
-    { chats: [chat], running: 1, waiting: [{ id: 2, title: 'baz' }] },
+    { chats: [], running: 1, waiting: [{ id: 2, title: 'baz' }] },
+    { chats: [], running: 1, waiting: [{ id: 2, title: 'baz' }] },
+    ['Needs you · foo', mark('#f09082')]
+  );
+
+  await arrive(
+    { chats: [chat], running: 1, waiting: [] },
+    { chats: [chat], running: 1, waiting: [] },
     ['foo', '/favicon.svg']
   );
 });

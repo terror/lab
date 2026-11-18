@@ -13,16 +13,6 @@ export function useMediaQuery(query: string) {
   );
 }
 
-function subscribeVisibility(onChange: () => void) {
-  document.addEventListener('visibilitychange', onChange);
-
-  return () => document.removeEventListener('visibilitychange', onChange);
-}
-
-export function usePageHidden() {
-  return useSyncExternalStore(subscribeVisibility, () => document.hidden);
-}
-
 export function usePhone() {
   return useMediaQuery('(pointer: coarse) and (max-width: 767px)');
 }

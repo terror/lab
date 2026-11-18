@@ -1,15 +1,12 @@
 import { markShapes } from '@/components/lab-mark';
 import { useQuery } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { client } from './client';
 import { unreadChatsQueryOptions } from './conversations';
-import { usePageHidden } from './media';
 
 type Unread = InferResponseType<typeof client.conversations.unread.$get, 200>;
-
-type Seen = { finished: Set<string>; waiting: Set<number> };
 
 const signals = {
   done: { color: '#f1be58', prefix: 'Done · ' },
@@ -24,19 +21,12 @@ function finished({ chats }: Unread) {
   return chats.map(({ finishedAt, id }) => `${id} ${finishedAt}`);
 }
 
-function seen(unread: Unread): Seen {
-  return {
-    finished: new Set(finished(unread)),
-    waiting: new Set(unread.waiting.map(({ id }) => id)),
-  };
-}
-
-function arrived(before: Seen, unread: Unread): Signal | undefined {
-  if (unread.waiting.some(({ id }) => !before.waiting.has(id))) {
+function arrived(seen: Set<string>, unread: Unread): Signal | undefined {
+  if (unread.waiting.length > 0) {
     return 'needsYou';
   }
 
-  if (finished(unread).some((key) => !before.finished.has(key))) {
+  if (finished(unread).some((key) => !seen.has(key))) {
     return 'done';
   }
 
@@ -49,25 +39,32 @@ function icon(color: string) {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
+function subscribe(onChange: () => void) {
+  document.addEventListener('visibilitychange', onChange);
+
+  return () => document.removeEventListener('visibilitychange', onChange);
+}
+
 function useTabSignal() {
-  const hidden = usePageHidden();
-  const [before, setBefore] = useState<Seen>();
+  const hidden = useSyncExternalStore(subscribe, () => document.hidden);
+  const [seen, setSeen] = useState<Set<string>>();
 
   const { data } = useQuery({
     ...unreadChatsQueryOptions,
     enabled: hidden,
+    refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 60_000),
     refetchIntervalInBackground: true,
   });
 
-  if (hidden && data && !before) {
-    setBefore(seen(data));
+  if (hidden && data && !seen) {
+    setSeen(new Set(finished(data)));
   }
 
-  if (!hidden && before) {
-    setBefore(undefined);
+  if (!hidden && seen) {
+    setSeen(undefined);
   }
 
-  return before && data && arrived(before, data);
+  return seen && data && arrived(seen, data);
 }
 
 export function useDocumentTitle(title: string) {
