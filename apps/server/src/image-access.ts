@@ -74,7 +74,12 @@ async function gatewayKey() {
   return credential?.type === 'api_key' ? credential.key : undefined;
 }
 
-async function complete(key: string, prompt: string, sources: string[]) {
+async function complete(
+  key: string,
+  prompt: string,
+  sources: string[],
+  signal: AbortSignal | undefined
+) {
   const response = await fetch(`${GATEWAY_URL}/chat/completions`, {
     body: JSON.stringify({
       messages: [
@@ -97,7 +102,10 @@ async function complete(key: string, prompt: string, sources: string[]) {
       'content-type': 'application/json',
     },
     method: 'POST',
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.any([
+      AbortSignal.timeout(120_000),
+      ...(signal ? [signal] : []),
+    ]),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -169,7 +177,7 @@ async function source(conversationId: ConversationId, id: number) {
 
 export const imageAccess: ImageAccess = {
   available: async () => (await gatewayKey()) !== undefined,
-  generate: async (conversationId, { images, name, prompt }) => {
+  generate: async (conversationId, { images, name, prompt }, signal) => {
     const key = await gatewayKey();
 
     if (!key) {
@@ -184,7 +192,7 @@ export const imageAccess: ImageAccess = {
       images.map((id) => source(conversationId, id))
     );
 
-    const { choices, usage } = await complete(key, prompt, sources);
+    const { choices, usage } = await complete(key, prompt, sources, signal);
 
     const message = choices[0]?.message;
 
