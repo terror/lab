@@ -111,6 +111,9 @@ test('an app from a deleted chat is unavailable', async () => {
   const { screen } = await rendered;
 
   await expect
-    .element(screen.getByText("This app isn't available"))
+    .element(screen.getByText('This app isn’t available'))
     .toBeVisible();
+  await expect
+    .element(screen.getByRole('link', { name: 'Open Trash' }))
+    .toHaveAttribute('href', '/settings?section=trash');
 });
