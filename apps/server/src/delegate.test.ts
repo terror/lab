@@ -370,7 +370,7 @@ test('subagents finish their work after a restart', async () => {
 
   await first.close(BACKGROUND_CONTEXT);
 
-  script(reporting(), reporting(), fauxAssistantMessage('done'));
+  script(reporting(), reporting());
 
   const second = await openHarness(options);
 
@@ -470,7 +470,7 @@ test('delegating stops at the monthly limit', async () => {
     env.LAB_MONTHLY_LIMIT = 1;
 
     return delegated;
-  }, fauxAssistantMessage('done'));
+  });
 
   try {
     await call(headers, 'POST', `/conversations/${id}/messages`, {
