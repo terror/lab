@@ -101,8 +101,11 @@ test('the chat header renames the chat from its menu', async () => {
   await screen.getByRole('button', { name: 'Chat options' }).click();
   await screen.getByRole('menuitem', { name: 'Rename' }).click();
 
-  await screen.getByRole('textbox', { name: 'Chat title' }).fill('baz');
-  await userEvent.keyboard('{Enter}');
+  await expect
+    .element(screen.getByRole('textbox', { name: 'Chat title' }))
+    .toHaveFocus();
+
+  await userEvent.keyboard('baz{Enter}');
 
   await expect
     .poll(() =>
