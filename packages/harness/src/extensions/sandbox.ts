@@ -43,7 +43,10 @@ export type SandboxRun = {
   output: string;
 };
 
-export type SandboxFile = { binary: boolean; size: number; text: string };
+export type SandboxFile =
+  | { kind: 'binary'; size: number }
+  | { kind: 'large'; limit: number }
+  | { kind: 'text'; text: string };
 
 export type SandboxWrite = { path: string; size: number };
 
@@ -149,7 +152,16 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
           return failure(`No file at ${args.path}.`);
         }
 
-        if (file.binary) {
+        if (file.kind === 'large') {
+          return {
+            details: { path: args.path },
+            output: text(
+              `${args.path} is over ${file.limit} bytes, too large to read. Look at parts of it with sandbox_exec, for example with head or grep.`
+            ),
+          };
+        }
+
+        if (file.kind === 'binary') {
           return {
             details: { path: args.path, size: file.size },
             output: text(
