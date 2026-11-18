@@ -32,11 +32,14 @@ import {
 } from '@/components/ui/trace';
 import { plural } from '@/lib/format';
 import type { ModelChoice } from '@/lib/models';
+import { runFailureTitles } from '@/lib/run-failure';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
+import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import {
+  Ban,
   Check,
   Copy,
   RotateCcw,
@@ -397,8 +400,8 @@ function MessageActions({
             'opacity-0 group-hover/message:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100'
         )}
       >
-        <CopyAction text={text} />
-        {'speechSynthesis' in window && <SpeakAction text={text} />}
+        {text && <CopyAction text={text} />}
+        {text && 'speechSynthesis' in window && <SpeakAction text={text} />}
         {onRetry && <RetryActions model={model} onRetry={onRetry} />}
       </div>
     </MessageFooter>
@@ -427,6 +430,21 @@ export function Activity({ status }: { status: string }) {
         </m.span>
       </AnimatePresence>
     </output>
+  );
+}
+
+export function RunFailure({ reason }: { reason: RunFailureReason }) {
+  const stopped = reason === 'aborted';
+
+  const Icon = stopped ? Ban : TriangleAlert;
+
+  return (
+    <TraceLine role='alert' status={stopped ? undefined : 'error'}>
+      <TraceIcon>
+        <Icon aria-hidden='true' />
+      </TraceIcon>
+      <TraceTitle>{runFailureTitles[reason]}</TraceTitle>
+    </TraceLine>
   );
 }
 
@@ -477,6 +495,7 @@ export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
 
 export function AssistantMessage({
   activity,
+  failure,
   latest = false,
   model,
   onRetry,
@@ -490,6 +509,7 @@ export function AssistantMessage({
   working = false,
 }: {
   activity?: string;
+  failure?: RunFailureReason;
   latest?: boolean;
   model?: ModelChoice;
   onRetry?: Retry;
@@ -504,7 +524,7 @@ export function AssistantMessage({
 }) {
   const text = replyText(parts);
 
-  const answer = !streaming && text.length > 0;
+  const answer = !streaming && (text.length > 0 || failure !== undefined);
 
   const all = segments(parts);
 
@@ -553,6 +573,7 @@ export function AssistantMessage({
         {plan && <Plan {...plan} />}
         <Segments segments={all.slice(split)} {...shared} />
         {activity !== undefined && !inSlot && <Activity status={activity} />}
+        {failure && <RunFailure reason={failure} />}
         {answer && (
           <MessageActions
             latest={latest}

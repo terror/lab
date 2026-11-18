@@ -2,6 +2,7 @@ import {
   Action,
   Activity,
   AssistantMessage,
+  RunFailure,
   replyText,
   type ShownPlan,
   type ToolProgress,
@@ -53,7 +54,6 @@ import {
   setConversationModel,
   usePreferredModel,
 } from '@/lib/models';
-import { runFailureTitles } from '@/lib/run-failure';
 import { runPhase } from '@/lib/run-phase';
 import { cn } from '@/lib/utils';
 import {
@@ -62,6 +62,7 @@ import {
   type EntryRecord,
   type InboxState,
   type LiveState,
+  type RunFailureReason,
   type TranscriptItem,
 } from '@earendil-works/pi-durable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -610,6 +611,7 @@ function versionRows(
 const TranscriptRow = memo(function TranscriptRow({
   activity,
   failed,
+  failure,
   latest,
   loading,
   onBranch,
@@ -624,6 +626,7 @@ const TranscriptRow = memo(function TranscriptRow({
 }: {
   activity: string | undefined;
   failed: boolean;
+  failure: RunFailureReason | undefined;
   latest: boolean;
   loading: boolean;
   onBranch: ((request: BranchRequest) => void) | undefined;
@@ -688,6 +691,7 @@ const TranscriptRow = memo(function TranscriptRow({
     return (
       <AssistantMessage
         activity={activity}
+        failure={failure}
         latest={latest}
         model={row.model}
         onRetry={retry}
@@ -964,6 +968,11 @@ function ConversationView({ id }: { id: number }) {
   const inline =
     thinking !== undefined && last?.kind === 'assistant' ? last : undefined;
 
+  const failure = live?.runFailure?.reason;
+
+  const failedReply =
+    failure !== undefined && last?.kind === 'assistant' ? last : undefined;
+
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <MessageScroller className='flex-1'>
@@ -985,6 +994,7 @@ function ConversationView({ id }: { id: number }) {
                       activity={row === inline ? thinking : undefined}
                       latest={row === latest && !running}
                       failed={earlier.isError || gap.isError}
+                      failure={row === failedReply ? failure : undefined}
                       loading={earlier.isPending || gap.isPending}
                       onBranch={onBranch}
                       onEarlier={onEarlier}
@@ -1007,18 +1017,8 @@ function ConversationView({ id }: { id: number }) {
                 {!running && (live?.compactions?.length ?? 0) > 0 && (
                   <Activity status='Summarizing earlier messages' />
                 )}
-                {live?.runFailure && (
-                  <p
-                    role='alert'
-                    className={cn(
-                      'text-sm',
-                      live.runFailure.reason === 'aborted'
-                        ? 'text-muted-foreground'
-                        : 'text-destructive'
-                    )}
-                  >
-                    {runFailureTitles[live.runFailure.reason]}
-                  </p>
+                {failure !== undefined && failedReply === undefined && (
+                  <RunFailure reason={failure} />
                 )}
                 {queued.map(({ bubble, submission }) => (
                   <QueuedMessage
