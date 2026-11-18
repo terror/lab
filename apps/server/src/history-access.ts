@@ -1,8 +1,9 @@
 import { schema } from '@lab/db';
 import type { HistoryAccess } from '@lab/harness';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, lte, or } from 'drizzle-orm';
 
 import { db } from './db';
+import { lineage } from './lineage';
 import { markedSnippet, searchMessages } from './message-search';
 import { chatOf, conversationOwner, liveChat } from './records';
 
@@ -27,10 +28,21 @@ export const historyAccess: HistoryAccess = {
       return undefined;
     }
 
+    const segments = await lineage(id);
+
     const messages = await db
       .select({ role: table.role, text: table.text })
       .from(table)
-      .where(eq(table.conversationId, id))
+      .where(
+        or(
+          ...segments.map(({ cutoff, id: segment }) =>
+            and(
+              eq(table.conversationId, segment),
+              cutoff === undefined ? undefined : lte(table.entryId, cutoff)
+            )
+          )
+        )
+      )
       .orderBy(asc(table.entryId));
 
     return {
