@@ -74,6 +74,7 @@ const runner = `(() => {
         shown = index;
         pending = -1;
         show(index);
+        frames[1 - index].removeAttribute('srcdoc');
       }
     });
   });
