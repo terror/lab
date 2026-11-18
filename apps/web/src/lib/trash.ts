@@ -1,4 +1,8 @@
-import { queryOptions, useQueryClient } from '@tanstack/react-query';
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
@@ -60,9 +64,20 @@ export function useTrashAction<T>(mutationFn: (value: T) => Promise<void>) {
 export function useUndoTrash() {
   const queryClient = useQueryClient();
 
-  return async (item: TrashRef, then?: () => Promise<void>) => {
-    await restoreFromTrash(item);
-    await invalidateAll(queryClient, trashedQueryKeys);
-    await then?.();
-  };
+  const restore = useMutation({
+    mutationFn: async ({
+      item,
+      restored,
+    }: {
+      item: TrashRef;
+      restored?: () => Promise<void>;
+    }) => {
+      await restoreFromTrash(item);
+      await invalidateAll(queryClient, trashedQueryKeys);
+      await restored?.();
+    },
+  });
+
+  return (item: TrashRef, restored?: () => Promise<void>) =>
+    restore.mutate({ item, restored });
 }
