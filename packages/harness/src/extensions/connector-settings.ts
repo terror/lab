@@ -9,12 +9,19 @@ import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 import { requestApproval } from './host-input';
 import { errorMessage, failure, once, text } from './results';
 
+type ConnectorStatus =
+  | 'connected'
+  | 'connecting'
+  | 'error'
+  | 'off'
+  | 'unauthorized';
+
 export type ConnectorSummary = {
   enabled: boolean;
   error: string | null;
   id: number;
   name: string;
-  status: string;
+  status: ConnectorStatus;
   tools: number;
   url: string;
 };
@@ -35,18 +42,17 @@ export type ConnectorAccess = {
   ): Promise<ConnectorSummary>;
 };
 
-const states: Record<string, (connector: ConnectorSummary) => string> = {
-  connected: ({ tools }) => `connected, ${tools} tools`,
-  connecting: () => 'connecting',
-  error: ({ error }) => `failed to connect: ${error ?? 'unknown error'}`,
-  off: () => 'turned off',
-  unauthorized: () => 'needs the user to sign in from Settings → Connectors',
-};
+const states: Record<ConnectorStatus, (connector: ConnectorSummary) => string> =
+  {
+    connected: ({ tools }) => `connected, ${tools} tools`,
+    connecting: () => 'connecting',
+    error: ({ error }) => `failed to connect: ${error ?? 'unknown error'}`,
+    off: () => 'turned off',
+    unauthorized: () => 'needs the user to sign in from Settings → Connectors',
+  };
 
 function line(connector: ConnectorSummary) {
-  const state = states[connector.status]?.(connector) ?? connector.status;
-
-  return `- [${connector.id}] ${connector.name} (${connector.url}): ${state}`;
+  return `- [${connector.id}] ${connector.name} (${connector.url}): ${states[connector.status](connector)}`;
 }
 
 const id = int({ description: 'The id of the connector.', minimum: 1 });
