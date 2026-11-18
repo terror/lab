@@ -16,6 +16,7 @@ import {
   rowAction,
   useRowPresence,
 } from '@/components/sidebar-row';
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Kbd } from '@/components/ui/kbd';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   Tooltip,
   TooltipContent,
@@ -38,6 +40,7 @@ import {
   useConversationSummary,
   useConversations,
   usePinnedConversations,
+  useUnreadChats,
 } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
 import { useProjects } from '@/lib/projects';
@@ -528,6 +531,41 @@ function PinnedSection({
   );
 }
 
+function RailMark({ onToggle }: { onToggle: () => void }) {
+  const unread = useUnreadChats();
+
+  const working = (unread.data?.running ?? 0) > 0;
+
+  const attention =
+    (unread.data?.chats.length ?? 0) + (unread.data?.waiting.length ?? 0) > 0;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-label='Expand sidebar'
+          className='group/mark relative flex size-9 items-center justify-center rounded-lg hover:bg-sidebar-accent'
+          onClick={onToggle}
+          type='button'
+        >
+          <LiveMark
+            className='size-6 transition-opacity group-hover/mark:opacity-0 group-focus-visible/mark:opacity-0'
+            state={working ? 'thinking' : 'idle'}
+          />
+          <PanelLeftOpen
+            aria-hidden='true'
+            className='absolute size-4 opacity-0 transition-opacity group-hover/mark:opacity-100 group-focus-visible/mark:opacity-100'
+          />
+          {attention && (
+            <Dot className='absolute top-1 right-1' tone='attention' />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side='right'>Expand sidebar</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function SidebarRail({
   onNavigate,
   onToggle,
@@ -541,9 +579,7 @@ function SidebarRail({
 
   return (
     <aside className='flex h-full w-14 flex-col items-center gap-2 bg-sidebar py-3 text-sidebar-foreground'>
-      <RailButton label='Expand sidebar' onClick={onToggle} side='right'>
-        <PanelLeftOpen aria-hidden='true' className='size-4' />
-      </RailButton>
+      <RailMark onToggle={onToggle} />
       <SearchButton side='right' />
       {navPages.map(({ icon: Icon, label, to }) => (
         <RailButton
