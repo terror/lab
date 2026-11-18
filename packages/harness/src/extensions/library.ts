@@ -6,7 +6,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
-import { failure, text } from './results';
+import { failure, page, text } from './results';
 
 export const READ_LENGTH = 100_000;
 
@@ -45,17 +45,6 @@ function listing(entries: readonly LibraryEntry[]) {
         `[${id}] ${name} (${kind}, ${size} bytes, ${createdAt.slice(0, 10)}${chat ? `, from "${chat}"` : ''})`
     )
     .join('\n');
-}
-
-function slice(content: string, offset: number, length: number) {
-  const end = Math.min(content.length, offset + length);
-
-  const more =
-    end < content.length
-      ? `\n\n[Showing characters ${offset}–${end} of ${content.length}. Call library_read with offset ${end} to continue.]`
-      : `\n\n[End of file at character ${content.length}.]`;
-
-  return `${content.slice(offset, end)}${more}`;
 }
 
 export function library(access: LibraryAccess) {
@@ -114,25 +103,21 @@ export function library(access: LibraryAccess) {
         };
       }
 
-      const start = Math.min(offset ?? 0, content.text.length);
-
-      const end = Math.min(
-        content.text.length,
-        start + (length ?? READ_LENGTH)
-      );
+      const shown = page(content.text, offset ?? 0, length ?? READ_LENGTH, {
+        ending: 'file',
+        next: (end) => `Call library_read with offset ${end} to continue.`,
+      });
 
       return {
         details: {
-          end,
+          end: shown.end,
           id,
           name: content.name,
-          passage: content.text.slice(start, end),
-          start,
-          total: content.text.length,
+          passage: shown.passage,
+          start: shown.start,
+          total: shown.total,
         },
-        output: text(
-          `${content.name}\n\n${slice(content.text, offset ?? 0, length ?? READ_LENGTH)}`
-        ),
+        output: text(`${content.name}\n\n${shown.text}`),
       };
     },
   });

@@ -8,7 +8,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { type Owner, userDoc } from './docs';
-import { errorMessage, failure, once, text } from './results';
+import { errorMessage, failure, once, page, text } from './results';
 
 export const SANDBOX_OUTPUT_LENGTH = 100_000;
 
@@ -81,17 +81,6 @@ export type SandboxAccess = {
     content: string
   ): Promise<SandboxWrite>;
 };
-
-function page(content: string, offset: number) {
-  const end = Math.min(content.length, offset + SANDBOX_OUTPUT_LENGTH);
-
-  const more =
-    end < content.length
-      ? `\n\n[Showing characters ${offset}–${end} of ${content.length}. Call sandbox_read with offset ${end} to continue.]`
-      : `\n\n[End of file at character ${content.length}.]`;
-
-  return `${content.slice(offset, end)}${more}`;
-}
 
 const path = str({
   description:
@@ -176,17 +165,20 @@ export function sandbox(access: SandboxAccess, owner: Owner) {
           };
         }
 
-        const start = Math.min(args.offset ?? 0, file.text.length);
+        const shown = page(file.text, args.offset ?? 0, SANDBOX_OUTPUT_LENGTH, {
+          ending: 'file',
+          next: (end) => `Call sandbox_read with offset ${end} to continue.`,
+        });
 
         return {
           details: {
-            end: Math.min(file.text.length, start + SANDBOX_OUTPUT_LENGTH),
-            passage: file.text.slice(start, start + 600),
+            end: shown.end,
+            passage: file.text.slice(shown.start, shown.start + 600),
             path: args.path,
-            start,
-            total: file.text.length,
+            start: shown.start,
+            total: shown.total,
           },
-          output: text(page(file.text, start)),
+          output: text(shown.text),
         };
       } catch (error) {
         return failure(errorMessage(error));
