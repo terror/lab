@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 
+import { signIn } from '../test/auth';
 import app from './app';
 import { contentSecurityPolicy } from './security';
 
@@ -26,5 +27,25 @@ test('responses carry security headers', async () => {
     referrer: 'strict-origin-when-cross-origin',
     sniff: 'nosniff',
     transport: 'max-age=31536000; includeSubDomains',
+  });
+});
+
+test('the API docs load one pinned script', async () => {
+  const response = await app.request('/api/docs', { headers: await signIn() });
+
+  const html = await response.text();
+
+  expect({
+    policy: response.headers.get('content-security-policy'),
+    scripts: Array.from(
+      html.matchAll(/<script[^>]*src="([^"]*)"/g),
+      ([, src]) => src
+    ),
+  }).toEqual({
+    policy:
+      "connect-src 'self'; default-src 'self'; font-src 'self' data: https://fonts.scalar.com; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js; style-src 'self' 'unsafe-inline' https://fonts.scalar.com",
+    scripts: [
+      'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js',
+    ],
   });
 });
