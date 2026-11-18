@@ -58,6 +58,16 @@ function ConversationPage() {
   return <Conversation key={id} id={id} />;
 }
 
+function positiveId(value: string) {
+  const id = Number(value);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw notFound();
+  }
+
+  return id;
+}
+
 const rootRoute = createRootRoute({
   component: Root,
   notFoundComponent: () => <Navigate replace to='/' />,
@@ -121,18 +131,29 @@ const conversationRoute = createRoute({
   getParentRoute: () => chatRoute,
   loader: () => loadMarkdown().catch(() => undefined),
   params: {
-    parse: ({ id }) => {
-      const value = Number(id);
-
-      if (!Number.isInteger(value) || value <= 0) {
-        throw notFound();
-      }
-
-      return { id: value };
-    },
+    parse: ({ id }) => ({ id: positiveId(id) }),
     stringify: ({ id }) => ({ id: String(id) }),
   },
   path: '/c/$id',
+});
+
+const appRoute = createRoute({
+  component: lazyRouteComponent(
+    () => import('@/components/artifact-page'),
+    'ArtifactPage'
+  ),
+  getParentRoute: () => chatRoute,
+  params: {
+    parse: ({ artifactId, conversationId }) => ({
+      artifactId,
+      conversationId: positiveId(conversationId),
+    }),
+    stringify: ({ artifactId, conversationId }) => ({
+      artifactId,
+      conversationId: String(conversationId),
+    }),
+  },
+  path: '/apps/$conversationId/$artifactId',
 });
 
 const settingsRoute = createRoute({
@@ -152,6 +173,7 @@ const routeTree = rootRoute.addChildren([
     scheduledRoute,
     projectRoute,
     conversationRoute,
+    appRoute,
   ]),
   settingsRoute,
 ]);

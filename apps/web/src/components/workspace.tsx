@@ -12,6 +12,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useArtifact } from '@/lib/artifacts';
 import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
@@ -208,6 +209,8 @@ function usePageTitle(selected: number | undefined) {
   const path = usePath();
   const conversation = useConversationSummary(selected);
   const projects = useProjects();
+  const { artifactId, conversationId } = useParams({ strict: false });
+  const app = useArtifact(conversationId, artifactId);
 
   const projectId = Number(/^\/projects\/(\d+)$/.exec(path)?.[1]);
 
@@ -216,6 +219,7 @@ function usePageTitle(selected: number | undefined) {
   return (
     pageTitles[path] ??
     project?.name ??
+    app.data?.title ??
     conversationTitle(conversation.data?.title)
   );
 }

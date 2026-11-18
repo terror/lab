@@ -1,3 +1,4 @@
+import { PinMenu } from '@/components/artifact-apps';
 import { type FrameCall, SandboxFrame } from '@/components/sandbox-frame';
 import {
   Dialog,
@@ -10,7 +11,9 @@ import { artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
 import { plural } from '@/lib/format';
 import { useLibraryImages } from '@/lib/library';
+import { Link } from '@tanstack/react-router';
 import {
+  AppWindow,
   Code,
   Download,
   Eye,
@@ -278,7 +281,7 @@ function Live({ artifact }: { artifact: Shown }) {
         {version > 1 && (
           <span className='text-xs text-muted-foreground'>v{version}</span>
         )}
-        <div className='ml-auto flex items-center gap-1 opacity-0 transition-opacity group-focus-within/artifact:opacity-100 group-hover/artifact:opacity-100 pointer-coarse:opacity-100'>
+        <div className='ml-auto flex items-center gap-1 opacity-0 transition-opacity group-focus-within/artifact:opacity-100 group-hover/artifact:opacity-100 has-[[data-state=open]]:opacity-100 pointer-coarse:opacity-100'>
           <button
             aria-label={showCode ? 'Show preview' : 'Show code'}
             className={action}
@@ -307,6 +310,23 @@ function Live({ artifact }: { artifact: Shown }) {
           >
             <Maximize2 aria-hidden='true' className='size-4' />
           </button>
+          {conversationId !== undefined && (
+            <>
+              <Link
+                aria-label='Open as page'
+                className={action}
+                params={{ artifactId: artifact.id, conversationId }}
+                to='/apps/$conversationId/$artifactId'
+              >
+                <AppWindow aria-hidden='true' className='size-4' />
+              </Link>
+              <PinMenu
+                artifactId={artifact.id}
+                className={action}
+                conversationId={conversationId}
+              />
+            </>
+          )}
         </div>
       </header>
       <div className='px-4 pb-4'>

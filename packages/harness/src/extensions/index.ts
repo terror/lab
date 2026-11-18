@@ -31,7 +31,7 @@ export {
   STORE_KEY_LIMIT,
   STORE_VALUE_LENGTH,
 } from './artifact-apps';
-export { ArtifactsDoc } from './artifacts';
+export { type Artifact, ArtifactsDoc } from './artifacts';
 export {
   type ConnectorAccess,
   type ConnectorChange,
