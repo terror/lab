@@ -11,11 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { Page, PageHeader } from '@/components/ui/page';
+import { Pills } from '@/components/ui/pills';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { conversationTitle } from '@/lib/conversations';
 import { formatBytes } from '@/lib/format';
 import {
@@ -30,13 +35,7 @@ import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  LibraryBig,
-  Search,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 
 type Filter = 'all' | LibraryKind;
@@ -48,6 +47,9 @@ const filters: { label: string; value: Filter }[] = [
 ];
 
 const fullDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+
+const grid =
+  'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();
@@ -216,18 +218,46 @@ function Viewer({
   );
 }
 
-function Empty({ searching }: { searching: boolean }) {
+function LibraryEmpty({
+  filtered,
+  onClear,
+}: {
+  filtered: boolean;
+  onClear: () => void;
+}) {
+  if (filtered) {
+    return (
+      <EmptyState
+        action={
+          <Button onClick={onClear} size='sm' variant='outline'>
+            Show everything
+          </Button>
+        }
+        description='Nothing here matches that search and filter.'
+        title='No matches'
+      />
+    );
+  }
+
   return (
-    <div className='flex flex-col items-center gap-3 py-24 text-center'>
-      <LibraryBig aria-hidden='true' className='size-8 text-muted-foreground' />
-      <div className='space-y-1'>
-        <p className='font-medium'>
-          {searching ? 'Nothing matches your search' : 'Your library is empty'}
-        </p>
-        <p className='text-sm text-muted-foreground'>
-          Images and files you add to chats appear here.
-        </p>
-      </div>
+    <EmptyState
+      action={
+        <Button asChild size='sm' variant='outline'>
+          <Link to='/'>Start a chat</Link>
+        </Button>
+      }
+      description='Images and files from your chats land here.'
+      title='Nothing on the shelves yet'
+    />
+  );
+}
+
+function TileSkeletons() {
+  return (
+    <div aria-busy='true' className={grid}>
+      {[0, 1, 2, 3].map((tile) => (
+        <Skeleton key={tile} className='aspect-square h-auto rounded-xl' />
+      ))}
     </div>
   );
 }
@@ -240,12 +270,26 @@ export function Library() {
 
   const { items, loadMore, query, search, setSearch } = library;
 
+  const clear = () => {
+    setSearch('');
+    setFilter('all');
+  };
+
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
-      <div className='mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8'>
-        <div className='flex flex-wrap items-center justify-between gap-4'>
-          <h1 className='text-2xl font-semibold tracking-tight'>Library</h1>
-          <InputGroup className='w-full sm:w-64'>
+      <Page className='@container'>
+        <PageHeader
+          description='Images and files from your chats.'
+          title='Library'
+        />
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <Pills
+            label='Filter'
+            onValueChange={setFilter}
+            options={filters}
+            value={filter}
+          />
+          <InputGroup className='w-full sm:w-56'>
             <InputGroupAddon>
               <Search aria-hidden='true' />
             </InputGroupAddon>
@@ -257,33 +301,20 @@ export function Library() {
             />
           </InputGroup>
         </div>
-        <fieldset className='flex gap-1'>
-          <legend className='sr-only'>Filter</legend>
-          {filters.map(({ label, value }) => (
-            <button
-              key={value}
-              aria-pressed={filter === value}
-              className={cn(
-                'rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground',
-                filter === value && 'bg-muted text-foreground'
-              )}
-              onClick={() => setFilter(value)}
-              type='button'
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
-        {library.error && <LoadError subject='your library' />}
+        {library.pending && <TileSkeletons />}
+        {library.error && (
+          <LoadError onRetry={() => library.refetch()} subject='your library' />
+        )}
         {library.empty && (
-          <Empty searching={query.length > 0 || filter !== 'all'} />
+          <LibraryEmpty
+            filtered={query.length > 0 || filter !== 'all'}
+            onClear={clear}
+          />
         )}
         {groupByPeriod(items).map(([title, group]) => (
-          <section key={title} className='flex flex-col gap-3'>
-            <h2 className='text-sm font-medium text-muted-foreground'>
-              {title}
-            </h2>
-            <div className='grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+          <section key={title} className='flex flex-col gap-2'>
+            <SectionHeading>{title}</SectionHeading>
+            <div className={grid}>
               {group.map((item) => (
                 <Tile
                   key={item.id}
@@ -294,8 +325,14 @@ export function Library() {
             </div>
           </section>
         ))}
-        {loadMore && <LoadMore onLoadMore={loadMore} />}
-      </div>
+        {library.pageError && (
+          <LoadError
+            onRetry={() => library.fetchNextPage()}
+            subject='more of your library'
+          />
+        )}
+        {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
+      </Page>
       {open !== undefined && (
         <Viewer
           hasMore={library.hasNextPage}

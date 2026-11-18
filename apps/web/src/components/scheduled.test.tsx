@@ -96,8 +96,7 @@ test('a task links to its chat and an empty filter says so', async () => {
     .element(screen.getByRole('link', { name: /^foo/ }))
     .toHaveAttribute('href', '/c/7');
 
-  await screen.getByRole('button', { name: 'Active' }).click();
-  await screen.getByRole('menuitemradio', { name: 'Paused' }).click();
+  await screen.getByRole('button', { name: 'Paused' }).click();
 
   await expect.element(screen.getByText('No paused tasks')).toBeVisible();
 });

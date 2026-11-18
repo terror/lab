@@ -1,4 +1,5 @@
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 
 import { Trash } from './trash';
@@ -59,10 +60,29 @@ test('deleting a project forever clears the drafts of its chats', async () => {
 
   const { screen } = await renderWithQuery(<Trash />);
 
-  await screen.getByRole('button', { name: 'Delete foo forever' }).click();
-  await screen.getByRole('button', { name: 'Delete forever' }).click();
+  await screen.getByRole('button', { name: 'Actions for foo' }).click();
+  await screen.getByRole('menuitem', { name: 'Delete forever' }).click();
+  await screen
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete forever' })
+    .click();
 
   await expect
     .poll(() => window.localStorage.getItem('lab:draft:8'))
     .toBe(null);
+});
+
+test('the trash loads again after a failed load', async () => {
+  stubFetch(() => Response.json({ items: [] })).mockResolvedValueOnce(
+    new Response(null, { status: 500 })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Trash />,
+    new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  );
+
+  await screen.getByRole('button', { name: 'Retry' }).click();
+
+  await expect.element(screen.getByText('All clean')).toBeVisible();
 });

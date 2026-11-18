@@ -6,16 +6,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ListRow } from '@/components/ui/list-row';
+import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { Page, PageHeader } from '@/components/ui/page';
+import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
-import { Skeleton } from '@/components/ui/skeleton';
 import { conversationsQueryKey } from '@/lib/conversations';
 import {
   type ScheduledTask,
@@ -28,7 +26,7 @@ import {
 import { untilRun } from '@/lib/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, Clock, Ellipsis } from 'lucide-react';
+import { Clock, Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 
 type Filter = 'active' | 'all' | 'paused';
@@ -67,9 +65,10 @@ const filters: Record<
   },
 };
 
-function isFilter(value: string): value is Filter {
-  return value in filters;
-}
+const filterOptions = (['active', 'paused', 'all'] as const).map((value) => ({
+  label: filters[value].label,
+  value,
+}));
 
 function schedule(task: ScheduledTask) {
   if (!task.enabled) {
@@ -175,53 +174,6 @@ function TaskRow({ task }: { task: ScheduledTask }) {
   );
 }
 
-function TaskSkeleton() {
-  return (
-    <li className='flex min-h-11 items-center gap-3 py-1.5'>
-      <Skeleton className='size-4 rounded-full' />
-      <div className='flex flex-1 flex-col gap-2'>
-        <Skeleton className='w-2/5' />
-        <Skeleton className='w-3/5' />
-      </div>
-    </li>
-  );
-}
-
-function FilterMenu({
-  filter,
-  onChange,
-}: {
-  filter: Filter;
-  onChange: (filter: Filter) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size='sm' variant='outline'>
-          {filters[filter].label}
-          <ChevronDown aria-hidden='true' />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
-        <DropdownMenuRadioGroup
-          onValueChange={(value) => {
-            if (isFilter(value)) {
-              onChange(value);
-            }
-          }}
-          value={filter}
-        >
-          {Object.entries(filters).map(([value, { label }]) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              {label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 function SchedulePrompt() {
   return (
     <StartComposer
@@ -249,17 +201,28 @@ export function Scheduled() {
         <SchedulePrompt />
         <section className='flex flex-col gap-2'>
           <SectionHeading
-            actions={<FilterMenu filter={filter} onChange={setFilter} />}
+            actions={
+              <Pills
+                label='Filter'
+                onValueChange={setFilter}
+                options={filterOptions}
+                value={filter}
+              />
+            }
           >
             Tasks
           </SectionHeading>
-          {schedules.isError && <LoadError subject='scheduled tasks' />}
+          {schedules.isPending && <ListSkeleton />}
+          {schedules.isLoadingError && (
+            <LoadError
+              onRetry={() => schedules.refetch()}
+              subject='scheduled tasks'
+            />
+          )}
           {schedules.isSuccess && tasks.length === 0 && (
             <EmptyState {...filters[filter].empty} />
           )}
-          <ul aria-busy={schedules.isPending} className='flex flex-col gap-0.5'>
-            {schedules.isPending &&
-              [0, 1, 2].map((row) => <TaskSkeleton key={row} />)}
+          <ul className='flex flex-col gap-0.5'>
             {tasks.map((task) => (
               <TaskRow key={task.id} task={task} />
             ))}

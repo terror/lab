@@ -10,6 +10,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
+import { Pills } from '@/components/ui/pills';
 import {
   conversationTitle,
   useConversations,
@@ -25,7 +26,6 @@ import {
 } from '@/lib/settings';
 import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
-import { cn } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Clock,
@@ -345,33 +345,20 @@ function ScopePills({
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
   const pills = [
-    { count: total, id: 'all' as const, label: 'All' },
+    { count: total, label: 'All', value: 'all' as const },
     ...scopes
       .filter(({ id }) => counts[id] > 0)
-      .map(({ id, label }) => ({ count: counts[id], id, label })),
+      .map(({ id, label }) => ({ count: counts[id], label, value: id })),
   ];
 
   return (
-    <fieldset className='flex items-center gap-1 overflow-x-auto px-2.5 py-1.5'>
-      <legend className='sr-only'>Scope</legend>
-      {pills.map(({ count, id, label }) => (
-        <button
-          key={id}
-          aria-pressed={scope === id}
-          className={cn(
-            'flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground',
-            scope === id && 'bg-muted font-medium text-foreground'
-          )}
-          onClick={() => onScope(id)}
-          type='button'
-        >
-          {label}
-          <span className='font-normal text-muted-foreground tabular-nums'>
-            {count}
-          </span>
-        </button>
-      ))}
-    </fieldset>
+    <Pills
+      className='overflow-x-auto px-2.5 py-1.5'
+      label='Scope'
+      onValueChange={onScope}
+      options={pills}
+      value={scope}
+    />
   );
 }
 

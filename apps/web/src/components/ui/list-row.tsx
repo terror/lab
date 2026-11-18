@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
@@ -41,4 +42,25 @@ function ListRow({
   );
 }
 
-export { ListRow };
+function ListSkeleton({ className, ...props }: React.ComponentProps<'ul'>) {
+  return (
+    <ul
+      aria-busy='true'
+      data-slot='list-skeleton'
+      className={cn('flex flex-col gap-0.5', className)}
+      {...props}
+    >
+      {[0, 1, 2].map((row) => (
+        <li key={row} className='flex min-h-11 items-center gap-3 py-1.5'>
+          <Skeleton className='size-4 rounded-full' />
+          <div className='flex flex-1 flex-col gap-2'>
+            <Skeleton className='w-2/5' />
+            <Skeleton className='w-3/5' />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export { ListRow, ListSkeleton };
