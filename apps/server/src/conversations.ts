@@ -2,38 +2,35 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { applyImmutable } from '@earendil-works/chord/delta';
 import {
   AgentDoc,
-  type ConversationId,
+  type Conversation,
   type EntryId,
   type SubmissionId,
 } from '@earendil-works/pi-durable';
 import { getBunServer } from '@hono/bun';
-import { schema } from '@lab/db';
 import {
   ANSWER_LENGTH,
-  type Artifact,
-  ArtifactsDoc,
   PlanDoc,
   QuestionsDoc,
-  STORE_KEY_LENGTH,
-  STORE_VALUE_LENGTH,
   TitleDoc,
   editPlan,
   titleChat,
 } from '@lab/harness';
-import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
-import { ASK_PROMPT_LENGTH, askModel } from './artifact-ask';
-import { listPins, pinArtifact, unpinArtifact } from './artifact-pins';
-import { deleteValue, readValue, saveValue } from './artifact-state';
-import { type User, requireUser } from './auth';
+import { listPins } from './artifact-pins';
+import artifacts from './artifacts';
+import { requireUser } from './auth';
 import { branchChat, branchSchema, chatForks } from './branches';
-import { createChat, pinChat, readChat, renameChat } from './chat-actions';
-import { db } from './db';
+import {
+  createChat,
+  ownedChat,
+  pinChat,
+  readChat,
+  renameChat,
+} from './chat-actions';
 import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { harness } from './harness';
@@ -105,34 +102,6 @@ const entriesQuery = validator(
 
 const listQuery = validator('query', listSchema);
 
-const artifactParams = validator(
-  'param',
-  z.object({
-    artifactId: z.string().regex(/^[a-z0-9-]{1,40}$/),
-    id: positiveId,
-  })
-);
-
-const stateKey = validator(
-  'query',
-  z.object({ key: z.string().min(1).max(STORE_KEY_LENGTH) })
-);
-
-const stateValue = validator(
-  'json',
-  z.object({ value: z.string().max(STORE_VALUE_LENGTH) })
-);
-
-const asking = validator(
-  'json',
-  z.object({ prompt: z.string().trim().min(1).max(ASK_PROMPT_LENGTH) })
-);
-
-const pinning = validator(
-  'json',
-  z.object({ projectId: z.number().int().positive().nullable() })
-);
-
 const answering = validator(
   'json',
   z.object({
@@ -163,10 +132,6 @@ const update = validator(
     )
 );
 
-type Conversation = NonNullable<
-  Awaited<ReturnType<typeof harness.conversation>>
->;
-
 type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
@@ -178,61 +143,6 @@ async function watchPlan(conversation: Conversation) {
 
   return harness.watchDoc(PlanDoc, conversation.id, BACKGROUND_CONTEXT);
 }
-
-const owned = createMiddleware<{
-  Variables: {
-    conversation: Conversation;
-    projectId: number | null;
-    user: User;
-  };
-}>(async (c, next) => {
-  const [record] = await db
-    .select({
-      id: schema.conversation.id,
-      projectId: schema.conversation.projectId,
-    })
-    .from(schema.conversation)
-    .where(
-      and(
-        eq(schema.conversation.id, Number(c.req.param('id'))),
-        eq(schema.conversation.ownerId, c.get('user').id),
-        isNull(schema.conversation.deletedAt)
-      )
-    );
-
-  const conversation =
-    record &&
-    (await harness.conversation(
-      record.id as ConversationId,
-      BACKGROUND_CONTEXT
-    ));
-
-  if (!conversation) {
-    throw new HTTPException(404, { message: 'Conversation not found' });
-  }
-
-  c.set('conversation', conversation);
-  c.set('projectId', record.projectId);
-
-  await next();
-});
-
-const artifact = createMiddleware<{
-  Variables: { artifact: Artifact; conversation: Conversation };
-}>(async (c, next) => {
-  const doc = await harness.snapshot(
-    ArtifactsDoc,
-    c.var.conversation.id,
-    BACKGROUND_CONTEXT
-  );
-
-  c.set(
-    'artifact',
-    found(doc?.artifacts[c.req.param('artifactId') ?? ''], 'Artifact not found')
-  );
-
-  await next();
-});
 
 const conversations = new Hono()
   .use(requireUser)
@@ -271,7 +181,7 @@ const conversations = new Hono()
 
     return c.json({ id }, 201);
   })
-  .get('/:id', idParam, owned, async (c) => {
+  .get('/:id', idParam, ownedChat, async (c) => {
     const { conversation } = c.var;
 
     const doc = await harness.snapshot(
@@ -290,7 +200,7 @@ const conversations = new Hono()
       title: doc?.title ?? null,
     });
   })
-  .get('/:id/entries', idParam, owned, entriesQuery, async (c) => {
+  .get('/:id/entries', idParam, ownedChat, entriesQuery, async (c) => {
     const { conversation } = c.var;
 
     const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
@@ -308,30 +218,35 @@ const conversations = new Hono()
 
     return c.json({ items: page.items.map(stripImages) });
   })
-  .get('/:id/entries/:entryId/images/:index', imageParams, owned, async (c) => {
-    const { entryId, index } = c.req.valid('param');
+  .get(
+    '/:id/entries/:entryId/images/:index',
+    imageParams,
+    ownedChat,
+    async (c) => {
+      const { entryId, index } = c.req.valid('param');
 
-    const { conversation } = c.var;
+      const { conversation } = c.var;
 
-    const { items } = await conversation.entries(
-      {
-        maxEntryId: entryId as EntryId,
-        minEntryId: entryId as EntryId,
-      },
-      1,
-      undefined,
-      BACKGROUND_CONTEXT
-    );
+      const { items } = await conversation.entries(
+        {
+          maxEntryId: entryId as EntryId,
+          minEntryId: entryId as EntryId,
+        },
+        1,
+        undefined,
+        BACKGROUND_CONTEXT
+      );
 
-    const image = found(imageAt(items[0], index), 'Image not found');
+      const image = found(imageAt(items[0], index), 'Image not found');
 
-    return c.body(
-      Buffer.from(image.data, 'base64'),
-      200,
-      fileHeaders(image.mimeType)
-    );
-  })
-  .get('/:id/events', idParam, owned, async (c) => {
+      return c.body(
+        Buffer.from(image.data, 'base64'),
+        200,
+        fileHeaders(image.mimeType)
+      );
+    }
+  )
+  .get('/:id/events', idParam, ownedChat, async (c) => {
     const { conversation } = c.var;
 
     getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
@@ -412,7 +327,7 @@ const conversations = new Hono()
     '/:id/messages',
     rateLimit('messages'),
     idParam,
-    owned,
+    ownedChat,
     message,
     async (c) => {
       const { conversation } = c.var;
@@ -444,7 +359,7 @@ const conversations = new Hono()
     '/:id/branches',
     rateLimit('messages'),
     idParam,
-    owned,
+    ownedChat,
     branching,
     async (c) => {
       const id = await branchChat(
@@ -460,7 +375,7 @@ const conversations = new Hono()
   .delete(
     '/:id/submissions/:submissionId',
     submissionParams,
-    owned,
+    ownedChat,
     async (c) => {
       const { submissionId } = c.req.valid('param');
 
@@ -483,7 +398,7 @@ const conversations = new Hono()
       return c.body(null, 204);
     }
   )
-  .put('/:id/model', idParam, owned, modelSelection, async (c) => {
+  .put('/:id/model', idParam, ownedChat, modelSelection, async (c) => {
     const { conversation } = c.var;
 
     const { id, provider, thinkingLevel } = c.req.valid('json');
@@ -499,7 +414,7 @@ const conversations = new Hono()
     '/:id/answers',
     rateLimit('messages'),
     idParam,
-    owned,
+    ownedChat,
     answering,
     async (c) => {
       await checkSpend(c.get('user').id);
@@ -517,7 +432,7 @@ const conversations = new Hono()
       return c.body(null, 204);
     }
   )
-  .put('/:id/plan', idParam, owned, planning, async (c) => {
+  .put('/:id/plan', idParam, ownedChat, planning, async (c) => {
     const { conversation } = c.var;
 
     const { steps } = c.req.valid('json');
@@ -532,21 +447,27 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .post('/:id/compact', rateLimit('messages'), idParam, owned, async (c) => {
-    await checkSpend(c.get('user').id);
+  .post(
+    '/:id/compact',
+    rateLimit('messages'),
+    idParam,
+    ownedChat,
+    async (c) => {
+      await checkSpend(c.get('user').id);
 
-    const { conversation } = c.var;
+      const { conversation } = c.var;
 
-    await conversation.compact(undefined, BACKGROUND_CONTEXT);
+      await conversation.compact(undefined, BACKGROUND_CONTEXT);
 
-    return c.body(null, 202);
-  })
-  .post('/:id/read', idParam, owned, async (c) => {
+      return c.body(null, 202);
+    }
+  )
+  .post('/:id/read', idParam, ownedChat, async (c) => {
     await readChat(c.get('user').id, c.var.conversation.id);
 
     return c.body(null, 204);
   })
-  .post('/:id/abort', idParam, owned, async (c) => {
+  .post('/:id/abort', idParam, ownedChat, async (c) => {
     const { conversation } = c.var;
 
     await conversation.abort(BACKGROUND_CONTEXT);
@@ -555,122 +476,8 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .get(
-    '/:id/artifacts/:artifactId',
-    artifactParams,
-    owned,
-    artifact,
-    async (c) => {
-      const { content, title, version } = c.var.artifact;
-
-      return c.json({ content, title, version });
-    }
-  )
-  .put(
-    '/:id/artifacts/:artifactId/pin',
-    artifactParams,
-    owned,
-    artifact,
-    pinning,
-    async (c) => {
-      found(
-        await pinArtifact(
-          c.get('user').id,
-          c.var.conversation.id,
-          c.req.valid('param').artifactId,
-          c.req.valid('json').projectId
-        ),
-        'Project not found'
-      );
-
-      return c.body(null, 204);
-    }
-  )
-  .delete(
-    '/:id/artifacts/:artifactId/pin',
-    artifactParams,
-    owned,
-    async (c) => {
-      await unpinArtifact(
-        c.var.conversation.id,
-        c.req.valid('param').artifactId
-      );
-
-      return c.body(null, 204);
-    }
-  )
-  .get(
-    '/:id/artifacts/:artifactId/state',
-    artifactParams,
-    owned,
-    artifact,
-    stateKey,
-    async (c) => {
-      const { artifactId } = c.req.valid('param');
-
-      return c.json({
-        value: await readValue(
-          c.var.conversation.id,
-          artifactId,
-          c.req.valid('query').key
-        ),
-      });
-    }
-  )
-  .put(
-    '/:id/artifacts/:artifactId/state',
-    artifactParams,
-    owned,
-    artifact,
-    stateKey,
-    stateValue,
-    async (c) => {
-      await saveValue(
-        c.get('user').id,
-        c.var.conversation.id,
-        c.req.valid('param').artifactId,
-        { key: c.req.valid('query').key, value: c.req.valid('json').value }
-      );
-
-      return c.body(null, 204);
-    }
-  )
-  .delete(
-    '/:id/artifacts/:artifactId/state',
-    artifactParams,
-    owned,
-    artifact,
-    stateKey,
-    async (c) => {
-      await deleteValue(
-        c.var.conversation.id,
-        c.req.valid('param').artifactId,
-        c.req.valid('query').key
-      );
-
-      return c.body(null, 204);
-    }
-  )
-  .post(
-    '/:id/artifacts/:artifactId/ask',
-    rateLimit('asks'),
-    artifactParams,
-    owned,
-    artifact,
-    asking,
-    async (c) => {
-      await checkSpend(c.get('user').id);
-
-      return c.json({
-        text: await askModel(
-          c.var.conversation.id,
-          c.req.valid('json').prompt,
-          c.req.raw.signal
-        ),
-      });
-    }
-  )
-  .patch('/:id', idParam, owned, update, async (c) => {
+  .route('/:id/artifacts', artifacts)
+  .patch('/:id', idParam, ownedChat, update, async (c) => {
     const { conversation } = c.var;
 
     const { pinned, projectId, title } = c.req.valid('json');
@@ -692,7 +499,7 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
-  .delete('/:id', idParam, owned, async (c) => {
+  .delete('/:id', idParam, ownedChat, async (c) => {
     await moveToTrash('conversation', c.get('user').id, c.var.conversation.id);
 
     return c.body(null, 204);
