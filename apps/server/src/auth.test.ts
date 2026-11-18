@@ -70,3 +70,28 @@ test('changes from other sites are rejected', async () => {
     sameSite: rejected,
   });
 });
+
+test('pages on other sites cannot open the authorization proxy', async () => {
+  const started = await app.request('/api/auth/sign-in/social', {
+    body: JSON.stringify({ callbackURL: '/', provider: 'google' }),
+    headers: { 'content-type': 'application/json', origin: env.LAB_ORIGIN },
+    method: 'POST',
+  });
+
+  const { url } = (await started.json()) as { url: string };
+
+  const open = async (site: string) => {
+    const response = await app.request(
+      `/api/auth/expo-authorization-proxy?authorizationURL=${encodeURIComponent(url)}`,
+      { headers: { 'sec-fetch-site': site } }
+    );
+
+    return response.status;
+  };
+
+  expect([
+    await open('cross-site'),
+    await open('same-site'),
+    await open('none'),
+  ]).toEqual([403, 403, 302]);
+});
