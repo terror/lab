@@ -88,13 +88,15 @@ export function useConversationSummary(id: number | undefined) {
   });
 }
 
+export const unreadChatsQueryOptions = queryOptions({
+  queryKey: [...conversationsQueryKey, 'unread'],
+  queryFn: ({ signal }) =>
+    call(client.conversations.unread.$get(undefined, { init: { signal } })),
+  refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 30_000),
+});
+
 export function useUnreadChats() {
-  return useQuery({
-    queryKey: [...conversationsQueryKey, 'unread'],
-    queryFn: ({ signal }) =>
-      call(client.conversations.unread.$get(undefined, { init: { signal } })),
-    refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 30_000),
-  });
+  return useQuery(unreadChatsQueryOptions);
 }
 
 export function useConversations(scope = recent) {
