@@ -8,6 +8,7 @@ test('approving sends the decision and shows it', async () => {
 
   const { screen } = await renderWithQuery(
     <ApprovalCard
+      active
       approval={{ action: 'foo', summary: ['bar'] }}
       callId='baz'
       conversationId={7}

@@ -8,6 +8,7 @@ test('choosing an option answers the question once', async () => {
 
   const { screen } = await renderWithQuery(
     <QuestionCard
+      active
       answer={undefined}
       callId='qux'
       conversationId={7}

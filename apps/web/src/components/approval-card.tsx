@@ -64,10 +64,12 @@ export function approvalOf(details: unknown) {
 }
 
 export function ApprovalCard({
+  active,
   approval,
   callId,
   conversationId,
 }: {
+  active: boolean;
   approval: z.infer<typeof approvalSchema>;
   callId: string;
   conversationId: number | undefined;
@@ -82,6 +84,8 @@ export function ApprovalCard({
     approval.decision ?? (send.isSuccess ? send.variables : undefined);
 
   const shown = decision === undefined ? undefined : decisions[decision];
+
+  const locked = !active || send.isPending || conversationId === undefined;
 
   return (
     <Answered
@@ -104,14 +108,14 @@ export function ApprovalCard({
         </div>
         <div className='flex gap-2'>
           <Button
-            disabled={send.isPending || conversationId === undefined}
+            disabled={locked}
             onClick={() => send.mutate('approved')}
             size='sm'
           >
             Approve
           </Button>
           <Button
-            disabled={send.isPending || conversationId === undefined}
+            disabled={locked}
             onClick={() => send.mutate('denied')}
             size='sm'
             variant='ghost'
