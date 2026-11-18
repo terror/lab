@@ -116,7 +116,7 @@ export {
 export { PlanDoc, editPlan } from './plan';
 export { PreferencesDoc } from './preferences';
 export { type Owner, userDoc } from './users';
-export { TitleDoc, plainTitle } from './title';
+export { TitleDoc, plainTitle, titleChat } from './title';
 export {
   type WebAccess,
   type WebPage,

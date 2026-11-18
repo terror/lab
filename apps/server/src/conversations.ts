@@ -20,6 +20,7 @@ import {
   STORE_VALUE_LENGTH,
   TitleDoc,
   editPlan,
+  titleChat,
 } from '@lab/harness';
 import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -51,6 +52,7 @@ import {
 } from './messages';
 import { defaultModel, findModel, modelChange, models } from './models';
 import { moveChat } from './project-access';
+import { registry } from './registry';
 import { planStepsSchema, thinkingLevelSchema } from './schemas';
 import { checkSpend } from './spend';
 import { subscribeStatus } from './status';
@@ -741,6 +743,8 @@ const conversations = new Hono()
     const { conversation } = c.var;
 
     await conversation.abort(BACKGROUND_CONTEXT);
+
+    await titleChat(conversation, registry, BACKGROUND_CONTEXT);
 
     return c.body(null, 204);
   })

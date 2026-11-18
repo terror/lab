@@ -2,7 +2,8 @@ import { plainTitle } from '@lab/harness';
 import { expect, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, idle } from '../test/client';
+import { call, idle, pendingToolCall } from '../test/client';
+import { script, toolCall } from '../test/models';
 import { models } from './models';
 
 test('titles are written by the helper model from a short transcript', async () => {
@@ -55,6 +56,26 @@ test('a rename during title generation is kept', async () => {
   expect(
     (await call(headers, 'GET', `/conversations/${body.id}`)).body.title
   ).toBe('bar');
+});
+
+test('a chat stopped before it answers still gets a title', async () => {
+  const headers = await signIn();
+
+  script(toolCall('ask_user', { options: ['bar', 'baz'], question: 'foo' }));
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await pendingToolCall(headers, body.id);
+
+  await call(headers, 'POST', `/conversations/${body.id}/abort`);
+
+  await idle(body.id);
+
+  expect(
+    (await call(headers, 'GET', `/conversations/${body.id}`)).body.title
+  ).toBe('foo');
 });
 
 function plain(value: string, expected: string) {
