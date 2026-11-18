@@ -39,6 +39,16 @@ export function page(
   };
 }
 
+export async function caught(
+  run: () => Promise<ToolExecutionResult>
+): Promise<ToolExecutionResult> {
+  try {
+    return await run();
+  } catch (error) {
+    return failure(errorMessage(error));
+  }
+}
+
 export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
