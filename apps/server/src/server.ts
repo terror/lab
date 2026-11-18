@@ -7,7 +7,7 @@ import { env } from './env';
 import { harness } from './harness';
 import { initSentry } from './instrument';
 import { backfillAll } from './pipelines';
-import { startScheduler } from './schedules';
+import { startScheduler } from './scheduler';
 
 initSentry();
 
