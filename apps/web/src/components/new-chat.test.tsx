@@ -114,7 +114,9 @@ test('the greeting is picked once a session and notices a long absence', async (
     for (const hour of [14, 20]) {
       vi.setSystemTime(new Date(2026, 10, 18, hour));
 
-      const { screen } = await renderHome();
+      const { screen } = await renderHome({
+        chats: [{ id: 1, projectId: null, title: 'foo', unread: false }],
+      });
 
       await expect.element(screen.getByRole('heading')).toBeVisible();
 
@@ -133,6 +135,22 @@ test('the greeting is picked once a session and notices a long absence', async (
     greetings: ['Welcome back, Foo', 'Welcome back, Foo'],
     lastSeen: String(new Date(2026, 10, 18, 20).getTime()),
   });
+});
+
+test('someone with no chats yet gets a hello and what Lab can do', async () => {
+  const { screen } = await renderHome();
+
+  const heading = screen.getByRole('heading');
+
+  await expect.element(heading).toBeVisible();
+
+  expect([
+    heading.element().textContent,
+    heading.element().nextElementSibling?.textContent,
+  ]).toEqual([
+    'Hello, Foo.',
+    'I’m Lab. I can read, write, run code and remember things. Start anywhere.',
+  ]);
 });
 
 test('a quiet home shows the mark at rest on the first visit', async () => {

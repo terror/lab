@@ -7,11 +7,11 @@ import { expect, test, vi } from 'vitest';
 
 import { say, useEmpty, useThinking } from './voice';
 
-function check(at: Date, absent: number, expected: string[]) {
+function check(at: Date, absent: number, expected: string[], fresh = false) {
   const greetings = Array.from({ length: 40 }, (_, index) =>
     say(
       'greeting',
-      { absent, at, name: 'Foo Bar' },
+      { absent, at, fresh, name: 'Foo Bar' },
       { quiet: false, seed: `bar${index}` }
     )
   );
@@ -20,6 +20,7 @@ function check(at: Date, absent: number, expected: string[]) {
 }
 
 test('the greeting reads the calendar, the clock, and time away', () => {
+  check(new Date(2027, 0, 1, 10), 20, ['Hello, Foo.'], true);
   check(new Date(2027, 0, 1, 10), 20, [
     'Happy new year, Foo',
     'New year, Foo. Clean notebook.',
@@ -72,7 +73,12 @@ test('a quiet greeting is the plain one for the hour', () => {
     [2, 9, 14, 20].map((hour) =>
       say(
         'greeting',
-        { absent: 20, at: new Date(2027, 0, 1, hour), name: 'Foo Bar' },
+        {
+          absent: 20,
+          at: new Date(2027, 0, 1, hour),
+          fresh: true,
+          name: 'Foo Bar',
+        },
         { quiet: true, seed: 'bar' }
       )
     )

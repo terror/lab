@@ -1,8 +1,8 @@
-import { HomeMark } from '@/components/home-mark';
 import { StartComposer } from '@/components/start-composer';
 import { Suggestions } from '@/components/suggestions';
+import { LiveMark } from '@/components/ui/live-mark';
 import { UnreadChips } from '@/components/unread-chips';
-import { startChatKey, useDraft } from '@/lib/conversations';
+import { startChatKey, useDraft, useLatestChats } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
 import { stagger } from '@/lib/motion';
 import { readStored, writeStored } from '@/lib/storage';
@@ -73,11 +73,15 @@ function Words({ text }: { text: string }) {
 export function NewChat({ user }: { user: { id: string; name: string } }) {
   const { absent, at, first } = useVisit();
   const quiet = useQuiet();
+  const chats = useLatestChats();
+  const fresh = chats.data?.length === 0;
   const greeting = say(
     'greeting',
-    { absent, at: new Date(at), name: user.name },
+    { absent, at: new Date(at), fresh, name: user.name },
     { quiet, seed: `${user.id}:${new Date(at).toDateString()}` }
   );
+  const hello = fresh && !quiet;
+  const fade = hello || (first && !quiet);
   const [, setDraft] = useDraft('new');
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);
@@ -103,17 +107,31 @@ export function NewChat({ user }: { user: { id: string; name: string } }) {
     <div className='flex flex-1 flex-col items-center justify-center overflow-y-auto pb-24'>
       <div className='flex w-full max-w-3xl flex-col items-center gap-8 px-6'>
         <div
+          key={String(chats.isPending)}
           className={cn(
             'flex flex-col items-center gap-4 text-center',
+            chats.isPending && 'invisible',
             first && 'animate-in duration-story fade-in slide-in-from-bottom-2',
             starting &&
               'opacity-0 transition duration-fast ease-in motion-safe:-translate-y-2'
           )}
         >
-          <HomeMark assemble={first && !quiet} />
+          <LiveMark
+            className='size-10'
+            state={first && !quiet ? 'assemble' : 'idle'}
+          />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
-            {first && !quiet ? <Words text={greeting} /> : greeting}
+            {fade ? <Words text={greeting} /> : greeting}
           </h1>
+          {hello && (
+            <p
+              className='max-w-md text-balance text-muted-foreground motion-safe:animate-word-in'
+              style={{ animationDelay: '240ms' }}
+            >
+              I’m Lab. I can read, write, run code and remember things. Start
+              anywhere.
+            </p>
+          )}
         </div>
         <div ref={composer} className='relative w-full'>
           <StartComposer draft='new' inputRef={input} />
