@@ -13,6 +13,17 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ListRow } from '@/components/ui/list-row';
+import { SectionHeading } from '@/components/ui/section-heading';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { usePhone } from '@/lib/media';
 import {
   type Model,
   type ModelChoice,
@@ -25,7 +36,14 @@ import {
 import { cn } from '@/lib/utils';
 import { thinkingLevelSchema } from '@lab/server/schemas';
 import { useQuery } from '@tanstack/react-query';
-import { Check, ChevronDown, Search, Star } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Star,
+} from 'lucide-react';
 import {
   type KeyboardEvent,
   type ReactElement,
@@ -266,17 +284,10 @@ function Section({ children, title }: { children: ReactNode; title: string }) {
   );
 }
 
-export function ModelPicker({
-  disabled,
-  onChange,
-  trigger,
-  value,
-}: {
-  disabled?: boolean;
-  onChange: (model: ModelChoice) => void;
-  trigger?: ReactElement;
-  value: ModelChoice | undefined;
-}) {
+function useModelMenu(
+  value: ModelChoice | undefined,
+  onChange: (model: ModelChoice) => void
+) {
   const models = useQuery(modelsQueryOptions);
   const [search, setSearch] = useState('');
   const [recent, setRecent] = useRecentModels();
@@ -299,9 +310,18 @@ export function ModelPicker({
     recent.filter((key) => !favorites.some((other) => same(key, other)))
   );
 
-  const results = searching
-    ? groupByProvider(options.filter((model) => matches(model, search)))
-    : [];
+  const empty =
+    !searching && favoriteModels.length === 0 && recentModels.length === 0;
+
+  const sections = searching
+    ? groupByProvider(options.filter((model) => matches(model, search))).map(
+        ([title, group]) => ({ models: group, title })
+      )
+    : [
+        { models: favoriteModels, title: 'Favorites' },
+        { models: recentModels, title: 'Recent' },
+        { models: empty && current ? [current] : [], title: 'Current' },
+      ].filter((section) => section.models.length > 0);
 
   const select = (choice: ModelChoice) => {
     onChange(choice);
@@ -323,85 +343,334 @@ export function ModelPicker({
     );
   };
 
+  return {
+    current,
+    empty,
+    favorite: (model: Model) => favorites.some((key) => same(key, model)),
+    options,
+    search,
+    searching,
+    sections,
+    select,
+    setSearch,
+    toggleFavorite,
+  };
+}
+
+type Picker = {
+  menu: ReturnType<typeof useModelMenu>;
+  trigger: ReactElement;
+  value: ModelChoice | undefined;
+};
+
+function SearchField({
+  className,
+  focus = false,
+  menu,
+}: {
+  className?: string;
+  focus?: boolean;
+  menu: Picker['menu'];
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 border-b bg-popover px-3',
+        className
+      )}
+    >
+      <Search
+        aria-hidden='true'
+        className='size-4 shrink-0 text-muted-foreground'
+      />
+      <input
+        aria-label='Search models'
+        className='h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground'
+        onChange={(event) => menu.setSearch(event.target.value)}
+        onKeyDown={onSearchKeyDown}
+        placeholder={`Search ${menu.options.length} models`}
+        ref={focus ? focusOnMount : undefined}
+        value={menu.search}
+      />
+    </div>
+  );
+}
+
+function Notes({ menu }: { menu: Picker['menu'] }) {
+  if (menu.searching && menu.sections.length === 0) {
+    return (
+      <p className='px-2 py-6 text-center text-sm text-muted-foreground'>
+        No models found
+      </p>
+    );
+  }
+
+  if (menu.empty) {
+    return (
+      <p className='px-2 py-3 text-xs text-muted-foreground'>
+        Search to find any model, and star the ones you use most.
+      </p>
+    );
+  }
+
+  return null;
+}
+
+function ModelMenu({ menu, trigger, value }: Picker) {
   const option = (model: Model) => (
     <ModelOption
       key={`${model.provider}:${model.id}`}
-      current={model === current}
-      favorite={favorites.some((key) => same(key, model))}
+      current={model === menu.current}
+      favorite={menu.favorite(model)}
       model={model}
-      onFavorite={() => toggleFavorite(model)}
-      onSelect={select}
+      onFavorite={() => menu.toggleFavorite(model)}
+      onSelect={menu.select}
       value={value}
     />
   );
 
-  const empty =
-    !searching && favoriteModels.length === 0 && recentModels.length === 0;
-
   return (
-    <DropdownMenu onOpenChange={() => setSearch('')}>
-      <DropdownMenuTrigger asChild>
-        {trigger ?? (
-          <Button
-            aria-label={current ? `Model: ${current.name}` : 'Model'}
-            className='min-w-0 shrink font-normal'
-            disabled={disabled || options.length === 0}
-            type='button'
-            variant='quiet'
-          >
-            <span className='truncate'>{triggerLabel(current, value)}</span>
-            <ChevronDown aria-hidden='true' data-icon='inline-end' />
-          </Button>
-        )}
-      </DropdownMenuTrigger>
+    <DropdownMenu onOpenChange={() => menu.setSearch('')}>
+      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent
         align='end'
         className='w-72 p-0'
         side='top'
         sideOffset={8}
       >
-        <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-popover px-3'>
-          <Search
-            aria-hidden='true'
-            className='size-4 shrink-0 text-muted-foreground'
-          />
-          <input
-            aria-label='Search models'
-            className='h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground'
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={onSearchKeyDown}
-            placeholder={`Search ${options.length} models`}
-            ref={focusOnMount}
-            value={search}
-          />
-        </div>
+        <SearchField className='sticky top-0 z-10' focus menu={menu} />
         <div className='p-1'>
-          {searching && results.length === 0 && (
-            <p className='px-2 py-6 text-center text-sm text-muted-foreground'>
-              No models found
-            </p>
-          )}
-          {!searching && favoriteModels.length > 0 && (
-            <Section title='Favorites'>{favoriteModels.map(option)}</Section>
-          )}
-          {!searching && recentModels.length > 0 && (
-            <Section title='Recent'>{recentModels.map(option)}</Section>
-          )}
-          {empty && current && (
-            <Section title='Current'>{option(current)}</Section>
-          )}
-          {empty && (
-            <p className='px-2 py-3 text-xs text-muted-foreground'>
-              Search to find any model, and star the ones you use most.
-            </p>
-          )}
-          {results.map(([provider, group]) => (
-            <Section key={provider} title={provider}>
-              {group.map(option)}
+          {menu.sections.map(({ models, title }) => (
+            <Section key={title} title={title}>
+              {models.map(option)}
             </Section>
           ))}
+          <Notes menu={menu} />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function SheetModels({
+  menu,
+  onPick,
+}: {
+  menu: Picker['menu'];
+  onPick: (model: Model) => void;
+}) {
+  return (
+    <>
+      <SheetHeader className='pb-2'>
+        <SheetTitle>Model</SheetTitle>
+        <SheetDescription className='sr-only'>
+          Choose the model that answers
+        </SheetDescription>
+      </SheetHeader>
+      <SearchField className='border-t' menu={menu} />
+      <div className='min-h-0 overflow-y-auto px-4 pt-2 pb-4'>
+        {menu.sections.map(({ models, title }) => (
+          <section key={title}>
+            <SectionHeading>{title}</SectionHeading>
+            <ul>
+              {models.map((model) => (
+                <ListRow
+                  key={`${model.provider}:${model.id}`}
+                  actions={
+                    <Button
+                      aria-label={`Favorite ${model.name}`}
+                      aria-pressed={menu.favorite(model)}
+                      onClick={() => menu.toggleFavorite(model)}
+                      size='icon-sm'
+                      variant='quiet'
+                    >
+                      <Star
+                        aria-hidden='true'
+                        className={cn(menu.favorite(model) && 'fill-current')}
+                      />
+                    </Button>
+                  }
+                  asChild
+                >
+                  <button
+                    aria-current={model === menu.current ? 'true' : undefined}
+                    onClick={() => onPick(model)}
+                    type='button'
+                  >
+                    <ProviderLogo
+                      id={model.provider}
+                      name={model.providerName}
+                      size='sm'
+                    />
+                    <span className='min-w-0 flex-1 truncate'>
+                      {model.name}
+                    </span>
+                    {model === menu.current && (
+                      <Check aria-hidden='true' className='size-4' />
+                    )}
+                    {hasLevels(model) && (
+                      <ChevronRight
+                        aria-hidden='true'
+                        className='size-4 text-muted-foreground'
+                      />
+                    )}
+                  </button>
+                </ListRow>
+              ))}
+            </ul>
+          </section>
+        ))}
+        <Notes menu={menu} />
+      </div>
+    </>
+  );
+}
+
+function SheetLevels({
+  current,
+  model,
+  onBack,
+  onChoose,
+  value,
+}: {
+  current: Model | undefined;
+  model: Model;
+  onBack: () => void;
+  onChoose: (level: ThinkingLevel) => void;
+  value: ModelChoice | undefined;
+}) {
+  const selected = model === current ? currentLevel(model, value) : undefined;
+
+  return (
+    <>
+      <SheetHeader className='flex-row items-center gap-2 pb-2'>
+        <Button
+          aria-label='Back'
+          onClick={onBack}
+          size='icon-sm'
+          variant='quiet'
+        >
+          <ChevronLeft aria-hidden='true' />
+        </Button>
+        <SheetTitle>{model.name}</SheetTitle>
+        <SheetDescription className='sr-only'>
+          Choose how much {model.name} thinks
+        </SheetDescription>
+      </SheetHeader>
+      <div className='px-4 pb-4'>
+        <SectionHeading>Thinking</SectionHeading>
+        <ul>
+          {supportedLevels(model).map((level) => (
+            <ListRow key={level} asChild>
+              <button
+                aria-current={level === selected ? 'true' : undefined}
+                onClick={() => onChoose(level)}
+                type='button'
+              >
+                <span className='flex-1'>{levelLabels[level]}</span>
+                {level === selected && (
+                  <Check aria-hidden='true' className='size-4' />
+                )}
+              </button>
+            </ListRow>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
+function ModelSheet({ menu, trigger, value }: Picker) {
+  const [open, setOpen] = useState(false);
+  const [leveled, setLeveled] = useState<Model>();
+
+  const choose = (choice: ModelChoice) => {
+    menu.select(choice);
+    setOpen(false);
+  };
+
+  const pick = (model: Model) => {
+    if (hasLevels(model)) {
+      setLeveled(model);
+      return;
+    }
+
+    choose({ id: model.id, provider: model.provider, thinkingLevel: 'off' });
+  };
+
+  return (
+    <Sheet
+      onOpenChange={(next) => {
+        setOpen(next);
+        setLeveled(undefined);
+        menu.setSearch('');
+      }}
+      open={open}
+    >
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent
+        className='max-h-4/5 gap-0 rounded-t-dialog'
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        showCloseButton={false}
+        side='bottom'
+      >
+        {leveled && (
+          <SheetLevels
+            current={menu.current}
+            model={leveled}
+            onBack={() => setLeveled(undefined)}
+            onChoose={(thinkingLevel) =>
+              choose({
+                id: leveled.id,
+                provider: leveled.provider,
+                thinkingLevel,
+              })
+            }
+            value={value}
+          />
+        )}
+        {!leveled && <SheetModels menu={menu} onPick={pick} />}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function ModelPicker({
+  disabled,
+  onChange,
+  trigger,
+  value,
+}: {
+  disabled?: boolean;
+  onChange: (model: ModelChoice) => void;
+  trigger?: ReactElement;
+  value: ModelChoice | undefined;
+}) {
+  const menu = useModelMenu(value, onChange);
+  const phone = usePhone();
+
+  const Picker = phone ? ModelSheet : ModelMenu;
+
+  return (
+    <Picker
+      menu={menu}
+      trigger={
+        trigger ?? (
+          <Button
+            aria-label={menu.current ? `Model: ${menu.current.name}` : 'Model'}
+            className='min-w-0 shrink font-normal'
+            disabled={disabled || menu.options.length === 0}
+            type='button'
+            variant='quiet'
+          >
+            <span className='truncate'>
+              {triggerLabel(menu.current, value)}
+            </span>
+            <ChevronDown aria-hidden='true' data-icon='inline-end' />
+          </Button>
+        )
+      }
+      value={value}
+    />
   );
 }
