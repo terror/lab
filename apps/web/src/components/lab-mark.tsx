@@ -3,6 +3,12 @@ import { cn } from '@/lib/utils';
 export const markOutline =
   'M10 2H22V6H20V14H24V18H26V22H30V26H26V30H6V26H2V22H6V18H8V14H12V6H10Z';
 
+export const markShapes = {
+  blue: 'M8 18H16V26H26V30H6V26H2V22H6V18Z',
+  coral: 'M10 2H22V6H20V14H24V18H8V14H12V6H10Z',
+  yellow: 'M16 18H26V22H30V26H16Z',
+};
+
 export function LabMark({ className }: { className?: string }) {
   return (
     <svg
@@ -11,12 +17,9 @@ export function LabMark({ className }: { className?: string }) {
       fill='none'
       viewBox='0 0 32 32'
     >
-      <path
-        className='fill-spark-coral'
-        d='M10 2H22V6H20V14H24V18H8V14H12V6H10Z'
-      />
-      <path className='fill-spark-blue' d='M8 18H16V26H26V30H6V26H2V22H6V18Z' />
-      <path className='fill-spark-yellow' d='M16 18H26V22H30V26H16Z' />
+      <path className='fill-spark-coral' d={markShapes.coral} />
+      <path className='fill-spark-blue' d={markShapes.blue} />
+      <path className='fill-spark-yellow' d={markShapes.yellow} />
     </svg>
   );
 }
