@@ -80,10 +80,7 @@ test('a branched chat is read with the messages it shares', async () => {
 
   await call(headers, 'PATCH', '/memory', { referenceChats: true });
 
-  script(
-    toolCall('chat_read', { id: branch.id }),
-    fauxAssistantMessage('qux')
-  );
+  script(toolCall('chat_read', { id: branch.id }), fauxAssistantMessage('qux'));
 
   const reader = await chat(headers, { content: 'quux' });
 

@@ -35,9 +35,9 @@ export const historyAccess: HistoryAccess = {
       .from(table)
       .where(
         or(
-          ...segments.map(({ cutoff, id: chat }) =>
+          ...segments.map(({ cutoff, id: segment }) =>
             and(
-              eq(table.conversationId, chat),
+              eq(table.conversationId, segment),
               cutoff === undefined ? undefined : lte(table.entryId, cutoff)
             )
           )
