@@ -131,6 +131,70 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
   });
 });
 
+function Finishing() {
+  const [running, setRunning] = useState(true);
+
+  return (
+    <>
+      <Button onClick={() => setRunning(false)}>qux</Button>
+      <ul>
+        {[1, 2, 3, 4, 5, 6, 7].map((id) => (
+          <ConversationItem
+            key={id}
+            conversation={{
+              id,
+              pinned: false,
+              projectId: null,
+              running,
+              title: 'foo',
+              unread: !running,
+              waiting: false,
+            }}
+            selected={false}
+          />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function marks() {
+  return [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-slot=list-row-status] > [data-slot]'
+    ),
+  ].map((mark) => [
+    mark.dataset.slot,
+    mark.dataset.state,
+    mark.style.getPropertyValue('--live-mark-delay'),
+  ]);
+}
+
+test('chats that finish in the background hand their marks over to dots, six at a time', async () => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Finishing }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('button', { name: 'qux' }).click();
+
+  await expect.poll(marks).toEqual([
+    ['live-mark', 'handoff', '0s'],
+    ['live-mark', 'handoff', '0.03s'],
+    ['live-mark', 'handoff', '0.06s'],
+    ['live-mark', 'handoff', '0.09s'],
+    ['live-mark', 'handoff', '0.12s'],
+    ['live-mark', 'handoff', '0.15s'],
+    ['dot', undefined, ''],
+  ]);
+
+  await expect
+    .poll(marks, { timeout: 3_000 })
+    .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
+});
+
 test('undoing an undone move puts the chat back in the project', async () => {
   const fetch = stubFetch(({ pathname }) => {
     if (pathname === '/api/projects') {

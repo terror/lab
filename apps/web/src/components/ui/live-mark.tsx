@@ -16,7 +16,14 @@ function LiveMark({
   state = 'idle',
   ...props
 }: Omit<React.ComponentProps<'svg'>, 'children'> & {
-  state?: 'assemble' | 'done' | 'error' | 'idle' | 'proud' | 'thinking';
+  state?:
+    | 'assemble'
+    | 'done'
+    | 'error'
+    | 'handoff'
+    | 'idle'
+    | 'proud'
+    | 'thinking';
 }) {
   return (
     <svg
@@ -43,6 +50,15 @@ function LiveMark({
           className='fill-spark-yellow'
           d={markShapes.yellow}
           data-part='yellow'
+        />
+        <rect
+          className='fill-spark-coral'
+          data-part='dot'
+          height='16'
+          rx='4.57'
+          width='16'
+          x='8'
+          y='8'
         />
         <rect
           className='fill-spark-blue'
