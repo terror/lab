@@ -64,23 +64,38 @@ test('the changelog loads from GitHub once and lists user-facing pull requests n
     ],
     [
       'pulls',
-      [
-        { body: 'Bar the baz.', labels: [{ name: 'user-facing' }], number: 14 },
-        {
-          body: 'Foo the bar.\n\nhttps://example.com/foo.mp4',
-          labels: [{ name: 'user-facing' }],
-          number: 12,
-        },
-        { body: 'Qux the quux.', labels: [], number: 13 },
-      ],
+      Array.from({ length: 100 }, (_, index) => ({
+        body: 'Qux the quux.',
+        labels: [],
+        number: 100 + index,
+      })),
+    ],
+    [
+      'repo:terror/lab is:pr is:merged label:user-facing',
+      {
+        items: [
+          {
+            body: 'Bar the baz.',
+            labels: [{ name: 'user-facing' }],
+            number: 14,
+          },
+          {
+            body: 'Foo the bar.\n\nhttps://example.com/foo.mp4',
+            labels: [{ name: 'user-facing' }],
+            number: 12,
+          },
+        ],
+      },
     ],
   ]);
 
   const github = async (input: string | URL) => {
-    const [, kind = ''] =
-      /repos\/[^/]+\/[^/]+\/(commits|pulls)/.exec(String(input)) ?? [];
+    const url = new URL(input);
 
-    return Response.json(fixtures.get(kind));
+    const [, kind = url.searchParams.get('q') ?? ''] =
+      /repos\/[^/]+\/[^/]+\/(commits|pulls)/.exec(url.pathname) ?? [];
+
+    return Response.json(fixtures.get(kind) ?? null);
   };
 
   const headers = await signIn();
