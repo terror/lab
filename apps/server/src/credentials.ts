@@ -17,13 +17,22 @@ export function deriveKey(secret: string) {
   return createHash('sha256').update(`${secret}:provider-credentials`).digest();
 }
 
-const keys = [
-  env.LAB_CREDENTIALS_KEY,
-  env.LAB_CREDENTIALS_KEY_PREVIOUS,
-  env.BETTER_AUTH_SECRET,
-].flatMap((secret) => (secret ? [deriveKey(secret)] : []));
+type Secrets = Pick<
+  typeof env,
+  'BETTER_AUTH_SECRET' | 'LAB_CREDENTIALS_KEY' | 'LAB_CREDENTIALS_KEY_PREVIOUS'
+>;
 
-const current = keys[0] ?? deriveKey(env.BETTER_AUTH_SECRET);
+export function keyring(secrets: Secrets) {
+  const keys = [
+    secrets.LAB_CREDENTIALS_KEY,
+    secrets.LAB_CREDENTIALS_KEY_PREVIOUS,
+    secrets.BETTER_AUTH_SECRET,
+  ].flatMap((secret) => (secret ? [deriveKey(secret)] : []));
+
+  return { current: keys[0] ?? deriveKey(secrets.BETTER_AUTH_SECRET), keys };
+}
+
+const { current, keys } = keyring(env);
 
 function encrypt(text: string, key: Buffer) {
   const iv = randomBytes(12);
