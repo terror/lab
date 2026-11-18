@@ -1,6 +1,6 @@
 import { flushHelperUsage } from './helper-usage';
 import { historyPipeline } from './history';
-import { libraryPipeline } from './library';
+import { libraryPipeline } from './library-items';
 import { flushProjections, projectAll } from './projections';
 import { usagePipeline } from './usage';
 
