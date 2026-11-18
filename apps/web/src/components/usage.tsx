@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { conversationTitle } from '@/lib/conversations';
+import { formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
 import { type Usage, usageQueryOptions } from '@/lib/usage';
 import { useQuery } from '@tanstack/react-query';
@@ -28,20 +29,6 @@ const ranges = [
 
 const rangeSchema = z.number().int();
 
-const currency = new Intl.NumberFormat('en-US', {
-  currency: 'USD',
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2,
-  style: 'currency',
-});
-
-const precise = new Intl.NumberFormat('en-US', {
-  currency: 'USD',
-  maximumFractionDigits: 4,
-  minimumFractionDigits: 2,
-  style: 'currency',
-});
-
 const compact = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
   notation: 'compact',
@@ -52,12 +39,6 @@ const day = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   timeZone: 'UTC',
 });
-
-function spend(value: number) {
-  return value > 0 && value < 1
-    ? precise.format(value)
-    : currency.format(value);
-}
 
 function date(value: string) {
   return day.format(new Date(`${value}T00:00:00Z`));
@@ -88,7 +69,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
           <Tooltip key={entry.date}>
             <TooltipTrigger asChild>
               <button
-                aria-label={`${date(entry.date)}: ${spend(entry.cost)}`}
+                aria-label={`${date(entry.date)}: ${formatSpend(entry.cost)}`}
                 className='group flex h-full min-w-0 flex-1 items-end outline-none focus-visible:bg-accent'
                 type='button'
               >
@@ -101,7 +82,7 @@ function SpendChart({ daily }: { daily: Usage['daily'] }) {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              {date(entry.date)} · {spend(entry.cost)} ·{' '}
+              {date(entry.date)} · {formatSpend(entry.cost)} ·{' '}
               {compact.format(entry.tokens)} tokens
             </TooltipContent>
           </Tooltip>
@@ -140,7 +121,7 @@ function Models({ models }: { models: Usage['models'] }) {
               <td className='py-1.5 text-right'>
                 {compact.format(model.input + model.output)}
               </td>
-              <td className='py-1.5 text-right'>{spend(model.cost)}</td>
+              <td className='py-1.5 text-right'>{formatSpend(model.cost)}</td>
             </tr>
           ))}
         </tbody>
@@ -163,7 +144,7 @@ function Chats({ conversations }: { conversations: Usage['conversations'] }) {
             >
               <span className='truncate'>{conversationTitle(title)}</span>
               <span className='shrink-0 text-muted-foreground tabular-nums'>
-                {spend(cost)}
+                {formatSpend(cost)}
               </span>
             </Link>
           </li>
@@ -209,7 +190,10 @@ export function UsagePanel() {
       {usage.data && (
         <>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-            <Stat label='Spend' value={spend(usage.data.summary?.cost ?? 0)} />
+            <Stat
+              label='Spend'
+              value={formatSpend(usage.data.summary?.cost ?? 0)}
+            />
             <Stat
               label='Input tokens'
               value={compact.format(usage.data.summary?.input ?? 0)}
