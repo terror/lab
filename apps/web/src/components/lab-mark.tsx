@@ -1,5 +1,8 @@
 import { cn } from '@/lib/utils';
 
+export const markOutline =
+  'M10 2H22V6H20V14H24V18H26V22H30V26H26V30H6V26H2V22H6V18H8V14H12V6H10Z';
+
 export function LabMark({ className }: { className?: string }) {
   return (
     <svg
