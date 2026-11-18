@@ -9,7 +9,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'A 7px marker beside a row. Live is blue and pulses on a step or a subagent lane that is running. Attention is coral and still, on a chat that needs you. Raw coral is 2.3:1 on a light surface, so give that row a medium-weight title too. For a running chat in the activity line or the sidebar, use LiveMark, not a dot.',
+          'A 7px marker beside a row. Live is blue and pulses on a step or a subagent lane that is running. Attention is coral and still, on a chat that needs you. Raw coral is 2.3:1 on a light surface and the dot is hidden from screen readers, so give that row a medium-weight title and screen-reader text too. For a running chat in the activity line or the sidebar, use LiveMark, not a dot.',
       },
     },
   },
