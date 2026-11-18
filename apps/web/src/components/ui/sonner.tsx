@@ -1,9 +1,9 @@
-import { useTheme } from '@/lib/theme';
+import { useDark } from '@/lib/theme';
 import type { CSSProperties } from 'react';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
 function Toaster(props: ToasterProps) {
-  const [theme] = useTheme();
+  const dark = useDark();
 
   return (
     <Sonner
@@ -15,7 +15,7 @@ function Toaster(props: ToasterProps) {
           '--normal-text': 'var(--popover-foreground)',
         } as CSSProperties
       }
-      theme={theme}
+      theme={dark ? 'dark' : 'light'}
       {...props}
     />
   );
