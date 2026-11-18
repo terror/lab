@@ -31,7 +31,7 @@ async function renderHome({
 } = {}) {
   const preferences = { ...defaultPreferences, personality };
 
-  window.localStorage.setItem('lab:preferences', JSON.stringify(preferences));
+  window.localStorage.setItem('lab:foo:preferences', JSON.stringify(preferences));
 
   const responses: Record<string, unknown> = {
     '/api/conversations': { conversations: chats, next: null },
