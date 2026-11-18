@@ -11,7 +11,13 @@ import { expect, test } from 'vitest';
 import { ArtifactPage } from './artifact-page';
 
 function renderPage(artifactId: string) {
+  const state = { failing: false };
+
   const fetch = stubFetch(({ pathname }) => {
+    if (state.failing) {
+      return Response.json({ error: 'foo' }, { status: 502 });
+    }
+
     if (pathname === '/api/projects') {
       return Response.json({
         projects: [{ chats: 0, id: 7, instructions: '', name: 'foo' }],
@@ -63,6 +69,7 @@ function renderPage(artifactId: string) {
   return {
     fetch,
     rendered: renderWithQuery(<RouterProvider router={router} />),
+    state,
   };
 }
 
@@ -103,6 +110,28 @@ test('a pinned app opens as a page that moves or drops its pin', async () => {
       ['PUT', '/api/conversations/1/artifacts/bar/pin', '{"projectId":null}'],
       ['DELETE', '/api/conversations/1/artifacts/bar/pin', undefined],
     ]);
+});
+
+test('an open app stays when a refresh fails', async () => {
+  const { rendered, state } = renderPage('bar');
+
+  const { client, screen } = await rendered;
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'baz' }))
+    .toBeVisible();
+
+  state.failing = true;
+
+  await client.refetchQueries();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'baz' }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText('This app isn’t available'))
+    .not.toBeInTheDocument();
 });
 
 test('an app from a deleted chat is unavailable', async () => {
