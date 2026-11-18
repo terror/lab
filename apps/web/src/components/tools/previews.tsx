@@ -5,7 +5,7 @@ import { type ToolView } from './types';
 
 const PREVIEW_ITEMS = 5;
 
-export function Label({ children }: { children: string }) {
+function Label({ children }: { children: string }) {
   return <span className='text-xs text-muted-foreground'>{children}</span>;
 }
 
@@ -18,16 +18,10 @@ export type PreviewItem = {
   meta?: string;
 };
 
-export const linkClass =
+const linkClass =
   'group flex min-w-0 flex-1 items-baseline justify-between gap-4 rounded-control';
 
-export function PreviewRow({
-  chatId,
-  href,
-  label,
-  meta,
-  projectId,
-}: PreviewItem) {
+function PreviewRow({ chatId, href, label, meta, projectId }: PreviewItem) {
   const content = (
     <>
       <span className='min-w-0 truncate text-foreground/90 underline-offset-4 group-hover:underline'>

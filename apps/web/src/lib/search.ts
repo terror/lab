@@ -3,7 +3,7 @@ import type { InferResponseType } from 'hono/client';
 
 import { call, client } from './client';
 
-export type SearchResults = InferResponseType<typeof client.search.$get, 200>;
+type SearchResults = InferResponseType<typeof client.search.$get, 200>;
 
 export type Segment = SearchResults['chats'][number]['snippet'] extends
   | (infer S)[]

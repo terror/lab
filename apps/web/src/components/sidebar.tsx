@@ -260,7 +260,7 @@ function SortMenu() {
   );
 }
 
-export const navPages = [
+const navPages = [
   { icon: SquarePen, label: 'New chat', to: '/' },
   { icon: Clock, label: 'Scheduled', to: '/scheduled' },
   { icon: LibraryBig, label: 'Library', to: '/library' },

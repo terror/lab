@@ -16,7 +16,7 @@ export type SlashCommand = {
   run: (context: CommandContext) => Promise<string | undefined>;
 };
 
-export const commands: readonly SlashCommand[] = [
+const commands: readonly SlashCommand[] = [
   {
     available: ({ conversationId }) => conversationId !== undefined,
     description: 'Summarize earlier messages to free up context',
