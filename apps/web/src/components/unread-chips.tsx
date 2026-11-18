@@ -34,6 +34,28 @@ type Chat = {
   title: string | null;
 };
 
+function NeedsYou({
+  onOpen,
+  title,
+}: {
+  onOpen: () => void;
+  title: string | null;
+}) {
+  return (
+    <button
+      className='flex h-8 items-center gap-2 rounded-full bg-muted px-3 text-sm transition-colors hover:bg-foreground/10'
+      onClick={onOpen}
+      type='button'
+    >
+      <Dot tone='attention' />
+      <span className='max-w-40 truncate font-medium'>
+        {conversationTitle(title)}
+      </span>{' '}
+      <span className='text-muted-foreground'>Needs you</span>
+    </button>
+  );
+}
+
 function Chip({
   chat,
   onOpen,
@@ -140,7 +162,9 @@ export function UnreadChips() {
 
   const running = unread.data?.running ?? 0;
 
-  if (chats.length === 0 && running === 0) {
+  const waiting = unread.data?.waiting ?? [];
+
+  if (chats.length === 0 && running === 0 && waiting.length === 0) {
     return null;
   }
 
@@ -152,11 +176,16 @@ export function UnreadChips() {
 
   return (
     <ul
-      aria-label='Finished while you were away'
+      aria-label='While you were away'
       className='flex flex-wrap justify-center gap-1.5'
     >
-      {shown.map((chat, index) => (
+      {waiting.map((chat, index) => (
         <m.li key={chat.id} {...rise(index)}>
+          <NeedsYou onOpen={() => void open(chat.id)} title={chat.title} />
+        </m.li>
+      ))}
+      {shown.map((chat, index) => (
+        <m.li key={chat.id} {...rise(waiting.length + index)}>
           <Chip
             chat={chat}
             onOpen={() => void open(chat.id)}
@@ -165,13 +194,13 @@ export function UnreadChips() {
         </m.li>
       ))}
       {rest.length > 0 && (
-        <m.li {...rise(shown.length)}>
+        <m.li {...rise(waiting.length + shown.length)}>
           <More chats={rest} onOpen={(id) => void open(id)} />
         </m.li>
       )}
       {running > 0 && (
         <m.li
-          {...rise(shown.length + 1)}
+          {...rise(waiting.length + shown.length + 1)}
           className='flex h-8 items-center gap-2 rounded-full px-3 text-sm text-muted-foreground tabular-nums ring-1 ring-border ring-inset'
         >
           <LiveMark className='size-3.5' state='thinking' />

@@ -9,6 +9,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { LiveMark } from '@/components/ui/live-mark';
 import {
   conversationTitle,
   conversationsQueryKey,
@@ -28,6 +30,7 @@ import {
 import { projectsQueryOptions, useProjects } from '@/lib/projects';
 import { useUndoTrash } from '@/lib/trash';
 import { undoToast } from '@/lib/undo';
+import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -35,13 +38,18 @@ import {
   Folder,
   FolderInput,
   FolderMinus,
-  LoaderCircle,
   Pencil,
   Pin,
   PinOff,
   Trash2,
 } from 'lucide-react';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 
 function RenameInput({
@@ -196,6 +204,45 @@ function MenuItems({
   );
 }
 
+type Activity = 'idle' | 'running' | 'unread' | 'waiting';
+
+const indicators: Record<
+  Activity,
+  { attention: boolean; label: string; mark: ReactNode } | undefined
+> = {
+  idle: undefined,
+  running: {
+    attention: false,
+    label: 'Running',
+    mark: <LiveMark className='size-3.5' state='thinking' />,
+  },
+  unread: { attention: true, label: 'Unread', mark: <Dot tone='attention' /> },
+  waiting: {
+    attention: true,
+    label: 'Needs you',
+    mark: <Dot tone='attention' />,
+  },
+};
+
+function activity(
+  {
+    running,
+    unread,
+    waiting,
+  }: { running: boolean; unread: boolean; waiting: boolean },
+  selected: boolean
+): Activity {
+  if (waiting) {
+    return 'waiting';
+  }
+
+  if (running) {
+    return 'running';
+  }
+
+  return unread && !selected ? 'unread' : 'idle';
+}
+
 export function ConversationItem({
   conversation,
   onSelect,
@@ -208,6 +255,7 @@ export function ConversationItem({
     running: boolean;
     title: string | null;
     unread: boolean;
+    waiting: boolean;
   };
   onSelect?: () => void;
   selected: boolean;
@@ -219,8 +267,6 @@ export function ConversationItem({
   const renaming = useRef(false);
 
   const title = conversationTitle(conversation.title);
-
-  const unread = conversation.unread && !selected;
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -308,16 +354,7 @@ export function ConversationItem({
     );
   }
 
-  const status = conversation.running ? (
-    <LoaderCircle
-      aria-hidden='true'
-      className='size-3.5 text-muted-foreground motion-safe:animate-spin'
-    />
-  ) : (
-    unread && (
-      <span aria-hidden='true' className='size-2 rounded-full bg-foreground' />
-    )
-  );
+  const indicator = indicators[activity(conversation, selected)];
 
   return (
     <ContextMenu>
@@ -348,8 +385,9 @@ export function ConversationItem({
             </DropdownMenu>
           }
           asChild
+          className={cn(indicator?.attention && 'font-medium')}
           selected={selected}
-          status={status}
+          status={indicator?.mark}
         >
           <Link
             aria-current={selected ? 'page' : undefined}
@@ -358,8 +396,7 @@ export function ConversationItem({
             to='/c/$id'
           >
             <span className='truncate'>{title}</span>
-            {conversation.running && <span className='sr-only'>Running</span>}
-            {unread && <span className='sr-only'>Unread</span>}
+            {indicator && <span className='sr-only'>{indicator.label}</span>}
           </Link>
         </SidebarRow>
       </ContextMenuTrigger>

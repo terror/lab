@@ -54,6 +54,7 @@ function renderSidebar({
               running: false,
               title: 'bar',
               unread: false,
+              waiting: false,
             },
           ]
         : [];
