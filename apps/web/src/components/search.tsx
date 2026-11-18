@@ -331,7 +331,7 @@ function useResultGroups(query: string, onDone: () => void) {
     [data, go, projectNames, query, sections]
   );
 
-  return { groups, pending: results.isPending };
+  return { failed: results.isError, groups, pending: results.isPending };
 }
 
 function EmptyQuery({
@@ -483,7 +483,7 @@ function Palette({
 
   const query = useDeferredValue(search.trim());
 
-  const { groups, pending } = useResultGroups(query, onDone);
+  const { failed, groups, pending } = useResultGroups(query, onDone);
 
   const counts: Record<Scope, number> = {
     chats: groups.chats.length,
@@ -524,7 +524,9 @@ function Palette({
 
   const scoped = visible.length > 1;
 
-  const unmatched = query !== '' && !scoped && !pending;
+  const searchFailed = query !== '' && failed;
+
+  const unmatched = query !== '' && !scoped && !pending && !failed;
 
   const ask = () => {
     if (!query) {
@@ -576,6 +578,11 @@ function Palette({
       <div className='h-px bg-border' />
       {scoped && (
         <ScopePills counts={counts} onScope={setScope} scope={scope} />
+      )}
+      {searchFailed && (
+        <p className='truncate px-5 pt-3 pb-1 text-sm text-muted-foreground'>
+          Couldn’t search for “{query}”.
+        </p>
       )}
       {unmatched && (
         <p className='truncate px-5 pt-3 pb-1 text-sm text-muted-foreground'>
