@@ -12,7 +12,7 @@ const manageConnectors = (
 function ConnectorCard({ connector }: { connector: unknown }) {
   const name = text(field(connector, 'name'));
 
-  const url = text(field(connector, 'url'));
+  const host = text(field(connector, 'host'));
 
   if (!name) {
     return undefined;
@@ -21,7 +21,7 @@ function ConnectorCard({ connector }: { connector: unknown }) {
   return (
     <Card className='gap-0.5 text-sm' variant='inset'>
       <span className='font-medium'>{name}</span>
-      {url && <span className='truncate text-muted-foreground'>{url}</span>}
+      {host && <span className='truncate text-muted-foreground'>{host}</span>}
     </Card>
   );
 }

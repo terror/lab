@@ -19,11 +19,11 @@ type ConnectorStatus =
 export type ConnectorSummary = {
   enabled: boolean;
   error: string | null;
+  host: string;
   id: number;
   name: string;
   status: ConnectorStatus;
   tools: number;
-  url: string;
 };
 
 export type ConnectorChange = { enabled?: boolean; name?: string };
@@ -52,7 +52,7 @@ const states: Record<ConnectorStatus, (connector: ConnectorSummary) => string> =
   };
 
 function line(connector: ConnectorSummary) {
-  return `- [${connector.id}] ${connector.name} (${connector.url}): ${states[connector.status](connector)}`;
+  return `- [${connector.id}] ${connector.name} (${connector.host}): ${states[connector.status](connector)}`;
 }
 
 const id = int({ description: 'The id of the connector.', minimum: 1 });
