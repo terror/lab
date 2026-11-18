@@ -104,7 +104,7 @@ test('the greeting is picked once a session and notices a long absence', async (
   vi.useFakeTimers({ toFake: ['Date'] });
 
   window.localStorage.setItem(
-    'lab:last-seen',
+    'lab:foo:last-seen',
     JSON.stringify(new Date(2026, 10, 1).getTime())
   );
 
@@ -128,7 +128,7 @@ test('the greeting is picked once a session and notices a long absence', async (
 
   expect({
     greetings,
-    lastSeen: window.localStorage.getItem('lab:last-seen'),
+    lastSeen: window.localStorage.getItem('lab:foo:last-seen'),
   }).toEqual({
     greetings: ['Welcome back, Foo', 'Welcome back, Foo'],
     lastSeen: String(new Date(2026, 10, 18, 20).getTime()),
