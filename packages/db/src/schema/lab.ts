@@ -300,3 +300,24 @@ export const artifactState = pgTable(
     index('artifact_state_ownerId_idx').on(table.ownerId),
   ]
 );
+
+export const artifactPin = pgTable(
+  'artifact_pin',
+  {
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    artifactId: text('artifact_id').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    projectId: integer('project_id').references(() => project.id, {
+      onDelete: 'cascade',
+    }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.artifactId] }),
+    index('artifact_pin_ownerId_idx').on(table.ownerId),
+  ]
+);

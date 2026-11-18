@@ -12,6 +12,7 @@ import { getBunServer } from '@hono/bun';
 import { schema } from '@lab/db';
 import {
   ANSWER_LENGTH,
+  type Artifact,
   ArtifactsDoc,
   PlanDoc,
   QuestionsDoc,
@@ -28,6 +29,7 @@ import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 
 import { ASK_PROMPT_LENGTH, askModel } from './artifact-ask';
+import { listPins, pinArtifact, unpinArtifact } from './artifact-pins';
 import { deleteValue, readValue, saveValue } from './artifact-state';
 import { type User, requireUser } from './auth';
 import { type Parent, branchPoint, chatForks } from './branches';
@@ -125,6 +127,11 @@ const stateValue = validator(
 const asking = validator(
   'json',
   z.object({ prompt: z.string().trim().min(1).max(ASK_PROMPT_LENGTH) })
+);
+
+const pinning = validator(
+  'json',
+  z.object({ projectId: z.number().int().positive().nullable() })
 );
 
 const answering = validator(
@@ -402,7 +409,7 @@ const owned = createMiddleware<{
 });
 
 const artifact = createMiddleware<{
-  Variables: { conversation: Conversation };
+  Variables: { artifact: Artifact; conversation: Conversation };
 }>(async (c, next) => {
   const doc = await harness.snapshot(
     ArtifactsDoc,
@@ -410,7 +417,10 @@ const artifact = createMiddleware<{
     BACKGROUND_CONTEXT
   );
 
-  found(doc?.artifacts[c.req.param('artifactId') ?? ''], 'Artifact not found');
+  c.set(
+    'artifact',
+    found(doc?.artifacts[c.req.param('artifactId') ?? ''], 'Artifact not found')
+  );
 
   await next();
 });
@@ -421,6 +431,7 @@ const conversations = new Hono()
     c.json(await listConversations(c.get('user'), c.req.valid('query')))
   )
   .get('/unread', async (c) => c.json(await listUnread(c.get('user'))))
+  .get('/pins', async (c) => c.json({ pins: await listPins(c.get('user').id) }))
   .post('/', rateLimit('messages'), creation, async (c) => {
     const user = c.get('user');
     const {
@@ -733,6 +744,50 @@ const conversations = new Hono()
 
     return c.body(null, 204);
   })
+  .get(
+    '/:id/artifacts/:artifactId',
+    artifactParams,
+    owned,
+    artifact,
+    async (c) => {
+      const { content, title, version } = c.var.artifact;
+
+      return c.json({ content, title, version });
+    }
+  )
+  .put(
+    '/:id/artifacts/:artifactId/pin',
+    artifactParams,
+    owned,
+    artifact,
+    pinning,
+    async (c) => {
+      found(
+        await pinArtifact(
+          c.get('user').id,
+          c.var.conversation.id,
+          c.req.valid('param').artifactId,
+          c.req.valid('json').projectId
+        ),
+        'Project not found'
+      );
+
+      return c.body(null, 204);
+    }
+  )
+  .delete(
+    '/:id/artifacts/:artifactId/pin',
+    artifactParams,
+    owned,
+    async (c) => {
+      await unpinArtifact(
+        c.var.conversation.id,
+        c.req.valid('param').artifactId
+      );
+
+      return c.body(null, 204);
+    }
+  )
   .get(
     '/:id/artifacts/:artifactId/state',
     artifactParams,

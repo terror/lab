@@ -232,6 +232,13 @@
       "when": 1795020003181,
       "tag": "0032_artifact_state",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795020088747,
+      "tag": "0033_artifact_pins",
+      "breakpoints": true
     }
   ]
 }
