@@ -1,6 +1,9 @@
 import { ToolConversation } from '@/components/tools';
 import { confetti } from '@/lib/confetti';
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
+import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
@@ -35,11 +38,13 @@ test('each edit sends the whole plan', async () => {
 
   await expect
     .poll(() =>
-      fetch.mock.calls.map(([input, init]) => ({
-        body: typeof init?.body === 'string' && JSON.parse(init.body),
-        method: init?.method,
-        path: requestUrl(input).pathname,
-      }))
+      fetch.mock.calls
+        .filter(([, init]) => init?.method === 'PUT')
+        .map(([input, init]) => ({
+          body: typeof init?.body === 'string' && JSON.parse(init.body),
+          method: init?.method,
+          path: requestUrl(input).pathname,
+        }))
     )
     .toEqual(
       [
@@ -98,4 +103,19 @@ test('a plan celebrates once when its last step is done', async () => {
       .mocked(confetti)
       .mock.calls.map(([element]) => element.getAttribute('data-slot'))
   ).toEqual(['progress-count']);
+});
+
+test('a plan finishes without confetti when Lab is quiet', async () => {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality: 'quiet',
+  });
+
+  const { screen } = await renderWithQuery(plan('active'), client);
+
+  await screen.rerender(plan('done'));
+
+  expect(vi.mocked(confetti)).not.toHaveBeenCalled();
 });

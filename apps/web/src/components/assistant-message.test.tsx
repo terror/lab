@@ -1,7 +1,7 @@
 import { ToolConversation } from '@/components/tools';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { AssistantMessage, type ToolResult } from './assistant-message';
 
@@ -325,4 +325,52 @@ test('unfinished actions settle as stopped once the turn ends', async () => {
     ['pending', 'Searching the web for “foo”· Stopped'],
     ['pending', 'Reading a page· Stopped'],
   ]);
+});
+
+function reply(working: boolean) {
+  return (
+    <TooltipProvider>
+      <AssistantMessage
+        latest={!working}
+        parts={parts}
+        progress={new Map()}
+        results={results}
+        span={{ end: 151_000, start: 0 }}
+        streaming={working}
+        working={working}
+      />
+    </TooltipProvider>
+  );
+}
+
+test('a turn that finishes in a hidden tab hops once the tab is back', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const visibility = vi
+    .spyOn(document, 'visibilityState', 'get')
+    .mockReturnValue('hidden');
+
+  const { screen } = await renderWithQuery(reply(true));
+
+  const mark = () =>
+    screen.container
+      .querySelector('[data-slot=live-mark]')
+      ?.getAttribute('data-state');
+
+  const working = mark();
+
+  await screen.rerender(reply(false));
+
+  const held = mark();
+
+  visibility.mockReturnValue('visible');
+  document.dispatchEvent(new Event('visibilitychange'));
+
+  await expect.poll(mark).toBe('proud');
+
+  expect([working, held]).toEqual(['thinking', 'idle']);
 });

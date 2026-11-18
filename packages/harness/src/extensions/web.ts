@@ -1,13 +1,12 @@
 import {
   type ConversationId,
-  type ToolExecutionResult,
   defineExtension,
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
 import { arr, int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
-import { errorMessage, failure, once, page, text } from './results';
+import { caught, once, page, text } from './results';
 
 export const WEB_READ_LENGTH = 100_000;
 
@@ -88,12 +87,8 @@ export function web(access: WebAccess) {
         })
       ),
     }),
-    execute: async (
-      { domains, limit, query, recency },
-      api,
-      context
-    ): Promise<ToolExecutionResult> => {
-      try {
+    execute: ({ domains, limit, query, recency }, api, context) =>
+      caught(async () => {
         const results = await once(api, 'results', context, () =>
           access.search(api.conversationId, {
             domains,
@@ -113,10 +108,7 @@ export function web(access: WebAccess) {
           },
           output: text(listing(results)),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   const webFetch = defineTool({
@@ -131,12 +123,8 @@ export function web(access: WebAccess) {
       ),
       url: str({ description: 'The URL to read.', minLength: 1 }),
     }),
-    execute: async (
-      { offset, url },
-      api,
-      context
-    ): Promise<ToolExecutionResult> => {
-      try {
+    execute: ({ offset, url }, api, context) =>
+      caught(async () => {
         const fetched = await once(api, 'page', context, () =>
           access.fetch(api.conversationId, url)
         );
@@ -164,10 +152,7 @@ export function web(access: WebAccess) {
             ].join('\n\n')
           ),
         };
-      } catch (error) {
-        return failure(errorMessage(error));
-      }
-    },
+      }),
   });
 
   return defineExtension({

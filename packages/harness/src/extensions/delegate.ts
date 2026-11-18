@@ -1,4 +1,5 @@
 import type { Context } from '@earendil-works/chord/context';
+import { contentText } from '@earendil-works/pi-ai';
 import {
   AgentDoc,
   type AgentState,
@@ -124,10 +125,7 @@ async function report(
 
   const summary =
     message?.role === 'assistant'
-      ? message.content
-          .map((part) => (part.type === 'text' ? part.text : ''))
-          .join('')
-          .trim()
+      ? contentText(message.content, '').trim()
       : '';
 
   return summary

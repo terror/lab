@@ -1,5 +1,4 @@
 import {
-  Action,
   Activity,
   AssistantMessage,
   RunFailure,
@@ -15,6 +14,7 @@ import { DocumentCard } from '@/components/document-card';
 import { FileChip } from '@/components/file-chip';
 import { ImageCard } from '@/components/image-card';
 import { LoadMore } from '@/components/load-more';
+import { Action } from '@/components/message-actions';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
@@ -60,12 +60,14 @@ import { runPhase } from '@/lib/run-phase';
 import {
   type BubbleFile,
   cachedRows,
+  keyRows,
   mergeReplies,
   ownsPlan,
   type Part,
   queuedMessages,
-  replyKeys,
   type Row,
+  streamRows,
+  toolHistory,
   toolProgress,
   toolResults,
   type UserBubble,
@@ -552,26 +554,11 @@ function ConversationView({ id }: { id: number }) {
   );
 
   const history = useMemo(
-    () =>
-      committed.flatMap((row) =>
-        row.kind === 'assistant'
-          ? row.parts.flatMap((part) =>
-              part.type === 'toolCall'
-                ? [
-                    {
-                      args: part.arguments,
-                      details: results.get(part.id)?.details,
-                      name: part.name,
-                    },
-                  ]
-                : []
-            )
-          : []
-      ),
+    () => toolHistory(committed, results),
     [committed, results]
   );
 
-  const keyed = useMemo(() => replyKeys(committed), [committed]);
+  const keyed = useMemo(() => keyRows(committed), [committed]);
 
   const forks = summary.data?.forks ?? noForks;
 
@@ -580,41 +567,7 @@ function ConversationView({ id }: { id: number }) {
     [committed, forks, id]
   );
 
-  const rows = useMemo(() => {
-    const base = committed.map((row, index) => ({
-      key: keyed.keys[index] ?? row.key,
-      row,
-    }));
-
-    if (!answering) {
-      return base;
-    }
-
-    const last = base.at(-1);
-
-    if (last?.row.kind === 'assistant') {
-      const row: Row = {
-        key: last.key,
-        kind: 'assistant',
-        parts: [...last.row.parts, ...partial],
-        span: last.row.span,
-        streaming: true,
-      };
-
-      return [...base.slice(0, -1), { key: last.key, row }];
-    }
-
-    const key = `reply-${keyed.user}-${keyed.count + 1}`;
-
-    const row: Row = {
-      key,
-      kind: 'assistant',
-      parts: partial,
-      streaming: true,
-    };
-
-    return [...base, { key, row }];
-  }, [answering, committed, keyed, partial]);
+  const rows = useMemo(() => streamRows(keyed, partial), [keyed, partial]);
 
   const navigate = useNavigate();
 
