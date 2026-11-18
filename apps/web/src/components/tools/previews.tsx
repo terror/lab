@@ -19,7 +19,7 @@ export type PreviewItem = {
 };
 
 export const linkClass =
-  'group flex min-w-0 flex-1 items-baseline justify-between gap-4 outline-none focus-visible:underline';
+  'group flex min-w-0 flex-1 items-baseline justify-between gap-4 rounded-control';
 
 export function PreviewRow({
   chatId,

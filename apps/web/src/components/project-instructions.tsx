@@ -73,7 +73,7 @@ export function ProjectInstructions({ project }: { project: Project }) {
     <>
       <button
         aria-label='Edit instructions'
-        className='flex flex-col gap-1 rounded-2xl border px-4 py-3 text-left outline-none hover:bg-muted/50'
+        className='flex flex-col gap-1 rounded-2xl border px-4 py-3 text-left hover:bg-muted/50'
         onClick={() => setOpen(true)}
         type='button'
       >

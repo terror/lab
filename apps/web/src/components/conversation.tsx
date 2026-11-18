@@ -302,7 +302,7 @@ function UserMessage({
         {!editing && (editable || versions) && (
           <MessageFooter className='min-h-8 gap-0.5 px-0'>
             {onEdit && (
-              <div className='opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'>
+              <div className='hover-reveal group-hover/message:opacity-100'>
                 <Action label='Edit' onClick={() => setEditing(true)}>
                   <Pencil aria-hidden='true' className='size-4' />
                 </Action>

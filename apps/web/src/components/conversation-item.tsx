@@ -320,7 +320,7 @@ export function ConversationItem({
           >
             <Link
               aria-current={selected ? 'page' : undefined}
-              className='min-w-0 flex-1 px-2 py-1.5 text-left text-sm'
+              className='min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-sm focus-ring-inset'
               onClick={onSelect}
               params={{ id: conversation.id }}
               to='/c/$id'
@@ -334,7 +334,7 @@ export function ConversationItem({
                 <DropdownMenuTrigger asChild>
                   <button
                     aria-label={`Options for ${title}`}
-                    className='peer rounded-md p-1 text-muted-foreground opacity-0 outline-none group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
+                    className='peer rounded-md p-1 text-muted-foreground opacity-0 focus-ring-inset group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100'
                     type='button'
                   >
                     <Ellipsis aria-hidden='true' className='size-4' />

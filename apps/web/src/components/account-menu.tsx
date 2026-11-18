@@ -56,7 +56,7 @@ function AccountTrigger({
     return (
       <button
         aria-label='Account'
-        className='rounded-full outline-none'
+        className='rounded-full'
         title={user.name}
         type='button'
         {...props}
@@ -68,7 +68,7 @@ function AccountTrigger({
 
   return (
     <button
-      className='flex w-full items-center gap-3 rounded-lg p-2 outline-none hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent'
+      className='flex w-full items-center gap-3 rounded-lg p-2 focus-ring-inset hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent'
       type='button'
       {...props}
     >

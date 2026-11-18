@@ -1,5 +1,6 @@
 import '@/index.css';
 import { expect, test } from 'vitest';
+import { cdp } from 'vitest/browser';
 
 import { fade, stagger } from './motion';
 
@@ -25,4 +26,43 @@ test('tween durations and stagger match the stylesheet tokens', () => {
   });
 
   probe.remove();
+});
+
+function entrance() {
+  const probe = document.createElement('div');
+
+  probe.className = 'animate-in zoom-in-95 slide-in-from-bottom-2';
+  document.body.append(probe);
+
+  const style = getComputedStyle(probe);
+
+  const read = {
+    scale: style.getPropertyValue('--tw-enter-scale'),
+    y: style.getPropertyValue('--tw-enter-translate-y'),
+  };
+
+  probe.remove();
+
+  return read;
+}
+
+test('reduced motion takes the travel and zoom out of an entrance', async ({
+  onTestFinished,
+}) => {
+  const moving = entrance();
+
+  await cdp().send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+  });
+
+  onTestFinished(async () => {
+    await cdp().send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: '' }],
+    });
+  });
+
+  expect({ moving, reduced: entrance() }).toEqual({
+    moving: { scale: '.95', y: 'calc(2*0.25rem)' },
+    reduced: { scale: '1', y: '0' },
+  });
 });

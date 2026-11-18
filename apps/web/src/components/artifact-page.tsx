@@ -8,7 +8,7 @@ import { LayoutTemplate, MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 
 const action =
-  'flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground';
+  'flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 
 export function ArtifactPage() {
   const { artifactId, conversationId } = useParams({

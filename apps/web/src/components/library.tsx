@@ -264,7 +264,7 @@ export function Library() {
               key={value}
               aria-pressed={filter === value}
               className={cn(
-                'rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground',
+                'rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground',
                 filter === value && 'bg-muted text-foreground'
               )}
               onClick={() => setFilter(value)}

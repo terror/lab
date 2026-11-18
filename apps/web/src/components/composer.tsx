@@ -454,7 +454,7 @@ export function Composer({
           </p>
         </div>
       )}
-      <div className='flex flex-col rounded-3xl border bg-background shadow-sm'>
+      <div className='flex flex-col rounded-3xl border bg-background shadow-sm focus-ring-within'>
         {attachments.length > 0 && (
           <div className='flex flex-wrap gap-2 px-4 pt-4'>
             {attachments.map((attachment, index) => (
@@ -472,7 +472,7 @@ export function Composer({
         )}
         <TextareaAutosize
           aria-label='Message'
-          className='max-h-72 resize-none bg-transparent px-5 pt-4 pb-2 leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50'
+          className='max-h-72 resize-none bg-transparent px-5 pt-4 pb-2 leading-relaxed placeholder:text-muted-foreground disabled:opacity-50'
           disabled={disabled}
           maxRows={12}
           minRows={1}

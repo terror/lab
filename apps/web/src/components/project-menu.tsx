@@ -74,7 +74,7 @@ export function ProjectMenu({
         <button
           aria-label={`Options for ${project.name}`}
           className={cn(
-            'flex items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground',
+            'flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground',
             className
           )}
           type='button'

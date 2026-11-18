@@ -152,7 +152,7 @@ function FavoriteButton({
       className={cn(
         'flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:text-foreground',
         !favorite &&
-          'opacity-0 group-hover/model:opacity-100 group-focus/model:opacity-100'
+          'hover-reveal group-hover/model:opacity-100 group-focus/model:opacity-100'
       )}
       onClick={(event) => {
         event.preventDefault();
@@ -343,7 +343,7 @@ export function ModelPicker({
         {trigger ?? (
           <button
             aria-label={current ? `Model: ${current.name}` : 'Model'}
-            className='flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
+            className='flex min-w-0 items-center gap-1.5 rounded-control text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 data-[state=open]:text-foreground'
             disabled={disabled || options.length === 0}
             type='button'
           >
