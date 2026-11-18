@@ -15,7 +15,7 @@ test('focus rings follow Tab and stop at the next pointer press', () => {
     new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true }),
     new KeyboardEvent('keydown', { key: 'a' }),
     new PointerEvent('pointerdown'),
-    new KeyboardEvent('keyup', { key: 'Tab' }),
+    new KeyboardEvent('keyup', { altKey: true, key: 'Tab' }),
   ]) {
     window.dispatchEvent(event);
 
