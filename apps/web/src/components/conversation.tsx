@@ -48,6 +48,7 @@ import {
   useConversationSummary,
   useDraft,
 } from '@/lib/conversations';
+import { useArrivals } from '@/lib/glide';
 import { useMediaQuery } from '@/lib/media';
 import {
   type ModelChoice,
@@ -944,6 +945,11 @@ function ConversationView({ id }: { id: number }) {
 
   const anchor = committed.findLast(({ kind }) => kind === 'user');
 
+  const arrived = useArrivals(
+    rows.map(({ key }) => key),
+    view !== undefined
+  );
+
   const progress = useMemo(() => toolProgress(live?.tools), [live?.tools]);
 
   const queued = (inbox?.items ?? []).flatMap((item) => {
@@ -1019,6 +1025,11 @@ function ConversationView({ id }: { id: number }) {
                 {rows.map(({ key, row }, index) => (
                   <MessageScrollerItem
                     key={key}
+                    className={cn(
+                      row === anchor &&
+                        arrived(key) &&
+                        'animate-in duration-base fade-in slide-in-from-bottom-1'
+                    )}
                     eager={index >= rows.length - EAGER_ROWS}
                     messageId={key}
                     scrollAnchor={row === anchor}
