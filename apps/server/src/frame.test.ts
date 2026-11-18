@@ -77,6 +77,15 @@ test('the frame runner unloads the content it replaces', async () => {
   ]);
 });
 
+test('the frame runner names its content after the frame Lab shows it in', async () => {
+  const frame = await runner();
+
+  frame.render('foo', false, 'bar');
+  frame.render('foo', false, 'baz');
+
+  expect(frame.names()).toEqual(['baz', 'bar']);
+});
+
 test('frame content stores JSON values and asks the model through calls to its runner', async () => {
   const { lab, posted, reply } = await bridge();
 

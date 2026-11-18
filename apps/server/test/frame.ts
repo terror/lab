@@ -27,6 +27,7 @@ function frame() {
     },
     html: '',
     loads,
+    title: '',
     received,
     removeAttribute(name: string) {
       if (name === 'srcdoc') {
@@ -93,11 +94,12 @@ export async function runner() {
       });
     },
     documents: () => [a.html, b.html],
+    names: () => [a.title, b.title],
     navigator,
     posted,
     received: () => rendered.received,
-    render(html: string, scripts: boolean) {
-      port.onmessage({ data: { html, scripts, type: 'render' } });
+    render(html: string, scripts: boolean, title?: string) {
+      port.onmessage({ data: { html, scripts, title, type: 'render' } });
       return rendered.html;
     },
     reply(data: object) {

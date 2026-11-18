@@ -93,6 +93,7 @@ const runner = `(() => {
               calls.delete(id);
             }
           });
+          frames[next].title = typeof message.title === 'string' ? message.title : '';
           frames[next].setAttribute('sandbox', scripts ? 'allow-scripts allow-forms' : 'allow-forms');
           frames[next].srcdoc = ${literal(prefetch)} + (scripts ? ${literal(bridge)} : '') + message.html;
         }
@@ -134,8 +135,8 @@ const page = `<!doctype html>
 <style>html,body{margin:0;background:transparent}body{position:relative}iframe{display:block;width:100%;height:100vh;border:0}iframe.pending{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}</style>
 </head>
 <body>
-<iframe id="a" sandbox="allow-scripts allow-forms" title="Content"></iframe>
-<iframe class="pending" id="b" sandbox="allow-scripts allow-forms" title="Content"></iframe>
+<iframe id="a" sandbox="allow-scripts allow-forms"></iframe>
+<iframe class="pending" id="b" sandbox="allow-scripts allow-forms"></iframe>
 <script>${runner}</script>
 </body>
 </html>`;

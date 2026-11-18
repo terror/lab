@@ -63,6 +63,24 @@ test('frames render again in the new theme after a theme switch', async () => {
   document.documentElement.classList.remove('dark');
 });
 
+test('frames pass their title to the content they show', async () => {
+  const ports = captureFrame();
+
+  await render(<SandboxFrame html='foo' title='bar' />);
+
+  await expect.poll(() => ports.length).toBe(1);
+
+  const titles: unknown[] = [];
+
+  const [port] = ports;
+
+  port?.addEventListener('message', ({ data }) => titles.push(data.title));
+  port?.start();
+  port?.postMessage({ type: 'ready' });
+
+  await expect.poll(() => titles).toEqual(['bar']);
+});
+
 test('calls from the frame get the handler’s answer or its error', async () => {
   const ports = captureFrame();
 
