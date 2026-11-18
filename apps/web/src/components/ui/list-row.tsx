@@ -3,39 +3,82 @@ import { cn } from '@/lib/utils';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
 
+const sizes = {
+  compact: {
+    content: 'min-h-8 gap-2 pr-2 pl-2 pointer-coarse:min-h-11',
+    row: '',
+    trailing: 'mr-1',
+  },
+  default: {
+    content: 'min-h-11 gap-3 pr-1.5 pl-3',
+    row: '-mx-3',
+    trailing: 'mr-1.5',
+  },
+};
+
 function ListRow({
   actions,
   asChild = false,
   children,
   className,
+  size = 'default',
+  status,
   ...props
 }: React.ComponentProps<'li'> & {
   actions?: React.ReactNode;
   asChild?: boolean;
+  size?: keyof typeof sizes;
+  status?: React.ReactNode;
 }) {
   const Content = asChild ? Slot.Root : 'div';
 
   return (
     <li
+      data-size={size}
       data-slot='list-row'
       className={cn(
-        'group/list-row -mx-3 flex items-center rounded-menu text-sm transition-colors hover:bg-muted has-[[data-state=open]]:bg-muted',
+        'group/list-row flex items-center rounded-menu text-sm transition-colors hover:bg-muted has-[[data-state=open]]:bg-muted',
+        sizes[size].row,
         className
       )}
       {...props}
     >
       <Content
         data-slot='list-row-content'
-        className='flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-menu py-1.5 pr-1.5 pl-3 text-left focus-ring-inset'
+        className={cn(
+          'flex min-w-0 flex-1 items-center rounded-menu py-1.5 text-left focus-ring-inset',
+          sizes[size].content
+        )}
       >
         {children}
       </Content>
-      {actions && (
+      {(actions || status) && (
         <div
-          data-slot='list-row-actions'
-          className='flex shrink-0 items-center gap-0.5 pr-1.5 hover-reveal group-focus-within/list-row:opacity-100 group-hover/list-row:opacity-100 pointer-coarse:gap-4'
+          className={cn(
+            'relative flex shrink-0 items-center gap-1.5',
+            sizes[size].trailing
+          )}
         >
-          {actions}
+          {status && (
+            <span
+              data-slot='list-row-status'
+              className={cn(
+                'pointer-events-none flex items-center justify-center transition-opacity',
+                actions &&
+                  'pointer-fine:absolute pointer-fine:inset-0 pointer-fine:group-hover/list-row:opacity-0 pointer-fine:group-has-focus-visible/list-row:opacity-0 pointer-fine:group-has-data-[state=open]/list-row:opacity-0'
+              )}
+            >
+              {status}
+            </span>
+          )}
+          {actions && (
+            <div
+              data-slot='list-row-actions'
+              className='flex items-center gap-0.5 hover-reveal group-hover/list-row:opacity-100 group-has-focus-visible/list-row:opacity-100 pointer-coarse:gap-4'
+            >
+              {actions}
+            </div>
+          )}
         </div>
       )}
     </li>
