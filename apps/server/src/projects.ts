@@ -11,7 +11,7 @@ import {
   projectLimitMessage,
   updateProject,
 } from './project-access';
-import { moveToTrash } from './trash';
+import { moveToTrash } from './trash-items';
 import { idParam, validator } from './validator';
 
 const name = z.string().trim().min(1).max(PROJECT_NAME_LENGTH);

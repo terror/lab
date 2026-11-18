@@ -186,7 +186,7 @@ export const projectAccess: ProjectAccess = {
         )
       );
 
-    const { moveToTrash } = await import('./trash');
+    const { moveToTrash } = await import('./trash-items');
 
     const trashed =
       project &&
