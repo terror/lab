@@ -1,7 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { queryClient } from '@/lib/query-client';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import type { QueryClient } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -154,6 +154,22 @@ test('a query without matches says so instead of showing scopes', async () => {
 
   expect(values()).toEqual(['ask']);
   expect(hints()).toBe('↑↓navigate↵open⌘↵ask Labescclose');
+});
+
+test('a failed search says so instead of reporting no matches', async () => {
+  stubFetch(() => new Response(null, { status: 500 }));
+
+  const { screen } = await openSearch(
+    new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  );
+
+  await screen.getByRole('combobox', { name: 'Search Lab' }).fill('foo');
+
+  await expect
+    .element(screen.getByText('Couldn’t search for “foo”.'))
+    .toBeVisible();
+
+  expect(screen.getByText('No matches for “foo”.').query()).toBeNull();
 });
 
 test('asking Lab reports a failure to start the chat', async () => {
