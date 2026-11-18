@@ -2,7 +2,14 @@ import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-sch
 import { PLAN_LIMIT, PLAN_STATUSES, STEP_LENGTH } from '@lab/harness/plan';
 import { CHAT_SORTS, type Preferences, THEMES } from '@lab/harness/preferences';
 
-export { PLAN_STATUSES, type PlanStatus } from '@lab/harness/plan';
+export {
+  PLAN_LIMIT,
+  PLAN_STATUSES,
+  STEP_LENGTH,
+  type Plan,
+  type PlanStatus,
+  type PlanStep,
+} from '@lab/harness/plan';
 export { defaultPreferences } from '@lab/harness/preferences';
 import { z } from 'zod';
 

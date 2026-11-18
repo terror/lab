@@ -1,0 +1,72 @@
+import { ToolConversation } from '@/components/tools';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { expect, test } from 'vitest';
+import { userEvent } from 'vitest/browser';
+
+import { Plan } from './plan';
+
+test('each edit sends the whole plan', async () => {
+  const fetch = stubFetch(() => new Response(null, { status: 204 }));
+
+  const { screen } = await renderWithQuery(
+    <ToolConversation value={7}>
+      <Plan
+        editable
+        steps={[
+          { status: 'done', text: 'foo' },
+          { status: 'active', text: 'bar' },
+          { status: 'pending', text: 'baz' },
+        ]}
+      />
+    </ToolConversation>
+  );
+
+  await screen.getByRole('checkbox', { name: 'baz' }).click();
+  await screen.getByRole('button', { name: 'Move “baz” up' }).click();
+  await screen.getByRole('button', { name: 'Remove “foo”' }).click();
+  await screen.getByRole('button', { name: 'Edit “bar”' }).click();
+  await screen.getByRole('textbox', { name: 'Edit “bar”' }).fill('qux');
+  await userEvent.keyboard('{Enter}');
+  await screen.getByRole('textbox', { name: 'Add a step' }).fill('quux');
+  await userEvent.keyboard('{Enter}');
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.map(([input, init]) => ({
+        body: typeof init?.body === 'string' && JSON.parse(init.body),
+        method: init?.method,
+        path: requestUrl(input).pathname,
+      }))
+    )
+    .toEqual(
+      [
+        [
+          { status: 'done', text: 'foo' },
+          { status: 'active', text: 'bar' },
+          { status: 'done', text: 'baz' },
+        ],
+        [
+          { status: 'done', text: 'foo' },
+          { status: 'done', text: 'baz' },
+          { status: 'active', text: 'bar' },
+        ],
+        [
+          { status: 'done', text: 'baz' },
+          { status: 'active', text: 'bar' },
+        ],
+        [
+          { status: 'done', text: 'baz' },
+          { status: 'active', text: 'qux' },
+        ],
+        [
+          { status: 'done', text: 'baz' },
+          { status: 'active', text: 'qux' },
+          { status: 'pending', text: 'quux' },
+        ],
+      ].map((steps) => ({
+        body: { steps },
+        method: 'PUT',
+        path: '/api/conversations/7/plan',
+      }))
+    );
+});

@@ -11,7 +11,7 @@ import {
   type TranscriptView,
   ConversationTranscript,
 } from '@earendil-works/pi-durable';
-import type { sortSchema } from '@lab/server/schemas';
+import type { Plan, PlanStep, sortSchema } from '@lab/server/schemas';
 import {
   infiniteQueryOptions,
   type QueryClient,
@@ -205,6 +205,15 @@ export async function answerQuestion(
   );
 }
 
+export async function editPlan(id: number, steps: PlanStep[]) {
+  await call(
+    client.conversations[':id'].plan.$put({
+      json: { steps },
+      param: { id: String(id) },
+    })
+  );
+}
+
 export async function deleteConversation(id: number) {
   await call(
     client.conversations[':id'].$delete({ param: { id: String(id) } })
@@ -292,6 +301,7 @@ async function loadEntries(
 export function useConversation(id: number) {
   const [view, setView] = useState<TranscriptView>();
   const [status, setStatus] = useState<string>();
+  const [plan, setPlan] = useState<Plan>();
   const transcript = useRef<ConversationTranscript>(undefined);
 
   useEffect(() => {
@@ -327,6 +337,10 @@ export function useConversation(id: number) {
       setStatus(event.data);
     });
 
+    source.addEventListener('plan', (event) => {
+      setPlan(JSON.parse(event.data));
+    });
+
     return () => source.close();
   }, [id]);
 
@@ -342,7 +356,7 @@ export function useConversation(id: number) {
     }
   }, []);
 
-  return { view, status, loadEarlier, fillGap };
+  return { view, status, plan, loadEarlier, fillGap };
 }
 
 type Content = string | readonly { type: string; text?: string }[];
