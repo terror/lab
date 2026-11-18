@@ -32,6 +32,7 @@ test('created conversations are listed with their generated title', async () => 
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -200,6 +201,7 @@ test('conversations are listed by their latest message', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
         {
           id: second,
@@ -208,6 +210,7 @@ test('conversations are listed by their latest message', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -234,6 +237,7 @@ test('conversations are listed in pages', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: expect.any(String),
@@ -257,6 +261,7 @@ test('conversations are listed in pages', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -291,6 +296,7 @@ test('paging continues after the cursor chat is deleted', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -325,6 +331,7 @@ test('conversations can be listed by creation', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: expect.any(String),
@@ -348,6 +355,7 @@ test('conversations can be listed by creation', async () => {
           running: false,
           title: 'foo',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -408,6 +416,7 @@ test('conversations can be listed by title', async () => {
           running: false,
           title: 'bar',
           unread: true,
+          waiting: false,
         },
         {
           id: second,
@@ -416,6 +425,7 @@ test('conversations can be listed by title', async () => {
           running: false,
           title: 'Qux',
           unread: true,
+          waiting: false,
         },
       ],
       next: expect.any(String),
@@ -439,6 +449,7 @@ test('conversations can be listed by title', async () => {
           running: false,
           title: null,
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -466,6 +477,7 @@ test('conversations can be searched by title', async () => {
           running: false,
           title: 'Foo%',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -501,6 +513,7 @@ test('running conversations are marked in the list', async () => {
           running: true,
           title: 'foo',
           unread: false,
+          waiting: false,
         },
       ],
       next: null,
@@ -529,6 +542,7 @@ test('read conversations are not unread', async () => {
           running: false,
           title: 'foo',
           unread: false,
+          waiting: false,
         },
       ],
       next: null,
@@ -638,6 +652,7 @@ test('conversations can be renamed', async () => {
           running: false,
           title: 'bar',
           unread: true,
+          waiting: false,
         },
       ],
       next: null,
@@ -886,12 +901,13 @@ test('unread conversations from the last day are listed with a preview', async (
       },
     ],
     running: 0,
+    waiting: [],
   });
 
   await call(headers, 'POST', `/conversations/${id}/read`);
 
   expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
-    body: { chats: [], running: 0 },
+    body: { chats: [], running: 0, waiting: [] },
     status: 200,
   });
 });
@@ -914,7 +930,7 @@ test('running conversations are counted instead of listed as unread', async () =
   });
 
   expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
-    body: { chats: [], running: 1 },
+    body: { chats: [], running: 1, waiting: [] },
     status: 200,
   });
 });
