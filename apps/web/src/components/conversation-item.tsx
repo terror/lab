@@ -26,6 +26,7 @@ import {
 } from '@/lib/conversations';
 import { projectsQueryOptions, useProjects } from '@/lib/projects';
 import { useUndoTrash } from '@/lib/trash';
+import { undoToast } from '@/lib/undo';
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -265,23 +266,13 @@ export function ConversationItem({
   const remove = useMutation({
     mutationFn: () => deleteConversation(conversation.id),
     onSuccess: async () => {
-      toast('Chat moved to Trash.', {
-        action: {
-          label: 'Undo',
-          onClick: () =>
-            void undo(
-              { id: conversation.id, kind: 'conversation' },
-              async () => {
-                if (selected) {
-                  await navigate({
-                    params: { id: conversation.id },
-                    to: '/c/$id',
-                  });
-                }
-              }
-            ),
-        },
-      });
+      undoToast('Chat moved to Trash.', () =>
+        undo({ id: conversation.id, kind: 'conversation' }, async () => {
+          if (selected) {
+            await navigate({ params: { id: conversation.id }, to: '/c/$id' });
+          }
+        })
+      );
 
       if (selected) {
         await navigate({ to: '/' });
