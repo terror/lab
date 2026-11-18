@@ -146,7 +146,6 @@
         "apps/web/src/components/conversation-item.tsx",
         "apps/web/src/components/document-card.tsx",
         "apps/web/src/components/library-tile.tsx",
-        "apps/web/src/components/library.tsx",
         "apps/web/src/components/model-picker.tsx",
         "apps/web/src/components/plan.tsx",
         "apps/web/src/components/project-instructions.tsx",

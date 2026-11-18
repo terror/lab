@@ -90,12 +90,15 @@ export function useLibrarySearch(kind: LibraryKind | undefined) {
   return {
     empty:
       library.isSuccess && !library.isPlaceholderData && items.length === 0,
-    error: library.isError,
+    error: library.isLoadingError,
     fetchNextPage: library.fetchNextPage,
     hasNextPage: library.hasNextPage,
     items,
     loadMore,
+    pageError: library.isFetchNextPageError,
+    pending: library.isPending,
     query,
+    refetch: library.refetch,
     search,
     setSearch,
   };
