@@ -3,6 +3,14 @@ import { LoadError } from '@/components/load-error';
 import { ProviderLogo } from '@/components/provider-logo';
 import { Button } from '@/components/ui/button';
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,19 +31,11 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldTitle,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { modelsQueryOptions } from '@/lib/models';
 import {
   type Provider,
@@ -104,6 +104,75 @@ function ProviderFields({
   );
 }
 
+function ProviderPicker({
+  editing,
+  onChange,
+  provider,
+  providers,
+}: {
+  editing: boolean;
+  onChange: (id: string | undefined) => void;
+  provider: Provider | undefined;
+  providers: Provider[];
+}) {
+  if (provider) {
+    return (
+      <Field>
+        <FieldTitle>Provider</FieldTitle>
+        <div className='flex items-center gap-3'>
+          <ProviderLogo id={provider.id} name={provider.name} />
+          <span className='flex-1 truncate text-sm font-medium'>
+            {provider.name}
+          </span>
+          {!editing && (
+            <Button
+              onClick={() => onChange(undefined)}
+              size='sm'
+              type='button'
+              variant='quiet'
+            >
+              Change
+            </Button>
+          )}
+        </div>
+      </Field>
+    );
+  }
+
+  return (
+    <Command className='border p-0'>
+      <CommandInput
+        aria-label='Search providers'
+        placeholder='Search providers'
+      />
+      <CommandList className='max-h-64'>
+        <CommandEmpty>No providers match that search.</CommandEmpty>
+        {kindGroups(providers).map(({ kind, label }) => (
+          <CommandGroup key={kind} heading={label}>
+            {providers
+              .filter((candidate) => candidate.kind === kind)
+              .map(({ configured, id, name }) => (
+                <CommandItem
+                  key={id}
+                  onSelect={() => onChange(id)}
+                  value={name}
+                >
+                  <ProviderLogo id={id} name={name} size='sm' />
+                  <span className='flex-1 truncate'>{name}</span>
+                  {configured && (
+                    <span className='text-xs text-muted-foreground'>
+                      Connected
+                    </span>
+                  )}
+                </CommandItem>
+              ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </Command>
+  );
+}
+
 function ConnectDialog({
   initial,
   onOpenChange,
@@ -157,36 +226,15 @@ function ConnectDialog({
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor='provider'>Provider</FieldLabel>
-              <Select
-                disabled={initial !== undefined}
-                onValueChange={(value) => {
-                  setSelected(value);
-                  setValues({});
-                }}
-                value={selected}
-              >
-                <SelectTrigger className='w-full' id='provider'>
-                  <SelectValue placeholder='Choose a provider' />
-                </SelectTrigger>
-                <SelectContent>
-                  {kindGroups(providers).map(({ kind, label }) => (
-                    <SelectGroup key={kind}>
-                      <SelectLabel>{label}</SelectLabel>
-                      {providers
-                        .filter((candidate) => candidate.kind === kind)
-                        .map(({ id, name }) => (
-                          <SelectItem key={id} value={id}>
-                            <ProviderLogo id={id} name={name} size='sm' />
-                            {name}
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <ProviderPicker
+              editing={initial !== undefined}
+              onChange={(id) => {
+                setSelected(id);
+                setValues({});
+              }}
+              provider={provider}
+              providers={providers}
+            />
             {provider && (
               <ProviderFields
                 onChange={(id, value) =>
