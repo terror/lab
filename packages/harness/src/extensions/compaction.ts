@@ -78,6 +78,7 @@ export function compaction(onHelperUsage: HelperUsage) {
             input: transcript,
             maxTokens: MAX_TOKENS,
             prompt: instructions ? `${PROMPT}\n\n${instructions}` : PROMPT,
+            signal: context.abortSignal,
           });
 
           if (answer.message.stopReason === 'error') {
@@ -85,6 +86,8 @@ export function compaction(onHelperUsage: HelperUsage) {
           }
 
           onHelperUsage(api.conversationId, 'compaction', answer.message);
+
+          context.abortSignal?.throwIfAborted();
 
           const summary = answer.text;
 
