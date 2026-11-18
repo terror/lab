@@ -5,6 +5,7 @@ import { UnreadChips } from '@/components/unread-chips';
 import { startChatKey, useDraft } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
@@ -43,6 +44,7 @@ function useFirstVisit() {
 
 export function NewChat({ user }: { user: { name: string } }) {
   const first = useFirstVisit();
+  const quiet = useQuiet();
   const [, setDraft] = useDraft('new');
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);
@@ -75,7 +77,10 @@ export function NewChat({ user }: { user: { name: string } }) {
               'opacity-0 transition duration-fast ease-in motion-safe:-translate-y-2'
           )}
         >
-          <LiveMark className='size-10' state={first ? 'assemble' : 'idle'} />
+          <LiveMark
+            className='size-10'
+            state={first && !quiet ? 'assemble' : 'idle'}
+          />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
             {greeting(user.name)}
           </h1>

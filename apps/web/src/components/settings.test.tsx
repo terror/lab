@@ -1,5 +1,5 @@
 import '@/index.css';
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -113,4 +113,27 @@ test('on a wide screen Settings opens on Appearance beside the nav', async () =>
   await expect
     .element(screen.getByRole('heading', { level: 1, name: 'Appearance' }))
     .toBeVisible();
+});
+
+test('the personality setting saves to the account', async () => {
+  await page.viewport(1280, 800);
+
+  const fetch = stubFetch(() => Response.json({ admin: false }));
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Settings }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await screen.getByRole('button', { name: 'Quiet' }).click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls
+        .filter(([, init]) => init?.method === 'PATCH')
+        .map(([input, init]) => [requestUrl(input).pathname, init?.body])
+    )
+    .toEqual([['/api/preferences', JSON.stringify({ personality: 'quiet' })]]);
 });

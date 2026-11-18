@@ -1,6 +1,11 @@
 import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
 import { PLAN_LIMIT, PLAN_STATUSES, STEP_LENGTH } from '@lab/harness/plan';
-import { CHAT_SORTS, type Preferences, THEMES } from '@lab/harness/preferences';
+import {
+  CHAT_SORTS,
+  PERSONALITIES,
+  type Preferences,
+  THEMES,
+} from '@lab/harness/preferences';
 
 export {
   PLAN_LIMIT,
@@ -63,6 +68,7 @@ export const sortSchema = z.enum(CHAT_SORTS);
 export const preferencesSchema = z.object({
   chatSort: sortSchema,
   lineNumbers: z.boolean(),
+  personality: z.enum(PERSONALITIES),
   theme: z.enum(THEMES),
 }) satisfies z.ZodType<Preferences>;
 

@@ -19,10 +19,10 @@ const change = validator(
 );
 
 async function current(ownerId: string) {
-  return (
-    (await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)) ??
-    defaultPreferences
-  );
+  return {
+    ...defaultPreferences,
+    ...(await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
+  };
 }
 
 const preferences = new Hono()

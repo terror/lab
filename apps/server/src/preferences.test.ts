@@ -1,9 +1,12 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
+import { PreferencesDoc } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import { call, chat, toolOutputs } from '../test/client';
 import { script, toolCall } from '../test/models';
+import { harness } from './harness';
 
 test('preferences are shared by the settings and the agent', async () => {
   const headers = await signIn();
@@ -11,6 +14,7 @@ test('preferences are shared by the settings and the agent', async () => {
   const initial = await call(headers, 'GET', '/preferences');
 
   const patched = await call(headers, 'PATCH', '/preferences', {
+    personality: 'quiet',
     theme: 'light',
   });
 
@@ -33,12 +37,18 @@ test('preferences are shared by the settings and the agent', async () => {
     patched: patched.body,
   }).toEqual({
     final: {
-      preferences: { chatSort: 'title', lineNumbers: true, theme: 'light' },
+      preferences: {
+        chatSort: 'title',
+        lineNumbers: true,
+        personality: 'quiet',
+        theme: 'light',
+      },
     },
     initial: {
       preferences: {
         chatSort: 'activity',
         lineNumbers: false,
+        personality: 'default',
         theme: 'system',
       },
     },
@@ -47,7 +57,34 @@ test('preferences are shared by the settings and the agent', async () => {
       "Changed chatSort, lineNumbers. The user's settings are now: theme light, code block line numbers on, chats sorted by title.",
     ],
     patched: {
-      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'light' },
+      preferences: {
+        chatSort: 'activity',
+        lineNumbers: false,
+        personality: 'quiet',
+        theme: 'light',
+      },
+    },
+  });
+});
+
+test('preferences saved before a setting existed get its default', async () => {
+  const headers = await signIn();
+
+  const { body } = await call(headers, 'GET', '/auth/get-session');
+
+  await harness.commit(async (tx) => {
+    const doc = await tx.doc(PreferencesDoc, body.user.id, null);
+
+    Object.assign(doc, { theme: 'dark' });
+    delete (doc as Partial<typeof doc>).personality;
+  }, BACKGROUND_CONTEXT);
+
+  expect((await call(headers, 'GET', '/preferences')).body).toEqual({
+    preferences: {
+      chatSort: 'activity',
+      lineNumbers: false,
+      personality: 'default',
+      theme: 'dark',
     },
   });
 });
