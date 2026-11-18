@@ -156,6 +156,10 @@ test('queued messages show what was typed and attached, not the prompt', () => {
     } as unknown as Parameters<typeof queuedMessages>[0])
   ).toEqual([
     {
+      attachments: [
+        { name: 'bar.txt', text: 'baz', type: 'file' },
+        { data: 'cXV4', mimeType: 'image/png', name: 'qux.png', type: 'image' },
+      ],
       bubble: {
         files: [{ name: 'bar.txt' }],
         id: 'queued-7',

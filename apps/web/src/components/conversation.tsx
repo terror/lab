@@ -520,7 +520,26 @@ function ConversationView({ id }: { id: number }) {
     },
   });
 
-  const abort = useMutation({ mutationFn: () => abortConversation(id) });
+  const abort = useMutation({
+    mutationFn: (_withdrawn: ReturnType<typeof queuedMessages>) =>
+      abortConversation(id),
+    onSuccess: (_, withdrawn) => {
+      if (withdrawn.length === 0) {
+        return;
+      }
+
+      setDraft(
+        [...withdrawn.map(({ bubble }) => bubble.text), draft.trim()]
+          .filter(Boolean)
+          .join('\n\n')
+      );
+
+      setAttachments((current) => [
+        ...withdrawn.flatMap((message) => message.attachments),
+        ...current,
+      ]);
+    },
+  });
 
   const branch = useBranch(id);
 
@@ -756,7 +775,7 @@ function ConversationView({ id }: { id: number }) {
             setDraft(value);
           }}
           onModelChange={(model) => changeModel.mutate(model)}
-          onStop={() => abort.mutate()}
+          onStop={() => abort.mutate(queued)}
           onSteer={(content) => {
             scrollToEnd({ behavior: 'smooth' });
             send.mutate({ content, steer: true, sent: attachments });
