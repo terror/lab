@@ -21,6 +21,7 @@
     var(--motion-slow) backwards;
   --animate-word-in: word-in var(--motion-base) var(--ease-out) backwards;
   --animate-develop: develop 900ms var(--ease-out);
+  --animate-retry: retry 460ms var(--ease-out);
 
   @keyframes title-wash {
     from {
@@ -44,6 +45,12 @@
     }
     60% {
       filter: blur(4px) grayscale(0.5) contrast(0.8);
+    }
+  }
+
+  @keyframes retry {
+    to {
+      rotate: -360deg;
     }
   }
 
@@ -901,6 +908,26 @@
   animation: trace-tick-in var(--motion-base) var(--ease-out) 240ms both;
 }
 
+[data-slot='copy-icon'] :where(path, rect) {
+  transform-box: view-box;
+}
+
+[data-slot='copy-icon'] [data-part='check'] {
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+[data-slot='copy-icon'][data-state='copied']
+  :where([data-part='back'], [data-part='front']) {
+  opacity: 0;
+}
+
+[data-slot='copy-icon'][data-state='copied'] [data-part='check'] {
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
 @keyframes dot-pulse {
   50% {
     opacity: 0.35;
@@ -1100,6 +1127,39 @@
     animation:
       dot-pulse 1.2s ease-in-out 0s 4,
       dot-pulse 2.4s ease-in-out 4.8s infinite;
+  }
+
+  [data-slot='copy-icon']:not([data-quiet]) [data-part='back'] {
+    transition:
+      transform 140ms var(--ease-in),
+      opacity 140ms var(--ease-in);
+  }
+
+  [data-slot='copy-icon']:not([data-quiet]) [data-part='front'] {
+    transition: opacity var(--motion-fast) var(--ease-out);
+  }
+
+  [data-slot='copy-icon']:not([data-quiet]) [data-part='check'] {
+    transition:
+      opacity 150ms var(--ease-out),
+      stroke-dashoffset 0ms linear 150ms;
+  }
+
+  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+    [data-part='back'] {
+    transform: translate(6px, 6px);
+  }
+
+  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+    [data-part='front'] {
+    transition-delay: 110ms;
+  }
+
+  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+    [data-part='check'] {
+    transition:
+      stroke-dashoffset 180ms var(--ease-out) 120ms,
+      opacity 60ms linear 120ms;
   }
 }
 

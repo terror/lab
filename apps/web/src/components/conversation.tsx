@@ -484,6 +484,8 @@ const EAGER_ROWS = 6;
 
 const noForks: Fork[] = [];
 
+const ignoreBranch = () => undefined;
+
 function ConversationView({ id }: { id: number }) {
   const { scrollToEnd } = useMessageScroller();
   const {
@@ -649,7 +651,9 @@ function ConversationView({ id }: { id: number }) {
     [plan, running]
   );
 
-  const onBranch = running || branch.isPending ? undefined : branch.mutate;
+  const branching = branch.isPending ? ignoreBranch : branch.mutate;
+
+  const onBranch = running ? undefined : branching;
 
   const retried =
     branch.isPending && branch.variables.kind === 'retry'
