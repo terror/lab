@@ -72,7 +72,9 @@ export function useConversation(id: number) {
     });
 
     source.addEventListener('status', (event) => {
-      setStatus(event.data);
+      if ((base?.docs['pi.live'] as LiveState | undefined)?.run) {
+        setStatus(event.data);
+      }
     });
 
     source.addEventListener('plan', (event) => {
