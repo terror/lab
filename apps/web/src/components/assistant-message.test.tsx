@@ -2,7 +2,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
 
-import { AssistantMessage } from './assistant-message';
+import { AssistantMessage, type ToolResult } from './assistant-message';
 
 const parts = [
   {
@@ -21,9 +21,9 @@ const parts = [
   { text: 'baz', type: 'text' },
 ] as const;
 
-const results = new Map([
-  ['a', { isError: false, output: 'foo' }],
-  ['b', { isError: true, output: 'bar' }],
+const results = new Map<string, ToolResult>([
+  ['a', { output: 'foo', status: 'done' }],
+  ['b', { output: 'bar', status: 'failed' }],
 ]);
 
 test('a finished turn folds only its steps behind how long it worked', async () => {
@@ -70,7 +70,7 @@ test('a running turn keeps its text and shows only its current step', async () =
     <AssistantMessage
       parts={parts.slice(0, 3)}
       progress={new Map()}
-      results={new Map([['a', { isError: false, output: 'foo' }]])}
+      results={new Map([['a', { output: 'foo', status: 'done' }]])}
       streaming
       working
     />
@@ -109,4 +109,36 @@ test('a turn shows how long it worked as soon as its reply starts', async () => 
     )
     .toBeVisible();
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument();
+});
+
+test('unfinished actions settle as stopped once the turn ends', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <AssistantMessage
+      parts={parts.slice(0, 3)}
+      progress={new Map()}
+      results={new Map([['b', { output: '', status: 'stopped' }]])}
+      span={{ end: 5_000, start: 0 }}
+      streaming={false}
+    />
+  );
+
+  await screen
+    .getByRole('button', { name: 'Worked for 5s · 2 actions · 2 stopped' })
+    .click();
+
+  expect(
+    [...screen.container.querySelectorAll('[data-slot=trace-line]')].map(
+      (line) => [line.getAttribute('data-status'), line.textContent]
+    )
+  ).toEqual([
+    [null, 'Worked for 5s · 2 actions · 2 stopped'],
+    ['pending', 'Searching the web for “foo”· Stopped'],
+    ['pending', 'Reading a page· Stopped'],
+  ]);
 });

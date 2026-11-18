@@ -1,6 +1,7 @@
+import type { TranscriptItem } from '@earendil-works/pi-durable';
 import { expect, test } from 'vitest';
 
-import { type Row, type Span, mergeReplies } from './conversation';
+import { type Row, type Span, mergeReplies, toolResults } from './conversation';
 
 function reply(key: string, text: string, span?: Span): Row {
   return {
@@ -18,6 +19,26 @@ function user(key: string): Row {
     key,
     kind: 'user',
   };
+}
+
+function toolResult(toolCallId: string, extra: object, data?: object) {
+  return {
+    entry: {
+      data,
+      model: [
+        {
+          content: [{ text: 'foo', type: 'text' }],
+          isError: false,
+          role: 'toolResult',
+          timestamp: 9,
+          toolCallId,
+          toolName: 'bar',
+          ...extra,
+        },
+      ],
+    },
+    kind: 'entry',
+  } as unknown as TranscriptItem;
 }
 
 test('consecutive replies merge into one row per turn', () => {
@@ -61,4 +82,28 @@ test('merged replies span the whole turn', () => {
       span: { end: 9, start: 1 },
     },
   ]);
+});
+
+test('tool results tell failed from stopped', () => {
+  expect(
+    Object.fromEntries(
+      toolResults([
+        toolResult('a', {}),
+        toolResult('b', { isError: true }),
+        toolResult(
+          'c',
+          { isError: true },
+          {
+            diagnostics: [
+              { code: 'aborted', message: 'baz', severity: 'error' },
+            ],
+          }
+        ),
+      ])
+    )
+  ).toEqual({
+    a: { output: 'foo', status: 'done' },
+    b: { output: 'foo', status: 'failed' },
+    c: { output: 'foo', status: 'stopped' },
+  });
 });

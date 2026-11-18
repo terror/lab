@@ -104,6 +104,10 @@ const imagePartSchema = z.object({
   type: z.literal('image'),
 });
 
+const diagnosticsSchema = z.object({
+  diagnostics: z.array(z.object({ code: z.string() })),
+});
+
 const messageDataSchema = z.object({
   files: z
     .array(
@@ -385,17 +389,29 @@ function messageImages(content: unknown, entry: EntryRecord) {
   });
 }
 
-function toolResults(items: readonly TranscriptItem[]) {
+function resultStatus(isError: boolean, data: unknown): ToolResult['status'] {
+  const aborted = diagnosticsSchema
+    .safeParse(data)
+    .data?.diagnostics.some(({ code }) => code === 'aborted');
+
+  if (aborted) {
+    return 'stopped';
+  }
+
+  return isError ? 'failed' : 'done';
+}
+
+export function toolResults(items: readonly TranscriptItem[]) {
   const results = new Map<string, ToolResult>();
 
   for (const item of items) {
     const message = item.kind === 'entry' ? item.entry.model?.[0] : undefined;
 
-    if (message?.role === 'toolResult') {
+    if (item.kind === 'entry' && message?.role === 'toolResult') {
       results.set(message.toolCallId, {
         details: message.details,
-        isError: message.isError,
         output: contentText(message.content),
+        status: resultStatus(message.isError, item.entry.data),
       });
     }
   }

@@ -48,7 +48,7 @@ export const ToolCall = meta.story({
       },
     ],
     results: new Map([
-      ['call-1', { isError: false, output: 'Open 9:00 to 17:00' }],
+      ['call-1', { output: 'Open 9:00 to 17:00', status: 'done' }],
     ]),
   },
 });

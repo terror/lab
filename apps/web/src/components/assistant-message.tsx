@@ -37,8 +37,10 @@ import { duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import type { PlanStep } from '@lab/server/schemas';
 import {
+  Ban,
   Check,
   Copy,
+  type LucideIcon,
   RotateCcw,
   Shuffle,
   Square,
@@ -97,31 +99,56 @@ function segments(parts: readonly Part[]) {
   }, []);
 }
 
-const statuses: Record<string, 'error' | 'running' | undefined> = {
-  'false-false': undefined,
-  'false-true': 'running',
-  'true-false': 'error',
-  'true-true': 'error',
+type CallStatus = ToolResult['status'] | 'running';
+
+const steps: Record<
+  CallStatus,
+  {
+    finished: boolean;
+    icon?: LucideIcon;
+    label?: string;
+    line?: 'error' | 'pending' | 'running';
+  }
+> = {
+  done: { finished: true },
+  failed: { finished: true, icon: TriangleAlert, line: 'error' },
+  running: { finished: false, line: 'running' },
+  stopped: { finished: false, icon: Ban, label: 'Stopped', line: 'pending' },
 };
 
 type Call = Extract<Part, { type: 'toolCall' }>;
 
 type Span = { end: number; start: number };
 
+function callStatus(
+  result: ToolResult | undefined,
+  working: boolean
+): CallStatus {
+  if (result) {
+    return result.status;
+  }
+
+  return working ? 'running' : 'stopped';
+}
+
 function useToolView(
   call: Call,
   progress: ToolProgress | undefined,
-  result: ToolResult | undefined
+  result: ToolResult | undefined,
+  working: boolean
 ) {
   const history = useContext(ToolHistory);
 
+  const status = callStatus(result, working);
+
   return {
-    active: result === undefined,
+    active: status === 'running',
     args: call.arguments,
     callId: call.id,
     details: result?.details ?? progress?.details,
     history,
     output: result?.output ?? progress?.output ?? '',
+    status,
   };
 }
 
@@ -129,29 +156,30 @@ type CallProps = {
   call: Call;
   progress: ToolProgress | undefined;
   result: ToolResult | undefined;
+  working: boolean;
 };
 
-function ToolStep({ call, progress, result }: CallProps) {
-  const view = useToolView(call, progress, result);
-
-  const failed = result?.isError ?? false;
+function ToolStep({ call, progress, result, working }: CallProps) {
+  const { status, ...view } = useToolView(call, progress, result, working);
 
   const renderer = toolRenderer(call.name);
 
-  const Icon = failed ? TriangleAlert : renderer.icon;
+  const step = steps[status];
 
-  const summary = renderer.summary?.(view);
+  const Icon = step.icon ?? renderer.icon;
 
-  const status = statuses[`${failed}-${view.active}`];
+  const summary = step.label ?? renderer.summary?.(view);
+
+  const title = renderer.title({ ...view, active: !step.finished });
 
   return (
     <TraceCollapsible>
       <TraceCollapsibleTrigger>
-        <TraceLine className='h-6.5' status={status}>
+        <TraceLine className='h-6.5' status={step.line}>
           <TraceIcon>
             <Icon aria-hidden='true' />
           </TraceIcon>
-          <TraceTitle>{renderer.title(view)}</TraceTitle>
+          <TraceTitle>{title}</TraceTitle>
           {summary && (
             <span className='shrink-0 text-muted-foreground/70'>
               · {summary}
@@ -166,8 +194,8 @@ function ToolStep({ call, progress, result }: CallProps) {
   );
 }
 
-function ToolCards({ call, progress, result }: CallProps) {
-  const view = useToolView(call, progress, result);
+function ToolCards({ call, progress, result, working }: CallProps) {
+  const view = useToolView(call, progress, result, working);
 
   const conversationId = useContext(ToolConversation);
 
@@ -196,26 +224,30 @@ function StepStatus({
   call,
   progress,
   result,
+  working,
 }: CallProps & { activity: string | undefined }) {
-  const view = useToolView(call, progress, result);
+  const view = useToolView(call, progress, result, working);
 
   return <Activity status={activity ?? toolRenderer(call.name).title(view)} />;
 }
 
 export function Worked({
   children,
-  failed,
   span,
-  steps,
+  statuses,
 }: {
   children: ReactNode;
-  failed: number;
   span: Span | undefined;
-  steps: number;
+  statuses: readonly CallStatus[];
 }) {
+  const failed = statuses.filter((status) => status === 'failed').length;
+
+  const stopped = statuses.filter((status) => status === 'stopped').length;
+
   const details = [
-    plural(steps, 'action'),
+    plural(statuses.length, 'action'),
     failed > 0 ? `${failed} failed` : undefined,
+    stopped > 0 ? `${stopped} stopped` : undefined,
   ].filter((detail) => detail !== undefined);
 
   return (
@@ -443,12 +475,14 @@ function Segments({
   results,
   segments: list,
   streaming,
+  working,
 }: {
   parts: readonly Part[];
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   segments: readonly Segment[];
   streaming: boolean;
+  working: boolean;
 }) {
   return list.map((segment) => {
     if (segment.kind === 'tools') {
@@ -458,6 +492,7 @@ function Segments({
           call={call}
           progress={progress.get(call.id)}
           result={results.get(call.id)}
+          working={working}
         />
       ));
     }
@@ -520,7 +555,7 @@ export function AssistantMessage({
 
   const inSlot = last !== undefined && !replying;
 
-  const shared = { parts, progress, results, streaming };
+  const shared = { parts, progress, results, streaming, working };
 
   return (
     <Message>
@@ -532,13 +567,15 @@ export function AssistantMessage({
             call={last}
             progress={progress.get(last.id)}
             result={results.get(last.id)}
+            working={working}
           />
         )}
         {last && (!working || replying) && (
           <Worked
-            failed={calls.filter(({ id }) => results.get(id)?.isError).length}
             span={span}
-            steps={calls.length}
+            statuses={calls.map(({ id }) =>
+              callStatus(results.get(id), working)
+            )}
           >
             {calls.map((call) => (
               <ToolStep
@@ -546,6 +583,7 @@ export function AssistantMessage({
                 call={call}
                 progress={progress.get(call.id)}
                 result={results.get(call.id)}
+                working={working}
               />
             ))}
           </Worked>

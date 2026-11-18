@@ -3,8 +3,8 @@ import { createContext, type ReactNode } from 'react';
 
 export type ToolResult = {
   details?: unknown;
-  isError: boolean;
   output: string;
+  status: 'done' | 'failed' | 'stopped';
 };
 
 export type ToolProgress = {
