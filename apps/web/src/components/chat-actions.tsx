@@ -202,11 +202,11 @@ export function useRenaming() {
       if (renaming.current) {
         renaming.current = false;
         event.preventDefault();
+        setEditing(true);
       }
     },
     start: () => {
       renaming.current = true;
-      setEditing(true);
     },
     stop: () => setEditing(false),
   };
