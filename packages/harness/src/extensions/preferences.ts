@@ -4,7 +4,7 @@ import {
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
-import { bool, lit, obj, opt, union } from '@earendil-works/pi-schema';
+import { bool, obj, oneOf, opt } from '@earendil-works/pi-schema';
 
 import {
   CHAT_SORTS,
@@ -20,13 +20,6 @@ export const PreferencesDoc = userDoc<Preferences>(
   () => defaultPreferences
 );
 
-function choice<T extends string>(values: readonly T[], description: string) {
-  return union(
-    values.map((value) => lit(value)),
-    { description }
-  );
-}
-
 function describe({ chatSort, lineNumbers, theme }: Preferences) {
   return `theme ${theme}, code block line numbers ${lineNumbers ? 'on' : 'off'}, chats sorted by ${chatSort}`;
 }
@@ -38,15 +31,15 @@ export function preferences(owner: Owner) {
       "Change the user's Lab settings: the color theme, line numbers in code blocks, and how chats are sorted in the sidebar. Only the fields you pass change.",
     parameters: obj({
       chat_sort: opt(
-        choice(
-          CHAT_SORTS,
-          'Sort chats by recent activity, creation date, or title.'
-        )
+        oneOf(CHAT_SORTS, {
+          description:
+            'Sort chats by recent activity, creation date, or title.',
+        })
       ),
       line_numbers: opt(
         bool({ description: 'Show line numbers in code blocks.' })
       ),
-      theme: opt(choice(THEMES, 'The color theme.')),
+      theme: opt(oneOf(THEMES, { description: 'The color theme.' })),
     }),
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
       const change: Partial<Preferences> = {

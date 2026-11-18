@@ -5,7 +5,7 @@ import {
   defineTool,
   section,
 } from '@earendil-works/pi-durable';
-import { arr, int, lit, obj, opt, str, union } from '@earendil-works/pi-schema';
+import { arr, int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
 import { errorMessage, failure, once, text } from './results';
 
@@ -98,7 +98,7 @@ export function web(access: WebAccess) {
         minLength: 1,
       }),
       recency: opt(
-        union([lit('day'), lit('week'), lit('month'), lit('year')], {
+        oneOf(['day', 'week', 'month', 'year'], {
           description: 'Only return results published within this period.',
         })
       ),
