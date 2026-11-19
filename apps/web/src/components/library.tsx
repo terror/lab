@@ -53,8 +53,6 @@ const filters: { label: string; value: Filter }[] = [
 const grid =
   'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
 
-const shelf = 'relative -m-1 overflow-clip p-1';
-
 const RESHELVE_LIMIT = 60;
 
 const reshelve = {
@@ -100,8 +98,8 @@ function Shelf({
       {...reshelve}
     >
       <SectionHeading>{title}</SectionHeading>
-      <div className={cn(grid, shelf)}>
-        <AnimatePresence initial={false} mode='popLayout'>
+      <div className={grid}>
+        <AnimatePresence initial={false}>
           {items.map((item) => (
             <Shelved key={item.id} glide={glide}>
               <Tile item={item} onOpen={() => onOpen(item.id)} />
@@ -378,8 +376,8 @@ export function Library() {
               onClear={clear}
             />
           )}
-          <div className={cn('flex flex-col gap-8', shelf)}>
-            <AnimatePresence initial={false} mode='popLayout'>
+          <div className='flex flex-col gap-8'>
+            <AnimatePresence initial={false}>
               {groupByPeriod(items).map(([title, group]) => (
                 <Shelf
                   key={title}
