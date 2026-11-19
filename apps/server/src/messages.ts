@@ -14,16 +14,30 @@ import { acceptsImages } from './models';
 import { requireOwner } from './records';
 import {
   type Attachment,
+  MAX_ATTACHMENT_TEXT,
+  MAX_IMAGE_DATA,
   attachmentSchema,
   attachmentTextLimit,
 } from './schemas';
 import { checkSpend } from './spend';
 import { checkStorage } from './storage';
+import { BODY_BYTES } from './validator';
 
 export const MESSAGE_LENGTH = 4_000_000;
 
+const ATTACHMENT_LIMIT = 8;
+
+const BYTES_PER_CHAR = 3;
+
+export const MESSAGE_BYTES = BYTES_PER_CHAR * MESSAGE_LENGTH + BODY_BYTES;
+
+export const DRAFT_BYTES =
+  MESSAGE_BYTES +
+  BYTES_PER_CHAR * MAX_ATTACHMENT_TEXT +
+  ATTACHMENT_LIMIT * MAX_IMAGE_DATA;
+
 export const draftSchema = z.object({
-  attachments: z.array(attachmentSchema).max(8).default([]),
+  attachments: z.array(attachmentSchema).max(ATTACHMENT_LIMIT).default([]),
   content: z.string().trim(),
 });
 

@@ -25,7 +25,9 @@ export const imageTypes = [
   'image/webp',
 ] as const;
 
-const MAX_ATTACHMENT_TEXT = 4_000_000;
+export const MAX_ATTACHMENT_TEXT = 4_000_000;
+
+export const MAX_IMAGE_DATA = 8_000_000;
 
 const CHARS_PER_TOKEN = 4;
 
@@ -46,7 +48,7 @@ export function attachmentTextLimit(contextWindow: number | undefined) {
 
 export const attachmentSchema = z.discriminatedUnion('type', [
   z.object({
-    data: z.base64().max(8_000_000),
+    data: z.base64().max(MAX_IMAGE_DATA),
     mimeType: z.enum(imageTypes),
     libraryId: z.number().int().positive().optional(),
     name: z.string().max(200),
