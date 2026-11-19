@@ -67,6 +67,8 @@ function Chip({
 }) {
   const title = conversationTitle(chat.title);
 
+  const finished = ago(chat.finishedAt);
+
   const when = [chat.scheduled && 'Scheduled', `${ago(chat.finishedAt)} ago`]
     .filter(Boolean)
     .join(' · ');
@@ -85,13 +87,13 @@ function Chip({
           </button>
         </HoverCardTrigger>
         <button
-          aria-label={`Mark ${title} as read`}
+          aria-label={`${finished}, mark ${title} as read`}
           className='relative mr-1 grid h-6 min-w-6 place-items-center rounded-full px-2 text-muted-foreground tabular-nums hover:text-foreground'
           onClick={onRead}
           type='button'
         >
           <span className='group-focus-within:invisible group-hover:invisible'>
-            {ago(chat.finishedAt)}
+            {finished}
           </span>
           <X
             aria-hidden='true'

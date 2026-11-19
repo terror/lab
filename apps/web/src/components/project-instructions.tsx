@@ -10,7 +10,7 @@ import {
 import { FieldError } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { type Project, updateProject, useProjectSave } from '@/lib/projects';
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useId, useState } from 'react';
 
 function InstructionsForm({
   onClose,
@@ -66,22 +66,28 @@ function InstructionsForm({
 
 export function ProjectInstructions({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
+  const preview = useId();
 
   const instructions = project.instructions.trim();
 
   return (
     <>
-      <button
-        aria-label='Edit instructions'
-        className='flex flex-col gap-1 rounded-card border p-4 text-left transition-colors hover:bg-muted'
-        onClick={() => setOpen(true)}
-        type='button'
-      >
+      <div className='relative flex flex-col gap-1 rounded-card border p-4 transition-colors hover:bg-muted'>
         <span className='text-sm font-medium'>Instructions</span>
-        <span className='line-clamp-2 text-sm text-muted-foreground'>
+        <span
+          className='line-clamp-2 text-sm text-muted-foreground'
+          id={preview}
+        >
           {instructions || 'Tell Lab how to respond in this project.'}
         </span>
-      </button>
+        <button
+          aria-describedby={preview}
+          aria-label='Edit instructions'
+          className='absolute inset-0 rounded-card'
+          onClick={() => setOpen(true)}
+          type='button'
+        />
+      </div>
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogContent className='sm:max-w-lg'>
           {open && (

@@ -57,7 +57,7 @@ function TileContent({ item }: { item: LibraryItem }) {
           loading='lazy'
           src={libraryItemUrl(item.id)}
         />
-        <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white hover-reveal group-hover:opacity-100 group-focus-visible:opacity-100'>
+        <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white hover-reveal group-hover:opacity-100 group-has-focus-visible:opacity-100'>
           {item.name}
         </span>
       </>
@@ -83,16 +83,11 @@ export function Tile({
   selected?: boolean;
 }) {
   return (
-    <button
-      aria-label={item.name}
-      aria-pressed={selected}
+    <div
       className={cn(
-        'group relative aspect-square overflow-hidden rounded-xl bg-muted disabled:opacity-40',
+        'group relative aspect-square overflow-hidden rounded-xl bg-muted has-disabled:opacity-40',
         selected && 'ring-2 ring-foreground'
       )}
-      disabled={disabled}
-      onClick={onOpen}
-      type='button'
     >
       {selected && (
         <span className='absolute top-2 right-2 z-10 flex size-5 items-center justify-center rounded-full bg-foreground text-background'>
@@ -100,6 +95,14 @@ export function Tile({
         </span>
       )}
       <TileContent item={item} />
-    </button>
+      <button
+        aria-label={item.name}
+        aria-pressed={selected}
+        className='absolute inset-0 z-20 rounded-xl focus-ring-inset'
+        disabled={disabled}
+        onClick={onOpen}
+        type='button'
+      />
+    </div>
   );
 }
