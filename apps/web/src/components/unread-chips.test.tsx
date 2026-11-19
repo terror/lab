@@ -53,7 +53,7 @@ test('finished chats show as chips that can be marked read', async () => {
     .element(list)
     .toHaveTextContent('foo 11mfoo 21mfoo 31m+12 running');
 
-  await screen.getByRole('button', { name: 'Mark foo 1 as read' }).click();
+  await screen.getByRole('button', { name: '1m, mark foo 1 as read' }).click();
 
   await expect
     .poll(() =>
