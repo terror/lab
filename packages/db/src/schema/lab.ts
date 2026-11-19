@@ -302,6 +302,17 @@ export const artifactState = pgTable(
   ]
 );
 
+export const toolUse = pgTable(
+  'tool_use',
+  {
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    tool: text('tool').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.ownerId, table.tool] })]
+);
+
 export const artifactPin = pgTable(
   'artifact_pin',
   {

@@ -17,6 +17,7 @@ import {
   usePinnedConversations,
   useStartChat,
 } from '@/lib/conversations';
+import { useSeen } from '@/lib/hints';
 import { useChatModel } from '@/lib/models';
 import { useProjects } from '@/lib/projects';
 import { type Segment, useWorkspaceSearch } from '@/lib/search';
@@ -646,6 +647,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   const openSearch = useCallback(() => setOpen(true), []);
   const close = useCallback(() => setOpen(false), []);
+
+  useSeen('palette', open);
 
   useEffect(() => {
     const shortcuts: Record<string, () => void> = {

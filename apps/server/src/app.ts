@@ -12,6 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { auth, requireUser } from './auth';
+import capabilities from './capabilities';
 import changelog from './changelog';
 import computer from './computer';
 import { clientMetadata, clientMetadataUrl } from './connector-auth';
@@ -130,6 +131,7 @@ const api = new Hono()
     (c) => auth.handler(c.req.raw)
   )
   .route('/', changelog)
+  .route('/capabilities', capabilities)
   .get('/models', requireUser, async (c) => {
     const fallback = await defaultModel();
 
