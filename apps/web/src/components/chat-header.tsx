@@ -56,9 +56,16 @@ export function ChatHeader({ id }: { id: number }) {
 
   const projectId = summary.data?.projectId ?? null;
 
-  const pinned = pins.data?.some((chat) => chat.id === id) ?? false;
+  const actions = useChatActions(
+    {
+      id,
+      pinned: pins.data?.some((chat) => chat.id === id) ?? false,
+      projectId,
+    },
+    true
+  );
 
-  const actions = useChatActions({ id, pinned, projectId }, true);
+  const { pinned } = actions.menu;
 
   const title = conversationTitle(summary.data?.title);
 

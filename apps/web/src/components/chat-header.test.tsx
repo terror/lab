@@ -135,6 +135,34 @@ test('the chat header renames the chat from its menu', async () => {
     .toHaveFocus();
 });
 
+test('a second Pin click before the pins reload unpins the chat', async () => {
+  const { fetch, screen } = await renderHeader('foo', false);
+
+  await expect.element(screen.getByRole('link', { name: 'bar' })).toBeVisible();
+
+  const patched = Promise.withResolvers<Response>();
+
+  fetch.mockImplementationOnce(() => patched.promise);
+
+  const pin = screen.getByRole('button', { name: /^(Pin|Unpin)$/ });
+
+  await pin.click();
+  await pin.click();
+
+  patched.resolve(new Response(null, { status: 204 }));
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls
+        .filter(([, init]) => init?.method === 'PATCH')
+        .map(([, init]) => init?.body)
+    )
+    .toEqual([
+      JSON.stringify({ pinned: true }),
+      JSON.stringify({ pinned: false }),
+    ]);
+});
+
 test('an undo that fails says why', async () => {
   const { screen } = await renderHeader('foo', false, queryClient);
 
