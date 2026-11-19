@@ -46,42 +46,48 @@ export async function purgeDeleted(path: string) {
   return purged;
 }
 
-await purgeDeleted(env.LAB_STORAGE_PATH);
+export let harness: Awaited<ReturnType<typeof openHarness>>;
 
-export const deps: ExtensionDeps = {
-  admit: async (conversationId) =>
-    checkSpend(await requireOwner(conversationId)),
-  artifactState: artifactStateAccess,
-  chats: chatsAccess,
-  connectors: connectorAccess,
-  history: historyAccess,
-  images: imageAccess,
-  library: libraryAccess,
-  onHelperUsage: recordHelperUsage,
-  owner: requireOwner,
-  project: projectAccess,
-  sandbox: createSandboxAccess(
-    async (ownerId) =>
-      (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
-        ?.network ?? 'full'
-  ),
-  schedule: scheduleAccess,
-  web: webAccess(),
-};
+export function harnessDeps(): ExtensionDeps {
+  return {
+    admit: async (conversationId) =>
+      checkSpend(await requireOwner(conversationId)),
+    artifactState: artifactStateAccess,
+    chats: chatsAccess,
+    connectors: connectorAccess,
+    history: historyAccess,
+    images: imageAccess,
+    library: libraryAccess,
+    onHelperUsage: recordHelperUsage,
+    owner: requireOwner,
+    project: projectAccess,
+    sandbox: createSandboxAccess(
+      async (ownerId) =>
+        (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
+          ?.network ?? 'full'
+    ),
+    schedule: scheduleAccess,
+    web: webAccess(),
+  };
+}
 
-export const harness = await openHarness({
-  ...deps,
-  models,
-  onReport: (report) => console.error(report),
-  path: env.LAB_STORAGE_PATH,
-  registry,
-});
+export async function openLabHarness() {
+  await purgeDeleted(env.LAB_STORAGE_PATH);
 
-const [admin] = await db
-  .select({ id: schema.user.id })
-  .from(schema.user)
-  .where(sql`lower(${schema.user.email}) = lower(${env.LAB_ADMIN_EMAIL})`);
+  harness = await openHarness({
+    ...harnessDeps(),
+    models,
+    onReport: (report) => console.error(report),
+    path: env.LAB_STORAGE_PATH,
+    registry,
+  });
 
-if (admin) {
-  await adoptGlobalDocs(harness, admin.id, BACKGROUND_CONTEXT);
+  const [admin] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(sql`lower(${schema.user.email}) = lower(${env.LAB_ADMIN_EMAIL})`);
+
+  if (admin) {
+    await adoptGlobalDocs(harness, admin.id, BACKGROUND_CONTEXT);
+  }
 }

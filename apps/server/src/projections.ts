@@ -105,21 +105,26 @@ async function projectEach(ids: readonly ConversationId[]) {
   }
 }
 
-export const flushProjections = observe(
-  (changes) => [
-    ...new Set(
-      changes.flatMap((change) =>
-        projections.flatMap(({ source }) => {
-          const id = source(change);
+export const projectionPipeline = {
+  backfill: projectAll,
+  ...observe(
+    (changes) => [
+      ...new Set(
+        changes.flatMap((change) =>
+          projections.flatMap(({ source }) => {
+            const id = source(change);
 
-          return id === undefined ? [] : [id];
-        })
-      )
-    ),
-  ],
-  projectEach,
-  queue
-);
+            return id === undefined ? [] : [id];
+          })
+        )
+      ),
+    ],
+    projectEach,
+    queue
+  ),
+};
+
+export const flushProjections = projectionPipeline.flush;
 
 export async function projectAll() {
   const rows = await db

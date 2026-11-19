@@ -5,12 +5,16 @@ import { startConnectors } from './connections';
 import { resealSecrets } from './credentials';
 import { db } from './db';
 import { env } from './env';
-import { harness } from './harness';
+import { harness, openLabHarness } from './harness';
 import { initSentry } from './instrument';
-import { backfillAll } from './pipelines';
+import { backfillAll, startPipelines } from './pipelines';
 import { startScheduler } from './scheduler';
 
 initSentry();
+
+await openLabHarness();
+
+startPipelines();
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
