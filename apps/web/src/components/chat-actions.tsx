@@ -32,10 +32,12 @@ import {
   PinOff,
   Trash2,
 } from 'lucide-react';
+import { useIsPresent } from 'motion/react';
 import {
   type KeyboardEvent,
   type RefObject,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -236,12 +238,131 @@ export function useRenaming(trigger: RefObject<HTMLElement | null>) {
   };
 }
 
+type Landing = {
+  closed: boolean;
+  id: number;
+  left: boolean;
+  origin: HTMLElement;
+  project: number | null;
+  settled: boolean;
+  target?: HTMLElement;
+};
+
+let landing: Landing | undefined;
+
+function projectRow(id: number | null) {
+  return document.querySelector<HTMLElement>(`[data-project-row="${id}"]`);
+}
+
+function settle() {
+  if (!landing?.closed || !landing.left) {
+    return false;
+  }
+
+  const target =
+    landing.target ?? (landing.settled ? projectRow(landing.project) : null);
+
+  if (!target && !landing.settled) {
+    return false;
+  }
+
+  target?.focus();
+  landing = undefined;
+
+  return true;
+}
+
+function landed(id: number) {
+  setTimeout(() => {
+    if (landing?.id === id) {
+      landing.settled = true;
+      settle();
+    }
+  });
+}
+
+function arrive(id: number, target: HTMLElement | null | undefined) {
+  if (target && landing?.id === id && landing.origin !== target) {
+    landing.target = target;
+    settle();
+  }
+}
+
+function leave(origin: HTMLElement | null | undefined) {
+  if (landing && landing.origin === origin) {
+    landing.left = true;
+    settle();
+  }
+}
+
+function close(event: Event, id: number) {
+  const current = landing;
+
+  if (!current || current.id !== id || current.closed) {
+    return;
+  }
+
+  current.closed = true;
+
+  if (settle()) {
+    event.preventDefault();
+  }
+
+  const abort = new AbortController();
+
+  const forget = () => {
+    abort.abort();
+
+    if (landing === current) {
+      landing = undefined;
+    }
+  };
+
+  for (const type of ['keydown', 'pointerdown']) {
+    document.addEventListener(type, forget, {
+      capture: true,
+      signal: abort.signal,
+    });
+  }
+}
+
 export function useChatActions(
   chat: { id: number; pinned: boolean; projectId: number | null },
-  selected: boolean
+  selected: boolean,
+  trigger?: RefObject<HTMLElement | null>
 ) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const present = useIsPresent();
+
+  useLayoutEffect(() => {
+    arrive(chat.id, trigger?.current);
+  }, [chat.id, trigger]);
+
+  useLayoutEffect(() => {
+    if (!present) {
+      leave(trigger?.current);
+    }
+  }, [present, trigger]);
+
+  useLayoutEffect(() => {
+    const origin = trigger?.current;
+
+    return () => leave(origin);
+  }, [trigger]);
+
+  const land = (project: number | null) => {
+    if (trigger?.current) {
+      landing = {
+        closed: false,
+        id: chat.id,
+        left: false,
+        origin: trigger.current,
+        project,
+        settled: false,
+      };
+    }
+  };
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -249,7 +370,10 @@ export function useChatActions(
   const update = useMutation({
     mutationFn: (change: Parameters<typeof updateConversation>[1]) =>
       updateConversation(chat.id, change),
-    onSettled: refresh,
+    onSettled: async () => {
+      await refresh();
+      landed(chat.id);
+    },
     scope: { id: `chat:${chat.id}` },
   });
 
@@ -263,6 +387,7 @@ export function useChatActions(
       updateConversation(chat.id, { projectId: to }),
     onSettled: async () => {
       await refresh();
+      landed(chat.id);
       await queryClient.invalidateQueries({
         queryKey: projectsQueryOptions.queryKey,
       });
@@ -303,11 +428,17 @@ export function useChatActions(
   });
 
   return {
+    closed: (event: Event) => close(event, chat.id),
     menu: {
       onDelete: () => remove.mutate(),
-      onMove: (projectId: number | null) =>
-        move.mutate({ from: chat.projectId, to: projectId }),
-      onPin: () => update.mutate({ pinned: !pinned }),
+      onMove: (projectId: number | null) => {
+        land(projectId);
+        move.mutate({ from: chat.projectId, to: projectId });
+      },
+      onPin: () => {
+        land(chat.projectId);
+        update.mutate({ pinned: !pinned });
+      },
       pinned,
       projectId: chat.projectId,
     },
