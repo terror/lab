@@ -1,4 +1,9 @@
-import type { Transition } from 'motion/react';
+import {
+  type FeatureBundle,
+  type Transition,
+  domAnimation,
+} from 'motion/react';
+import { useEffect, useState } from 'react';
 
 export const spring = {
   glide: { bounce: 0, type: 'spring', visualDuration: 0.3 },
@@ -27,4 +32,36 @@ export function rise(index: number) {
     initial: { opacity: 0, y: 4 },
     transition: { ...spring.snap, delay, opacity: { ...fade.base, delay } },
   } as const;
+}
+
+let max: FeatureBundle | undefined;
+
+async function loadMax() {
+  const features = await import('./motion-max');
+
+  max = features.default;
+
+  return max;
+}
+
+export function useMaxFeatures() {
+  const [state, setState] = useState(() => ({
+    features: max ?? domAnimation,
+    settled: max !== undefined,
+  }));
+
+  useEffect(() => {
+    let live = true;
+
+    loadMax().then(
+      (features) => live && setState({ features, settled: true }),
+      () => live && setState({ features: domAnimation, settled: true })
+    );
+
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  return state;
 }
