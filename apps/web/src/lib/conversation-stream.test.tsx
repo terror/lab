@@ -1,36 +1,8 @@
+import { FakeEventSource } from '@/test/helpers';
 import { expect, test, vi } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 
 import { useConversation } from './conversation-stream';
-
-type Listener = (event: { data: string }) => void;
-
-class FakeEventSource {
-  static current: FakeEventSource | undefined;
-
-  closed = false;
-  listeners = new Map<string, Listener>();
-  url: string | URL;
-
-  constructor(url: string | URL) {
-    this.url = url;
-    FakeEventSource.current = this;
-  }
-
-  addEventListener(type: string, listener: Listener) {
-    this.listeners.set(type, listener);
-  }
-
-  close() {
-    this.closed = true;
-  }
-
-  emit(type: string, data: unknown) {
-    this.listeners.get(type)?.({
-      data: typeof data === 'string' ? data : JSON.stringify(data),
-    });
-  }
-}
 
 test('the conversation follows its event stream', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);
