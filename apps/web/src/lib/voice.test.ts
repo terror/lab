@@ -7,87 +7,27 @@ import { expect, test, vi } from 'vitest';
 
 import { say, useEmpty, useThinking } from './voice';
 
-function check(at: Date, absent: number, expected: string[], fresh = false) {
+test('greetings vary between work prompts', () => {
   const greetings = Array.from({ length: 40 }, (_, index) =>
-    say(
-      'greeting',
-      { absent, at, fresh, name: 'Foo Bar' },
-      { quiet: false, seed: `bar${index}` }
-    )
+    say('greeting', undefined, { quiet: false, seed: `foo${index}` })
   );
 
-  expect(new Set(greetings)).toEqual(new Set(expected));
-}
-
-test('the greeting reads the calendar, the clock, and time away', () => {
-  check(new Date(2027, 0, 1, 10), 20, ['Hello, Foo.'], true);
-  check(new Date(2027, 0, 1, 10), 20, [
-    'Happy new year, Foo',
-    'New year, Foo. Clean notebook.',
-    'First day of the year, Foo. Something small?',
-  ]);
-  check(new Date(2026, 10, 16, 9), 20, [
-    'Welcome back, Foo',
-    'There you are, Foo. Everything is where you left it.',
-    'Long time, Foo. The bench is clean.',
-  ]);
-  check(new Date(2026, 10, 16, 9), 0, [
-    'Good morning, Foo',
-    'Monday, Foo. Fresh notebook.',
-    'New week, Foo. What’s first?',
-  ]);
-  check(new Date(2026, 10, 20, 18), 0, [
-    'Good evening, Foo',
-    'Friday night, Foo. One last experiment?',
-    'It’s Friday, Foo. Something small?',
-  ]);
-  check(new Date(2026, 10, 22, 10), 0, [
-    'Good morning, Foo',
-    'No rush today, Foo.',
-    'Slow Sunday, Foo?',
-  ]);
-  check(new Date(2026, 10, 18, 2), 0, [
-    'Up late, Foo?',
-    'Still here, Foo? So is the bench light.',
-    'Night shift, Foo.',
-  ]);
-  check(new Date(2026, 10, 18, 9), 0, [
-    'Good morning, Foo',
-    'Morning, Foo. What are we working on?',
-    'Morning, Foo. The bench is set.',
-  ]);
-  check(new Date(2026, 10, 18, 14), 0, [
-    'Good afternoon, Foo',
-    'Afternoon, Foo. What are we working on?',
-    'Hello, Foo. Pull up a stool.',
-  ]);
-  check(new Date(2026, 10, 18, 20), 0, [
-    'Good evening, Foo',
-    'Evening, Foo. What’s on the bench?',
-    'Evening, Foo. One more experiment?',
-  ]);
+  expect(new Set(greetings)).toEqual(
+    new Set([
+      'What are we working on?',
+      'What would you like to make?',
+      'What should we tackle next?',
+      'What would you like to explore?',
+      'Where should we start?',
+      'What can I help with?',
+    ])
+  );
 });
 
-test('a quiet greeting is the plain one for the hour', () => {
-  expect(
-    [2, 9, 14, 20].map((hour) =>
-      say(
-        'greeting',
-        {
-          absent: 20,
-          at: new Date(2027, 0, 1, hour),
-          fresh: true,
-          name: 'Foo Bar',
-        },
-        { quiet: true, seed: 'bar' }
-      )
-    )
-  ).toEqual([
-    'Up late, Foo?',
-    'Good morning, Foo',
-    'Good afternoon, Foo',
-    'Good evening, Foo',
-  ]);
+test('a quiet greeting is a fixed work prompt', () => {
+  expect(say('greeting', undefined, { quiet: true, seed: 'foo' })).toBe(
+    'What are we working on?'
+  );
 });
 
 test('a long wait climbs from thinking to a note that it can be left', async () => {

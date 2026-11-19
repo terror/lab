@@ -68,7 +68,7 @@ async function renderHome({
         createRoute({
           component: () => (
             <TooltipProvider>
-              <NewChat user={{ id: user, name: 'Foo Bar' }} />
+              <NewChat user={{ id: user }} />
             </TooltipProvider>
           ),
           getParentRoute: () => rootRoute,
@@ -153,13 +153,8 @@ test('the first home visit of a new day in the same tab is a first visit', async
   expect(states).toEqual(['assemble', 'assemble']);
 });
 
-test('the greeting is picked once a session and notices a long absence', async () => {
+test('the greeting stays the same throughout a session', async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
-
-  window.localStorage.setItem(
-    'lab:foo:last-seen',
-    JSON.stringify(new Date(2026, 10, 1).getTime())
-  );
 
   const greetings = [];
 
@@ -181,16 +176,15 @@ test('the greeting is picked once a session and notices a long absence', async (
     vi.useRealTimers();
   }
 
-  expect({
-    greetings,
-    lastSeen: window.localStorage.getItem('lab:foo:last-seen'),
-  }).toEqual({
-    greetings: ['Welcome back, Foo', 'Welcome back, Foo'],
-    lastSeen: String(new Date(2026, 10, 18, 20).getTime()),
-  });
+  expect(greetings).toEqual([
+    'What are we working on?',
+    'What are we working on?',
+  ]);
 });
 
-test('someone with no chats yet gets a hello and what Lab can do', async () => {
+test('someone with no chats yet gets a work prompt and what Lab can do', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(new Date(2026, 10, 18, 14).getTime());
+
   const { screen } = await renderHome();
 
   const heading = screen.getByRole('heading');
@@ -201,7 +195,7 @@ test('someone with no chats yet gets a hello and what Lab can do', async () => {
     heading.element().textContent,
     heading.element().nextElementSibling?.textContent,
   ]).toEqual([
-    'Hello, Foo.',
+    'What are we working on?',
     'I’m Lab. I can read, write, run code and remember things. Start anywhere.',
   ]);
 });

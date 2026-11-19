@@ -29,7 +29,7 @@ function Frame() {
       <HomeFrame
         above={
           <>
-            <p className='text-xl font-semibold'>Good morning, Demo</p>
+            <p className='text-xl font-semibold'>What are we working on?</p>
             {arrived && (
               <p className='text-sm text-muted-foreground'>
                 While you were out, 1 chat finished.
