@@ -64,21 +64,31 @@ test('scripts cannot grow past the memory cap', async () => {
   );
 });
 
-test('scripts without their own timeout stop at the default deadline', async () => {
-  const sandbox = new DeadlineSandbox({ timeoutMs: 100 });
+test('scripts stop at the default deadline, and never after the longest one', async () => {
+  const sandbox = new DeadlineSandbox({ maxTimeoutMs: 200, timeoutMs: 100 });
 
-  const { result } = sandbox.start('while (true) {}', {
-    onCall: () => undefined,
-    seed: 0,
-    startedAt: 0,
-  });
+  async function timeout(requested: number | undefined, actual: number) {
+    const { result } = sandbox.start('while (true) {}', {
+      onCall: () => undefined,
+      seed: 0,
+      startedAt: 0,
+      timeoutMs: requested,
+    });
 
-  expect(await result).toEqual({
-    calls: [],
-    error: { kind: 'timeout', message: 'Execution timed out after 100 ms' },
-    ok: false,
-    output: [],
-  });
+    expect(await result).toEqual({
+      calls: [],
+      error: {
+        kind: 'timeout',
+        message: `Execution timed out after ${actual} ms`,
+      },
+      ok: false,
+      output: [],
+    });
+  }
+
+  await timeout(undefined, 100);
+  await timeout(150, 150);
+  await timeout(60_000, 200);
 
   await sandbox.close();
 });
@@ -88,6 +98,7 @@ test('scripts past the limit are refused until a running one exits', async () =>
 
   const sandbox = new DeadlineSandbox({
     acquireWorker: workerSlots(1),
+    maxTimeoutMs: 200,
     onWorkerStarted: (exited) => {
       exits.push(exited);
     },
