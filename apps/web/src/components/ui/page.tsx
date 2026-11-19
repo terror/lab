@@ -28,10 +28,7 @@ function PageHeader({
   return (
     <div
       data-slot='page-header'
-      className={cn(
-        'flex items-end justify-between gap-4 border-b pb-4',
-        className
-      )}
+      className={cn('flex items-end justify-between gap-4 pb-4', className)}
       {...props}
     >
       <div className='flex min-w-0 flex-col gap-1'>

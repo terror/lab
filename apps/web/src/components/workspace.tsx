@@ -145,7 +145,7 @@ function MobileWorkspace({
 
   return (
     <div className='flex h-svh flex-col'>
-      <header className='flex items-center gap-1 border-b px-2 py-2'>
+      <header className='flex items-center gap-1 px-2 py-2'>
         <Button
           aria-label='Open menu'
           onClick={() => setOpen(true)}
