@@ -4,9 +4,8 @@ import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
-import { signIn, signInAdmin } from '../test/auth';
+import { signIn } from '../test/auth';
 import { call, chat, settle } from '../test/client';
-import { serveProtectedMcp } from '../test/mcp';
 import { script, toolCall } from '../test/models';
 import app from './app';
 import { db } from './db';
@@ -315,13 +314,20 @@ async function seed(headers: Headers): Promise<Fixtures> {
     .from(schema.conversation)
     .where(eq(schema.conversation.id, id));
 
+  const { ownerId } = defined(chatRow);
+
+  const [{ id: connector }] = (await db
+    .insert(schema.connector)
+    .values({ name: secret, ownerId, url: 'http://127.0.0.1:9/mcp' })
+    .returning({ id: schema.connector.id })) as [{ id: number }];
+
   const [{ id: schedule }] = (await db
     .insert(schema.scheduledTask)
     .values({
       conversationId: id,
       cron: '0 9 * * *',
       description: secret,
-      ownerId: defined(chatRow).ownerId,
+      ownerId,
       prompt: secret,
       timezone: 'UTC',
       title: secret,
@@ -330,6 +336,7 @@ async function seed(headers: Headers): Promise<Fixtures> {
 
   return {
     params: {
+      connectors: [{ id: connector, state: `${connector}.foo` }],
       conversations: [
         {
           artifactId: 'bar',
@@ -395,22 +402,9 @@ function failures(results: Result[], failed: (result: Result) => boolean) {
 }
 
 test('no route reaches another user’s records', async () => {
-  const mcp = serveProtectedMcp();
-
-  const ownerHeaders = await signInAdmin();
+  const ownerHeaders = await signIn();
 
   const owner = await seed(ownerHeaders);
-
-  const { body: connectors } = await call(ownerHeaders, 'POST', '/connectors', {
-    name: secret,
-    url: mcp.url,
-  });
-
-  const { id: connector } = named<{ id: number; name: string }>(
-    connectors.connectors
-  );
-
-  owner.params.connectors = [{ id: connector, state: `${connector}.foo` }];
 
   const intruderHeaders = await signIn();
 
@@ -450,8 +444,6 @@ test('no route reaches another user’s records', async () => {
     ownerHeaders,
     foreign.filter(({ method }) => method === 'GET')
   );
-
-  await mcp.stop();
 
   expect({
     after,
