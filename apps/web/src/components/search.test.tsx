@@ -22,7 +22,7 @@ const recent = Array.from({ length: 6 }, (_, index) => ({
 }));
 
 function stubWorkspace() {
-  stubFetch(({ pathname, searchParams }, init) => {
+  return stubFetch(({ pathname, searchParams }, init) => {
     if (init?.method === 'POST') {
       return Response.json({ error: 'bar' }, { status: 400 });
     }
@@ -172,15 +172,34 @@ test('a failed search says so instead of reporting no matches', async () => {
   expect(screen.getByText('No matches for “foo”.').query()).toBeNull();
 });
 
-test('asking Lab reports a failure to start the chat', async () => {
-  stubWorkspace();
+test('asking Lab right after typing asks about the whole query', async () => {
+  const fetch = stubWorkspace();
 
   const { screen } = await openSearch(queryClient);
 
-  await screen.getByRole('combobox', { name: 'Search Lab' }).fill('foo');
-  await userEvent.keyboard('{Meta>}{Enter}{/Meta}');
+  const input = screen
+    .getByRole('combobox', { name: 'Search Lab' })
+    .element() as HTMLInputElement;
+
+  Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    'value'
+  )?.set?.call(input, 'foo');
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+
+  await Promise.resolve();
+
+  input.dispatchEvent(
+    new KeyboardEvent('keydown', { bubbles: true, key: 'Enter', metaKey: true })
+  );
 
   await expect.element(screen.getByText('bar')).toBeVisible();
+
+  expect(
+    fetch.mock.calls.flatMap(([, init]) =>
+      init?.method === 'POST' ? [init.body] : []
+    )
+  ).toEqual([JSON.stringify({ attachments: [], content: 'foo' })]);
 });
 
 test('the search box points at the selected result', async () => {

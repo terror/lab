@@ -529,12 +529,14 @@ function Palette({
   const unmatched = query !== '' && !scoped && !pending && !failed;
 
   const ask = () => {
-    if (!query) {
+    const content = search.trim();
+
+    if (!content) {
       return;
     }
 
     onDone();
-    start.mutate({ attachments: [], content: query, model });
+    start.mutate({ attachments: [], content, model });
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
