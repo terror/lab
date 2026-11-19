@@ -49,3 +49,32 @@ export function renderHookWithQuery<T>(
 ) {
   return renderHook(hook, { wrapper: wrapper(client) });
 }
+
+type Listener = (event: { data: string }) => void;
+
+export class FakeEventSource {
+  static current: FakeEventSource | undefined;
+
+  closed = false;
+  listeners = new Map<string, Listener>();
+  url: string | URL;
+
+  constructor(url: string | URL) {
+    this.url = url;
+    FakeEventSource.current = this;
+  }
+
+  addEventListener(type: string, listener: Listener) {
+    this.listeners.set(type, listener);
+  }
+
+  close() {
+    this.closed = true;
+  }
+
+  emit(type: string, data: unknown) {
+    this.listeners.get(type)?.({
+      data: typeof data === 'string' ? data : JSON.stringify(data),
+    });
+  }
+}

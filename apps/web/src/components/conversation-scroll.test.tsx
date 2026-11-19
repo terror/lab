@@ -1,5 +1,5 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { FakeEventSource, renderWithQuery, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -10,28 +10,6 @@ import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
 import { Conversation } from './conversation';
-
-type Listener = (event: { data: string }) => void;
-
-class FakeEventSource {
-  static current: FakeEventSource | undefined;
-
-  listeners = new Map<string, Listener>();
-
-  constructor() {
-    FakeEventSource.current = this;
-  }
-
-  addEventListener(type: string, listener: Listener) {
-    this.listeners.set(type, listener);
-  }
-
-  close() {}
-
-  emit(type: string, data: unknown) {
-    this.listeners.get(type)?.({ data: JSON.stringify(data) });
-  }
-}
 
 test('a chat stays at its end while its last reply finishes loading', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);

@@ -1,5 +1,10 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import {
+  FakeEventSource,
+  renderWithQuery,
+  requestUrl,
+  stubFetch,
+} from '@/test/helpers';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -9,28 +14,6 @@ import {
 import { expect, test, vi } from 'vitest';
 
 import { Conversation } from './conversation';
-
-type Listener = (event: { data: string }) => void;
-
-class FakeEventSource {
-  static current: FakeEventSource | undefined;
-
-  listeners = new Map<string, Listener>();
-
-  constructor() {
-    FakeEventSource.current = this;
-  }
-
-  addEventListener(type: string, listener: Listener) {
-    this.listeners.set(type, listener);
-  }
-
-  close() {}
-
-  emit(type: string, data: unknown) {
-    this.listeners.get(type)?.({ data: JSON.stringify(data) });
-  }
-}
 
 test('the plan shows under the turn that wrote it and locks when the run ends', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);

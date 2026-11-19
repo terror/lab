@@ -1,5 +1,10 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import {
+  FakeEventSource,
+  renderWithQuery,
+  requestUrl,
+  stubFetch,
+} from '@/test/helpers';
 import '@/index.css';
 import {
   RouterProvider,
@@ -10,28 +15,6 @@ import {
 import { expect, test, vi } from 'vitest';
 
 import { Conversation } from './conversation';
-
-type Listener = (event: { data: string }) => void;
-
-class FakeEventSource {
-  static current: FakeEventSource | undefined;
-
-  listeners = new Map<string, Listener>();
-
-  constructor() {
-    FakeEventSource.current = this;
-  }
-
-  addEventListener(type: string, listener: Listener) {
-    this.listeners.set(type, listener);
-  }
-
-  close() {}
-
-  emit(type: string, data: unknown) {
-    this.listeners.get(type)?.({ data: JSON.stringify(data) });
-  }
-}
 
 const model = {
   contextWindow: 1_000,
