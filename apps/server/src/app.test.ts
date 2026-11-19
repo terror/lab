@@ -1,8 +1,13 @@
 import { expect, spyOn, test } from 'bun:test';
 
-import { call } from '../test/client';
-import { logRequest } from './app';
+import { signIn } from '../test/auth';
+import { call, idle } from '../test/client';
+import app, { logRequest } from './app';
 import { harness } from './harness';
+
+function file(name: string, type: string) {
+  return new File([new Uint8Array(2_000_000)], name, { type });
+}
 
 test('health reports ok', async () => {
   expect(await call(new Headers(), 'GET', '/health')).toEqual({
@@ -21,6 +26,57 @@ test('auth requests with oversized bodies are rejected', async () => {
   ).toEqual({
     body: { error: 'Request body is too large' },
     status: 413,
+  });
+});
+
+test('signed-in requests over 1 MB are refused unless they carry a file or a message', async () => {
+  const headers = await signIn();
+
+  const send = async (
+    method: string,
+    path: string,
+    field: string,
+    value: File
+  ) => {
+    const body = new FormData();
+
+    body.append(field, value);
+
+    return (await app.request(`/api${path}`, { body, headers, method })).status;
+  };
+
+  const message = await call(headers, 'POST', '/conversations', {
+    content: 'a'.repeat(2_000_000),
+  });
+
+  await idle(message.body.id);
+
+  expect({
+    message: message.status,
+    picture: await send(
+      'PUT',
+      '/profile/picture',
+      'picture',
+      file('foo.png', 'image/png')
+    ),
+    preferences: await call(headers, 'PATCH', '/preferences', {
+      foo: 'a'.repeat(1_000_000),
+      theme: 'dark',
+    }),
+    upload: await send(
+      'POST',
+      '/uploads',
+      'document',
+      file('foo.pdf', 'application/pdf')
+    ),
+  }).toEqual({
+    message: 201,
+    picture: 200,
+    preferences: {
+      body: { error: 'Request body is too large' },
+      status: 413,
+    },
+    upload: 201,
   });
 });
 

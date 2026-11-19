@@ -10,7 +10,7 @@ import { db } from './db';
 import { rateLimit } from './limits';
 import { imageTypes } from './schemas';
 import { pruneUploads, storeUpload } from './storage';
-import { validator } from './validator';
+import { BODY_BYTES, validator } from './validator';
 
 const PICTURE_BYTES = 5 * 1024 * 1024;
 
@@ -25,7 +25,8 @@ const picture = validator(
           size <= PICTURE_BYTES,
         'Choose a PNG, JPEG, GIF, or WebP image up to 5 MB'
       ),
-  })
+  }),
+  PICTURE_BYTES + BODY_BYTES
 );
 
 async function setImage(userId: string, image: string | null) {

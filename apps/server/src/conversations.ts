@@ -41,6 +41,8 @@ import { imageAt, stripImages, stripView } from './images';
 import { rateLimit } from './limits';
 import { listConversations, listSchema, listUnread, running } from './listing';
 import {
+  DRAFT_BYTES,
+  MESSAGE_BYTES,
   draftSchema,
   emptyMessage,
   nonEmpty,
@@ -77,7 +79,8 @@ const message = validator(
   'json',
   draftSchema
     .extend({ steer: z.boolean().default(false) })
-    .refine(nonEmpty, emptyMessage)
+    .refine(nonEmpty, emptyMessage),
+  DRAFT_BYTES
 );
 
 const creation = validator(
@@ -90,7 +93,8 @@ const creation = validator(
       projectId: z.number().int().positive().optional(),
       thinkingLevel: thinkingLevelSchema.optional(),
     })
-    .refine(nonEmpty, emptyMessage)
+    .refine(nonEmpty, emptyMessage),
+  DRAFT_BYTES
 );
 
 const entriesQuery = validator(
@@ -117,7 +121,7 @@ const planning = validator('json', z.object({ steps: planStepsSchema }));
 
 const modelSelection = validator('json', modelSchema);
 
-const branching = validator('json', branchSchema);
+const branching = validator('json', branchSchema, MESSAGE_BYTES);
 
 const update = validator(
   'json',

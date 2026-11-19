@@ -9,7 +9,7 @@ import { fileHeaders } from './file-headers';
 import { found } from './found';
 import { rateLimit } from './limits';
 import { storeUpload } from './storage';
-import { uuidParam, validator } from './validator';
+import { BODY_BYTES, uuidParam, validator } from './validator';
 
 const MAX_DOCUMENT_BYTES = 20_000_000;
 
@@ -32,7 +32,8 @@ const form = validator(
         'Thumbnails must be PNG images up to 1 MB'
       )
       .optional(),
-  })
+  }),
+  MAX_DOCUMENT_BYTES + MAX_THUMBNAIL_BYTES + BODY_BYTES
 );
 
 async function bytes(file: File) {
