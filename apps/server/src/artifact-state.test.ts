@@ -182,8 +182,6 @@ test('a retried reply keeps the data its artifacts saved', async () => {
     .at(-1);
 
   const retry = async () => {
-    script(fauxAssistantMessage('bar'));
-
     const { body: branch, status } = await call(
       headers,
       'POST',
