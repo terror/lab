@@ -55,6 +55,15 @@ const grid =
 
 const RESHELVE_LIMIT = 60;
 
+const settle = {
+  animate: {
+    opacity: 1,
+    transition: { ...fade.base, delay: fade.leave.duration },
+  },
+  exit: { opacity: 0, transition: fade.leave },
+  initial: { opacity: 0 },
+} as const;
+
 const reshelve = {
   animate: { opacity: 1 },
   exit: { opacity: 0, transition: fade.leave },
@@ -337,45 +346,36 @@ export function Library() {
   const glide = items.length <= RESHELVE_LIMIT;
 
   return (
-    <LayoutScope>
-      <m.div className='min-h-0 flex-1 overflow-y-auto' layoutScroll>
-        <Page className='@container'>
-          <PageHeader
-            description='Images and files from your chats.'
-            title='Library'
+    <div className='min-h-0 flex-1 overflow-y-auto'>
+      <Page className='@container'>
+        <PageHeader
+          description='Images and files from your chats.'
+          title='Library'
+        />
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <Pills
+            label='Filter'
+            onValueChange={setFilter}
+            options={filters}
+            value={filter}
           />
-          <div className='flex flex-wrap items-center justify-between gap-3'>
-            <Pills
-              label='Filter'
-              onValueChange={setFilter}
-              options={filters}
-              value={filter}
+          <InputGroup className='w-full sm:w-56'>
+            <InputGroupAddon>
+              <Search aria-hidden='true' />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label='Search library'
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder='Search'
+              value={search}
             />
-            <InputGroup className='w-full sm:w-56'>
-              <InputGroupAddon>
-                <Search aria-hidden='true' />
-              </InputGroupAddon>
-              <InputGroupInput
-                aria-label='Search library'
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder='Search'
-                value={search}
-              />
-            </InputGroup>
-          </div>
-          {library.pending && <TileSkeletons />}
-          {library.error && (
-            <LoadError
-              onRetry={() => library.refetch()}
-              subject='your library'
-            />
-          )}
-          {library.empty && (
-            <LibraryEmpty
-              filtered={query.length > 0 || filter !== 'all'}
-              onClear={clear}
-            />
-          )}
+          </InputGroup>
+        </div>
+        {library.pending && <TileSkeletons />}
+        {library.error && (
+          <LoadError onRetry={() => library.refetch()} subject='your library' />
+        )}
+        <LayoutScope>
           <div className='flex flex-col gap-8'>
             <AnimatePresence initial={false}>
               {groupByPeriod(items).map(([title, group]) => (
@@ -387,29 +387,35 @@ export function Library() {
                   title={title}
                 />
               ))}
+              {library.empty && (
+                <m.div key='empty' {...settle}>
+                  <LibraryEmpty
+                    filtered={query.length > 0 || filter !== 'all'}
+                    onClear={clear}
+                  />
+                </m.div>
+              )}
             </AnimatePresence>
           </div>
-          {library.pageError && (
-            <LoadError
-              onRetry={() => library.fetchNextPage()}
-              subject='more of your library'
-            />
-          )}
-          {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
-        </Page>
-        {open !== undefined && (
-          <Viewer
-            hasMore={library.hasNextPage}
-            id={open}
-            items={items}
-            onClose={() => setOpen(undefined)}
-            onLoadMore={async () =>
-              (await library.fetchNextPage()).data ?? items
-            }
-            onOpen={setOpen}
+        </LayoutScope>
+        {library.pageError && (
+          <LoadError
+            onRetry={() => library.fetchNextPage()}
+            subject='more of your library'
           />
         )}
-      </m.div>
-    </LayoutScope>
+        {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
+      </Page>
+      {open !== undefined && (
+        <Viewer
+          hasMore={library.hasNextPage}
+          id={open}
+          items={items}
+          onClose={() => setOpen(undefined)}
+          onLoadMore={async () => (await library.fetchNextPage()).data ?? items}
+          onOpen={setOpen}
+        />
+      )}
+    </div>
   );
 }
