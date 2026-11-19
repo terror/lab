@@ -1,5 +1,5 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
-import { DeadlineSandbox } from '@lab/harness';
+import { DeadlineSandbox, workerSlots } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
@@ -47,7 +47,7 @@ test('scripts cannot grow past the memory cap', async () => {
 
   script(
     toolCall('codemode', {
-      code: 'return "a".repeat(300 * 1024 * 1024).length;',
+      code: 'return "a".repeat(200 * 1024 * 1024).length;',
     }),
     fauxAssistantMessage('bar')
   );
@@ -78,6 +78,49 @@ test('scripts without their own timeout stop at the default deadline', async () 
     error: { kind: 'timeout', message: 'Execution timed out after 100 ms' },
     ok: false,
     output: [],
+  });
+
+  await sandbox.close();
+});
+
+test('scripts past the limit are refused until a running one exits', async () => {
+  const exits = new Array<Promise<void>>();
+
+  const sandbox = new DeadlineSandbox({
+    acquireWorker: workerSlots(1),
+    onWorkerStarted: (exited) => {
+      exits.push(exited);
+    },
+    timeoutMs: 200,
+  });
+
+  const start = (code: string) =>
+    sandbox.start(code, { onCall: () => undefined, seed: 0, startedAt: 0 })
+      .result;
+
+  const running = start('while (true) {}');
+
+  expect(await start('return "foo";')).toEqual({
+    calls: [],
+    error: {
+      kind: 'sandbox',
+      message: 'Too many scripts are running. Try again once one ends.',
+    },
+    ok: false,
+    output: [],
+  });
+
+  await running;
+
+  await Promise.all(exits);
+
+  expect(await start('return "bar";')).toEqual({
+    calls: [],
+    during: { issued: 0, seq: 0 },
+    ok: true,
+    output: [],
+    storeWrites: { delete: [], set: {} },
+    value: 'bar',
   });
 
   await sandbox.close();
