@@ -1,4 +1,7 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
+import type { ToolExecutionApi } from '@earendil-works/pi-durable';
+import { extensions } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
@@ -10,6 +13,7 @@ import {
   settle,
   toolOutputs,
 } from '../test/client';
+import { emptyDeps } from '../test/harness';
 import { script, toolCall } from '../test/models';
 
 test('the agent manages chats and the trash', async () => {
@@ -66,5 +70,44 @@ test('the agent manages chats and the trash', async () => {
     ],
     purged: [`Permanently deleted conversation ${target}.`],
     trash: [],
+  });
+});
+
+test('a purge that finished before a restart reports it again', async () => {
+  const approval = {
+    action: 'Delete “foo” forever',
+    decision: 'approved',
+    summary: ['The chat will be permanently deleted.'],
+  };
+
+  const item = {
+    deletedAt: '2026-01-01T00:00:00.000Z',
+    id: 1,
+    kind: 'conversation' as const,
+    title: 'foo',
+  };
+
+  const purge = extensions({
+    ...emptyDeps(),
+    chats: { ...emptyDeps().chats, trashed: async () => [] },
+  })
+    .flatMap((extension) => extension.tools ?? [])
+    .find((tool) => tool.name === 'trash_purge');
+
+  const api = {
+    conversationId: 1,
+    memo: async (name: string) =>
+      name === 'purged' ? { approval, item } : undefined,
+  } as unknown as ToolExecutionApi;
+
+  expect(
+    await purge?.execute(
+      { id: 1, kind: 'conversation' },
+      api,
+      BACKGROUND_CONTEXT
+    )
+  ).toEqual({
+    details: { approval, item },
+    output: [{ text: 'Permanently deleted conversation 1.', type: 'text' }],
   });
 });

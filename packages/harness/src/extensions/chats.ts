@@ -6,8 +6,8 @@ import {
 } from '@earendil-works/pi-durable';
 import { bool, int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
-import { requestApproval } from './host-input';
-import { failure, once, text } from './results';
+import { type ApprovalRequest, requestApproval } from './host-input';
+import { failure, text } from './results';
 
 export type ChatSummary = { id: number; pinned: boolean; title: string | null };
 
@@ -66,6 +66,18 @@ const kind = oneOf(trashKinds, {
 });
 
 const trashId = int({ description: 'The id from trash_list.', minimum: 1 });
+
+type Purged = {
+  approval: ApprovalRequest & { decision: string };
+  item: TrashEntry;
+};
+
+function purgedResult(purged: Purged): ToolExecutionResult {
+  return {
+    details: purged,
+    output: text(`Permanently deleted ${purged.item.kind} ${purged.item.id}.`),
+  };
+}
 
 function chatResult(
   chat: ChatSummary | undefined,
@@ -182,6 +194,12 @@ export function chats(access: ChatsAccess) {
     replay: 'safe',
     parameters: obj({ id: trashId, kind }),
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
+      const purged = await api.memo<Purged>('purged', context);
+
+      if (purged) {
+        return purgedResult(purged);
+      }
+
       const item = (await access.trashed(api.conversationId)).find(
         (entry) => entry.kind === args.kind && entry.id === args.id
       );
@@ -206,16 +224,13 @@ export function chats(access: ChatsAccess) {
         };
       }
 
-      const purged = await once(api, 'purged', context, () =>
-        access.purge(api.conversationId, args.kind, args.id)
-      );
+      if (!(await access.purge(api.conversationId, args.kind, args.id))) {
+        return failure('Nothing in the Trash has that id.');
+      }
 
-      return purged
-        ? {
-            details: { approval, item },
-            output: text(`Permanently deleted ${args.kind} ${args.id}.`),
-          }
-        : failure('Nothing in the Trash has that id.');
+      return purgedResult(
+        await api.memo<Purged>('purged', { approval, item }, context)
+      );
     },
   });
 
