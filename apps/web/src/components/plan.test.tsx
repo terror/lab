@@ -79,6 +79,35 @@ test('each edit sends the whole plan', async () => {
     );
 });
 
+test('the enter that ends a composition keeps editing the step', async () => {
+  const fetch = stubFetch(() => new Response(null, { status: 204 }));
+
+  const { screen } = await renderWithQuery(
+    <ToolConversation value={7}>
+      <Plan editable steps={[{ status: 'active', text: 'foo' }]} />
+    </ToolConversation>
+  );
+
+  await screen.getByRole('button', { name: 'Edit “foo”' }).click();
+
+  const input = screen.getByRole('textbox', { name: 'Edit “foo”' });
+
+  await input.fill('bar');
+
+  input.element().dispatchEvent(
+    new KeyboardEvent('keydown', {
+      bubbles: true,
+      isComposing: true,
+      key: 'Enter',
+    })
+  );
+
+  expect({
+    editing: document.activeElement === input.element(),
+    sent: fetch.mock.calls.filter(([, init]) => init?.method === 'PUT'),
+  }).toEqual({ editing: true, sent: [] });
+});
+
 function plan(status: 'active' | 'done') {
   return (
     <Plan
