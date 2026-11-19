@@ -1,8 +1,10 @@
 import '@/index.css';
+import { domAnimation } from 'motion/react';
 import { expect, test } from 'vitest';
+import { renderHook } from 'vitest-browser-react';
 import { cdp } from 'vitest/browser';
 
-import { fade, maxFeatures, stagger } from './motion';
+import { fade, stagger, useMaxFeatures } from './motion';
 import max from './motion-max';
 
 test('tween durations and stagger match the stylesheet tokens', () => {
@@ -68,14 +70,17 @@ test('reduced motion takes the travel and zoom out of an entrance', async ({
   });
 });
 
-test('layout features load once, then come without waiting', async () => {
-  const load = maxFeatures();
+test('layout features start from the shared renderer and arrive once loaded', async () => {
+  const { result } = await renderHook(() => useMaxFeatures());
 
-  if (typeof load !== 'function') {
-    throw new Error('Layout features loaded before anything asked for them');
-  }
+  const first = result.current;
 
-  expect(await load()).toBe(max);
+  await expect.poll(() => result.current).toBe(max);
 
-  expect(maxFeatures()).toBe(max);
+  const { result: later } = await renderHook(() => useMaxFeatures());
+
+  expect({ first, later: later.current }).toEqual({
+    first: domAnimation,
+    later: max,
+  });
 });
