@@ -2,7 +2,8 @@ import '@/index.css';
 import { expect, test } from 'vitest';
 import { cdp } from 'vitest/browser';
 
-import { fade, stagger } from './motion';
+import { fade, maxFeatures, stagger } from './motion';
+import max from './motion-max';
 
 test('tween durations and stagger match the stylesheet tokens', () => {
   const probe = document.createElement('div');
@@ -65,4 +66,16 @@ test('reduced motion takes the travel and zoom out of an entrance', async ({
     moving: { scale: '.95', y: 'calc(2*0.25rem)' },
     reduced: { scale: '1', y: '0' },
   });
+});
+
+test('layout features load once, then come without waiting', async () => {
+  const load = maxFeatures();
+
+  if (typeof load !== 'function') {
+    throw new Error('Layout features loaded before anything asked for them');
+  }
+
+  expect(await load()).toBe(max);
+
+  expect(maxFeatures()).toBe(max);
 });

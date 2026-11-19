@@ -1,4 +1,4 @@
-import type { Transition } from 'motion/react';
+import type { FeatureBundle, Transition } from 'motion/react';
 
 export const spring = {
   glide: { bounce: 0, type: 'spring', visualDuration: 0.3 },
@@ -27,4 +27,18 @@ export function rise(index: number) {
     initial: { opacity: 0, y: 4 },
     transition: { ...spring.snap, delay, opacity: { ...fade.base, delay } },
   } as const;
+}
+
+let max: FeatureBundle | undefined;
+
+async function loadMax() {
+  const features = await import('./motion-max');
+
+  max = features.default;
+
+  return max;
+}
+
+export function maxFeatures() {
+  return max ?? loadMax;
 }
