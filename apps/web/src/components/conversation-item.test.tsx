@@ -1,11 +1,12 @@
 import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { conversationsQueryKey } from '@/lib/conversations';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { useQuiet } from '@/lib/voice';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, useQuery } from '@tanstack/react-query';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -359,4 +360,96 @@ test('undoing an undone move puts the chat back in the project', async () => {
       ['/api/conversations/1', JSON.stringify({ projectId: null })],
       ['/api/conversations/1', JSON.stringify({ projectId: 7 })],
     ]);
+});
+
+type Landing = 'leaves' | 'moves' | 'stays';
+
+function Pinning({ landing }: { landing: Landing }) {
+  const chat = useQuery({
+    queryKey: [...conversationsQueryKey, 'foo'],
+    queryFn: async () => pinned,
+  });
+
+  const item = (
+    <ConversationItem
+      conversation={{
+        id: 1,
+        pinned: chat.data ?? false,
+        projectId: 7,
+        running: false,
+        title: 'foo',
+        unread: false,
+        waiting: false,
+      }}
+      selected={false}
+    />
+  );
+
+  const lists = {
+    leaves: [false, chat.data === false],
+    moves: [chat.data === true, chat.data === false],
+    stays: [chat.data === true, true],
+  }[landing];
+
+  return (
+    <>
+      <Button data-project-row={7}>bar</Button>
+      {lists.map((shown, index) => (
+        <ul key={index}>{shown && item}</ul>
+      ))}
+    </>
+  );
+}
+
+let pinned = false;
+
+async function focused(landing: Landing) {
+  pinned = false;
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => <Pinning landing={landing} />,
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  screen.getByRole('button', { name: 'Options for foo' }).element().focus();
+
+  await userEvent.keyboard('{Enter}');
+
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'Pin' }))
+    .toHaveFocus();
+
+  await userEvent.keyboard('{Enter}');
+
+  await expect.poll(() => pinned).toBe(true);
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const active = document.activeElement;
+
+  const place =
+    active?.closest('ul') ?? active?.closest('[data-project-row]') ?? active;
+
+  const places = [...document.querySelectorAll('[data-project-row], ul')];
+
+  await screen.unmount();
+
+  return places.indexOf(place ?? document.body);
+}
+
+test('pinning a chat from its row moves focus to where the chat lands', async () => {
+  stubFetch((_, init) => {
+    pinned ||= init?.method === 'PATCH';
+    return new Response(null, { status: 204 });
+  });
+
+  expect([
+    await focused('moves'),
+    await focused('stays'),
+    await focused('leaves'),
+  ]).toEqual([1, 2, 0]);
 });
