@@ -13,7 +13,6 @@ export type ConnectorTool = {
   description: string;
   name: string;
   parameters: object;
-  readOnly: boolean;
   title: string;
 };
 
@@ -76,7 +75,7 @@ function connectorParts({ call, name, slug, tools }: Connector) {
     ],
     tools: namedTools(slug, tools).map(([toolName, tool]) =>
       defineTool({
-        callers: tool.readOnly ? undefined : ['model'],
+        callers: ['model'],
         deferred: true,
         description: tool.description,
         name: toolName,
@@ -95,10 +94,6 @@ function connectorParts({ call, name, slug, tools }: Connector) {
               return failure(errorMessage(error));
             }
           };
-
-          if (tool.readOnly) {
-            return run();
-          }
 
           const { approval, approved } = await requestApproval(api, context, {
             action: `Use ${tool.title} from ${name}`,
