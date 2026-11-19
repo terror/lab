@@ -157,15 +157,19 @@ test('frame content turns off DNS prefetching and loses WebRTC before it runs', 
 test('the frame serves its libraries to sandboxed content', async () => {
   const response = await app.request('/frame/vendor/chart.js');
 
-  const missing = await app.request('/frame/vendor/foo.js');
+  const missing = await Promise.all(
+    ['/frame/vendor/foo.js', '/frame/vendor/toString'].map(
+      async (path) => (await app.request(path)).status
+    )
+  );
 
   expect({
-    missing: missing.status,
+    missing,
     policy: response.headers.get('cross-origin-resource-policy'),
     status: response.status,
     type: response.headers.get('content-type'),
   }).toEqual({
-    missing: 404,
+    missing: [404, 404],
     policy: 'cross-origin',
     status: 200,
     type: 'text/javascript; charset=utf-8',
@@ -173,7 +177,12 @@ test('the frame serves its libraries to sandboxed content', async () => {
 });
 
 test('other paths under the frame keep Lab’s own security headers', async () => {
-  const paths = ['/frame/', '/frame/foo', '/frame/vendor/chart.js/foo'];
+  const paths = [
+    '/frame/',
+    '/frame/foo',
+    '/frame/vendor/chart.js/foo',
+    '/frame/vendor/foo.js',
+  ];
 
   const options = await Promise.all(
     paths.map(async (path) =>
@@ -181,5 +190,5 @@ test('other paths under the frame keep Lab’s own security headers', async () =
     )
   );
 
-  expect(options).toEqual(['DENY', 'DENY', 'DENY']);
+  expect(options).toEqual(['DENY', 'DENY', 'DENY', 'DENY']);
 });
