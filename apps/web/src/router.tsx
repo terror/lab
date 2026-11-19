@@ -7,6 +7,7 @@ import { SearchProvider } from '@/components/search';
 import { SignIn } from '@/components/sign-in';
 import { Updates } from '@/components/updates';
 import { Workspace } from '@/components/workspace';
+import { artifactIdParam } from '@/lib/artifacts';
 import { authClient, useUser } from '@/lib/auth';
 import { prefetchSidebar } from '@/lib/conversations';
 import { modelsQueryOptions } from '@/lib/models';
@@ -158,7 +159,7 @@ const appRoute = createRoute({
   getParentRoute: () => chatRoute,
   params: {
     parse: ({ artifactId, conversationId }) => ({
-      artifactId,
+      artifactId: artifactIdParam(artifactId),
       conversationId: positiveId(conversationId),
     }),
     stringify: ({ artifactId, conversationId }) => ({

@@ -1,4 +1,5 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
+import { notFound } from '@tanstack/react-router';
 import type { InferResponseType } from 'hono/client';
 import { z } from 'zod';
 
@@ -16,6 +17,14 @@ function method<T>(
 }
 
 const keyed = z.object({ key: z.string() });
+
+export function artifactIdParam(value: string) {
+  if (!/^[a-z0-9-]+$/.test(value)) {
+    throw notFound();
+  }
+
+  return value;
+}
 
 export function artifactCalls(conversationId: number, artifactId: string) {
   const param = { artifactId, id: String(conversationId) };
