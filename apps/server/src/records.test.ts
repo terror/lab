@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { signIn } from '../test/auth';
 import { call, create } from '../test/client';
 import { db } from './db';
-import { owners } from './records';
+import { owners, serial } from './records';
 
 test('deleted chats keep their owner for late usage', async () => {
   const headers = await signIn();
@@ -21,4 +21,26 @@ test('deleted chats keep their owner for late usage', async () => {
   await call(headers, 'DELETE', `/trash/conversation/${id}`);
 
   expect(await owners([id])).toEqual(new Map([[id, row?.ownerId ?? '']]));
+});
+
+test('a flush waits only for work queued before it', async () => {
+  const queue = serial();
+
+  const order: string[] = [];
+
+  queue.run(async () => {
+    order.push('foo');
+  });
+
+  const flushed = queue.flush().then(() => order.push('flushed'));
+
+  queue.run(async () => {
+    order.push('bar');
+  });
+
+  await flushed;
+
+  await queue.flush();
+
+  expect(order).toEqual(['foo', 'flushed', 'bar']);
 });
