@@ -5,7 +5,7 @@ import { expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 
 import { signIn, signInAdmin } from '../test/auth';
-import { call, chat, settle } from '../test/client';
+import { artifactChat, call, chat, settle } from '../test/client';
 import app from './app';
 import { db } from './db';
 import { harness } from './harness';
@@ -48,6 +48,96 @@ test('users can export their chats and settings', async () => {
     ],
     disposition: 'attachment; filename="lab-export.json"',
     instructions: 'bar',
+  });
+});
+
+test('users can export their artifacts, files and usage', async () => {
+  const headers = await signIn();
+
+  const id = await artifactChat(headers);
+
+  const artifact = `/conversations/${id}/artifacts/bar`;
+
+  await call(headers, 'PUT', `${artifact}/state?key=foo`, { value: 'baz' });
+  await call(headers, 'PUT', `${artifact}/pin`, { projectId: null });
+  await call(headers, 'PUT', '/usage/budget', { limit: 2 });
+
+  const attached = await chat(headers, {
+    attachments: [{ name: 'qux.txt', text: 'quux', type: 'file' }],
+    content: 'foo',
+  });
+
+  const form = new FormData();
+
+  form.set('picture', new File(['corge'], 'corge.png', { type: 'image/png' }));
+
+  await app.request('/api/profile/picture', {
+    body: form,
+    headers,
+    method: 'PUT',
+  });
+
+  await settle();
+
+  const { body } = await call(headers, 'GET', '/profile/export');
+
+  expect({
+    library: body.library.map(
+      ({
+        conversationId,
+        kind,
+        mimeType,
+        name,
+        size,
+      }: Record<string, unknown>) => ({
+        conversationId,
+        kind,
+        mimeType,
+        name,
+        size,
+      })
+    ),
+    limit: body.usage.monthlyLimit,
+    pins: body.artifacts.pins.map(
+      ({ artifactId, conversationId, projectId }: Record<string, unknown>) => ({
+        artifactId,
+        conversationId,
+        projectId,
+      })
+    ),
+    state: body.artifacts.state,
+    uploads: body.uploads.map(
+      ({ mimeType, size }: Record<string, unknown>) => ({ mimeType, size })
+    ),
+    usage: body.usage.events
+      .map(
+        ({ conversationId, kind }: { conversationId: number; kind: string }) =>
+          `${conversationId} ${kind}`
+      )
+      .toSorted(),
+  }).toEqual({
+    library: [
+      {
+        conversationId: attached,
+        kind: 'file',
+        mimeType: 'text/plain',
+        name: 'qux.txt',
+        size: 4,
+      },
+    ],
+    limit: 2,
+    pins: [{ artifactId: 'bar', conversationId: id, projectId: null }],
+    state: [
+      { artifactId: 'bar', conversationId: id, key: 'foo', value: 'baz' },
+    ],
+    uploads: [{ mimeType: 'image/png', size: 5 }],
+    usage: [
+      `${attached} response`,
+      `${attached} title`,
+      `${id} response`,
+      `${id} response`,
+      `${id} title`,
+    ].toSorted(),
   });
 });
 
