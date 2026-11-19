@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { requireUser } from './auth';
 import { harness } from './harness';
+import { rateLimit } from './limits';
 import {
   applyComputerNetwork,
   inspectComputer,
@@ -31,6 +32,7 @@ async function status(ownerId: string) {
 
 const computer = new Hono()
   .use(requireUser)
+  .use(rateLimit('computer'))
   .get('/', async (c) => c.json(await status(c.get('user').id)))
   .patch('/', settings, async (c) => {
     const { network } = c.req.valid('json');

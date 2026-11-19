@@ -7,6 +7,7 @@ const MINUTE = 60_000;
 
 const buckets = {
   asks: 10,
+  computer: 30,
   connectors: 10,
   messages: 30,
   uploads: 30,
