@@ -14,8 +14,10 @@ export const sentryOptions = {
   },
   dataCollection: { httpBodies: [], urlQueryParams: false, userInfo: false },
   environment: process.env.NODE_ENV ?? 'production',
-  integrations: (integrations) =>
-    integrations.filter(({ name }) => name !== 'Console'),
+  integrations: (integrations) => [
+    ...integrations.filter(({ name }) => name !== 'Console'),
+    Sentry.fetchIntegration({ breadcrumbs: false, tracePropagation: false }),
+  ],
   release: env.RAILWAY_GIT_COMMIT_SHA,
 } satisfies Sentry.BunOptions;
 
