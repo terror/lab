@@ -19,6 +19,7 @@ import {
   deleteConnector,
   existing,
   listConnectors,
+  trustConnector,
   updateConnector,
 } from './connector-service';
 import { found } from './found';
@@ -40,6 +41,8 @@ const callback = validator(
 
 const change = validator('json', connectorChange);
 
+const trust = validator('json', z.object({ readOnly: z.boolean() }));
+
 const connectors = new Hono()
   .use(requireUser)
   .get('/', async (c) => c.json(await listConnectors(c.get('user').id)))
@@ -54,6 +57,17 @@ const connectors = new Hono()
     const user = c.get('user');
 
     await updateConnector(user, c.req.valid('param').id, c.req.valid('json'));
+
+    return c.json(await listConnectors(user.id));
+  })
+  .put('/:id/trust', idParam, trust, async (c) => {
+    const user = c.get('user');
+
+    await trustConnector(
+      user,
+      c.req.valid('param').id,
+      c.req.valid('json').readOnly
+    );
 
     return c.json(await listConnectors(user.id));
   })

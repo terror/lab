@@ -18,7 +18,10 @@ import { registry } from './registry';
 type Row = typeof schema.connector.$inferSelect;
 
 export type ConnectorState =
-  | { kind: 'connected'; tools: { description: string; name: string }[] }
+  | {
+      kind: 'connected';
+      tools: { description: string; name: string; readOnly: boolean }[];
+    }
   | { kind: 'connecting' }
   | { kind: 'error'; message: string }
   | { kind: 'off' }
@@ -108,6 +111,7 @@ async function listTools(
     description: tool.description ?? tool.title ?? tool.name,
     name: tool.name,
     parameters: tool.inputSchema,
+    readOnly: tool.annotations?.readOnlyHint === true,
     title: tool.title ?? tool.annotations?.title ?? tool.name,
   }));
 
@@ -148,7 +152,13 @@ async function disconnect(id: number) {
   return entry?.ownerId;
 }
 
-async function connect({ id, name, ownerId, url }: Row): Promise<Entry> {
+async function connect({
+  id,
+  name,
+  ownerId,
+  trustReadOnly,
+  url,
+}: Row): Promise<Entry> {
   const client = new Client({ name: 'Lab', version: '1.0.0' });
 
   try {
@@ -183,6 +193,7 @@ async function connect({ id, name, ownerId, url }: Row): Promise<Entry> {
         name,
         slug: connectorSlug(name),
         tools,
+        trustReadOnly,
       },
       kind: 'connected',
       ownerId,
@@ -237,9 +248,10 @@ export function connectorState(id: number): ConnectorState {
   if (entry.kind === 'connected') {
     return {
       kind: 'connected',
-      tools: entry.connector.tools.map(({ description, name }) => ({
+      tools: entry.connector.tools.map(({ description, name, readOnly }) => ({
         description,
         name,
+        readOnly,
       })),
     };
   }

@@ -1,0 +1,1 @@
+ALTER TABLE "connector" ADD COLUMN "trust_read_only" boolean DEFAULT false NOT NULL;
