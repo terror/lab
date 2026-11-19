@@ -17,6 +17,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { LayoutScope } from '@/components/ui/layout-scope';
 import { Page, PageHeader } from '@/components/ui/page';
 import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
@@ -31,13 +32,15 @@ import {
   libraryTextQueryOptions,
   useLibrarySearch,
 } from '@/lib/library';
+import { fade, spring } from '@/lib/motion';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
-import { type KeyboardEvent, useState } from 'react';
+import { AnimatePresence, m, useIsPresent } from 'motion/react';
+import { type KeyboardEvent, type ReactNode, useState } from 'react';
 
 type Filter = 'all' | LibraryKind;
 
@@ -49,6 +52,73 @@ const filters: { label: string; value: Filter }[] = [
 
 const grid =
   'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
+
+const RESHELVE_LIMIT = 60;
+
+const settle = {
+  animate: {
+    opacity: 1,
+    transition: { ...fade.base, delay: fade.leave.duration },
+  },
+  exit: { opacity: 0, transition: fade.leave },
+  initial: { opacity: 0 },
+} as const;
+
+const reshelve = {
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: fade.leave },
+  initial: { opacity: 0 },
+  transition: { layout: spring.glide, opacity: fade.base },
+} as const;
+
+function Shelved({ children, glide }: { children: ReactNode; glide: boolean }) {
+  const present = useIsPresent();
+
+  return (
+    <m.div
+      className='grid'
+      inert={!present}
+      layout={glide && 'position'}
+      {...reshelve}
+    >
+      {children}
+    </m.div>
+  );
+}
+
+function Shelf({
+  glide,
+  items,
+  onOpen,
+  title,
+}: {
+  glide: boolean;
+  items: LibraryItem[];
+  onOpen: (id: number) => void;
+  title: string;
+}) {
+  const present = useIsPresent();
+
+  return (
+    <m.section
+      className='flex flex-col gap-2'
+      inert={!present}
+      layout={glide && 'position'}
+      {...reshelve}
+    >
+      <SectionHeading>{title}</SectionHeading>
+      <div className={grid}>
+        <AnimatePresence initial={false}>
+          {items.map((item) => (
+            <Shelved key={item.id} glide={glide}>
+              <Tile item={item} onOpen={() => onOpen(item.id)} />
+            </Shelved>
+          ))}
+        </AnimatePresence>
+      </div>
+    </m.section>
+  );
+}
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();
@@ -273,6 +343,8 @@ export function Library() {
     setFilter('all');
   };
 
+  const glide = items.length <= RESHELVE_LIMIT;
+
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
       <Page className='@container'>
@@ -303,26 +375,29 @@ export function Library() {
         {library.error && (
           <LoadError onRetry={() => library.refetch()} subject='your library' />
         )}
-        {library.empty && (
-          <LibraryEmpty
-            filtered={query.length > 0 || filter !== 'all'}
-            onClear={clear}
-          />
-        )}
-        {groupByPeriod(items).map(([title, group]) => (
-          <section key={title} className='flex flex-col gap-2'>
-            <SectionHeading>{title}</SectionHeading>
-            <div className={grid}>
-              {group.map((item) => (
-                <Tile
-                  key={item.id}
-                  item={item}
-                  onOpen={() => setOpen(item.id)}
+        <LayoutScope>
+          <div className='flex flex-col gap-8'>
+            <AnimatePresence initial={false}>
+              {groupByPeriod(items).map(([title, group]) => (
+                <Shelf
+                  key={title}
+                  glide={glide}
+                  items={group}
+                  onOpen={setOpen}
+                  title={title}
                 />
               ))}
-            </div>
-          </section>
-        ))}
+              {library.empty && (
+                <m.div key='empty' {...settle}>
+                  <LibraryEmpty
+                    filtered={query.length > 0 || filter !== 'all'}
+                    onClear={clear}
+                  />
+                </m.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </LayoutScope>
         {library.pageError && (
           <LoadError
             onRetry={() => library.fetchNextPage()}
