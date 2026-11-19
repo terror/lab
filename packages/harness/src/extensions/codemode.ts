@@ -5,6 +5,8 @@ import {
 } from '@earendil-works/pi-codemode';
 import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode';
 
+const MAX_TIMEOUT_MS = 15 * 60 * 1000;
+
 const MEMORY_LIMIT_BYTES = 128 * 1024 * 1024;
 
 const SCRIPTS = 4;
@@ -28,17 +30,27 @@ export function workerSlots(limit: number) {
 }
 
 export class DeadlineSandbox extends CodemodeSandbox {
+  readonly #maxTimeoutMs: number;
   readonly #timeoutMs: number;
 
-  constructor(options: CodemodeSandboxOptions & { timeoutMs: number }) {
+  constructor(
+    options: CodemodeSandboxOptions & {
+      maxTimeoutMs: number;
+      timeoutMs: number;
+    }
+  ) {
     super(options);
+    this.#maxTimeoutMs = options.maxTimeoutMs;
     this.#timeoutMs = options.timeoutMs;
   }
 
   override start(code: string, options: CodemodeRunOptions) {
     return super.start(code, {
       ...options,
-      timeoutMs: options.timeoutMs ?? this.#timeoutMs,
+      timeoutMs: Math.min(
+        options.timeoutMs ?? this.#timeoutMs,
+        this.#maxTimeoutMs
+      ),
     });
   }
 }
@@ -47,6 +59,7 @@ export const codemode = createCodemodeExtension({
   models: false,
   sandbox: new DeadlineSandbox({
     acquireWorker: workerSlots(SCRIPTS),
+    maxTimeoutMs: MAX_TIMEOUT_MS,
     memoryLimitBytes: MEMORY_LIMIT_BYTES,
     timeoutMs: TIMEOUT_MS,
   }),
