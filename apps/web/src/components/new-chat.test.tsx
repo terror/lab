@@ -125,6 +125,34 @@ test('the next user in the same tab gets a first visit of their own', async () =
   expect(states).toEqual(['assemble', 'assemble']);
 });
 
+test('the first home visit of a new day in the same tab is a first visit', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+
+  const states = [];
+
+  try {
+    for (const day of [16, 18]) {
+      vi.setSystemTime(new Date(2026, 10, day, 9));
+
+      const { screen } = await renderHome();
+
+      await expect.element(screen.getByRole('heading')).toBeVisible();
+
+      states.push(
+        screen.container
+          .querySelector('[data-slot=live-mark]')
+          ?.getAttribute('data-state')
+      );
+
+      await screen.unmount();
+    }
+  } finally {
+    vi.useRealTimers();
+  }
+
+  expect(states).toEqual(['assemble', 'assemble']);
+});
+
 test('the greeting is picked once a session and notices a long absence', async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
 
