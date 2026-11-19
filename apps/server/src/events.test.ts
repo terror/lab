@@ -1,9 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
-import { expect, spyOn, test } from 'bun:test';
+import { expect, jest, spyOn, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { create, raw } from '../test/client';
+import { call, create, raw } from '../test/client';
+import { auth } from './auth';
 import { harness } from './harness';
 
 test('closing the event stream right away stops the watch', async () => {
@@ -102,4 +103,38 @@ test('opening more than 20 event streams closes the oldest', async () => {
   await Promise.all([oldest, next, ...rest].map((reader) => reader.cancel()));
 
   expect(closed).toEqual([true, false]);
+});
+
+async function watched(
+  end: (headers: Headers, id: number) => Promise<unknown>
+) {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  jest.useFakeTimers();
+
+  const reader = await follow(headers, id);
+
+  await end(headers, id);
+
+  jest.advanceTimersByTime(25_000);
+
+  jest.useRealTimers();
+
+  const closed = await ended(reader);
+
+  await reader.cancel();
+
+  return closed;
+}
+
+test('event streams close once their session ends or their chat is trashed', async () => {
+  expect({
+    kept: await watched(async () => undefined),
+    signedOut: await watched((headers) => auth.api.signOut({ headers })),
+    trashed: await watched((headers, id) =>
+      call(headers, 'DELETE', `/conversations/${id}`)
+    ),
+  }).toEqual({ kept: false, signedOut: true, trashed: true });
 });
