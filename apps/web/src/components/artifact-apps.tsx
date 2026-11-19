@@ -13,7 +13,7 @@ import { type PinnedApp, usePin, usePinUpdate } from '@/lib/artifacts';
 import { usePath } from '@/lib/location';
 import { useProjects } from '@/lib/projects';
 import { Link } from '@tanstack/react-router';
-import { LayoutTemplate, Pin, PinOff } from 'lucide-react';
+import { Pin, PinOff } from 'lucide-react';
 
 export function AppLink({
   app,
@@ -38,7 +38,6 @@ export function AppLink({
         }}
         to='/apps/$conversationId/$artifactId'
       >
-        <LayoutTemplate aria-hidden='true' />
         <span className='truncate'>{app.title}</span>
       </Link>
     </MotionSidebarRow>

@@ -6,7 +6,7 @@ import { Unavailable } from '@/components/unavailable';
 import { artifactCalls, useArtifact } from '@/lib/artifacts';
 import { useLibraryImages } from '@/lib/library';
 import { Link, useParams } from '@tanstack/react-router';
-import { LayoutTemplate, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 
 export function ArtifactPage() {
@@ -45,10 +45,6 @@ export function ArtifactPage() {
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <header className='flex h-12 shrink-0 items-center gap-2 border-b px-4'>
-        <LayoutTemplate
-          aria-hidden='true'
-          className='size-4 shrink-0 text-muted-foreground'
-        />
         <h1 className='truncate text-sm font-medium'>{title}</h1>
         <div className='ml-auto flex items-center gap-1'>
           <Button asChild size='icon' variant='quiet'>
