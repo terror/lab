@@ -9,7 +9,7 @@ import { bool, int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { type Owner, userDoc } from './docs';
 import { requestApproval } from './host-input';
-import { failure, once, text } from './results';
+import { failure, listing, once, text } from './results';
 
 export type ScheduledTask = {
   conversationId: number | null;
@@ -178,16 +178,12 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
     name: 'schedule_list',
     description: "List the user's scheduled tasks.",
     parameters: obj({}),
-    execute: async (_args, api): Promise<ToolExecutionResult> => {
-      const tasks = await access.list(api.conversationId);
-
-      return {
-        details: { count: tasks.length, tasks },
-        output: text(
-          tasks.length > 0 ? tasks.map(line).join('\n') : 'No scheduled tasks.'
-        ),
-      };
-    },
+    execute: async (_args, api) =>
+      listing(await access.list(api.conversationId), {
+        empty: 'No scheduled tasks.',
+        key: 'tasks',
+        line,
+      }),
   });
 
   const scheduleUpdate = defineTool({

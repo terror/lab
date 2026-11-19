@@ -6,7 +6,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { int, obj, oneOf, opt, str } from '@earendil-works/pi-schema';
 
-import { failure, page, text } from './results';
+import { failure, listing, page, text } from './results';
 
 export const READ_LENGTH = 100_000;
 
@@ -34,17 +34,8 @@ export type LibraryAccess = {
   ): Promise<LibraryEntry[]>;
 };
 
-function listing(entries: readonly LibraryEntry[]) {
-  if (entries.length === 0) {
-    return 'No matching files.';
-  }
-
-  return entries
-    .map(
-      ({ chat, createdAt, id, kind, name, size }) =>
-        `[${id}] ${name} (${kind}, ${size} bytes, ${createdAt.slice(0, 10)}${chat ? `, from "${chat}"` : ''})`
-    )
-    .join('\n');
+function line({ chat, createdAt, id, kind, name, size }: LibraryEntry) {
+  return `[${id}] ${name} (${kind}, ${size} bytes, ${createdAt.slice(0, 10)}${chat ? `, from "${chat}"` : ''})`;
 }
 
 export function library(access: LibraryAccess) {
@@ -58,17 +49,14 @@ export function library(access: LibraryAccess) {
         str({ description: 'Words to match in file names.', maxLength: 200 })
       ),
     }),
-    execute: async ({ kind, query }, api) => {
-      const entries = await access.search(api.conversationId, {
-        kind,
-        search: query?.trim() || undefined,
-      });
-
-      return {
-        details: { count: entries.length, entries },
-        output: text(listing(entries)),
-      };
-    },
+    execute: async ({ kind, query }, api) =>
+      listing(
+        await access.search(api.conversationId, {
+          kind,
+          search: query?.trim() || undefined,
+        }),
+        { empty: 'No matching files.', key: 'entries', line }
+      ),
   });
 
   const read = defineTool({

@@ -8,7 +8,7 @@ import {
 import { int, obj, opt, str } from '@earendil-works/pi-schema';
 
 import { requestApproval } from './host-input';
-import { failure, text } from './results';
+import { failure, listing, text } from './results';
 
 export const PROJECT_INSTRUCTIONS_LENGTH = 8_000;
 
@@ -75,18 +75,12 @@ export function project(access: ProjectAccess) {
     description:
       "List the user's projects. Projects group related chats in the sidebar.",
     parameters: obj({}),
-    execute: async (_args, api): Promise<ToolExecutionResult> => {
-      const projects = await access.list(api.conversationId);
-
-      return {
-        details: { count: projects.length, projects },
-        output: text(
-          projects.length > 0
-            ? projects.map(line).join('\n')
-            : 'The user has no projects.'
-        ),
-      };
-    },
+    execute: async (_args, api) =>
+      listing(await access.list(api.conversationId), {
+        empty: 'The user has no projects.',
+        key: 'projects',
+        line,
+      }),
   });
 
   const projectCreate = defineTool({
