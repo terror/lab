@@ -2,6 +2,7 @@ import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
 import { preferencesQueryOptions } from '@/lib/preferences';
+import { useQuiet } from '@/lib/voice';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
@@ -137,10 +138,12 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
 
 function Finishing() {
   const [running, setRunning] = useState(true);
+  const quiet = useQuiet();
 
   return (
     <>
       <Button onClick={() => setRunning(false)}>qux</Button>
+      <output>{String(quiet)}</output>
       <ul>
         {[1, 2, 3, 4, 5, 6, 7].map((id) => (
           <ConversationItem
@@ -182,9 +185,27 @@ test('chats that finish in the background hand their marks over to dots, six at 
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
 
+  const seen: ReturnType<typeof marks>[] = [];
+
+  const observer = new MutationObserver(() => seen.push(marks()));
+
+  observer.observe(document.body, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+  });
+
   await screen.getByRole('button', { name: 'qux' }).click();
 
-  await expect.poll(marks).toEqual([
+  await expect
+    .poll(marks, { timeout: 5_000 })
+    .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
+
+  observer.disconnect();
+
+  expect(
+    seen.find((rows) => rows.some(([, state]) => state === 'handoff'))
+  ).toEqual([
     ['live-mark', 'handoff', '0s'],
     ['live-mark', 'handoff', '0.03s'],
     ['live-mark', 'handoff', '0.06s'],
@@ -193,13 +214,9 @@ test('chats that finish in the background hand their marks over to dots, six at 
     ['live-mark', 'handoff', '0.15s'],
     ['dot', undefined, ''],
   ]);
-
-  await expect
-    .poll(marks, { timeout: 3_000 })
-    .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
 });
 
-test('finished chats swap straight to their dots when Lab is quiet', async () => {
+test('finished chats swap straight to their dots when Lab is quiet, and stay dots when it stops being quiet', async () => {
   const client = new QueryClient();
 
   client.setQueryData(preferencesQueryOptions.queryKey, {
@@ -219,9 +236,15 @@ test('finished chats swap straight to their dots when Lab is quiet', async () =>
 
   await screen.getByRole('button', { name: 'qux' }).click();
 
-  await expect
-    .poll(marks)
-    .toEqual(Array.from({ length: 7 }, () => ['dot', undefined, '']));
+  const dots = Array.from({ length: 7 }, () => ['dot', undefined, '']);
+
+  await expect.poll(marks).toEqual(dots);
+
+  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  await expect.element(screen.getByText('false')).toBeVisible();
+
+  expect(marks()).toEqual(dots);
 });
 
 test('leaving a rename returns focus to the chat’s options', async () => {

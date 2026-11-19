@@ -597,3 +597,34 @@ test('Retry spins on a stopped reply but leaves a failed one to its mended mark'
     'none',
   ]);
 });
+
+test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  const { screen } = await renderWithQuery(reply(true));
+
+  const mark = () =>
+    screen.container
+      .querySelector('[data-slot=live-mark]')
+      ?.getAttribute('data-state');
+
+  await screen.rerender(reply(false));
+
+  const hopped = mark();
+
+  vi.advanceTimersByTime(1_000);
+
+  await screen.rerender(reply(false));
+
+  expect([hopped, mark()]).toEqual(['proud', 'idle']);
+});
