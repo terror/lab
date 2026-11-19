@@ -2,7 +2,7 @@ import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
 import { Markdown } from './markdown';
@@ -23,12 +23,55 @@ test('mermaid code blocks render as diagrams', async () => {
   await expect
     .poll(
       () =>
-        [...screen.container.querySelectorAll('svg .nodeLabel')].map(
-          (node) => node.textContent
-        ),
+        [
+          ...(screen.container
+            .querySelector('lab-mermaid')
+            ?.shadowRoot?.querySelectorAll('svg .nodeLabel') ?? []),
+        ].map((node) => node.textContent),
       { timeout: 15_000 }
     )
     .toEqual(['foo', 'bar']);
+
+  const actions = screen.getByRole('combobox', { name: 'Diagram actions' });
+  const download = vi
+    .spyOn(HTMLAnchorElement.prototype, 'click')
+    .mockImplementation(() => {});
+  const blobs = vi.spyOn(URL, 'createObjectURL');
+
+  await actions.selectOptions('Download SVG');
+  await actions.selectOptions('Download PNG');
+  await expect
+    .poll(() =>
+      download.mock.instances.map(
+        (link) => link instanceof HTMLAnchorElement && link.download
+      )
+    )
+    .toEqual(['diagram.svg', 'diagram.png']);
+  expect(
+    blobs.mock.calls.map(([blob]) => blob instanceof Blob && blob.type)
+  ).toEqual(['image/svg+xml', 'image/png']);
+});
+
+test('tables can be copied as Markdown, CSV and TSV', async () => {
+  stubFetch(() => Response.json({}));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>
+      {'| foo | bar |\n| --- | --- |\n| a,b | c |'}
+    </Markdown>
+  );
+
+  const actions = screen.getByRole('combobox', { name: 'Table actions' });
+  await actions.selectOptions('Copy as Markdown');
+  await actions.selectOptions('Copy as CSV');
+  await actions.selectOptions('Copy as TSV');
+
+  expect(copy.mock.calls).toEqual([
+    ['| foo | bar |\n| --- | --- |\n| a,b | c |'],
+    ['foo,bar\n"a,b",c'],
+    ['foo\tbar\na,b\tc'],
+  ]);
 });
 
 test('mermaid diagrams follow theme switches', async () => {
@@ -45,7 +88,9 @@ test('mermaid diagrams follow theme switches', async () => {
   );
 
   const fill = () => {
-    const node = screen.container.querySelector('svg .node rect');
+    const node = screen.container
+      .querySelector('lab-mermaid')
+      ?.shadowRoot?.querySelector('svg .node rect');
 
     return node ? getComputedStyle(node).fill : undefined;
   };
@@ -74,7 +119,7 @@ test('a streaming reply ends in a pulsing caret that fades once it finishes', as
   );
 
   const carets = () => {
-    const streamed = screen.container.querySelector('[data-streaming]');
+    const streamed = screen.container.querySelector('[data-reply-streaming]');
 
     return {
       paragraphs: [...screen.container.querySelectorAll('p')].map(
@@ -152,7 +197,7 @@ test('finished messages are not patched as if they were cut off', async () => {
 
   await expect.element(screen.getByText('foo')).toBeVisible();
 
-  expect(screen.container.textContent).toBe('foo *bar');
+  expect(screen.container.querySelector('p')?.textContent).toBe('foo *bar');
 });
 
 test('single line breaks are kept', async () => {
@@ -167,8 +212,8 @@ test('single line breaks are kept', async () => {
   );
 
   await expect
-    .poll(() => screen.container.querySelector('p')?.innerHTML)
-    .toBe('foo<br>\nbar');
+    .poll(() => screen.container.querySelector('p')?.innerText)
+    .toBe('foo\nbar');
 });
 
 test('streamed words fade in', async () => {
@@ -182,13 +227,17 @@ test('streamed words fade in', async () => {
     <Markdown streaming>{'foo bar'}</Markdown>
   );
 
+  await expect.element(screen.getByText('foo bar')).toBeVisible();
+
+  await screen.rerender(<Markdown streaming>foo bar baz</Markdown>);
+
   await expect
-    .poll(() =>
-      [...screen.container.querySelectorAll('[data-sd-animate]')].map(
-        (word) => getComputedStyle(word).animationName
-      )
-    )
-    .toEqual(['sd-fadeIn', 'sd-fadeIn']);
+    .poll(() => {
+      const token = screen.container.querySelector('[data-animated=true]');
+
+      return token && getComputedStyle(token).animationName;
+    })
+    .toBe('markdown-fade-in');
 });
 
 test('code blocks and tables can be scrolled from the keyboard', async () => {
@@ -214,6 +263,50 @@ test('code blocks and tables can be scrolled from the keyboard', async () => {
     )
     .toEqual([
       ['group', 'Code', '0'],
-      ['group', 'Table', '0'],
+      [null, 'Table', '0'],
     ]);
+});
+
+test('streamed code keeps its colors and line numbers when the fence closes', async () => {
+  stubFetch(() => Response.json({}));
+
+  const client = new QueryClient();
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    lineNumbers: true,
+  });
+
+  const source = '```ts\nconst foo = 42;';
+  const { screen } = await renderWithQuery(
+    <Markdown streaming>{source}</Markdown>,
+    client
+  );
+
+  const colors = () => {
+    const code = screen.container.querySelector('pre code');
+    const keyword = code?.querySelector('span[style]');
+    return [
+      code?.textContent,
+      keyword && getComputedStyle(keyword).color,
+      screen.container.querySelector('[data-markdown=line-numbers]')
+        ?.textContent,
+    ];
+  };
+
+  await expect
+    .poll(colors)
+    .toEqual(['const foo = 42;\n', 'rgb(211, 42, 97)', '1']);
+
+  await screen.rerender(
+    <Markdown streaming={false}>{source + '\n```'}</Markdown>
+  );
+  document.documentElement.classList.add('dark');
+
+  try {
+    await expect
+      .poll(colors)
+      .toEqual(['const foo = 42;\n', 'rgb(255, 103, 141)', '1']);
+  } finally {
+    document.documentElement.classList.remove('dark');
+  }
 });

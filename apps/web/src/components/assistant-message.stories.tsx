@@ -78,8 +78,8 @@ export const LongRunningStep = meta.story({
 const reply =
   'Graça sits high on one of Lisbon’s hills, so the cafés up there stay calm even at weekends. Two are worth the climb: the kiosk under the pines beside the miradouro, and a small bookish bar a street back from the tram line.';
 
-function Reply() {
-  const words = reply.split(' ');
+function Reply({ text = reply }: { text?: string }) {
+  const words = text.match(/\S+\s*/g) ?? [];
   const [count, setCount] = useState(0);
 
   const streaming = count < words.length;
@@ -96,7 +96,7 @@ function Reply() {
 
   return (
     <AssistantMessage
-      parts={[{ text: words.slice(0, count).join(' '), type: 'text' }]}
+      parts={[{ text: words.slice(0, count).join(''), type: 'text' }]}
       progress={new Map()}
       results={new Map()}
       streaming={streaming}
@@ -107,6 +107,24 @@ function Reply() {
 export const StreamingReply = meta.story({
   decorators: [themes],
   render: () => <Reply />,
+});
+
+const codeReply = `Use a **type guard** to keep the strings in a mixed list.
+
+\`\`\`typescript
+function isText(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+const items = ['Kyoto', 42, 'Osaka'];
+const cities = items.filter(isText);
+\`\`\`
+
+TypeScript infers \`cities\` as \`string[]\`.`;
+
+export const StreamingCode = meta.story({
+  decorators: [themes],
+  render: () => <Reply text={codeReply} />,
 });
 
 const steps = [

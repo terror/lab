@@ -30,11 +30,7 @@ test('replies that mount while markdown finishes loading render without a React 
     })
   );
 
-  await Promise.all([
-    import('streamdown'),
-    import('@streamdown/code'),
-    import('remark-breaks'),
-  ]);
+  await import('./markdown-renderer');
 
   const errors = new Array<string>();
 
