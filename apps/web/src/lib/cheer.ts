@@ -6,6 +6,8 @@ const LONG_MS = 120_000;
 
 const LONG_STEPS = 8;
 
+const CHEER_MS = 1_000;
+
 export function cheerFor(worked: number, steps: number) {
   if (worked < QUICK_MS) {
     return 'idle';
@@ -38,6 +40,16 @@ export function useCheer(working: boolean) {
     document.addEventListener('visibilitychange', release);
 
     return () => document.removeEventListener('visibilitychange', release);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== 'cheer') {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setPhase('rest'), CHEER_MS);
+
+    return () => window.clearTimeout(timer);
   }, [phase]);
 
   return working ? 'working' : phase;

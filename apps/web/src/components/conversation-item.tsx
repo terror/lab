@@ -125,7 +125,7 @@ export function ConversationItem({
   const current = activity(conversation, selected);
 
   const quiet = useQuiet();
-  const [order, settle] = useHandoff(current);
+  const [order, settle] = useHandoff(quiet ? 'quiet' : current);
   const [named, setNamed] = useState(conversation.title);
   const [arrived, setArrived] = useState(false);
 
@@ -163,7 +163,7 @@ export function ConversationItem({
   };
 
   const mark =
-    order === undefined || quiet ? (
+    order === undefined ? (
       indicator?.mark
     ) : (
       <LiveMark
