@@ -41,10 +41,11 @@ export function useLedger() {
 
   const mark = useCallback(
     (id: string) => {
-      const current =
-        queryClient.getQueryData(preferencesQueryOptions.queryKey)?.hints ?? [];
+      const current = queryClient.getQueryData(
+        preferencesQueryOptions.queryKey
+      )?.hints;
 
-      if (!current.includes(id)) {
+      if (current && !current.includes(id)) {
         setSeen([...current, id]);
       }
     },
