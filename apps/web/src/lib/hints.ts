@@ -91,6 +91,32 @@ async function claim(id: string, queryClient: QueryClient) {
   }
 }
 
+async function remember(id: string, queryClient: QueryClient) {
+  const response = await call(
+    client.preferences.hints.$post({ json: { id } })
+  ).catch(() => undefined);
+
+  if (response) {
+    queryClient.setQueryData(
+      preferencesQueryOptions.queryKey,
+      response.preferences
+    );
+  }
+}
+
+export function useSeen(id: string, when: boolean) {
+  const queryClient = useQueryClient();
+  const { loaded, seen } = useLedger();
+
+  const fresh = when && loaded && !seen.includes(id);
+
+  useEffect(() => {
+    if (fresh) {
+      void remember(id, queryClient);
+    }
+  }, [fresh, id, queryClient]);
+}
+
 function retireTaught(id: string) {
   if (session.taught === id) {
     update({ done: true });
