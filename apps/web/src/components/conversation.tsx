@@ -49,6 +49,7 @@ import {
   setConversationModel,
   usePreferredModel,
 } from '@/lib/models';
+import { useSlip } from '@/lib/run-failure';
 import { runPhase } from '@/lib/run-phase';
 import {
   cachedRows,
@@ -121,6 +122,7 @@ const TranscriptRow = memo(function TranscriptRow({
   results,
   retrying,
   row,
+  slip,
   versions,
   working,
 }: {
@@ -137,6 +139,7 @@ const TranscriptRow = memo(function TranscriptRow({
   results: ReadonlyMap<string, ToolResult>;
   retrying: boolean;
   row: Row;
+  slip: boolean;
   versions: Versions | undefined;
   working: boolean;
 }) {
@@ -201,6 +204,7 @@ const TranscriptRow = memo(function TranscriptRow({
         progress={progress}
         results={results}
         retrying={retrying}
+        slip={slip}
         span={row.span}
         streaming={row.streaming ?? false}
         versions={switcher}
@@ -506,6 +510,8 @@ function ConversationView({ id }: { id: number }) {
 
   const failure = live?.runFailure?.reason;
 
+  const slip = useSlip(running, failure);
+
   const failedReply =
     failure !== undefined && last?.kind === 'assistant' ? last : undefined;
 
@@ -549,6 +555,7 @@ function ConversationView({ id }: { id: number }) {
                         row.entryId === retried
                       }
                       row={row}
+                      slip={row === failedReply && slip}
                       versions={versions.get(row)}
                       working={running && row === last}
                     />
@@ -564,7 +571,10 @@ function ConversationView({ id }: { id: number }) {
                   <Activity status='Summarizing earlier messages' />
                 )}
                 {failure !== undefined && failedReply === undefined && (
-                  <RunFailure reason={failure} />
+                  <RunFailure
+                    mark={slip ? 'error' : 'broken'}
+                    reason={failure}
+                  />
                 )}
                 {queued.map(({ bubble, submission }) => (
                   <QueuedMessage

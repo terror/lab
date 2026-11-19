@@ -480,27 +480,22 @@ test('a finished turn shows no mark when Lab is quiet', async () => {
 });
 
 const attempts = {
-  failed: { failure: 'model_error', retrying: false, working: false },
-  retrying: { failure: 'model_error', retrying: true, working: false },
-  worked: { failure: undefined, retrying: false, working: false },
-  working: { failure: undefined, retrying: false, working: true },
+  failed: { failure: 'model_error', retrying: false },
+  retrying: { failure: 'model_error', retrying: true },
 } as const;
 
-function attempt(state: keyof typeof attempts) {
-  const { failure, retrying, working } = attempts[state];
-
+function attempt(state: keyof typeof attempts, slip = false) {
   return (
     <TooltipProvider>
       <AssistantMessage
-        failure={failure}
-        latest={!working}
+        {...attempts[state]}
+        latest
         parts={parts}
         progress={new Map()}
         results={results}
-        retrying={retrying}
+        slip={slip}
         span={{ end: 5_000, start: 0 }}
-        streaming={working}
-        working={working}
+        streaming={false}
       />
     </TooltipProvider>
   );
@@ -512,36 +507,24 @@ function failureMark() {
     ?.getAttribute('data-state');
 }
 
-test('a failed run slips once, mends on Retry, and holds still when it fails again', async () => {
+test('a failed reply slips when told to, mends on Retry, and holds still if the retry never starts', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
     })
   );
 
-  const seen = [];
+  const { screen } = await renderWithQuery(attempt('failed'));
 
-  const first = await renderWithQuery(attempt('working'));
+  const seen = [failureMark()];
 
-  await first.screen.rerender(attempt('worked'));
-  await first.screen.rerender(attempt('working'));
-  await first.screen.rerender(attempt('failed'));
+  for (const state of ['failed', 'retrying', 'failed'] as const) {
+    await screen.rerender(attempt(state, true));
 
-  seen.push(failureMark());
+    seen.push(failureMark());
+  }
 
-  await first.screen.rerender(attempt('retrying'));
-
-  seen.push(failureMark());
-
-  await first.screen.unmount();
-
-  const second = await renderWithQuery(attempt('working'));
-
-  await second.screen.rerender(attempt('failed'));
-
-  seen.push(failureMark());
-
-  expect(seen).toEqual(['error', 'recover', 'broken']);
+  expect(seen).toEqual(['broken', 'error', 'recover', 'broken']);
 });
 
 test('a failed run keeps its plain icon when Lab is quiet', async () => {
