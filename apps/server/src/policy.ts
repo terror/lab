@@ -1,7 +1,7 @@
 import { schema } from '@lab/db';
 import { eq } from 'drizzle-orm';
 
-import { publicFetch } from './addresses';
+import { limitResponses, publicFetch } from './addresses';
 import { allowed, isAdmin } from './auth';
 import { db } from './db';
 import { env } from './env';
@@ -24,7 +24,7 @@ export async function policy(ownerId: string, reader: Reader = db) {
   return {
     active,
     computer: admin || env.LAB_COMPUTER_USERS === 'everyone',
-    fetch: admin ? fetch : publicFetch,
+    fetch: limitResponses(admin ? fetch : publicFetch),
     privateNetwork: admin,
     spendLimit: admin ? undefined : env.LAB_MONTHLY_LIMIT,
     storageLimit: admin ? undefined : env.LAB_STORAGE_LIMIT,
