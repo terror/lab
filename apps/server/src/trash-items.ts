@@ -2,7 +2,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type TrashKind, trashKinds } from '@lab/harness';
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, not, sql } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
@@ -24,14 +24,31 @@ const table = schema.conversation;
 
 const projectTable = schema.project;
 
+const deletion = schema.conversationDeletion;
+
 const outsideTrashedProject = sql`not exists (select 1 from ${projectTable} where ${projectTable.id} = ${table.projectId} and ${projectTable.deletedAt} is not null)`;
+
+const purged = sql`exists (select 1 from ${deletion} where ${deletion.id} = ${table.id})`;
+
+type Reader = Pick<typeof db, 'select'>;
+
+async function branched(reader: Reader, id: number) {
+  const [branch] = await reader
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.parentId, id), isNotNull(table.parentEntryId)))
+    .limit(1);
+
+  return branch !== undefined;
+}
 
 function trashed(ownerId: string, id: number) {
   return and(
     eq(table.id, id),
     eq(table.ownerId, ownerId),
     isNotNull(table.deletedAt),
-    outsideTrashedProject
+    outsideTrashedProject,
+    not(purged)
   );
 }
 
@@ -45,23 +62,49 @@ async function purgeChat(ownerId: string, id: number) {
 
   await removeChatFolder(ownerId, id);
 
-  const released = await db.transaction(async (tx) => {
+  const { parent, released } = await db.transaction(async (tx) => {
+    await tx.insert(deletion).values({ id, ownerId }).onConflictDoNothing();
+
+    if (await branched(tx, id)) {
+      await tx.update(table).set({ projectId: null }).where(eq(table.id, id));
+
+      await tx
+        .delete(schema.artifactState)
+        .where(eq(schema.artifactState.conversationId, id));
+
+      await tx
+        .update(schema.scheduledTask)
+        .set({ conversationId: null })
+        .where(eq(schema.scheduledTask.conversationId, id));
+
+      return { parent: undefined, released: [] };
+    }
+
     const attached = await tx
       .select({ id: schema.libraryItem.uploadId })
       .from(schema.libraryItem)
       .where(eq(schema.libraryItem.conversationId, id));
 
-    await tx.delete(table).where(eq(table.id, id));
+    const [row] = await tx
+      .delete(table)
+      .where(eq(table.id, id))
+      .returning({ entryId: table.parentEntryId, parentId: table.parentId });
 
-    await tx
-      .insert(schema.conversationDeletion)
-      .values({ id, ownerId })
-      .onConflictDoNothing();
-
-    return attached.flatMap((upload) => upload.id ?? []);
+    return {
+      parent: row?.entryId === null ? undefined : row?.parentId,
+      released: attached.flatMap((upload) => upload.id ?? []),
+    };
   });
 
   await pruneUploads(ownerId, released).catch(console.error);
+
+  if (
+    typeof parent === 'number' &&
+    (await db.$count(deletion, eq(deletion.id, parent))) > 0 &&
+    !(await branched(db, parent))
+  ) {
+    await purgeChat(ownerId, parent);
+  }
 }
 
 const conversations: Trashable = {
@@ -82,7 +125,8 @@ const conversations: Trashable = {
         and(
           eq(table.ownerId, ownerId),
           isNotNull(table.deletedAt),
-          outsideTrashedProject
+          outsideTrashedProject,
+          not(purged)
         )
       );
 
