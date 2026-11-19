@@ -21,7 +21,7 @@ test('a failed request explains itself in words', async () => {
     await message(async () => Response.json({ error: 'bar' }, { status: 400 })),
   ]).toEqual([
     'Couldn’t reach Lab. Check your connection and try again.',
-    'Something went wrong. Try again.',
+    'Couldn’t finish that. Try again.',
     'bar',
   ]);
 });

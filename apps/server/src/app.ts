@@ -214,7 +214,7 @@ app.onError((error, c) => {
 
   Sentry.captureException(error);
 
-  return c.json({ error: 'Internal server error' }, 500);
+  return c.json({ error: 'Couldn’t finish that. Try again.' }, 500);
 });
 
 export default app;

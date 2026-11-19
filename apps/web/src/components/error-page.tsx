@@ -36,7 +36,7 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
         <LiveMark className='size-10' state='error' />
         <div className='space-y-2'>
           <h1 className='text-xl font-semibold tracking-tight'>
-            Something went wrong
+            Couldn’t show this page
           </h1>
           <p className='text-sm text-balance text-muted-foreground'>
             Lab ran into an unexpected error. Try again, or start a new chat.

@@ -38,7 +38,7 @@ export function SignIn() {
           </Button>
           {error && (
             <ErrorMessage>
-              {errors.get(error) ?? 'Unable to sign in. Try again.'}
+              {errors.get(error) ?? 'Couldn’t sign in. Try again.'}
             </ErrorMessage>
           )}
         </div>
