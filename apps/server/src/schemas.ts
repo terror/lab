@@ -69,6 +69,7 @@ export const sortSchema = z.enum(CHAT_SORTS);
 
 export const preferencesSchema = z.object({
   chatSort: sortSchema,
+  hints: z.array(z.string().min(1).max(64)).max(100),
   lineNumbers: z.boolean(),
   personality: z.enum(PERSONALITIES),
   theme: z.enum(THEMES),

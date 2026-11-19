@@ -5,14 +5,16 @@ import { field, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer } from './types';
 
+type Setting = Exclude<keyof Preferences, 'hints'>;
+
 const labels = {
   chatSort: (value) => ['Sort chats by', text(value) ?? ''],
   lineNumbers: (value) => ['Code line numbers', value ? 'On' : 'Off'],
   personality: (value) => ['Personality', text(value) ?? ''],
   theme: (value) => ['Theme', text(value) ?? ''],
-} satisfies Record<keyof Preferences, (value: unknown) => [string, string]>;
+} satisfies Record<Setting, (value: unknown) => [string, string]>;
 
-function isPreference(key: string): key is keyof Preferences {
+function isPreference(key: string): key is Setting {
   return key in labels;
 }
 

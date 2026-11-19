@@ -14,6 +14,7 @@ test('preferences are shared by the settings and the agent', async () => {
   const initial = await call(headers, 'GET', '/preferences');
 
   const patched = await call(headers, 'PATCH', '/preferences', {
+    hints: ['foo'],
     personality: 'quiet',
     theme: 'light',
   });
@@ -39,6 +40,7 @@ test('preferences are shared by the settings and the agent', async () => {
     final: {
       preferences: {
         chatSort: 'title',
+        hints: ['foo'],
         lineNumbers: true,
         personality: 'quiet',
         theme: 'light',
@@ -47,6 +49,7 @@ test('preferences are shared by the settings and the agent', async () => {
     initial: {
       preferences: {
         chatSort: 'activity',
+        hints: [],
         lineNumbers: false,
         personality: 'default',
         theme: 'system',
@@ -59,6 +62,7 @@ test('preferences are shared by the settings and the agent', async () => {
     patched: {
       preferences: {
         chatSort: 'activity',
+        hints: ['foo'],
         lineNumbers: false,
         personality: 'quiet',
         theme: 'light',
@@ -82,6 +86,7 @@ test('preferences saved before a setting existed get its default', async () => {
   expect((await call(headers, 'GET', '/preferences')).body).toEqual({
     preferences: {
       chatSort: 'activity',
+      hints: [],
       lineNumbers: false,
       personality: 'default',
       theme: 'dark',
