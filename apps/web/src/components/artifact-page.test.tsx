@@ -1,4 +1,10 @@
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import { artifactIdParam } from '@/lib/artifacts';
+import {
+  fetchedPaths,
+  renderWithQuery,
+  requestUrl,
+  stubFetch,
+} from '@/test/helpers';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -52,7 +58,7 @@ function renderPage(artifactId: string) {
     getParentRoute: () => chat,
     params: {
       parse: (params) => ({
-        artifactId: params.artifactId,
+        artifactId: artifactIdParam(params.artifactId),
         conversationId: Number(params.conversationId),
       }),
     },
@@ -145,4 +151,14 @@ test('an app from a deleted chat is unavailable', async () => {
   await expect
     .element(screen.getByRole('link', { name: 'Open Trash' }))
     .toHaveAttribute('href', '/settings?section=trash');
+});
+
+test('an app link whose id is not an artifact id fetches nothing', async () => {
+  const { fetch, rendered } = renderPage('..%2F..%2Ffoo%3F');
+
+  const { screen } = await rendered;
+
+  await expect.element(screen.getByText('Not Found')).toBeVisible();
+
+  expect(fetchedPaths(fetch)).toEqual([]);
 });
