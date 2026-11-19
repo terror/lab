@@ -19,15 +19,15 @@ function MarginNote({
         {children && (
           <m.p
             key='note'
-            className='flex min-w-0 items-center gap-2'
+            className='flex min-w-0 items-start gap-2 text-pretty'
             {...rise(0)}
             exit={{ opacity: 0, transition: fade.leave }}
           >
             <span
               aria-hidden='true'
-              className='size-1.5 shrink-0 rounded-[2px] bg-current'
+              className='mt-[5px] size-1.5 shrink-0 rounded-[2px] bg-current'
             />
-            <span className='truncate'>{children}</span>
+            <span className='min-w-0'>{children}</span>
           </m.p>
         )}
       </AnimatePresence>

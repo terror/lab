@@ -31,11 +31,16 @@ const preferences = new Hono()
     c.json({ preferences: await current(c.get('user').id) })
   )
   .patch('/', change, async (c) => {
+    const { hints, ...settings } = c.req.valid('json');
+
     await harness.commit(async (tx) => {
-      Object.assign(
-        await tx.doc(PreferencesDoc, c.get('user').id, null),
-        c.req.valid('json')
-      );
+      const doc = await tx.doc(PreferencesDoc, c.get('user').id, null);
+
+      Object.assign(doc, settings);
+
+      if (hints) {
+        doc.hints = [...new Set([...(doc.hints ?? []), ...hints])];
+      }
     }, BACKGROUND_CONTEXT);
 
     return c.json({ preferences: await current(c.get('user').id) });

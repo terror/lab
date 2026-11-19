@@ -7,6 +7,17 @@ import { expect, test, vi } from 'vitest';
 
 import { useCurrentNote, useHint, useNote } from './hints';
 
+function useScene() {
+  useNote('foo', true);
+
+  return [
+    useHint('bar', true).show,
+    useHint('baz', false).show,
+    useHint('qux', true).show,
+    useCurrentNote()?.id,
+  ];
+}
+
 test('one hint a session, each once for the account, and none when quiet', async () => {
   const client = new QueryClient();
 
@@ -33,16 +44,7 @@ test('one hint a session, each once for the account, and none when quiet', async
   vi.useFakeTimers();
 
   try {
-    const { result } = await renderHookWithQuery(() => {
-      useNote('foo', true);
-
-      return [
-        useHint('bar', true).show,
-        useHint('baz', false).show,
-        useHint('qux', true).show,
-        useCurrentNote()?.id,
-      ];
-    }, client);
+    const { result, unmount } = await renderHookWithQuery(useScene, client);
 
     const quiet = result.current;
 
@@ -57,10 +59,25 @@ test('one hint a session, each once for the account, and none when quiet', async
 
     const shown = result.current;
 
-    await act(() => vi.advanceTimersByTime(12_000));
+    await act(() => vi.advanceTimersByTime(11_000));
 
-    expect({ after: result.current, quiet, saved, shown }).toEqual({
+    await unmount();
+
+    const again = await renderHookWithQuery(useScene, client);
+
+    const remounted = again.result.current;
+
+    await act(() => vi.advanceTimersByTime(1_000));
+
+    expect({
+      after: again.result.current,
+      quiet,
+      remounted,
+      saved,
+      shown,
+    }).toEqual({
       after: [false, false, false, undefined],
+      remounted: [false, false, false, 'foo'],
       quiet: [false, false, false, undefined],
       saved: [{ hints: ['bar', 'foo'] }],
       shown: [false, false, false, 'foo'],

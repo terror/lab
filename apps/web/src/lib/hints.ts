@@ -8,7 +8,7 @@ const NOTE_MS = 12_000;
 
 type Note = { id: string; retire: () => void };
 
-type Session = { done: boolean; note?: Note; taught?: string };
+type Session = { done: boolean; note?: Note; taught?: string; until?: number };
 
 let session: Session = { done: false };
 
@@ -32,6 +32,19 @@ function subscribe(listener: () => void) {
 
 function useSession() {
   return useSyncExternalStore(subscribe, () => session);
+}
+
+function subscribeVisibility(listener: () => void) {
+  document.addEventListener('visibilitychange', listener);
+
+  return () => document.removeEventListener('visibilitychange', listener);
+}
+
+function useVisible() {
+  return useSyncExternalStore(
+    subscribeVisibility,
+    () => document.visibilityState === 'visible'
+  );
 }
 
 export function useLedger() {
@@ -65,9 +78,15 @@ export function useHint(id: string, eligible: boolean) {
   const quiet = useQuiet();
   const { loaded, mark, seen } = useLedger();
   const { done, taught } = useSession();
+  const visible = useVisible();
 
   const ready =
-    eligible && loaded && !quiet && taught === undefined && !seen.includes(id);
+    eligible &&
+    loaded &&
+    visible &&
+    !quiet &&
+    taught === undefined &&
+    !seen.includes(id);
 
   useEffect(() => {
     if (!ready || session.taught !== undefined) {
@@ -92,10 +111,11 @@ export function useNote(id: string, eligible: boolean) {
     }
 
     const note = { id, retire };
+    const until = session.until ?? Date.now() + NOTE_MS;
 
-    update({ note });
+    update({ note, until });
 
-    const timer = setTimeout(retire, NOTE_MS);
+    const timer = setTimeout(retire, until - Date.now());
 
     return () => {
       clearTimeout(timer);

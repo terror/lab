@@ -23,6 +23,8 @@ test('preferences are shared by the settings and the agent', async () => {
     theme: 'foo',
   });
 
+  await call(headers, 'PATCH', '/preferences', { hints: ['bar'] });
+
   script(
     toolCall('preferences_update', { chat_sort: 'title', line_numbers: true }),
     fauxAssistantMessage('bar')
@@ -40,7 +42,7 @@ test('preferences are shared by the settings and the agent', async () => {
     final: {
       preferences: {
         chatSort: 'title',
-        hints: ['foo'],
+        hints: ['foo', 'bar'],
         lineNumbers: true,
         personality: 'quiet',
         theme: 'light',

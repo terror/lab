@@ -27,14 +27,16 @@ const meta = preview.meta({
 export const Shown = meta.story({
   play: settled,
   render: () => (
-    <MarginNote className='w-80'>I’ll tick these off as I go.</MarginNote>
+    <MarginNote className='w-80 max-w-full'>
+      I’ll tick these off as I go.
+    </MarginNote>
   ),
 });
 
 export const WithKeys = meta.story({
   play: settled,
   render: () => (
-    <MarginNote className='w-80'>
+    <MarginNote className='w-80 max-w-full'>
       Type <Kbd>/compact</Kbd> to tidy the older turns.
     </MarginNote>
   ),
@@ -44,7 +46,7 @@ function Toggle() {
   const [shown, setShown] = useState(true);
 
   return (
-    <div className='flex w-80 flex-col items-start gap-3'>
+    <div className='flex w-80 max-w-full flex-col items-start gap-3'>
       <Button onClick={() => setShown(!shown)} size='sm' variant='outline'>
         {shown ? 'Retire' : 'Show'}
       </Button>
