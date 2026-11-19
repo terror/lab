@@ -63,9 +63,10 @@ test('connectors list the tools of their server', async () => {
           name: 'Foo',
           status: 'connected',
           tools: [
-            { description: 'bar', name: 'read' },
-            { description: 'baz', name: 'write' },
+            { description: 'bar', name: 'read', readOnly: true },
+            { description: 'baz', name: 'write', readOnly: false },
           ],
+          trustReadOnly: false,
           url,
         },
       ],
@@ -234,6 +235,70 @@ test('connector approvals show every argument in full', async () => {
       summary: [`value: "${value}"`],
     },
   });
+});
+
+test('a connector the user trusts runs its read-only tools without asking, also from scripts', async () => {
+  const headers = await signInAdmin();
+
+  const { body: added } = await call(headers, 'POST', '/connectors', {
+    name: 'Foo',
+    url: mcp(),
+  });
+
+  const trusted = await call(
+    headers,
+    'PUT',
+    `/connectors/${added.connectors[0].id}/trust`,
+    { readOnly: true }
+  );
+
+  script(
+    toolCall('codemode', {
+      code: 'return await tools.mcp__foo__read({ value: "qux" });',
+    }),
+    toolCall('tool_search', { query: 'foo' }),
+    toolCall('mcp__foo__write', { value: 'qux' }, 'baz'),
+    fauxAssistantMessage('bar')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'approved',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  const [ran, ...outputs] = await toolOutputs(headers, body.id);
+
+  expect({
+    details: (await toolDetails(headers, body.id)).slice(1),
+    outputs,
+    trusted: trusted.body.connectors[0].trustReadOnly,
+  }).toEqual({
+    details: [
+      { loaded: ['mcp__foo__read', 'mcp__foo__write'] },
+      {
+        approval: {
+          action: 'Use write from Foo',
+          decision: 'approved',
+          summary: ['value: "qux"'],
+        },
+      },
+    ],
+    outputs: [
+      'Loaded 2 tools. They are available from your next call:\n- mcp__foo__read: bar\n- mcp__foo__write: baz',
+      'wrote qux',
+    ],
+    trusted: true,
+  });
+
+  expect(ran).toMatch(
+    /^Script completed\nWall time \d+\.\d seconds\nOutput:\nread qux$/
+  );
 });
 
 test('stopping a chat stops its connector call', async () => {

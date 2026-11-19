@@ -10,9 +10,10 @@ const connector = {
   name: 'foo',
   status: 'connected',
   tools: [
-    { description: 'baz', name: 'bar' },
-    { description: 'qux', name: 'quux' },
+    { description: 'baz', name: 'bar', readOnly: true },
+    { description: 'qux', name: 'quux', readOnly: false },
   ],
+  trustReadOnly: false,
   url: 'https://foo.com/mcp',
 };
 
@@ -87,4 +88,53 @@ test('deleting a connector asks first', async () => {
       )
     )
     .toEqual(['/api/connectors/1']);
+});
+
+test('trusting a connector’s read-only tools asks first, and untrusting does not', async () => {
+  let trusted = false;
+
+  const fetch = stubFetch((_, init) => {
+    if (init?.method === 'PUT' && typeof init.body === 'string') {
+      trusted = JSON.parse(init.body).readOnly;
+    }
+
+    return Response.json({
+      connectors: [{ ...connector, trustReadOnly: trusted }],
+    });
+  });
+
+  const { screen } = await renderWithQuery(<Connectors />);
+
+  const trust = async () => {
+    await screen.getByRole('button', { name: 'Actions for foo' }).click();
+
+    return screen.getByRole('menuitemcheckbox', {
+      name: 'Trust read-only tools',
+    });
+  };
+
+  await (await trust()).click();
+  await screen
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Trust' })
+    .click();
+
+  const item = await trust();
+
+  await expect.element(item).toHaveAttribute('aria-checked', 'true');
+
+  await item.click();
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'PUT' && typeof init.body === 'string'
+          ? [[requestUrl(input).pathname, JSON.parse(init.body)]]
+          : []
+      )
+    )
+    .toEqual([
+      ['/api/connectors/1/trust', { readOnly: true }],
+      ['/api/connectors/1/trust', { readOnly: false }],
+    ]);
 });
