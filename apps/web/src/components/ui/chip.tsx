@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import * as React from 'react';
 
 const tones = {
-  done: 'bg-spark-yellow-wash text-spark-yellow-ink',
+  done: 'bg-status-done-wash text-status-done-ink',
   neutral: 'bg-muted text-muted-foreground',
 };
 

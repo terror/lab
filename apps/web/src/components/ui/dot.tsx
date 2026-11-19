@@ -2,8 +2,9 @@ import { cn } from '@/lib/utils';
 import * as React from 'react';
 
 const tones = {
-  attention: 'bg-spark-coral',
-  live: 'bg-spark-blue',
+  attention: 'bg-status-attention',
+  done: 'bg-status-done',
+  live: 'bg-status-live',
 };
 
 function Dot({
