@@ -60,6 +60,22 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use('/api/*', compress());
 const headers = {
+  permissionsPolicy: {
+    bluetooth: [],
+    camera: [],
+    clipboardRead: [],
+    clipboardWrite: ['self'],
+    displayCapture: [],
+    geolocation: [],
+    hid: [],
+    idleDetection: [],
+    microphone: ['self'],
+    midi: [],
+    payment: [],
+    screenWakeLock: [],
+    serial: [],
+    usb: [],
+  },
   referrerPolicy: 'strict-origin-when-cross-origin',
   strictTransportSecurity: 'max-age=31536000; includeSubDomains',
   xFrameOptions: 'DENY',
