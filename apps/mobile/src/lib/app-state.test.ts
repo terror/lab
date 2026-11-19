@@ -11,6 +11,7 @@ await mock.module('react-native', () => ({
       return { remove: () => {} };
     },
   },
+  Platform: { OS: 'ios' },
 }));
 
 test('coming back to the app refetches what is on screen', async () => {
