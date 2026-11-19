@@ -245,20 +245,13 @@ const noForks: Fork[] = [];
 
 const ignoreBranch = () => undefined;
 
-function ConversationView({ id }: { id: number }) {
+type Queued = ReturnType<typeof queuedMessages>;
+
+function useChatComposer(id: number, queued: Queued) {
   const { scrollToEnd } = useMessageScroller();
-  const {
-    view,
-    status: activity,
-    plan,
-    loadEarlier,
-    fillGap,
-  } = useConversation(id);
-  const summary = useConversationSummary(id);
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useDraft(id);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  const queryClient = useQueryClient();
 
   const send = useMutation({
     meta: { inlineError: true },
@@ -285,8 +278,7 @@ function ConversationView({ id }: { id: number }) {
   });
 
   const abort = useMutation({
-    mutationFn: (_withdrawn: ReturnType<typeof queuedMessages>) =>
-      abortConversation(id),
+    mutationFn: (_withdrawn: Queued) => abortConversation(id),
     onSuccess: (_, withdrawn) => {
       if (withdrawn.length === 0) {
         return;
@@ -305,17 +297,96 @@ function ConversationView({ id }: { id: number }) {
     },
   });
 
-  const branch = useBranch(id);
-
-  const cancel = useMutation({
-    mutationFn: (submission: number) => cancelSubmission(id, submission),
-  });
-
   const [, setPreferredModel] = usePreferredModel();
 
   const changeModel = useMutation({
     mutationFn: (model: ModelChoice) => setConversationModel(id, model),
     onSuccess: (_, model) => setPreferredModel(model),
+  });
+
+  const submit = (content: string, steer: boolean) => {
+    scrollToEnd({ behavior: 'smooth' });
+    send.mutate({ content, sent: attachments, steer });
+  };
+
+  return {
+    attachments,
+    draft,
+    error: send.error?.message,
+    onAttachmentsChange: setAttachments,
+    onDraftChange: (value: string) => {
+      if (send.isError) {
+        send.reset();
+      }
+
+      setDraft(value);
+    },
+    onModelChange: (model: ModelChoice) => changeModel.mutate(model),
+    onStop: () => abort.mutate(queued),
+    onSteer: (content: string) => submit(content, true),
+    onSubmit: (content: string) => submit(content, false),
+    submitting: send.isPending,
+  };
+}
+
+function useRunEnd(id: number, running: boolean) {
+  const queryClient = useQueryClient();
+
+  const wasRunning = useRef(running);
+
+  useEffect(() => {
+    if (wasRunning.current && !running) {
+      void refreshAgentWrites(queryClient);
+    }
+
+    wasRunning.current = running;
+  }, [queryClient, running]);
+
+  const { mutate: markRead } = useMutation({
+    meta: { inlineError: true },
+    mutationFn: () => readConversation(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
+  });
+
+  useEffect(() => {
+    if (running) {
+      return undefined;
+    }
+
+    if (!document.hidden) {
+      markRead();
+
+      return undefined;
+    }
+
+    const read = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', read);
+        markRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', read);
+
+    return () => document.removeEventListener('visibilitychange', read);
+  }, [markRead, running]);
+}
+
+function ConversationView({ id }: { id: number }) {
+  const {
+    view,
+    status: activity,
+    plan,
+    loadEarlier,
+    fillGap,
+  } = useConversation(id);
+  const summary = useConversationSummary(id);
+
+  const branch = useBranch(id);
+
+  const cancel = useMutation({
+    mutationFn: (submission: number) => cancelSubmission(id, submission),
   });
 
   const earlier = useMutation({ mutationFn: loadEarlier });
@@ -398,6 +469,8 @@ function ConversationView({ id }: { id: number }) {
 
   const queued = queuedMessages(inbox);
 
+  const composer = useChatComposer(id, queued);
+
   const phase = runPhase(live, answering);
 
   const running = phase.kind !== 'idle';
@@ -419,45 +492,7 @@ function ConversationView({ id }: { id: number }) {
       ? branch.variables.entryId
       : undefined;
 
-  const wasRunning = useRef(running);
-
-  useEffect(() => {
-    if (wasRunning.current && !running) {
-      void refreshAgentWrites(queryClient);
-    }
-
-    wasRunning.current = running;
-  }, [queryClient, running]);
-
-  const { mutate: markRead } = useMutation({
-    meta: { inlineError: true },
-    mutationFn: () => readConversation(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: conversationsQueryKey }),
-  });
-
-  useEffect(() => {
-    if (running) {
-      return undefined;
-    }
-
-    if (!document.hidden) {
-      markRead();
-
-      return undefined;
-    }
-
-    const read = () => {
-      if (!document.hidden) {
-        document.removeEventListener('visibilitychange', read);
-        markRead();
-      }
-    };
-
-    document.addEventListener('visibilitychange', read);
-
-    return () => document.removeEventListener('visibilitychange', read);
-  }, [markRead, running]);
+  useRunEnd(id, running);
 
   const waiting = useThinking(running ? anchor?.key : undefined);
 
@@ -549,11 +584,9 @@ function ConversationView({ id }: { id: number }) {
       </MessageScroller>
       <ComposerDock className='mx-auto w-full max-w-3xl px-6 pb-6'>
         <Composer
-          attachments={attachments}
+          {...composer}
           commandContext={commandContext}
           disabled={view === undefined}
-          draft={draft}
-          error={send.error?.message}
           model={
             agent?.model && {
               id: agent.model.modelId,
@@ -561,26 +594,7 @@ function ConversationView({ id }: { id: number }) {
               thinkingLevel: agent.thinkingLevel,
             }
           }
-          onAttachmentsChange={setAttachments}
-          onDraftChange={(value) => {
-            if (send.isError) {
-              send.reset();
-            }
-
-            setDraft(value);
-          }}
-          onModelChange={(model) => changeModel.mutate(model)}
-          onStop={() => abort.mutate(queued)}
-          onSteer={(content) => {
-            scrollToEnd({ behavior: 'smooth' });
-            send.mutate({ content, steer: true, sent: attachments });
-          }}
-          onSubmit={(content) => {
-            scrollToEnd({ behavior: 'smooth' });
-            send.mutate({ content, steer: false, sent: attachments });
-          }}
           running={running}
-          submitting={send.isPending}
         />
       </ComposerDock>
     </div>
