@@ -8,6 +8,7 @@ import { bool, obj, oneOf, opt } from '@earendil-works/pi-schema';
 
 import {
   CHAT_SORTS,
+  SYNTAX_THEMES,
   THEMES,
   type Preferences,
   defaultPreferences,
@@ -23,16 +24,17 @@ export const PreferencesDoc = userDoc<Preferences>(
 function describe({
   chatSort,
   lineNumbers,
+  syntaxTheme,
   theme,
 }: Omit<Preferences, 'hints'>) {
-  return `theme ${theme}, code block line numbers ${lineNumbers ? 'on' : 'off'}, chats sorted by ${chatSort}`;
+  return `theme ${theme}, syntax theme ${syntaxTheme}, code block line numbers ${lineNumbers ? 'on' : 'off'}, chats sorted by ${chatSort}`;
 }
 
 export function preferences(owner: Owner) {
   const preferencesUpdate = defineTool({
     name: 'preferences_update',
     description:
-      "Change the user's Lab settings: the color theme, line numbers in code blocks, and how chats are sorted in the sidebar. Only the fields you pass change.",
+      "Change the user's Lab settings: the color theme, syntax highlighting theme, line numbers in code blocks, and how chats are sorted in the sidebar. Only the fields you pass change.",
     parameters: obj({
       chat_sort: opt(
         oneOf(CHAT_SORTS, {
@@ -43,6 +45,11 @@ export function preferences(owner: Owner) {
       line_numbers: opt(
         bool({ description: 'Show line numbers in code blocks.' })
       ),
+      syntax_theme: opt(
+        oneOf(SYNTAX_THEMES, {
+          description: 'The syntax highlighting theme for code blocks.',
+        })
+      ),
       theme: opt(oneOf(THEMES, { description: 'The color theme.' })),
     }),
     execute: async (args, api, context): Promise<ToolExecutionResult> => {
@@ -51,6 +58,7 @@ export function preferences(owner: Owner) {
         ...(args.line_numbers !== undefined && {
           lineNumbers: args.line_numbers,
         }),
+        ...(args.syntax_theme && { syntaxTheme: args.syntax_theme }),
         ...(args.theme && { theme: args.theme }),
       };
 
@@ -65,9 +73,12 @@ export function preferences(owner: Owner) {
 
         Object.assign(doc, change);
 
-        const { chatSort, lineNumbers, personality, theme } = doc;
+        const { chatSort, lineNumbers, personality, syntaxTheme, theme } = {
+          ...defaultPreferences,
+          ...doc,
+        };
 
-        return { chatSort, lineNumbers, personality, theme };
+        return { chatSort, lineNumbers, personality, syntaxTheme, theme };
       }, context);
 
       return {
@@ -83,14 +94,13 @@ export function preferences(owner: Owner) {
     name: 'lab.preferences',
     sections: [
       section('preferences', async ({ conversationId, read }, context) => {
-        const current =
-          (await read.snapshot(
-            PreferencesDoc,
-            await owner(conversationId),
-            context
-          )) ?? defaultPreferences;
+        const saved = await read.snapshot(
+          PreferencesDoc,
+          await owner(conversationId),
+          context
+        );
 
-        return `The user's settings: ${describe(current)}. Change them with preferences_update when the user asks.`;
+        return `The user's settings: ${describe({ ...defaultPreferences, ...saved })}. Change them with preferences_update when the user asks.`;
       }),
     ],
     tools: [preferencesUpdate],

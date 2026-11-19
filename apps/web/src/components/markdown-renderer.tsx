@@ -1,6 +1,12 @@
+import { usePreference } from '@/lib/preferences';
 import { useDark } from '@/lib/theme';
-import dark from '@pierre/highlights/themes/pierre-dark';
-import light from '@pierre/highlights/themes/pierre-light';
+import type { Theme } from '@pierre/highlights';
+import githubDark from '@pierre/highlights/themes/github-dark';
+import githubLight from '@pierre/highlights/themes/github-light';
+import pierreDark from '@pierre/highlights/themes/pierre-dark';
+import pierreLight from '@pierre/highlights/themes/pierre-light';
+import solarizedDark from '@pierre/highlights/themes/solarized-dark';
+import solarizedLight from '@pierre/highlights/themes/solarized-light';
 import { createHighlightsPlugin } from '@pierre/words/highlights';
 import { escapeHtml } from '@pierre/words/html';
 import { type CodeOptions, Markdown } from '@pierre/words/react';
@@ -78,19 +84,28 @@ function diagrams(theme: 'dark' | 'light') {
   };
 }
 
-const code = createHighlightsPlugin({
-  defaultColor: 'light-dark()',
-  themes: { dark, light },
-});
+function palette(light: Theme, dark: Theme) {
+  return createHighlightsPlugin({
+    defaultColor: 'light-dark()',
+    themes: { dark, light },
+  });
+}
 
-const plugins = {
-  dark: { code, renderers: [diagrams('dark')] },
-  light: { code, renderers: [diagrams('light')] },
+const palettes = {
+  github: palette(githubLight, githubDark),
+  pierre: palette(pierreLight, pierreDark),
+  solarized: palette(solarizedLight, solarizedDark),
+};
+
+const diagramRenderers = {
+  dark: [diagrams('dark')],
+  light: [diagrams('light')],
 };
 
 const components = { table: tableFrame };
 
 export function MarkdownRenderer(props: React.ComponentProps<typeof Markdown>) {
+  const [syntaxTheme] = usePreference('syntaxTheme');
   const isDark = useDark();
 
   return (
@@ -102,7 +117,10 @@ export function MarkdownRenderer(props: React.ComponentProps<typeof Markdown>) {
           : undefined
       }
       onInput={markdownAction}
-      plugins={plugins[isDark ? 'dark' : 'light']}
+      plugins={{
+        code: palettes[syntaxTheme],
+        renderers: diagramRenderers[isDark ? 'dark' : 'light'],
+      }}
     />
   );
 }

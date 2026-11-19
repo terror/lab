@@ -11,6 +11,7 @@ const labels = {
   chatSort: (value) => ['Sort chats by', text(value) ?? ''],
   lineNumbers: (value) => ['Code line numbers', value ? 'On' : 'Off'],
   personality: (value) => ['Personality', text(value) ?? ''],
+  syntaxTheme: (value) => ['Syntax highlighting', text(value) ?? ''],
   theme: (value) => ['Theme', text(value) ?? ''],
 } satisfies Record<Setting, (value: unknown) => [string, string]>;
 

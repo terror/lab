@@ -267,6 +267,30 @@ test('code blocks and tables can be scrolled from the keyboard', async () => {
     ]);
 });
 
+test('code actions appear on hover and keyboard focus without taking a row', async () => {
+  stubFetch(() => Response.json({}));
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>{'foo\n\n```ts\nbar\n```'}</Markdown>
+  );
+
+  const prose = screen.getByText('foo');
+  const code = screen.getByRole('group', { name: 'Code' });
+  await prose.hover();
+  const header = screen.container.querySelector('[data-markdown=code-header]');
+  if (!header) throw new Error('Missing code header');
+
+  const opacity = () => getComputedStyle(header).opacity;
+  expect(getComputedStyle(header).position).toBe('absolute');
+  await expect.poll(opacity).toBe('0');
+  await code.hover();
+  await expect.poll(opacity).toBe('1');
+  await prose.hover();
+  await expect.poll(opacity).toBe('0');
+  screen.getByRole('button', { name: 'Copy code' }).element().focus();
+  await expect.poll(opacity).toBe('1');
+});
+
 test('streamed code keeps its colors and line numbers when the fence closes', async () => {
   stubFetch(() => Response.json({}));
 
@@ -306,6 +330,16 @@ test('streamed code keeps its colors and line numbers when the fence closes', as
     await expect
       .poll(colors)
       .toEqual(['const foo = 42;\n', 'rgb(255, 103, 141)', '1']);
+
+    client.setQueryData(preferencesQueryOptions.queryKey, {
+      ...defaultPreferences,
+      lineNumbers: true,
+      syntaxTheme: 'github',
+    });
+
+    await expect
+      .poll(colors)
+      .toEqual(['const foo = 42;\n', 'rgb(249, 117, 131)', '1']);
   } finally {
     document.documentElement.classList.remove('dark');
   }

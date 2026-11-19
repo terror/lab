@@ -17,9 +17,11 @@ const CACHE = 'preferences';
 
 export const preferencesQueryOptions = queryOptions({
   queryKey: ['preferences'],
-  queryFn: async ({ signal }) =>
-    (await call(client.preferences.$get(undefined, { init: { signal } })))
+  queryFn: async ({ signal }) => ({
+    ...defaultPreferences,
+    ...(await call(client.preferences.$get(undefined, { init: { signal } })))
       .preferences,
+  }),
   placeholderData: () => ({
     ...defaultPreferences,
     ...readStored(CACHE, preferencesSchema.partial(), {}),

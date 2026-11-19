@@ -31,6 +31,12 @@ const themes: { label: string; value: Theme }[] = [
   { label: 'System', value: 'system' },
 ];
 
+const syntaxThemes: { label: string; value: Preferences['syntaxTheme'] }[] = [
+  { label: 'Pierre', value: 'pierre' },
+  { label: 'GitHub', value: 'github' },
+  { label: 'Solarized', value: 'solarized' },
+];
+
 const personalities: {
   label: string;
   value: Preferences['personality'];
@@ -41,6 +47,7 @@ const personalities: {
 
 function Appearance() {
   const [theme, setTheme] = useTheme();
+  const [syntaxTheme, setSyntaxTheme] = usePreference('syntaxTheme');
   const [lineNumbers, setLineNumbers] = usePreference('lineNumbers');
   const [personality, setPersonality] = usePreference('personality');
 
@@ -61,6 +68,17 @@ function Appearance() {
             />
           }
           label='Theme'
+        />
+        <SettingRow
+          control={
+            <Pills
+              label='Syntax highlighting'
+              onValueChange={setSyntaxTheme}
+              options={syntaxThemes}
+              value={syntaxTheme}
+            />
+          }
+          label='Syntax highlighting'
         />
         <SettingRow
           control={

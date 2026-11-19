@@ -20,6 +20,7 @@ test('preferences are shared by the settings and the agent', async () => {
 
   const patched = await call(headers, 'PATCH', '/preferences', {
     personality: 'quiet',
+    syntaxTheme: 'solarized',
     theme: 'light',
   });
 
@@ -32,7 +33,11 @@ test('preferences are shared by the settings and the agent', async () => {
   });
 
   script(
-    toolCall('preferences_update', { chat_sort: 'title', line_numbers: true }),
+    toolCall('preferences_update', {
+      chat_sort: 'title',
+      line_numbers: true,
+      syntax_theme: 'github',
+    }),
     fauxAssistantMessage('bar')
   );
 
@@ -54,6 +59,7 @@ test('preferences are shared by the settings and the agent', async () => {
         hints: ['foo'],
         lineNumbers: true,
         personality: 'quiet',
+        syntaxTheme: 'github',
         theme: 'light',
       },
     },
@@ -63,12 +69,13 @@ test('preferences are shared by the settings and the agent', async () => {
         hints: [],
         lineNumbers: false,
         personality: 'default',
+        syntaxTheme: 'pierre',
         theme: 'system',
       },
     },
     invalid: 400,
     outputs: [
-      "Changed chatSort, lineNumbers. The user's settings are now: theme light, code block line numbers on, chats sorted by title.",
+      "Changed chatSort, lineNumbers, syntaxTheme. The user's settings are now: theme light, syntax theme github, code block line numbers on, chats sorted by title.",
     ],
     patched: {
       preferences: {
@@ -76,6 +83,7 @@ test('preferences are shared by the settings and the agent', async () => {
         hints: ['foo'],
         lineNumbers: false,
         personality: 'quiet',
+        syntaxTheme: 'solarized',
         theme: 'light',
       },
     },
@@ -93,6 +101,7 @@ test('preferences saved before a setting existed get its default', async () => {
 
     Object.assign(doc, { theme: 'dark' });
     delete (doc as Partial<typeof doc>).personality;
+    delete (doc as Partial<typeof doc>).syntaxTheme;
   }, BACKGROUND_CONTEXT);
 
   expect((await call(headers, 'GET', '/preferences')).body).toEqual({
@@ -101,6 +110,7 @@ test('preferences saved before a setting existed get its default', async () => {
       hints: [],
       lineNumbers: false,
       personality: 'default',
+      syntaxTheme: 'pierre',
       theme: 'dark',
     },
   });

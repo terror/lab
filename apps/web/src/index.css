@@ -256,13 +256,58 @@
 }
 
 [data-markdown='code-block'] {
+  position: relative;
   border: 0;
   background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
 }
 
 [data-markdown='code-header'] {
-  border-color: var(--border);
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 0.375rem;
+  inset-inline-end: 0.375rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in oklab, var(--foreground) 4%, var(--background));
+  padding: 0;
   color: var(--muted-foreground);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+[data-markdown='code-header'] > :first-child {
+  display: none;
+}
+
+[data-markdown='code-header'] button {
+  border-radius: inherit;
+  padding: 0.375rem 0.5rem;
+  font: var(--text-xs) var(--font-sans);
+}
+
+[data-markdown='code-header'] button:is(:hover, :focus-visible) {
+  color: var(--foreground);
+}
+
+[data-markdown='code-block']:hover [data-markdown='code-header'],
+[data-markdown='code-header']:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  [data-markdown='code-header'] {
+    position: static;
+    justify-content: flex-end;
+    background: transparent;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  [data-markdown='code-block'] pre {
+    padding-block-start: 0.25rem;
+  }
 }
 
 .markdown-frame {

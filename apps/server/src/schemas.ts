@@ -3,6 +3,7 @@ import { PLAN_LIMIT, PLAN_STATUSES, STEP_LENGTH } from '@lab/harness/plan';
 import {
   CHAT_SORTS,
   PERSONALITIES,
+  SYNTAX_THEMES,
   type Preferences,
   THEMES,
 } from '@lab/harness/preferences';
@@ -74,6 +75,7 @@ export const preferencesSchema = z.object({
   hints: z.array(z.string().min(1).max(64)).max(HINT_LIMIT),
   lineNumbers: z.boolean(),
   personality: z.enum(PERSONALITIES),
+  syntaxTheme: z.enum(SYNTAX_THEMES),
   theme: z.enum(THEMES),
 }) satisfies z.ZodType<Preferences>;
 
