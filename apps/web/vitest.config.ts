@@ -1,9 +1,11 @@
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { defaultBrowserPort, defineConfig, mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config';
+
+const port = Number(process.env.VITEST_BROWSER_PORT ?? defaultBrowserPort);
 
 function browser() {
   return {
@@ -32,11 +34,12 @@ export default mergeConfig(
               configDir: fileURLToPath(new URL('.storybook', import.meta.url)),
             }),
           ],
-          test: { browser: browser(), name: 'storybook' },
+          test: { api: { port }, browser: browser(), name: 'storybook' },
         },
         {
           extends: true,
           test: {
+            api: { port: port + 1 },
             browser: browser(),
             include: ['src/**/*.test.{ts,tsx}'],
             name: 'unit',
