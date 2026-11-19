@@ -315,3 +315,57 @@ test('deleting a chat forever deletes the files uploaded to it', async () => {
 
   expect((await raw(headers, `/uploads/${body.id}`)).status).toBe(404);
 });
+
+test('deleting a chat forever keeps the files its branches still show', async () => {
+  const headers = await signIn();
+
+  const { body } = await upload(
+    headers,
+    new File(['foo'], 'foo.pdf', { type: 'application/pdf' })
+  );
+
+  const id = await chat(headers, {
+    attachments: [
+      { name: 'foo.pdf', text: 'bar', type: 'file', uploadId: body.id },
+    ],
+    content: 'baz',
+  });
+
+  const { body: entries } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  const reply = (entries.items as { id: number; model?: { role: string }[] }[])
+    .filter(({ model }) => model?.[0]?.role === 'assistant')
+    .at(-1);
+
+  const { body: branch } = await call(
+    headers,
+    'POST',
+    `/conversations/${id}/branches`,
+    { entryId: reply?.id, kind: 'retry' }
+  );
+
+  await settle(branch.id);
+
+  const purge = async (chatId: number) => {
+    await call(headers, 'DELETE', `/conversations/${chatId}`);
+
+    await call(headers, 'DELETE', `/trash/conversation/${chatId}`);
+
+    return {
+      trash: (await call(headers, 'GET', '/trash')).body.items,
+      upload: (await raw(headers, `/uploads/${body.id}`)).status,
+    };
+  };
+
+  expect({
+    original: await purge(id),
+    branch: await purge(branch.id),
+  }).toEqual({
+    original: { trash: [], upload: 200 },
+    branch: { trash: [], upload: 404 },
+  });
+});
