@@ -328,6 +328,7 @@ export function ProjectsSection({
                     <button
                       aria-current={page ? 'page' : undefined}
                       aria-expanded={page ? project.id === showing : undefined}
+                      data-project-row={project.id}
                       onClick={() => select(project.id)}
                       type='button'
                     >

@@ -120,7 +120,7 @@ export function ConversationItem({
   const presence = useRowPresence();
   const options = useRef<HTMLButtonElement>(null);
   const renaming = useRenaming(options);
-  const actions = useChatActions(conversation, selected);
+  const actions = useChatActions(conversation, selected, options);
 
   const current = activity(conversation, selected);
 
@@ -152,6 +152,11 @@ export function ConversationItem({
   }
 
   const indicator = indicators[current];
+
+  const closed = (event: Event) => {
+    renaming.onCloseAutoFocus(event);
+    actions.closed(event);
+  };
 
   const landed = (event: AnimationEvent) => {
     if (
@@ -191,10 +196,7 @@ export function ConversationItem({
                   <Ellipsis aria-hidden='true' />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align='start'
-                onCloseAutoFocus={renaming.onCloseAutoFocus}
-              >
+              <DropdownMenuContent align='start' onCloseAutoFocus={closed}>
                 <ChatMenuItems
                   {...actions.menu}
                   onRename={renaming.start}
@@ -222,7 +224,7 @@ export function ConversationItem({
           </Link>
         </MotionSidebarRow>
       </ContextMenuTrigger>
-      <ContextMenuContent onCloseAutoFocus={renaming.onCloseAutoFocus}>
+      <ContextMenuContent onCloseAutoFocus={closed}>
         <ChatMenuItems
           {...actions.menu}
           onRename={renaming.start}
