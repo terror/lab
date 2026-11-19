@@ -62,3 +62,35 @@ test('a remembered fact stays readable under its yellow highlight in both themes
 
   expect(ratios).toEqual([true, true]);
 });
+
+test('each status token is its spark hue, tier for tier, in both themes', () => {
+  const mismatched = new Array<string>();
+
+  for (const theme of ['light', 'dark']) {
+    const root = document.createElement('div');
+
+    root.className = theme;
+    document.body.append(root);
+
+    const style = getComputedStyle(root);
+
+    for (const [status, hue] of [
+      ['attention', 'coral'],
+      ['live', 'blue'],
+      ['done', 'yellow'],
+    ]) {
+      for (const tier of ['', '-ink', '-wash']) {
+        if (
+          style.getPropertyValue(`--status-${status}${tier}`) !==
+          style.getPropertyValue(`--spark-${hue}${tier}`)
+        ) {
+          mismatched.push(`${theme} ${status}${tier}`);
+        }
+      }
+    }
+
+    root.remove();
+  }
+
+  expect(mismatched).toEqual([]);
+});

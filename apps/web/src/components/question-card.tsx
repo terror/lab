@@ -7,6 +7,32 @@ import { useAnswer } from '@/lib/conversations';
 import { Check } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
 
+export function QuestionOptions({
+  disabled,
+  onPick,
+  options,
+}: {
+  disabled: boolean;
+  onPick: (option: string) => void;
+  options: readonly string[];
+}) {
+  return (
+    <div className='flex flex-col gap-1.5'>
+      {options.map((option) => (
+        <Button
+          key={option}
+          className='h-auto min-h-9 justify-start py-1.5 text-left font-normal whitespace-normal'
+          disabled={disabled}
+          onClick={() => onPick(option)}
+          variant='outline'
+        >
+          {option}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function QuestionCard({
   active,
   answer,
@@ -54,19 +80,11 @@ export function QuestionCard({
     >
       <Card className='gap-3' variant='outline'>
         <p className='text-sm font-medium'>{question}</p>
-        <div className='flex flex-col gap-1.5'>
-          {options.map((option) => (
-            <Button
-              key={option}
-              className='h-auto min-h-9 justify-start py-1.5 text-left font-normal whitespace-normal'
-              disabled={locked}
-              onClick={() => send.mutate(option)}
-              variant='outline'
-            >
-              {option}
-            </Button>
-          ))}
-        </div>
+        <QuestionOptions
+          disabled={locked}
+          onPick={send.mutate}
+          options={options}
+        />
         <form className='flex items-center gap-2' onSubmit={onSubmit}>
           <Input
             aria-label='Another answer'

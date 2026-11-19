@@ -18,7 +18,7 @@ function ProgressCount({
       data-slot='progress-count'
       data-complete={complete || undefined}
       className={cn(
-        'text-xs text-muted-foreground tabular-nums transition-colors duration-slow data-complete:text-spark-yellow-ink',
+        'text-xs text-muted-foreground tabular-nums transition-colors duration-slow data-complete:text-status-done-ink',
         className
       )}
       {...props}

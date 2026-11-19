@@ -62,6 +62,23 @@ export function approvalOf(details: unknown) {
     ?.approval;
 }
 
+export function ApprovalSummary({
+  action,
+  summary,
+}: {
+  action: string;
+  summary: readonly string[];
+}) {
+  return (
+    <div className='flex flex-col gap-1'>
+      <p className='text-sm font-medium'>{action}</p>
+      {summary.map((line) => (
+        <ClampedText key={line}>{line}</ClampedText>
+      ))}
+    </div>
+  );
+}
+
 export function ApprovalCard({
   active,
   approval,
@@ -95,12 +112,7 @@ export function ApprovalCard({
       prompt={approval.action}
     >
       <Card className='gap-3' variant='outline'>
-        <div className='flex flex-col gap-1'>
-          <p className='text-sm font-medium'>{approval.action}</p>
-          {approval.summary.map((line) => (
-            <ClampedText key={line}>{line}</ClampedText>
-          ))}
-        </div>
+        <ApprovalSummary action={approval.action} summary={approval.summary} />
         <div className='flex gap-2'>
           <Button
             disabled={locked}

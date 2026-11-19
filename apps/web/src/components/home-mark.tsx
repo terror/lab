@@ -1,6 +1,6 @@
 import { LiveMark } from '@/components/ui/live-mark';
 import { useDraft, useUnreadChats } from '@/lib/conversations';
-import { spring } from '@/lib/motion';
+import { spring, useMaxFeatures } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
 import {
@@ -26,9 +26,6 @@ const SHAKES = 5;
 const SHAKE_MS = 1_600;
 
 const fizzedKey = 'lab:fizzed';
-
-const loadDrag = () =>
-  import('@/lib/motion-max').then((features) => features.default);
 
 function leash(offset: number) {
   return LEASH * Math.tanh(offset / LEASH);
@@ -147,6 +144,8 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
 
   const playful = !quiet && !reduced;
 
+  const { features } = useMaxFeatures();
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const leashX = useTransform(x, leash);
@@ -165,7 +164,7 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
   }
 
   return (
-    <LazyMotion features={loadDrag}>
+    <LazyMotion features={features}>
       <m.span
         _dragX={x}
         _dragY={y}

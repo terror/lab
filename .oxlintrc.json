@@ -76,8 +76,16 @@
       {
         "patterns": [
           {
-            "message": "Spark colors belong to the agent. Use a components/ui component that carries one, or add it there.",
+            "message": "Spark colors belong to the agent. Reach one through a status token (status-attention, status-live, status-done) or a components/ui component that carries one.",
             "pattern": "spark-(coral|blue|yellow)"
+          },
+          {
+            "message": "Text takes the ink tier. Raw and wash fail contrast.",
+            "pattern": "(^|:)(text|decoration|caret|placeholder)-status-(attention|live|done)(-wash)?(/|$)"
+          },
+          {
+            "message": "A status never colors a border, ring, or outline.",
+            "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-status-"
           }
         ]
       }
@@ -109,6 +117,14 @@
               {
                 "message": "A spark never colors a border, ring, or outline.",
                 "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-spark-"
+              },
+              {
+                "message": "Text takes the ink tier. Raw and wash fail contrast.",
+                "pattern": "(^|:)(text|decoration|caret|placeholder)-status-(attention|live|done)(-wash)?(/|$)"
+              },
+              {
+                "message": "A status never colors a border, ring, or outline.",
+                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-status-"
               }
             ]
           }
