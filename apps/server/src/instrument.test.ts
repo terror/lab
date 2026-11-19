@@ -60,7 +60,7 @@ test('error reports leave out request bodies, queries, addresses and console out
   ]);
 });
 
-test('database error reports leave out query parameters', async () => {
+function capture() {
   const sent = new Array<Sentry.ErrorEvent>();
 
   Sentry.init({
@@ -80,6 +80,12 @@ test('database error reports leave out query parameters', async () => {
       }),
   });
 
+  return sent;
+}
+
+test('database error reports leave out query parameters', async () => {
+  const sent = capture();
+
   Sentry.captureException(
     new DrizzleQueryError('select $1', ['foo'], new Error('bar'))
   );
@@ -89,4 +95,38 @@ test('database error reports leave out query parameters', async () => {
   expect(
     sent.map(({ exception }) => exception?.values?.map(({ value }) => value))
   ).toEqual([['bar', 'Failed query: select $1']]);
+});
+
+test('outgoing requests send no trace headers and stay out of error reports', async () => {
+  const sent = capture();
+
+  const headers = new Array<string[]>();
+
+  const server = Bun.serve({
+    fetch: (request) => {
+      headers.push([...request.headers.keys()].toSorted());
+
+      return new Response();
+    },
+    hostname: '127.0.0.1',
+    port: 0,
+  });
+
+  await fetch(new URL('/foo', server.url));
+
+  await server.stop();
+
+  Sentry.captureException(new Error('bar'));
+
+  await Sentry.close();
+
+  expect({
+    breadcrumbs: sent.map(({ breadcrumbs }) => breadcrumbs),
+    headers,
+  }).toEqual({
+    breadcrumbs: [undefined],
+    headers: [
+      ['accept', 'accept-encoding', 'connection', 'host', 'user-agent'],
+    ],
+  });
 });
