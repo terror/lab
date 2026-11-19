@@ -19,7 +19,7 @@ async function renderHeader(
   pinned: boolean,
   client?: QueryClient
 ) {
-  const fetch = stubFetch(({ pathname, searchParams }) => {
+  const fetch = stubFetch(({ pathname }) => {
     if (pathname === '/api/trash/conversation/1/restore') {
       return Response.json({ error: 'Not in the trash' }, { status: 404 });
     }
@@ -28,6 +28,7 @@ async function renderHeader(
       return Response.json({
         forks: [],
         id: 1,
+        pinned,
         projectId: 7,
         running: false,
         title,
@@ -37,25 +38,6 @@ async function renderHeader(
     if (pathname === '/api/projects') {
       return Response.json({
         projects: [{ chats: 1, id: 7, instructions: '', name: 'bar' }],
-      });
-    }
-
-    if (searchParams.get('filter') === 'pinned') {
-      return Response.json({
-        conversations: pinned
-          ? [
-              {
-                id: 1,
-                pinned: true,
-                projectId: 7,
-                running: false,
-                title,
-                unread: false,
-                waiting: false,
-              },
-            ]
-          : [],
-        next: null,
       });
     }
 

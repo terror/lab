@@ -686,8 +686,24 @@ test('conversations can be fetched', async () => {
 
   const id = await create(headers);
 
+  const summary = {
+    forks: [],
+    id,
+    pinned: false,
+    projectId: null,
+    running: false,
+    title: 'foo',
+  };
+
   expect(await call(headers, 'GET', `/conversations/${id}`)).toEqual({
-    body: { forks: [], id, projectId: null, running: false, title: 'foo' },
+    body: summary,
+    status: 200,
+  });
+
+  await call(headers, 'PATCH', `/conversations/${id}`, { pinned: true });
+
+  expect(await call(headers, 'GET', `/conversations/${id}`)).toEqual({
+    body: { ...summary, pinned: true },
     status: 200,
   });
 });
