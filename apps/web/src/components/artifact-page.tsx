@@ -30,7 +30,7 @@ export function ArtifactPage() {
   if (!artifact.data || html === undefined) {
     return (
       <div aria-busy='true' className='flex min-h-0 flex-1 flex-col'>
-        <div className='flex h-12 items-center border-b px-4'>
+        <div className='flex h-12 items-center px-4'>
           <Skeleton className='w-40' />
         </div>
         <div className='flex-1 p-4'>
@@ -44,7 +44,7 @@ export function ArtifactPage() {
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <header className='flex h-12 shrink-0 items-center gap-2 border-b px-4'>
+      <header className='flex h-12 shrink-0 items-center gap-2 px-4'>
         <h1 className='truncate text-sm font-medium'>{title}</h1>
         <div className='ml-auto flex items-center gap-1'>
           <Button asChild size='icon' variant='quiet'>
