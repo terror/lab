@@ -20,7 +20,11 @@ export const PreferencesDoc = userDoc<Preferences>(
   () => defaultPreferences
 );
 
-function describe({ chatSort, lineNumbers, theme }: Preferences) {
+function describe({
+  chatSort,
+  lineNumbers,
+  theme,
+}: Omit<Preferences, 'hints'>) {
   return `theme ${theme}, code block line numbers ${lineNumbers ? 'on' : 'off'}, chats sorted by ${chatSort}`;
 }
 
@@ -61,7 +65,9 @@ export function preferences(owner: Owner) {
 
         Object.assign(doc, change);
 
-        return { ...doc };
+        const { chatSort, lineNumbers, personality, theme } = doc;
+
+        return { chatSort, lineNumbers, personality, theme };
       }, context);
 
       return {
