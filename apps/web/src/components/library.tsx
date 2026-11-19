@@ -17,6 +17,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { LayoutScope } from '@/components/ui/layout-scope';
 import { Page, PageHeader } from '@/components/ui/page';
 import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
@@ -31,12 +32,14 @@ import {
   libraryTextQueryOptions,
   useLibrarySearch,
 } from '@/lib/library';
+import { fade, spring } from '@/lib/motion';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import { type KeyboardEvent, useState } from 'react';
 
 type Filter = 'all' | LibraryKind;
@@ -48,7 +51,16 @@ const filters: { label: string; value: Filter }[] = [
 ];
 
 const grid =
-  'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
+  'relative grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
+
+const RESHELVE_LIMIT = 60;
+
+const reshelve = {
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: fade.leave },
+  initial: { opacity: 0 },
+  transition: { layout: spring.glide, opacity: fade.base },
+} as const;
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();
@@ -273,74 +285,88 @@ export function Library() {
     setFilter('all');
   };
 
+  const glide = items.length <= RESHELVE_LIMIT;
+
   return (
-    <div className='min-h-0 flex-1 overflow-y-auto'>
-      <Page className='@container'>
-        <PageHeader
-          description='Images and files from your chats.'
-          title='Library'
-        />
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <Pills
-            label='Filter'
-            onValueChange={setFilter}
-            options={filters}
-            value={filter}
+    <LayoutScope>
+      <m.div className='min-h-0 flex-1 overflow-y-auto' layoutScroll>
+        <Page className='@container'>
+          <PageHeader
+            description='Images and files from your chats.'
+            title='Library'
           />
-          <InputGroup className='w-full sm:w-56'>
-            <InputGroupAddon>
-              <Search aria-hidden='true' />
-            </InputGroupAddon>
-            <InputGroupInput
-              aria-label='Search library'
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder='Search'
-              value={search}
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <Pills
+              label='Filter'
+              onValueChange={setFilter}
+              options={filters}
+              value={filter}
             />
-          </InputGroup>
-        </div>
-        {library.pending && <TileSkeletons />}
-        {library.error && (
-          <LoadError onRetry={() => library.refetch()} subject='your library' />
-        )}
-        {library.empty && (
-          <LibraryEmpty
-            filtered={query.length > 0 || filter !== 'all'}
-            onClear={clear}
+            <InputGroup className='w-full sm:w-56'>
+              <InputGroupAddon>
+                <Search aria-hidden='true' />
+              </InputGroupAddon>
+              <InputGroupInput
+                aria-label='Search library'
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder='Search'
+                value={search}
+              />
+            </InputGroup>
+          </div>
+          {library.pending && <TileSkeletons />}
+          {library.error && (
+            <LoadError
+              onRetry={() => library.refetch()}
+              subject='your library'
+            />
+          )}
+          {library.empty && (
+            <LibraryEmpty
+              filtered={query.length > 0 || filter !== 'all'}
+              onClear={clear}
+            />
+          )}
+          {groupByPeriod(items).map(([title, group]) => (
+            <section key={title} className='flex flex-col gap-2'>
+              <SectionHeading>{title}</SectionHeading>
+              <div className={grid}>
+                <AnimatePresence initial={false} mode='popLayout'>
+                  {group.map((item) => (
+                    <m.div
+                      key={item.id}
+                      className='grid'
+                      layout={glide && 'position'}
+                      {...reshelve}
+                    >
+                      <Tile item={item} onOpen={() => setOpen(item.id)} />
+                    </m.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </section>
+          ))}
+          {library.pageError && (
+            <LoadError
+              onRetry={() => library.fetchNextPage()}
+              subject='more of your library'
+            />
+          )}
+          {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
+        </Page>
+        {open !== undefined && (
+          <Viewer
+            hasMore={library.hasNextPage}
+            id={open}
+            items={items}
+            onClose={() => setOpen(undefined)}
+            onLoadMore={async () =>
+              (await library.fetchNextPage()).data ?? items
+            }
+            onOpen={setOpen}
           />
         )}
-        {groupByPeriod(items).map(([title, group]) => (
-          <section key={title} className='flex flex-col gap-2'>
-            <SectionHeading>{title}</SectionHeading>
-            <div className={grid}>
-              {group.map((item) => (
-                <Tile
-                  key={item.id}
-                  item={item}
-                  onOpen={() => setOpen(item.id)}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
-        {library.pageError && (
-          <LoadError
-            onRetry={() => library.fetchNextPage()}
-            subject='more of your library'
-          />
-        )}
-        {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
-      </Page>
-      {open !== undefined && (
-        <Viewer
-          hasMore={library.hasNextPage}
-          id={open}
-          items={items}
-          onClose={() => setOpen(undefined)}
-          onLoadMore={async () => (await library.fetchNextPage()).data ?? items}
-          onOpen={setOpen}
-        />
-      )}
-    </div>
+      </m.div>
+    </LayoutScope>
   );
 }
