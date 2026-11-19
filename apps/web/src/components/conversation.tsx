@@ -229,6 +229,14 @@ const TranscriptRow = memo(function TranscriptRow({
 export function Conversation({ id }: { id: number }) {
   const summary = useConversationSummary(id);
 
+  const running = summary.data?.running === true;
+
+  const [ran, setRan] = useState(running);
+
+  if (running && !ran) {
+    setRan(true);
+  }
+
   if (summary.data === null || summary.isLoadingError) {
     return <Unavailable subject='chat' />;
   }
@@ -236,7 +244,7 @@ export function Conversation({ id }: { id: number }) {
   return (
     <>
       <ChatHeader id={id} />
-      <MessageScrollerProvider autoScroll={summary.data?.running !== true}>
+      <MessageScrollerProvider autoScroll={!ran}>
         <ConversationView id={id} />
       </MessageScrollerProvider>
     </>
