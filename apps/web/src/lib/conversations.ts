@@ -1,6 +1,8 @@
 import type { PlanStep, sortSchema } from '@lab/server/schemas';
 import {
+  hashKey,
   infiniteQueryOptions,
+  keepPreviousData,
   type QueryClient,
   queryOptions,
   skipToken,
@@ -59,6 +61,10 @@ function conversationsQueryOptions(scope: ChatScope, sort: ConversationSort) {
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: ({ next }) => next ?? undefined,
+    placeholderData: (previous, query) =>
+      query && hashKey([query.queryKey[1]]) === hashKey([scope])
+        ? previous
+        : undefined,
     refetchInterval: ({ state }) => {
       const running = state.data?.pages.some(({ conversations }) =>
         conversations.some((conversation) => conversation.running)
@@ -218,6 +224,7 @@ function listQueryOptions(filter: 'pinned', sort: ConversationSort) {
 
       return conversations;
     },
+    placeholderData: keepPreviousData,
     refetchInterval: ({ state }) =>
       state.data?.some(({ running }) => running) ? 2_000 : false,
   });
