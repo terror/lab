@@ -178,7 +178,7 @@ export function UsagePanel() {
   return (
     <>
       <PageHeader
-        description='Spend and tokens across your chats, from provider prices.'
+        description='Estimated costs and token usage.'
         title='Usage'
       />
       <BudgetPanel />

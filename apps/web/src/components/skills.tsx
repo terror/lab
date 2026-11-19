@@ -253,7 +253,7 @@ export function Skills() {
             New skill
           </Button>
         }
-        description='Reusable instructions Lab follows when a request calls for them. Ask Lab to create or change a skill, or edit them here.'
+        description='Reusable instructions for Lab.'
         title='Skills'
       />
       {skills.isPending && <ListSkeleton />}

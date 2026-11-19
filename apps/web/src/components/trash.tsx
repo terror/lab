@@ -130,7 +130,7 @@ export function Trash() {
             </Button>
           )
         }
-        description='Deleted chats and projects stay here until you restore them or delete them forever.'
+        description='Deleted chats and projects.'
         title='Trash'
       />
       {trash.isPending && <ListSkeleton />}

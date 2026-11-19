@@ -153,7 +153,7 @@ export function Memory() {
     <>
       <PageHeader
         actions={add}
-        description='Facts Lab remembers about you across chats. Ask it to remember or forget something in any chat, or change them here.'
+        description='What Lab remembers across chats.'
         title='Memory'
       />
       {memory.isPending && <ListSkeleton />}

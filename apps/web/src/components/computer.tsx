@@ -166,9 +166,7 @@ export function Computer() {
   return (
     <>
       <PageHeader
-        description={
-          'A persistent Linux computer Lab uses to run code and work with files. Each chat gets its own folder, and it stops on its own when idle.'
-        }
+        description='A workspace for code and files.'
         title='Computer'
       />
       {status.isPending && <ListSkeleton />}

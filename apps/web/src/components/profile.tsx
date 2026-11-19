@@ -176,7 +176,7 @@ export function Profile() {
   return (
     <>
       <PageHeader
-        description='Your picture and how Lab should respond in every chat.'
+        description='Your picture and instructions.'
         title='Profile'
       />
       <Picture />

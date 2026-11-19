@@ -356,7 +356,7 @@ export function Providers() {
             Add provider
           </Button>
         }
-        description='Connect the services Lab uses for models, web search, and its computer.'
+        description='Model, search, and computer services.'
         title='Providers'
       />
       {providers.isPending && <ListSkeleton />}

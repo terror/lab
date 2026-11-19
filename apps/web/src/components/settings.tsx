@@ -46,10 +46,7 @@ function Appearance() {
 
   return (
     <>
-      <PageHeader
-        description='Choose how Lab looks to you.'
-        title='Appearance'
-      />
+      <PageHeader description='Theme and personality.' title='Appearance' />
       <ul className='flex flex-col gap-0.5'>
         <SettingRow
           control={
