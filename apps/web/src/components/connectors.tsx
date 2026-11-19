@@ -303,7 +303,7 @@ export function Connectors() {
             Add connector
           </Button>
         }
-        description='Give Lab tools from remote MCP servers. Lab asks before using each tool unless you trust a connector’s read-only tools.'
+        description='Tools from other services.'
         title='Connectors'
       />
       {connectors.isPending && <ListSkeleton />}
