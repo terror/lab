@@ -112,7 +112,6 @@ function Building({ html, title }: { html: string; title: string }) {
   return (
     <Card className='gap-0 overflow-hidden p-0' variant='inset'>
       <div className='flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground'>
-        <LayoutTemplate aria-hidden='true' className='size-4' />
         <span className='truncate'>Building {title}</span>
         <span className='ml-auto tabular-nums'>
           {html.length.toLocaleString()} characters
@@ -138,7 +137,6 @@ function Superseded({ artifact }: { artifact: Shown }) {
   return (
     <div className='flex flex-col gap-2'>
       <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-        <LayoutTemplate aria-hidden='true' className='size-4' />
         <span className='truncate'>
           {artifact.title} · version {artifact.version} · updated below
         </span>
@@ -273,10 +271,6 @@ function Live({ artifact }: { artifact: Shown }) {
     <section aria-label={title} className='group/artifact'>
       <Card className='gap-0 overflow-hidden p-0' variant='inset'>
         <header className='flex items-center gap-2 px-4 py-2'>
-          <LayoutTemplate
-            aria-hidden='true'
-            className='size-4 text-muted-foreground'
-          />
           <h3 className='truncate text-sm font-medium'>{title}</h3>
           {version > 1 && (
             <span className='text-xs text-muted-foreground'>v{version}</span>
