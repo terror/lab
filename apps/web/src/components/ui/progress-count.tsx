@@ -1,5 +1,5 @@
+import { RollingNumber } from '@/components/ui/rolling-number';
 import { cn } from '@/lib/utils';
-import NumberFlow from '@number-flow/react';
 import * as React from 'react';
 
 function ProgressCount({
@@ -23,7 +23,7 @@ function ProgressCount({
       )}
       {...props}
     >
-      <NumberFlow value={done} /> of {total} done
+      <RollingNumber value={done} /> of {total} done
     </span>
   );
 }
