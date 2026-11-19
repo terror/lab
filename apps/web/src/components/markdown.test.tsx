@@ -190,3 +190,30 @@ test('streamed words fade in', async () => {
     )
     .toEqual(['sd-fadeIn', 'sd-fadeIn']);
 });
+
+test('code blocks and tables can be scrolled from the keyboard', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <Markdown streaming={false}>
+      {'```ts\nfoo\n```\n\n| bar |\n| --- |\n| baz |'}
+    </Markdown>
+  );
+
+  await expect
+    .poll(() =>
+      [...screen.container.querySelectorAll('[tabindex]')].map((element) => [
+        element.getAttribute('role'),
+        element.getAttribute('aria-label'),
+        element.getAttribute('tabindex'),
+      ])
+    )
+    .toEqual([
+      ['group', 'Code', '0'],
+      ['group', 'Table', '0'],
+    ]);
+});

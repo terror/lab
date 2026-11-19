@@ -1,7 +1,7 @@
 import { usePreference } from '@/lib/preferences';
 import { useDark } from '@/lib/theme';
 import { useQuiet } from '@/lib/voice';
-import { Suspense, use, useState } from 'react';
+import { Suspense, use, useEffect, useRef, useState } from 'react';
 import type { DiagramPlugin, StreamdownProps } from 'streamdown';
 
 type Modules = {
@@ -79,6 +79,48 @@ export function loadMarkdown(): Promise<Modules> {
 
 const linkSafety = { enabled: false };
 
+const scrollable = [
+  ['[data-streamdown=code-block-body]', 'Code'],
+  [
+    '[data-streamdown=table-wrapper] > div:has(> [data-streamdown=table])',
+    'Table',
+  ],
+] as const;
+
+function labelScrollers(root: HTMLElement) {
+  for (const [selector, label] of scrollable) {
+    for (const scroller of root.querySelectorAll(
+      `${selector}:not([tabindex])`
+    )) {
+      scroller.setAttribute('aria-label', label);
+      scroller.setAttribute('role', 'group');
+      scroller.setAttribute('tabindex', '0');
+    }
+  }
+}
+
+function useScrollers() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = ref.current;
+
+    if (!root) {
+      return undefined;
+    }
+
+    labelScrollers(root);
+
+    const observer = new MutationObserver(() => labelScrollers(root));
+
+    observer.observe(root, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return ref;
+}
+
 function Streamdown(props: StreamdownProps) {
   const { plugins, remarkPlugins, streamdown } = use(loadMarkdown());
   const dark = useDark();
@@ -103,20 +145,25 @@ export function Markdown({
   const [lineNumbers] = usePreference('lineNumbers');
   const [streamed] = useState(streaming);
   const quiet = useQuiet();
+  const scrollers = useScrollers();
 
   return (
-    <Suspense fallback={<div className='whitespace-pre-wrap'>{children}</div>}>
-      <Streamdown
-        animated={
-          streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
-        }
-        data-streaming={streamed && !quiet ? streaming : undefined}
-        isAnimating={streaming}
-        lineNumbers={lineNumbers}
-        parseIncompleteMarkdown={streaming}
+    <div className='contents' ref={scrollers}>
+      <Suspense
+        fallback={<div className='whitespace-pre-wrap'>{children}</div>}
       >
-        {children}
-      </Streamdown>
-    </Suspense>
+        <Streamdown
+          animated={
+            streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
+          }
+          data-streaming={streamed && !quiet ? streaming : undefined}
+          isAnimating={streaming}
+          lineNumbers={lineNumbers}
+          parseIncompleteMarkdown={streaming}
+        >
+          {children}
+        </Streamdown>
+      </Suspense>
+    </div>
   );
 }
