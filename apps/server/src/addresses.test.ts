@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { guardedFetch, isPrivateAddress } from './addresses';
+import { guardedFetch, isPrivateAddress, limitResponses } from './addresses';
 
 test('private network addresses are recognized', () => {
   const addresses = [
@@ -81,6 +81,36 @@ test('guarded requests reach only addresses the check allows', async () => {
       hostname: 'Connectors can only reach public internet addresses',
       literal: 'Connectors can only reach public internet addresses',
     });
+  } finally {
+    await server.stop(true);
+  }
+});
+
+test('responses past the size limit fail', async () => {
+  const server = Bun.serve({
+    fetch: (request) =>
+      new Response(
+        'a'.repeat(
+          new URL(request.url).pathname === '/foo' ? 10_000_000 : 10_000_001
+        )
+      ),
+    hostname: '127.0.0.1',
+    port: 0,
+  });
+
+  const read = (path: string) =>
+    limitResponses(fetch)(new URL(path, server.url))
+      .then((response) => response.text())
+      .then(
+        (body) => body.length,
+        (error: Error) => error.message
+      );
+
+  try {
+    expect([await read('/foo'), await read('/bar')]).toEqual([
+      10_000_000,
+      'The connector sent more than 10000000 bytes.',
+    ]);
   } finally {
     await server.stop(true);
   }
