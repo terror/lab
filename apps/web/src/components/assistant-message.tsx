@@ -17,14 +17,14 @@ import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
 import { cheerFor, useCheer } from '@/lib/cheer';
 import type { ModelChoice } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
-import { runFailureTitles, useSlip } from '@/lib/run-failure';
+import { runFailureTitles } from '@/lib/run-failure';
 import type { Part, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import { AnimatePresence, m } from 'motion/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 export type { ToolProgress, ToolResult };
 
@@ -142,6 +142,7 @@ export function AssistantMessage({
   progress,
   results,
   retrying = false,
+  slip = false,
   span,
   streaming,
   versions,
@@ -157,6 +158,7 @@ export function AssistantMessage({
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   retrying?: boolean;
+  slip?: boolean;
   span?: Span;
   streaming: boolean;
   versions?: ReactNode;
@@ -164,7 +166,11 @@ export function AssistantMessage({
 }) {
   const cheer = useCheer(working);
   const quiet = useQuiet();
-  const slip = useSlip(cheer === 'held' || cheer === 'cheer', failure);
+  const [mended, setMended] = useState(false);
+
+  if (retrying && !mended) {
+    setMended(true);
+  }
 
   const text = replyText(parts);
 
@@ -203,7 +209,7 @@ export function AssistantMessage({
 
   const marked = !quiet && (working || (latest && failure === undefined));
 
-  const broken = slip ? 'error' : 'broken';
+  const broken = slip && !mended ? 'error' : 'broken';
 
   return (
     <Message>

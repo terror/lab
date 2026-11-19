@@ -1,5 +1,5 @@
 import type { RunFailureReason } from '@earendil-works/pi-durable';
-import { useId, useLayoutEffect, useSyncExternalStore } from 'react';
+import { useId, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 
 export const runFailureTitles: Record<RunFailureReason, string> = {
   aborted: 'Stopped',
@@ -16,7 +16,9 @@ export const runFailureTitles: Record<RunFailureReason, string> = {
 
 const listeners = new Set<() => void>();
 
-let first: string | undefined;
+let streak = 0;
+
+let slipping: string | undefined;
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -26,30 +28,33 @@ function subscribe(listener: () => void) {
   };
 }
 
-function setFirst(id: string | undefined) {
-  first = id;
+function settle(failed: string | undefined) {
+  slipping = failed !== undefined && streak === 0 ? failed : undefined;
+  streak = failed === undefined ? 0 : streak + 1;
 
   for (const listener of listeners) {
     listener();
   }
 }
 
-export function useSlip(ended: boolean, failure: RunFailureReason | undefined) {
+export function useSlip(
+  running: boolean,
+  failure: RunFailureReason | undefined
+) {
   const id = useId();
+  const previous = useRef(running);
 
-  const owner = useSyncExternalStore(subscribe, () => first);
+  const owner = useSyncExternalStore(subscribe, () => slipping);
 
   useLayoutEffect(() => {
-    if (!ended || failure === 'aborted') {
-      return;
-    }
+    const ended = previous.current && !running;
 
-    if (failure === undefined) {
-      setFirst(undefined);
-    } else if (first === undefined) {
-      setFirst(id);
+    previous.current = running;
+
+    if (ended && failure !== 'aborted') {
+      settle(failure && id);
     }
-  }, [ended, failure, id]);
+  }, [failure, id, running]);
 
   return owner === id;
 }
