@@ -34,11 +34,14 @@ function useVisit(user: string) {
   const [visit] = useState(() => {
     const stored = storedVisit(user);
 
-    if (stored) {
+    const at = Date.now();
+
+    if (
+      stored &&
+      new Date(stored.at).toDateString() === new Date(at).toDateString()
+    ) {
       return { ...stored, first: false };
     }
-
-    const at = Date.now();
 
     return {
       absent: (at - readStored('last-seen', z.number(), at)) / DAY,
