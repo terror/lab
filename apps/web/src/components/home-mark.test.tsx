@@ -110,3 +110,112 @@ test('the home mark never dozes when Lab is quiet', async ({
       ?.getAttribute('data-state')
   ).toBe('idle');
 });
+
+function frame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(resolve);
+  });
+}
+
+function pointer(clientX: number) {
+  return {
+    bubbles: true,
+    button: 0,
+    clientX,
+    isPrimary: true,
+    pointerType: 'mouse',
+  };
+}
+
+async function shake(mark: Element) {
+  mark.dispatchEvent(new PointerEvent('pointerdown', pointer(0)));
+
+  for (const x of [20, -20, 20, -20, 20, -20, 20]) {
+    window.dispatchEvent(new PointerEvent('pointermove', pointer(x)));
+
+    await frame();
+  }
+
+  window.dispatchEvent(new PointerEvent('pointerup', pointer(20)));
+}
+
+test('shaking the home mark fizzes once a session and only bubbles after that', async () => {
+  window.sessionStorage.removeItem('lab:fizzed');
+
+  const { screen } = await renderHome();
+
+  const mark = screen.container.querySelector('[data-slot=live-mark]');
+
+  const state = () => mark?.getAttribute('data-state');
+
+  await import('@/lib/motion-max');
+  await frame();
+
+  await shake(mark ?? document.body);
+
+  await expect.poll(state).toBe('fizz');
+
+  await shake(mark ?? document.body);
+
+  await expect.poll(state).toBe('bubble');
+
+  expect(window.sessionStorage.getItem('lab:fizzed')).toBe('true');
+});
+
+test('the home mark stays put when Lab is quiet', async () => {
+  const { screen } = await renderHome('quiet');
+
+  const mark = screen.container.querySelector('[data-slot=live-mark]');
+
+  await import('@/lib/motion-max');
+  await frame();
+
+  await shake(mark ?? document.body);
+
+  await frame();
+
+  expect(mark?.getAttribute('data-state')).toBe('idle');
+});
+
+test('a mark that was shaken still wakes with a start after its next doze', async ({
+  onTestFinished,
+}) => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  window.sessionStorage.removeItem('lab:fizzed');
+
+  const { screen } = await renderHome();
+
+  const mark = screen.container.querySelector('[data-slot=live-mark]');
+
+  const state = () => mark?.getAttribute('data-state');
+
+  await import('@/lib/motion-max');
+  await frame();
+
+  const seen = [];
+
+  for (const released of ['fizz', 'bubble']) {
+    vi.advanceTimersByTime(360_000);
+
+    await screen.rerender(<Home />);
+
+    seen.push(state());
+
+    window.dispatchEvent(new PointerEvent('pointermove'));
+
+    await screen.rerender(<Home />);
+
+    seen.push(state());
+
+    await shake(mark ?? document.body);
+
+    await expect.poll(state).toBe(released);
+  }
+
+  expect(seen).toEqual(['doze', 'wake', 'doze', 'wake']);
+});

@@ -1011,6 +1011,18 @@
   }
 }
 
+@keyframes live-mark-lid-jump {
+  30% {
+    transform: translateY(-5px);
+  }
+  62% {
+    transform: none;
+  }
+  76% {
+    transform: translateY(-1.5px);
+  }
+}
+
 @keyframes live-mark-doze {
   to {
     transform: rotate(-8deg);
@@ -1430,6 +1442,56 @@
   [data-slot='live-mark'][data-state='error']
     :where([data-part='blue'], [data-part='yellow']) {
     animation: live-mark-slip 620ms var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='held'] [data-part='blue'] {
+    animation:
+      live-mark-slosh-blue 0.45s ease-in-out 0s 11,
+      live-mark-slosh-blue 0.9s ease-in-out 4.95s infinite;
+  }
+
+  [data-slot='live-mark'][data-state='held'] [data-part='yellow'] {
+    animation:
+      live-mark-slosh-yellow 0.45s ease-in-out 0s 11,
+      live-mark-slosh-yellow 0.9s ease-in-out 4.95s infinite;
+  }
+
+  [data-slot='live-mark']:is([data-state='bubble'], [data-state='fizz'])
+    [data-part='blue'] {
+    animation: live-mark-slosh-blue 0.5s ease-in-out 3;
+  }
+
+  [data-slot='live-mark']:is([data-state='bubble'], [data-state='fizz'])
+    [data-part='yellow'] {
+    animation: live-mark-slosh-yellow 0.5s ease-in-out 3;
+  }
+
+  [data-slot='live-mark'][data-state='bubble'] [data-part='bubble'] {
+    animation: live-mark-bubble 1.2s cubic-bezier(0.3, 0, 0.6, 1) both;
+  }
+
+  [data-slot='live-mark'][data-state='bubble']
+    [data-part='bubble']
+    + [data-part='bubble'] {
+    animation: none;
+  }
+
+  [data-slot='live-mark'][data-state='fizz'] [data-part='bubble'] {
+    animation: live-mark-bubble 0.5s cubic-bezier(0.3, 0, 0.6, 1) 0s 4;
+  }
+
+  [data-slot='live-mark'][data-state='fizz']
+    [data-part='bubble']
+    + [data-part='bubble'] {
+    animation-delay: 0.25s;
+  }
+
+  [data-slot='live-mark'][data-state='fizz'] [data-part='coral'] {
+    animation: live-mark-lid-jump 700ms var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='fizz'] [data-part='all'] {
+    animation: live-mark-gulp 400ms var(--ease-out) both;
   }
 
   [data-slot='live-mark']:is([data-state='doze'], [data-state='wake'])
