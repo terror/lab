@@ -78,6 +78,36 @@ test('a chat stopped before it answers still gets a title', async () => {
   ).toBe('foo');
 });
 
+test('stopping a chat over and over asks for one title', async () => {
+  const headers = await signIn();
+
+  script(toolCall('ask_user', { options: ['bar', 'baz'], question: 'foo' }));
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await pendingToolCall(headers, body.id);
+
+  const complete = models.completeSimple.bind(models);
+
+  const helper = spyOn(models, 'completeSimple').mockImplementation(
+    async (...args) => {
+      await Bun.sleep(100);
+
+      return complete(...args);
+    }
+  );
+
+  for (let stop = 0; stop < 3; stop++) {
+    await call(headers, 'POST', `/conversations/${body.id}/abort`);
+  }
+
+  await idle(body.id);
+
+  expect(helper).toHaveBeenCalledTimes(1);
+});
+
 function plain(value: string, expected: string) {
   expect(plainTitle(value)).toBe(expected);
 }
