@@ -1,6 +1,7 @@
 import '@/index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { glideOrigin } from '@/lib/glide';
+import { setStorageUser } from '@/lib/storage';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import {
@@ -22,12 +23,14 @@ async function renderHome({
   projects = [],
   start = () => Response.json({ id: 1 }, { status: 201 }),
   tasks = [],
+  user = 'foo',
 }: {
   chats?: object[];
   personality?: string;
   projects?: object[];
   start?: () => Response | Promise<Response>;
   tasks?: object[];
+  user?: string;
 } = {}) {
   const preferences = { ...defaultPreferences, personality };
 
@@ -65,7 +68,7 @@ async function renderHome({
         createRoute({
           component: () => (
             <TooltipProvider>
-              <NewChat user={{ id: 'foo', name: 'Foo Bar' }} />
+              <NewChat user={{ id: user, name: 'Foo Bar' }} />
             </TooltipProvider>
           ),
           getParentRoute: () => rootRoute,
@@ -98,6 +101,28 @@ test('the mark assembles on the first visit of a session and rests after', async
   }
 
   expect(states).toEqual(['assemble', 'idle']);
+});
+
+test('the next user in the same tab gets a first visit of their own', async () => {
+  const states = [];
+
+  for (const user of ['foo', 'bar']) {
+    setStorageUser(user);
+
+    const { screen } = await renderHome({ user });
+
+    await expect.element(screen.getByRole('heading')).toBeVisible();
+
+    states.push(
+      screen.container
+        .querySelector('[data-slot=live-mark]')
+        ?.getAttribute('data-state')
+    );
+
+    await screen.unmount();
+  }
+
+  expect(states).toEqual(['assemble', 'assemble']);
 });
 
 test('the greeting is picked once a session and notices a long absence', async () => {
