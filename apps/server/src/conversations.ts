@@ -23,9 +23,10 @@ import { z } from 'zod';
 
 import { listPins } from './artifact-pins';
 import artifacts from './artifacts';
-import { requireUser } from './auth';
+import { allowed, auth, requireUser } from './auth';
 import { branchChat, branchSchema, chatForks } from './branches';
 import {
+  chatSummary,
   createChat,
   ownedChat,
   pinChat,
@@ -137,6 +138,19 @@ const update = validator(
 type BunServer = {
   timeout(request: Request, seconds: number): void;
 };
+
+async function watching(headers: Headers, id: number) {
+  const session = await auth.api.getSession({
+    headers,
+    query: { disableRefresh: true },
+  });
+
+  return (
+    session !== null &&
+    allowed(session.user) &&
+    (await chatSummary(session.user.id, id)) !== undefined
+  );
+}
 
 async function watchPlan(conversation: Conversation) {
   await conversation.commit(async (tx) => {
@@ -316,8 +330,18 @@ const conversations = new Hono()
         });
       }
 
+      const beat = async () => {
+        if (
+          await watching(c.req.raw.headers, conversation.id).catch(() => false)
+        ) {
+          await stream.write(': ping\n\n');
+        } else {
+          closed.abort();
+        }
+      };
+
       const heartbeat = setInterval(() => {
-        void stream.write(': ping\n\n');
+        void beat();
       }, 25_000);
 
       await watch.closed;
