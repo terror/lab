@@ -1,9 +1,12 @@
+import { refetchOnForeground } from '@/lib/app-state';
 import { authClient } from '@/lib/auth';
 import { useNavigationTheme } from '@/lib/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, ThemeProvider } from 'expo-router';
 
 const queryClient = new QueryClient();
+
+refetchOnForeground();
 
 export default function Layout() {
   const theme = useNavigationTheme();
