@@ -182,8 +182,6 @@ test('a retried reply keeps the data its artifacts saved', async () => {
     .at(-1);
 
   const retry = async () => {
-    script(fauxAssistantMessage('bar'));
-
     const { body: branch, status } = await call(
       headers,
       'POST',
@@ -203,6 +201,8 @@ test('a retried reply keeps the data its artifacts saved', async () => {
       `/conversations/${branch.id}/artifacts/bar/state?key=foo`
     );
   };
+
+  script(fauxAssistantMessage('bar'));
 
   const kept = await retry();
 
