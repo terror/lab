@@ -5,16 +5,13 @@ import { UnreadChips } from '@/components/unread-chips';
 import { startChatKey, useDraft, useLatestChats } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
 import { stagger } from '@/lib/motion';
-import { readStored, writeStored } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { say, useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
-const DAY = 86_400_000;
-
-const visitSchema = z.object({ absent: z.number(), at: z.number() });
+const visitSchema = z.object({ at: z.number() });
 
 function greetedKey(user: string) {
   return `lab:${user}:greeted`;
@@ -43,19 +40,14 @@ function useVisit(user: string) {
       return { ...stored, first: false };
     }
 
-    return {
-      absent: (at - readStored('last-seen', z.number(), at)) / DAY,
-      at,
-      first: true,
-    };
+    return { at, first: true };
   });
 
   useEffect(() => {
     window.sessionStorage.setItem(
       greetedKey(user),
-      JSON.stringify({ absent: visit.absent, at: visit.at })
+      JSON.stringify({ at: visit.at })
     );
-    writeStored('last-seen', Date.now());
   }, [user, visit]);
 
   return visit;
@@ -75,16 +67,15 @@ function Words({ text }: { text: string }) {
   ));
 }
 
-export function NewChat({ user }: { user: { id: string; name: string } }) {
-  const { absent, at, first } = useVisit(user.id);
+export function NewChat({ user }: { user: { id: string } }) {
+  const { at, first } = useVisit(user.id);
   const quiet = useQuiet();
   const chats = useLatestChats();
   const fresh = chats.data?.length === 0;
-  const greeting = say(
-    'greeting',
-    { absent, at: new Date(at), fresh, name: user.name },
-    { quiet, seed: `${user.id}:${new Date(at).toDateString()}` }
-  );
+  const greeting = say('greeting', undefined, {
+    quiet,
+    seed: `${user.id}:${new Date(at).toDateString()}`,
+  });
   const hello = fresh && !quiet;
   const fade = hello || (first && !quiet);
   const [, setDraft] = useDraft('new');
