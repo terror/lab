@@ -2,7 +2,6 @@ import type { PlanStep, sortSchema } from '@lab/server/schemas';
 import {
   hashKey,
   infiniteQueryOptions,
-  keepPreviousData,
   type QueryClient,
   queryOptions,
   skipToken,
@@ -36,8 +35,11 @@ export const conversationsQueryKey = ['conversations'];
 
 export type ChatScope =
   | { filter: 'all' }
+  | { filter: 'pinned' }
   | { filter: 'recent' }
   | { project: number };
+
+const pinned: ChatScope = { filter: 'pinned' };
 
 const recent: ChatScope = { filter: 'recent' };
 
@@ -211,29 +213,8 @@ export async function updateConversation(
   );
 }
 
-function listQueryOptions(filter: 'pinned', sort: ConversationSort) {
-  return queryOptions({
-    queryKey: [...conversationsQueryKey, filter, sort],
-    queryFn: async ({ signal }) => {
-      const { conversations } = await call(
-        client.conversations.$get(
-          { query: { filter, limit: '100', sort } },
-          { init: { signal } }
-        )
-      );
-
-      return conversations;
-    },
-    placeholderData: keepPreviousData,
-    refetchInterval: ({ state }) =>
-      state.data?.some(({ running }) => running) ? 2_000 : false,
-  });
-}
-
 export function usePinnedConversations() {
-  const [sort] = useConversationSort();
-
-  return useQuery(listQueryOptions('pinned', sort));
+  return useConversations(pinned);
 }
 
 export function useAnswer<T extends string>(
@@ -330,6 +311,6 @@ export async function prefetchSidebar(
 ) {
   await Promise.allSettled([
     queryClient.infiniteQuery(conversationsQueryOptions(recent, sort)),
-    queryClient.query(listQueryOptions('pinned', sort)),
+    queryClient.infiniteQuery(conversationsQueryOptions(pinned, sort)),
   ]);
 }

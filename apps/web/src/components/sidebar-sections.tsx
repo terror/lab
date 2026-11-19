@@ -405,6 +405,11 @@ export function PinnedSection({
 }) {
   const pinned = usePinnedConversations();
 
+  const loadMore =
+    pinned.hasNextPage && !pinned.isFetchingNextPage
+      ? () => void pinned.fetchNextPage()
+      : undefined;
+
   if (pinned.isError) {
     return <LoadError className='px-2' subject='pinned chats' />;
   }
@@ -433,6 +438,7 @@ export function PinnedSection({
           ))}
         </AnimatePresence>
       </ul>
+      {loadMore && <LoadMore onLoadMore={loadMore} />}
     </SidebarSection>
   );
 }

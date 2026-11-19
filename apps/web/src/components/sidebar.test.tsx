@@ -21,6 +21,7 @@ function renderSidebar({
   onProject = () => undefined,
   path = '/projects/7',
   pending,
+  pinned = [],
   recents = [],
 }: {
   chats?: unknown[];
@@ -28,6 +29,7 @@ function renderSidebar({
   onProject?: (id: number) => void;
   path?: string;
   pending?: 'chat' | 'sort' | 'summary';
+  pinned?: unknown[][];
   recents?: unknown[];
 } = {}) {
   stubFetch(({ pathname, searchParams }) => {
@@ -67,6 +69,15 @@ function renderSidebar({
 
     if (pending === 'sort' && searchParams.get('sort') === 'title') {
       return new Promise<Response>(() => undefined);
+    }
+
+    if (searchParams.get('filter') === 'pinned') {
+      const page = Number(searchParams.get('cursor') ?? 0);
+
+      return Response.json({
+        conversations: pinned[page] ?? [],
+        next: page + 1 < pinned.length ? String(page + 1) : null,
+      });
     }
 
     if (searchParams.get('filter') === 'recent') {
@@ -309,6 +320,36 @@ test('a new sort keeps the chats listed until they load in that order', async ()
 
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument();
   await expect.element(chat).toBeVisible();
+});
+
+function pin(id: number, title: string) {
+  return {
+    id,
+    pinned: true,
+    projectId: null,
+    running: false,
+    title,
+    unread: false,
+    waiting: false,
+  };
+}
+
+test('pinned chats keep loading past the first page', async () => {
+  const { screen } = await renderSidebar({
+    pinned: [[pin(5, 'corge')], [pin(6, 'grault')]],
+  });
+
+  await expect
+    .element(screen.getByRole('link', { name: 'grault' }))
+    .toBeVisible();
+
+  expect(
+    screen
+      .getByRole('navigation', { name: 'Pinned chats' })
+      .getByRole('link')
+      .elements()
+      .map((link) => link.textContent)
+  ).toEqual(['corge', 'grault']);
 });
 
 test('apps pinned to the sidebar link to their pages', async () => {

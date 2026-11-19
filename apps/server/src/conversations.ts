@@ -197,6 +197,7 @@ const conversations = new Hono()
     return c.json({
       forks: await chatForks(c.get('user').id, conversation.id),
       id: conversation.id,
+      pinned: c.var.pinned,
       projectId: c.var.projectId,
       running: busy.has(conversation.id),
       title: doc?.title ?? null,

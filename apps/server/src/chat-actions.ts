@@ -21,12 +21,17 @@ const table = schema.conversation;
 export const ownedChat = createMiddleware<{
   Variables: {
     conversation: Conversation;
+    pinned: boolean;
     projectId: number | null;
     user: User;
   };
 }>(async (c, next) => {
   const [record] = await db
-    .select({ id: table.id, projectId: table.projectId })
+    .select({
+      id: table.id,
+      pinnedAt: table.pinnedAt,
+      projectId: table.projectId,
+    })
     .from(table)
     .where(liveChat(c.get('user').id, Number(c.req.param('id'))));
 
@@ -42,6 +47,7 @@ export const ownedChat = createMiddleware<{
   }
 
   c.set('conversation', conversation);
+  c.set('pinned', record.pinnedAt !== null);
   c.set('projectId', record.projectId);
 
   await next();

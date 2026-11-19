@@ -12,11 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IconButton } from '@/components/ui/icon-button';
-import {
-  conversationTitle,
-  useConversationSummary,
-  usePinnedConversations,
-} from '@/lib/conversations';
+import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { useProject } from '@/lib/projects';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
@@ -50,18 +46,13 @@ function ProjectCrumb({ id }: { id: number }) {
 
 export function ChatHeader({ id }: { id: number }) {
   const summary = useConversationSummary(id);
-  const pins = usePinnedConversations();
   const options = useRef<HTMLButtonElement>(null);
   const renaming = useRenaming(options);
 
   const projectId = summary.data?.projectId ?? null;
 
   const actions = useChatActions(
-    {
-      id,
-      pinned: pins.data?.some((chat) => chat.id === id) ?? false,
-      projectId,
-    },
+    { id, pinned: summary.data?.pinned ?? false, projectId },
     true
   );
 
