@@ -24,7 +24,6 @@
     "@lab/db": "workspace:*",
     "@lab/harness": "workspace:*",
     "@modelcontextprotocol/sdk": "1.32.2",
-    "@scalar/hono-api-reference": "0.12.21",
     "@sentry/bun": "11.13.0",
     "@vercel/sandbox": "3.9.1",
     "better-auth": "1.7.25",

@@ -1,7 +1,6 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { serveStatic } from '@hono/bun';
 import { ping } from '@lab/db';
-import { Scalar } from '@scalar/hono-api-reference';
 import * as Sentry from '@sentry/bun';
 import { Hono } from 'hono';
 import { generateSpecs } from 'hono-openapi';
@@ -20,6 +19,7 @@ import { clientMetadata, clientMetadataUrl } from './connector-auth';
 import connectors from './connectors';
 import conversations from './conversations';
 import { db } from './db';
+import { docsPage } from './docs';
 import { env } from './env';
 import frame from './frame';
 import { harness } from './harness';
@@ -33,11 +33,7 @@ import projects from './projects';
 import providers from './providers';
 import schedules from './schedules';
 import search from './search';
-import {
-  contentSecurityPolicy,
-  docsScript,
-  docsSecurityPolicy,
-} from './security';
+import { contentSecurityPolicy, docsSecurityPolicy } from './security';
 import skills from './skills';
 import trash from './trash';
 import uploads from './uploads';
@@ -88,7 +84,7 @@ const appHeaders = secureHeaders({
 
 const docsHeaders = secureHeaders({
   ...headers,
-  contentSecurityPolicy: docsSecurityPolicy,
+  contentSecurityPolicy: docsSecurityPolicy(docsPage),
 });
 
 app.use(async (c, next) => {
@@ -191,18 +187,7 @@ app.get('/api/openapi.json', requireUser, async (c) =>
   )
 );
 
-app.get(
-  '/api/docs',
-  requireUser,
-  Scalar({
-    agent: { disabled: true },
-    cdn: docsScript,
-    hideClientButton: true,
-    pageTitle: 'Lab API',
-    showDeveloperTools: 'never',
-    url: '/api/openapi.json',
-  })
-);
+app.get('/api/docs', requireUser, (c) => c.html(docsPage));
 
 app.all('/api/*', (c) => c.notFound());
 

@@ -26,16 +26,21 @@ export function contentSecurityPolicy(html: string) {
   };
 }
 
-export const docsScript =
-  'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js';
-
-export const docsSecurityPolicy = {
-  connectSrc: ["'self'"],
-  defaultSrc: ["'self'"],
-  fontSrc: ["'self'", 'data:', 'https://fonts.scalar.com'],
-  frameAncestors: ["'none'"],
-  imgSrc: ["'self'", 'data:'],
-  objectSrc: ["'none'"],
-  scriptSrc: ["'self'", "'unsafe-inline'", docsScript],
-  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.scalar.com'],
+export const docsScript = {
+  integrity:
+    'sha384-DXupxC0wR1MllQMEexwTowkgKaBvZGJuwz+TU+7cHC09aC+q5vPMiJS2TW3GWjPN',
+  src: 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.81.0/dist/browser/standalone.js',
 };
+
+export function docsSecurityPolicy(html: string) {
+  return {
+    connectSrc: ["'self'"],
+    defaultSrc: ["'self'"],
+    fontSrc: ["'self'", 'data:', 'https://fonts.scalar.com'],
+    frameAncestors: ["'none'"],
+    imgSrc: ["'self'", 'data:'],
+    objectSrc: ["'none'"],
+    scriptSrc: ["'self'", docsScript.src, ...inlineScriptHashes(html)],
+    styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.scalar.com'],
+  };
+}
