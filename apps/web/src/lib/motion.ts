@@ -45,14 +45,17 @@ async function loadMax() {
 }
 
 export function useMaxFeatures() {
-  const [features, setFeatures] = useState(() => max ?? domAnimation);
+  const [state, setState] = useState(() => ({
+    features: max ?? domAnimation,
+    settled: max !== undefined,
+  }));
 
   useEffect(() => {
     let live = true;
 
     loadMax().then(
-      (loaded) => live && setFeatures(loaded),
-      () => {}
+      (features) => live && setState({ features, settled: true }),
+      () => live && setState({ features: domAnimation, settled: true })
     );
 
     return () => {
@@ -60,5 +63,5 @@ export function useMaxFeatures() {
     };
   }, []);
 
-  return features;
+  return state;
 }

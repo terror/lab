@@ -144,7 +144,7 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
 
   const playful = !quiet && !reduced;
 
-  const features = useMaxFeatures();
+  const { features } = useMaxFeatures();
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);

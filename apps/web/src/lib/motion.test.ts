@@ -75,12 +75,13 @@ test('layout features start from the shared renderer and arrive once loaded', as
 
   const first = result.current;
 
-  await expect.poll(() => result.current).toBe(max);
+  await expect.poll(() => result.current.settled).toBe(true);
 
   const { result: later } = await renderHook(() => useMaxFeatures());
 
-  expect({ first, later: later.current }).toEqual({
-    first: domAnimation,
-    later: max,
+  expect({ first, last: result.current, later: later.current }).toEqual({
+    first: { features: domAnimation, settled: false },
+    last: { features: max, settled: true },
+    later: { features: max, settled: true },
   });
 });
