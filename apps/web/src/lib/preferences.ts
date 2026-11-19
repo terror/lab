@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { z } from 'zod';
 
 import { call, client } from './client';
@@ -42,7 +42,7 @@ export function usePreference<K extends keyof Preferences>(key: K) {
 
   const { data = defaultPreferences } = useQuery(preferencesQueryOptions);
 
-  const { mutate } = useMutation({
+  const save = useMutation({
     mutationFn: (value: Preferences[K]) =>
       call(client.preferences.$patch({ json: { [key]: value } })),
     onMutate: (value) => {
@@ -56,7 +56,5 @@ export function usePreference<K extends keyof Preferences>(key: K) {
       }),
   });
 
-  const set = useCallback((value: Preferences[K]) => mutate(value), [mutate]);
-
-  return [data[key], set] as const;
+  return [data[key], (value: Preferences[K]) => save.mutate(value)] as const;
 }

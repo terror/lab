@@ -1,16 +1,27 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
-import { preferencesQueryOptions, usePreference } from './preferences';
+import { call, client } from './client';
+import { preferencesQueryOptions } from './preferences';
 import { useQuiet } from './voice';
 
 const NOTE_MS = 12_000;
 
 type Note = { id: string; retire: () => void };
 
-type Session = { done: boolean; note?: Note; taught?: string; until?: number };
+type Session = {
+  confirmed: boolean;
+  done: boolean;
+  note?: Note;
+  taught?: string;
+  until?: number;
+};
 
-let session: Session = { done: false };
+let session: Session = { confirmed: false, done: false };
 
 const listeners = new Set<() => void>();
 
@@ -48,24 +59,30 @@ function useVisible() {
 }
 
 export function useLedger() {
-  const queryClient = useQueryClient();
-  const { isPlaceholderData, isSuccess } = useQuery(preferencesQueryOptions);
-  const [seen, setSeen] = usePreference('hints');
-
-  const mark = useCallback(
-    (id: string) => {
-      const current = queryClient.getQueryData(
-        preferencesQueryOptions.queryKey
-      )?.hints;
-
-      if (current && !current.includes(id)) {
-        setSeen([...current, id]);
-      }
-    },
-    [queryClient, setSeen]
+  const { data, isPlaceholderData, isSuccess } = useQuery(
+    preferencesQueryOptions
   );
 
-  return { loaded: isSuccess && !isPlaceholderData, mark, seen };
+  return {
+    loaded: isSuccess && !isPlaceholderData,
+    seen: data?.hints ?? [],
+  };
+}
+
+async function claim(id: string, queryClient: QueryClient) {
+  update({ taught: id });
+
+  try {
+    const { fresh, preferences } = await call(
+      client.preferences.hints.$post({ json: { id } })
+    );
+
+    queryClient.setQueryData(preferencesQueryOptions.queryKey, preferences);
+
+    update(fresh ? { confirmed: true } : { taught: undefined });
+  } catch {
+    update({ done: true });
+  }
 }
 
 function retireTaught(id: string) {
@@ -75,9 +92,10 @@ function retireTaught(id: string) {
 }
 
 export function useHint(id: string, eligible: boolean) {
+  const queryClient = useQueryClient();
   const quiet = useQuiet();
-  const { loaded, mark, seen } = useLedger();
-  const { done, taught } = useSession();
+  const { loaded, seen } = useLedger();
+  const { confirmed, done, taught } = useSession();
   const visible = useVisible();
 
   const ready =
@@ -93,13 +111,12 @@ export function useHint(id: string, eligible: boolean) {
       return;
     }
 
-    update({ taught: id });
-    mark(id);
-  }, [id, mark, ready]);
+    void claim(id, queryClient);
+  }, [id, queryClient, ready]);
 
   const retire = useCallback(() => retireTaught(id), [id]);
 
-  return { retire, show: taught === id && !done && !quiet };
+  return { retire, show: taught === id && confirmed && !done && !quiet };
 }
 
 export function useNote(id: string, eligible: boolean) {
@@ -110,8 +127,15 @@ export function useNote(id: string, eligible: boolean) {
       return undefined;
     }
 
-    const note = { id, retire };
     const until = session.until ?? Date.now() + NOTE_MS;
+
+    if (until <= Date.now()) {
+      retire();
+
+      return undefined;
+    }
+
+    const note = { id, retire };
 
     update({ note, until });
 

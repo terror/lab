@@ -1,4 +1,4 @@
-import { preferencesQueryOptions } from '@/lib/preferences';
+import { type Preferences, preferencesQueryOptions } from '@/lib/preferences';
 import { renderHookWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
@@ -8,37 +8,46 @@ import { expect, test, vi } from 'vitest';
 import { useCurrentNote, useHint, useNote } from './hints';
 
 function useScene() {
+  useNote('baz', true);
   useNote('foo', true);
 
   return [
     useHint('bar', true).show,
-    useHint('baz', false).show,
     useHint('qux', true).show,
     useCurrentNote()?.id,
   ];
 }
 
-test('one hint a session, each once for the account, and none when quiet', async () => {
+test('a hint shows once the account confirms it is new, one a session', async () => {
   const client = new QueryClient();
 
-  const preferences = {
+  const server = {
     ...defaultPreferences,
-    hints: ['bar'],
-    personality: 'quiet' as const,
+    hints: ['bar', 'baz'],
+    personality: 'quiet' as Preferences['personality'],
   };
 
-  client.setQueryData(preferencesQueryOptions.queryKey, preferences);
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...server,
+    hints: ['bar'],
+  });
 
-  const saved: unknown[] = [];
+  const claimed: unknown[] = [];
 
   stubFetch((_, init) => {
-    if (typeof init?.body === 'string') {
-      saved.push(JSON.parse(init.body));
+    if (typeof init?.body !== 'string') {
+      return Response.json({ preferences: server });
     }
 
-    return Response.json({
-      preferences: client.getQueryData(preferencesQueryOptions.queryKey),
-    });
+    const { id } = JSON.parse(init.body);
+
+    const fresh = !server.hints.includes(id);
+
+    claimed.push([id, fresh]);
+
+    server.hints = fresh ? [...server.hints, id] : server.hints;
+
+    return Response.json({ fresh, preferences: server });
   });
 
   vi.useFakeTimers();
@@ -48,14 +57,16 @@ test('one hint a session, each once for the account, and none when quiet', async
 
     const quiet = result.current;
 
+    server.personality = 'default';
+
     await act(() =>
       client.setQueryData(preferencesQueryOptions.queryKey, {
-        ...preferences,
-        personality: 'default',
+        ...server,
+        hints: ['bar'],
       })
     );
 
-    await vi.waitFor(() => expect(result.current[3]).toBe('foo'));
+    await vi.waitFor(() => expect(result.current[2]).toBe('foo'));
 
     const shown = result.current;
 
@@ -71,16 +82,19 @@ test('one hint a session, each once for the account, and none when quiet', async
 
     expect({
       after: again.result.current,
+      claimed,
       quiet,
       remounted,
-      saved,
       shown,
     }).toEqual({
-      after: [false, false, false, undefined],
-      remounted: [false, false, false, 'foo'],
-      quiet: [false, false, false, undefined],
-      saved: [{ hints: ['bar', 'foo'] }],
-      shown: [false, false, false, 'foo'],
+      after: [false, false, undefined],
+      claimed: [
+        ['baz', false],
+        ['foo', true],
+      ],
+      quiet: [false, false, undefined],
+      remounted: [false, false, 'foo'],
+      shown: [false, false, 'foo'],
     });
   } finally {
     vi.useRealTimers();
