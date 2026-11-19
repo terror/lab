@@ -8,6 +8,10 @@ const sizes = {
   sm: { box: 16, cell: 3, gap: 2 },
 };
 
+type Face =
+  | { kind: 'app'; seed: `app:${string}:${string}` }
+  | { kind: 'project'; seed: `project:${string}` };
+
 function frame(box: number) {
   const side = box - 2;
 
@@ -25,20 +29,26 @@ function Sigil({
   kind,
   seed,
   size = 'sm',
+  style,
   ...props
-}: Omit<React.ComponentProps<'svg'>, 'children'> & {
-  filled?: number;
-  kind: 'app' | 'project';
-  seed: string;
-  size?: keyof typeof sizes;
-}) {
-  const lit = React.useMemo(() => sigil(seed), [seed]);
+}: Omit<React.ComponentProps<'svg'>, 'children'> &
+  Face & {
+    filled?: number;
+    size?: keyof typeof sizes;
+  }) {
+  const cells = React.useMemo(() => {
+    const pairs = sigil(seed);
 
-  const { cell, gap } = sizes[size];
+    return pairs.flatMap((pair, index) =>
+      pair.map((at) => ({ at, before: pairs.slice(0, index).flat().length }))
+    );
+  }, [seed]);
+
+  const { cell, gap, ...bare } = sizes[size];
 
   const framed = kind === 'project';
 
-  const box = framed ? cell * SIDE + (gap + 1) * 2 : sizes[size].box;
+  const box = framed ? cell * SIDE + (gap + 1) * 2 : bare.box;
 
   const inset = (box - cell * SIDE) / 2;
 
@@ -47,21 +57,23 @@ function Sigil({
       aria-hidden='true'
       data-kind={kind}
       data-slot='sigil'
-      className={cn('shrink-0', className)}
+      className={cn(
+        'shrink-0 overflow-visible forced-colors:text-[CanvasText]',
+        className
+      )}
       fill='currentColor'
-      height={box}
       shapeRendering='crispEdges'
+      style={{ height: box, width: box, ...style }}
       viewBox={`0 0 ${box} ${box}`}
-      width={box}
       {...props}
     >
       {framed && <path d={frame(box)} data-part='frame' />}
-      {lit.map((at, index) => (
+      {cells.map(({ at, before }) => (
         <rect
           key={at}
           className='transition-opacity duration-base motion-reduce:transition-none'
           height={cell}
-          opacity={filled === undefined || index < filled ? 1 : 0}
+          opacity={filled === undefined || before < filled ? 1 : 0}
           width={cell}
           x={inset + (at % SIDE) * cell}
           y={inset + Math.floor(at / SIDE) * cell}

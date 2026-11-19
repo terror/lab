@@ -12,21 +12,32 @@ function rows(lit: readonly number[]) {
 
 test('a seed always draws the same grid in the same order', () => {
   expect({
-    bar: rows(sigil('bar')),
-    baz: rows(sigil('baz')),
-    foo: rows(sigil('foo')),
+    bar: rows(sigil('bar').flat()),
+    baz: rows(sigil('baz').flat()),
+    foo: rows(sigil('foo').flat()),
     order: sigil('foo'),
   }).toEqual({
     bar: ['#.#.#', '.#.#.', '#####', '#...#', '.#.#.'],
     baz: ['.#.#.', '##.##', '.###.', '..#..', '.###.'],
     foo: ['.....', '#.#.#', '#.#.#', '#####', '#####'],
-    order: [12, 20, 24, 15, 19, 16, 18, 7, 5, 9, 22, 21, 23, 17, 10, 14],
+    order: [
+      [12],
+      [20, 24],
+      [15, 19],
+      [16, 18],
+      [7],
+      [5, 9],
+      [22],
+      [21, 23],
+      [17],
+      [10, 14],
+    ],
   });
 });
 
 test('every sigil is mirrored, lights its centre and has 10 to 17 cells', () => {
   const broken = Array.from({ length: 2_000 }, (_, index) => `foo${index}`)
-    .map((seed) => ({ lit: sigil(seed), seed }))
+    .map((seed) => ({ lit: sigil(seed).flat(), seed }))
     .filter(({ lit }) => {
       const mirrored = rows(lit).every(
         (row) => row === row.split('').toReversed().join('')

@@ -4,11 +4,11 @@ import { render } from 'vitest-browser-react';
 
 import { Sigil } from './sigil';
 
-test('a sigil shows its first filled cells, and only a project gets a frame', async () => {
+test('a sigil fills a mirrored pair at a time, and only a project gets a frame', async () => {
   const screen = await render(
     <>
-      <Sigil data-testid='foo' filled={3} kind='app' seed='foo' />
-      <Sigil data-testid='bar' kind='project' seed='foo' size='md' />
+      <Sigil data-testid='foo' filled={2} kind='app' seed='app:1:bar' />
+      <Sigil data-testid='bar' kind='project' seed='project:1' size='md' />
     </>
   );
 
@@ -25,7 +25,7 @@ test('a sigil shows its first filled cells, and only a project gets a frame', as
   };
 
   expect({ bar: read('bar'), foo: read('foo') }).toEqual({
-    bar: { cells: '1111111111111111', frame: true, width: 28 },
-    foo: { cells: '1110000000000000', frame: false, width: 16 },
+    bar: { cells: '11111111111111111', frame: true, width: 28 },
+    foo: { cells: '1110000000000', frame: false, width: 16 },
   });
 });

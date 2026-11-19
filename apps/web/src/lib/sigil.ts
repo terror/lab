@@ -23,20 +23,20 @@ function shuffled<T>(items: readonly T[], next: () => number) {
 export function sigil(seed: string) {
   const next = random(seed);
 
-  const groups = Array.from({ length: SIDE * SIDE }, (_, cell) => cell)
+  const pairs = Array.from({ length: SIDE * SIDE }, (_, cell) => cell)
     .filter((cell) => cell !== CENTRE && cell <= twin(cell))
     .map((cell) => [...new Set([cell, twin(cell)])]);
 
   const target = 10 + Math.floor(next() * 7);
 
-  const lit = [CENTRE];
+  const lit = [[CENTRE]];
 
-  for (const group of shuffled(groups, next)) {
-    if (lit.length >= target) {
+  for (const pair of shuffled(pairs, next)) {
+    if (lit.flat().length >= target) {
       break;
     }
 
-    lit.push(...group);
+    lit.push(pair);
   }
 
   return lit;
