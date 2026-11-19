@@ -156,3 +156,70 @@ test('concurrent saves cannot go over the key limit together', async () => {
     statuses: statuses.toSorted((a, b) => a - b),
   }).toEqual({ keys: 100, statuses: [204, 400, 400, 400, 400] });
 });
+
+test('a retried reply keeps the data its artifacts saved', async () => {
+  const headers = await signIn();
+
+  const id = await artifactChat(headers);
+
+  await call(
+    headers,
+    'PUT',
+    `/conversations/${id}/artifacts/bar/state?key=foo`,
+    {
+      value: 'x'.repeat(300),
+    }
+  );
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  const reply = (body.items as { id: number; model?: { role: string }[] }[])
+    .filter(({ model }) => model?.[0]?.role === 'assistant')
+    .at(-1);
+
+  const retry = async () => {
+    script(fauxAssistantMessage('bar'));
+
+    const { body: branch, status } = await call(
+      headers,
+      'POST',
+      `/conversations/${id}/branches`,
+      { entryId: reply?.id, kind: 'retry' }
+    );
+
+    if (status !== 201) {
+      return { body: branch, status };
+    }
+
+    await settle(branch.id);
+
+    return call(
+      headers,
+      'GET',
+      `/conversations/${branch.id}/artifacts/bar/state?key=foo`
+    );
+  };
+
+  const kept = await retry();
+
+  env.LAB_STORAGE_LIMIT = 0.000_9;
+
+  try {
+    expect({ full: await retry(), kept }).toEqual({
+      full: {
+        body: {
+          error:
+            'You’ve used your 0.0009 MB of storage. Delete chats with files and empty the Trash to free up space.',
+        },
+        status: 413,
+      },
+      kept: { body: { value: 'x'.repeat(300) }, status: 200 },
+    });
+  } finally {
+    env.LAB_STORAGE_LIMIT = undefined;
+  }
+});
