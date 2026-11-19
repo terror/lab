@@ -1,6 +1,7 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 
 import app from './app';
+import { sealOAuthTokens } from './auth';
 import { startConnectors } from './connections';
 import { resealSecrets } from './credentials';
 import { db } from './db';
@@ -28,6 +29,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 backfillAll();
 startScheduler();
 void resealSecrets().catch(console.error);
+void sealOAuthTokens().catch(console.error);
 void startConnectors().catch(console.error);
 
 export default {

@@ -3,6 +3,8 @@ import { expo } from '@better-auth/expo';
 import { schema } from '@lab/db';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { symmetricEncrypt } from 'better-auth/crypto';
+import { and, eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 
@@ -60,6 +62,7 @@ function fromElsewhere(request: Request) {
 }
 
 export const auth = betterAuth({
+  account: { encryptOAuthTokens: true },
   baseURL: env.LAB_ORIGIN,
   basePath: '/api/auth',
   database: drizzleAdapter(db, { provider: 'pg', schema }),
@@ -99,6 +102,42 @@ export const auth = betterAuth({
 });
 
 export type User = typeof auth.$Infer.Session.user;
+
+function plaintext(token: string | null): token is string {
+  return token !== null && !/^\$ba\$|^(?:[0-9a-f]{2})+$/i.test(token);
+}
+
+export async function sealOAuthTokens() {
+  const { secretConfig } = await auth.$context;
+
+  const table = schema.account;
+
+  const rows = await db
+    .select({
+      accessToken: table.accessToken,
+      id: table.id,
+      refreshToken: table.refreshToken,
+    })
+    .from(table);
+
+  for (const row of rows) {
+    for (const column of ['accessToken', 'refreshToken'] as const) {
+      const token = row[column];
+
+      if (plaintext(token)) {
+        await db
+          .update(table)
+          .set({
+            [column]: await symmetricEncrypt({
+              data: token,
+              key: secretConfig,
+            }),
+          })
+          .where(and(eq(table.id, row.id), eq(table[column], token)));
+      }
+    }
+  }
+}
 
 export const requireAdmin = createMiddleware<{ Variables: { user: User } }>(
   async (c, next) => {

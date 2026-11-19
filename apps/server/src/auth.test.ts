@@ -1,9 +1,13 @@
+import { schema } from '@lab/db';
+import { symmetricDecrypt } from 'better-auth/crypto';
 import { expect, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create } from '../test/client';
 import app from './app';
-import { allowed, emailAllowed } from './auth';
+import { allowed, auth, emailAllowed, sealOAuthTokens } from './auth';
+import { db } from './db';
 import { env } from './env';
 
 test('allowed emails match exactly, by domain, or with a wildcard', () => {
@@ -94,4 +98,64 @@ test('pages on other sites cannot open the authorization proxy', async () => {
     await open('same-site'),
     await open('none'),
   ]).toEqual([403, 403, 302]);
+});
+
+test('google tokens are stored encrypted, including ones saved before', async () => {
+  const headers = await signIn();
+
+  const session = await auth.api.getSession({ headers });
+
+  const table = schema.account;
+
+  await db.insert(table).values({
+    accessToken: 'foo',
+    accessTokenExpiresAt: new Date(Date.now() + 3_600_000),
+    accountId: 'bar',
+    createdAt: new Date(),
+    id: 'baz',
+    providerId: 'google',
+    refreshToken: 'qux',
+    updatedAt: new Date(),
+    userId: session?.user.id ?? '',
+  });
+
+  const stored = async () => {
+    const [row] = await db
+      .select({
+        accessToken: table.accessToken,
+        refreshToken: table.refreshToken,
+      })
+      .from(table)
+      .where(eq(table.id, 'baz'));
+
+    return row;
+  };
+
+  await sealOAuthTokens();
+
+  const sealed = await stored();
+
+  await sealOAuthTokens();
+
+  const { accessToken } = await auth.api.getAccessToken({
+    body: { accountId: 'baz' },
+    headers,
+  });
+
+  const envelope = expect.stringMatching(/^(?:[0-9a-f]{2})+$/);
+
+  expect({
+    accessToken,
+    again: await stored(),
+    refreshToken: await symmetricDecrypt({
+      data: sealed?.refreshToken ?? '',
+      key: (await auth.$context).secretConfig,
+    }),
+    sealed,
+  }).toEqual({
+    accessToken: 'foo',
+    again: sealed,
+    refreshToken: 'qux',
+    sealed: { accessToken: envelope, refreshToken: envelope },
+  });
 });
