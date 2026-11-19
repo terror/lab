@@ -79,7 +79,13 @@ async function claim(id: string, queryClient: QueryClient) {
 
     queryClient.setQueryData(preferencesQueryOptions.queryKey, preferences);
 
-    update(fresh ? { confirmed: true } : { taught: undefined });
+    if (fresh) {
+      update({ confirmed: true });
+    } else if (preferences.hints.includes(id)) {
+      update({ taught: undefined });
+    } else {
+      update({ done: true });
+    }
   } catch {
     update({ done: true });
   }
@@ -116,7 +122,10 @@ export function useHint(id: string, eligible: boolean) {
 
   const retire = useCallback(() => retireTaught(id), [id]);
 
-  return { retire, show: taught === id && confirmed && !done && !quiet };
+  return {
+    retire,
+    show: eligible && taught === id && confirmed && !done && !quiet,
+  };
 }
 
 export function useNote(id: string, eligible: boolean) {

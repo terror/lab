@@ -7,9 +7,9 @@ import { expect, test, vi } from 'vitest';
 
 import { useCurrentNote, useHint, useNote } from './hints';
 
-function useScene() {
-  useNote('baz', true);
-  useNote('foo', true);
+function useScene(eligible = true) {
+  useNote('baz', eligible);
+  useNote('foo', eligible);
 
   return [
     useHint('bar', true).show,
@@ -53,7 +53,10 @@ test('a hint shows once the account confirms it is new, one a session', async ()
   vi.useFakeTimers();
 
   try {
-    const { result, unmount } = await renderHookWithQuery(useScene, client);
+    const { result, unmount } = await renderHookWithQuery(
+      () => useScene(),
+      client
+    );
 
     const quiet = result.current;
 
@@ -74,7 +77,13 @@ test('a hint shows once the account confirms it is new, one a session', async ()
 
     await unmount();
 
-    const again = await renderHookWithQuery(useScene, client);
+    const elsewhere = await renderHookWithQuery(() => useScene(false), client);
+
+    const ineligible = elsewhere.result.current;
+
+    await elsewhere.unmount();
+
+    const again = await renderHookWithQuery(() => useScene(), client);
 
     const remounted = again.result.current;
 
@@ -83,6 +92,7 @@ test('a hint shows once the account confirms it is new, one a session', async ()
     expect({
       after: again.result.current,
       claimed,
+      ineligible,
       quiet,
       remounted,
       shown,
@@ -92,6 +102,7 @@ test('a hint shows once the account confirms it is new, one a session', async ()
         ['baz', false],
         ['foo', true],
       ],
+      ineligible: [false, false, undefined],
       quiet: [false, false, undefined],
       remounted: [false, false, 'foo'],
       shown: [false, false, 'foo'],
