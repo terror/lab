@@ -39,8 +39,8 @@ import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
-import { AnimatePresence, m } from 'motion/react';
-import { type KeyboardEvent, useState } from 'react';
+import { AnimatePresence, m, useIsPresent } from 'motion/react';
+import { type KeyboardEvent, type ReactNode, useState } from 'react';
 
 type Filter = 'all' | LibraryKind;
 
@@ -51,7 +51,9 @@ const filters: { label: string; value: Filter }[] = [
 ];
 
 const grid =
-  'relative grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
+  'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
+
+const shelf = 'relative -m-1 overflow-clip p-1';
 
 const RESHELVE_LIMIT = 60;
 
@@ -61,6 +63,55 @@ const reshelve = {
   initial: { opacity: 0 },
   transition: { layout: spring.glide, opacity: fade.base },
 } as const;
+
+function Shelved({ children, glide }: { children: ReactNode; glide: boolean }) {
+  const present = useIsPresent();
+
+  return (
+    <m.div
+      className='grid'
+      inert={!present}
+      layout={glide && 'position'}
+      {...reshelve}
+    >
+      {children}
+    </m.div>
+  );
+}
+
+function Shelf({
+  glide,
+  items,
+  onOpen,
+  title,
+}: {
+  glide: boolean;
+  items: LibraryItem[];
+  onOpen: (id: number) => void;
+  title: string;
+}) {
+  const present = useIsPresent();
+
+  return (
+    <m.section
+      className='flex flex-col gap-2'
+      inert={!present}
+      layout={glide && 'position'}
+      {...reshelve}
+    >
+      <SectionHeading>{title}</SectionHeading>
+      <div className={cn(grid, shelf)}>
+        <AnimatePresence initial={false} mode='popLayout'>
+          {items.map((item) => (
+            <Shelved key={item.id} glide={glide}>
+              <Tile item={item} onOpen={() => onOpen(item.id)} />
+            </Shelved>
+          ))}
+        </AnimatePresence>
+      </div>
+    </m.section>
+  );
+}
 
 function groupByPeriod(items: LibraryItem[]) {
   const now = new Date();
@@ -327,25 +378,19 @@ export function Library() {
               onClear={clear}
             />
           )}
-          {groupByPeriod(items).map(([title, group]) => (
-            <section key={title} className='flex flex-col gap-2'>
-              <SectionHeading>{title}</SectionHeading>
-              <div className={grid}>
-                <AnimatePresence initial={false} mode='popLayout'>
-                  {group.map((item) => (
-                    <m.div
-                      key={item.id}
-                      className='grid'
-                      layout={glide && 'position'}
-                      {...reshelve}
-                    >
-                      <Tile item={item} onOpen={() => setOpen(item.id)} />
-                    </m.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </section>
-          ))}
+          <div className={cn('flex flex-col gap-8', shelf)}>
+            <AnimatePresence initial={false} mode='popLayout'>
+              {groupByPeriod(items).map(([title, group]) => (
+                <Shelf
+                  key={title}
+                  glide={glide}
+                  items={group}
+                  onOpen={setOpen}
+                  title={title}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
           {library.pageError && (
             <LoadError
               onRetry={() => library.fetchNextPage()}
