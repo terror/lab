@@ -35,6 +35,21 @@ export function setConnectorEnabled({
   );
 }
 
+export function trustConnector({
+  id,
+  readOnly,
+}: {
+  id: number;
+  readOnly: boolean;
+}) {
+  return call(
+    client.connectors[':id'].trust.$put({
+      json: { readOnly },
+      param: { id: String(id) },
+    })
+  );
+}
+
 export function reconnectConnector(id: number) {
   return call(
     client.connectors[':id'].reconnect.$post({ param: { id: String(id) } })

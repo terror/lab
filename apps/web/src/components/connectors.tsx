@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -35,6 +36,7 @@ import {
   deleteConnector,
   reconnectConnector,
   setConnectorEnabled,
+  trustConnector,
   useConnectorsUpdate,
 } from '@/lib/connectors';
 import { cn } from '@/lib/utils';
@@ -161,9 +163,20 @@ function ConnectorRow({ connector }: { connector: Connector }) {
   const toggle = useConnectorsUpdate(setConnectorEnabled);
   const reconnect = useConnectorsUpdate(reconnectConnector);
   const remove = useConnectorsUpdate(deleteConnector);
+  const trust = useConnectorsUpdate(trustConnector);
 
   const [confirming, setConfirming] = useState(false);
   const [open, setOpen] = useState(false);
+  const [trusting, setTrusting] = useState(false);
+
+  const onTrustChange = (readOnly: boolean) => {
+    if (readOnly) {
+      setTrusting(true);
+      return;
+    }
+
+    trust.mutate({ id: connector.id, readOnly });
+  };
 
   return (
     <>
@@ -187,6 +200,13 @@ function ConnectorRow({ connector }: { connector: Connector }) {
                 >
                   Reconnect
                 </DropdownMenuItem>
+                <DropdownMenuCheckboxItem
+                  checked={connector.trustReadOnly}
+                  disabled={trust.isPending}
+                  onCheckedChange={onTrustChange}
+                >
+                  Trust read-only tools
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={() => setConfirming(true)}
@@ -203,6 +223,16 @@ function ConnectorRow({ connector }: { connector: Connector }) {
               onOpenChange={setConfirming}
               open={confirming}
               title={`Delete ${connector.name}?`}
+            />
+            <ConfirmDialog
+              action='Trust'
+              description={`Lab will use the tools ${connector.name} marks as read-only without asking you first. ${connector.name} decides which of its tools are read-only.`}
+              onConfirm={() =>
+                trust.mutate({ id: connector.id, readOnly: true })
+              }
+              onOpenChange={setTrusting}
+              open={trusting}
+              title={`Trust ${connector.name}’s read-only tools?`}
             />
           </>
         }
@@ -242,6 +272,11 @@ function ConnectorRow({ connector }: { connector: Connector }) {
             {connector.tools.map((tool) => (
               <li key={tool.name} className='text-sm'>
                 <span className='font-mono text-xs'>{tool.name}</span>
+                {tool.readOnly && (
+                  <span className='ml-2 text-xs text-muted-foreground'>
+                    Read-only
+                  </span>
+                )}
                 <p className='line-clamp-2 text-muted-foreground'>
                   {tool.description}
                 </p>
@@ -268,7 +303,7 @@ export function Connectors() {
             Add connector
           </Button>
         }
-        description='Give Lab tools from remote MCP servers. Lab asks before using a tool that can change something.'
+        description='Give Lab tools from remote MCP servers. Lab asks before using each tool unless you trust a connector’s read-only tools.'
         title='Connectors'
       />
       {connectors.isPending && <ListSkeleton />}

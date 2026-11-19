@@ -81,6 +81,7 @@ export const connector = pgTable(
     name: text('name').notNull(),
     url: text('url').notNull(),
     enabled: boolean('enabled').notNull().default(true),
+    trustReadOnly: boolean('trust_read_only').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [index('connector_ownerId_idx').on(table.ownerId)]

@@ -29,7 +29,7 @@ export async function listConnectors(ownerId: string) {
     .orderBy(asc(table.createdAt));
 
   return {
-    connectors: rows.map(({ enabled, id, name, url }) => {
+    connectors: rows.map(({ enabled, id, name, trustReadOnly, url }) => {
       const state = connectorState(id);
 
       return {
@@ -39,6 +39,7 @@ export async function listConnectors(ownerId: string) {
         name,
         status: state.kind,
         tools: state.kind === 'connected' ? state.tools : [],
+        trustReadOnly,
         url,
       };
     }),
@@ -145,6 +146,22 @@ export async function updateConnector(
   await refreshConnector(row);
 
   return row;
+}
+
+export async function trustConnector(
+  owner: Owner,
+  id: number,
+  trustReadOnly: boolean
+) {
+  await existing(owner.id, id);
+
+  const [connector] = await db
+    .update(table)
+    .set({ trustReadOnly })
+    .where(and(eq(table.id, id), eq(table.ownerId, owner.id)))
+    .returning();
+
+  await refreshConnector(found(connector, 'Connector not found'));
 }
 
 export async function deleteConnector(owner: Owner, id: number) {
