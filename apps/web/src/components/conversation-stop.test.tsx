@@ -122,6 +122,56 @@ test('a stopped turn ends in place with its status above what to do next', async
   });
 });
 
+test('sending a message posts it and empties the composer', async () => {
+  vi.stubGlobal('EventSource', FakeEventSource);
+
+  const sent: unknown[] = [];
+
+  stubFetch(({ pathname }, init) => {
+    if (pathname === '/api/conversations/3/messages') {
+      sent.push(typeof init?.body === 'string' && JSON.parse(init.body));
+
+      return new Response(null, { status: 202 });
+    }
+
+    return Response.json(
+      pathname === '/api/conversations/3'
+        ? { forks: [], id: 3, projectId: null, running: false }
+        : { default: null, models: [] }
+    );
+  });
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({
+      component: () => (
+        <TooltipProvider>
+          <Conversation id={3} />
+        </TooltipProvider>
+      ),
+    }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  await expect.poll(() => FakeEventSource.current).toBeDefined();
+
+  FakeEventSource.current?.emit('value', {
+    conversation: { id: 3 },
+    docs: {},
+    entries: [],
+  });
+
+  const message = screen.getByRole('textbox', { name: 'Message' });
+
+  await message.fill('foo');
+  await screen.getByRole('button', { name: 'Send' }).click();
+
+  await expect.element(message).toHaveValue('');
+
+  expect(sent).toEqual([{ attachments: [], content: 'foo', steer: false }]);
+});
+
 test('stopping puts queued messages back in the composer', async () => {
   vi.stubGlobal('EventSource', FakeEventSource);
 
