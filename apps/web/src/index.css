@@ -69,6 +69,15 @@
   --font-sans:
     -apple-system-body, ui-sans-serif, -apple-system, system-ui, 'Segoe UI',
     Helvetica, Arial, sans-serif;
+  --color-status-done-wash: var(--status-done-wash);
+  --color-status-done-ink: var(--status-done-ink);
+  --color-status-done: var(--status-done);
+  --color-status-live-wash: var(--status-live-wash);
+  --color-status-live-ink: var(--status-live-ink);
+  --color-status-live: var(--status-live);
+  --color-status-attention-wash: var(--status-attention-wash);
+  --color-status-attention-ink: var(--status-attention-ink);
+  --color-status-attention: var(--status-attention);
   --color-spark-yellow-wash: var(--spark-yellow-wash);
   --color-spark-yellow-ink: var(--spark-yellow-ink);
   --color-spark-yellow: var(--spark-yellow);
@@ -120,6 +129,7 @@
   --radius-menu: var(--radius);
   --radius-card: calc(var(--radius) * 1.4);
   --radius-dialog: calc(var(--radius) * 1.8);
+  --spacing-home-anchor: var(--home-anchor);
   --transition-duration-fast: var(--motion-fast);
   --transition-duration-base: var(--motion-base);
   --transition-duration-slow: var(--motion-slow);
@@ -173,7 +183,22 @@
   --spark-yellow-wash: #fdf4e1;
 }
 
+:root,
+.light,
+.dark {
+  --status-attention: var(--spark-coral);
+  --status-attention-ink: var(--spark-coral-ink);
+  --status-attention-wash: var(--spark-coral-wash);
+  --status-live: var(--spark-blue);
+  --status-live-ink: var(--spark-blue-ink);
+  --status-live-wash: var(--spark-blue-wash);
+  --status-done: var(--spark-yellow);
+  --status-done-ink: var(--spark-yellow-ink);
+  --status-done-wash: var(--spark-yellow-wash);
+}
+
 :root {
+  --home-anchor: 38cqh;
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 300ms;

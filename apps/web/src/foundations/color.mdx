@@ -115,6 +115,48 @@ Each hue has three tiers.
 </Unstyled>
 
 Lint rejects spark utilities outside `components/ui`. To put a spark color on a
-screen, use a component that carries it, such as `LiveMark` or `Dot`, or add one
-to `components/ui`. Inside `components/ui`, lint rejects raw or wash as a text
+screen, use a status token, or a component that carries the color, such as
+`LiveMark` or `Dot`. Inside `components/ui`, lint rejects raw or wash as a text
 color and any spark on a border, ring, or outline.
+
+## Status
+
+Feature code names what a color means, never the hue. Three status tokens alias
+the spark palette, each with the same three tiers.
+
+- **Attention** is coral: Lab needs you, or something is unread.
+- **Live** is blue: Lab is working on it now.
+- **Done** is yellow: finished.
+
+<Unstyled>
+  <Swatches
+    tokens={[
+      { description: 'Raw.', name: 'status-attention' },
+      { description: 'Ink.', name: 'status-attention-ink', pair: 'background' },
+      {
+        description: 'Wash.',
+        name: 'status-attention-wash',
+        pair: 'status-attention-ink',
+      },
+      { description: 'Raw.', name: 'status-live' },
+      { description: 'Ink.', name: 'status-live-ink', pair: 'background' },
+      {
+        description: 'Wash.',
+        name: 'status-live-wash',
+        pair: 'status-live-ink',
+      },
+      { description: 'Raw.', name: 'status-done' },
+      { description: 'Ink.', name: 'status-done-ink', pair: 'background' },
+      {
+        description: 'Wash.',
+        name: 'status-done-wash',
+        pair: 'status-done-ink',
+      },
+    ]}
+  />
+</Unstyled>
+
+Use `bg-status-attention`, `text-status-live-ink` and so on. The same rules hold
+as for spark: at most one hue in a component, raw and wash never as a text
+color, and no status on a border, ring, or outline. Lint enforces the last two
+everywhere.
