@@ -317,6 +317,11 @@ test('stopping a chat stops its subagents', async () => {
     ],
     details: [
       {
+        error: {
+          issues: [],
+          kind: 'aborted',
+          message: 'Tool delegate was aborted',
+        },
         subagents: [
           { id: ids[0], status: 'running', title: 'bar' },
           { id: ids[1], status: 'running', title: 'qux' },

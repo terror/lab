@@ -12,6 +12,7 @@ import {
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 
 import { type ExtensionDeps, extensions } from './extensions';
+import { toolErrors } from './extensions/errors';
 
 export * from './extensions';
 export {
@@ -41,7 +42,7 @@ export async function openHarness(
   }: HarnessOptions,
   context: Context = BACKGROUND_CONTEXT
 ): Promise<Harness> {
-  const builtins = extensions(deps);
+  const builtins = [...extensions(deps), toolErrors(registry)];
 
   for (const extension of builtins) {
     registry.install(extension);
