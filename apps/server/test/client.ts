@@ -57,7 +57,7 @@ export async function answer(
 
     const waiting = (
       body.waiting as { ask: { callId: string } | null; id: number }[]
-    ).find((chat) => chat.id === id);
+    ).find((item) => item.id === id);
 
     if (waiting?.ask?.callId === callId) {
       return call(headers, 'POST', `/conversations/${id}/answers`, {
