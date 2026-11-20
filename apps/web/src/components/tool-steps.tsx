@@ -363,6 +363,8 @@ const STATUS_HOLD_MS = 800;
 
 const poses = { pondering: 'pondering', working: 'thinking' } as const;
 
+const aside = "relative before:absolute before:-left-2 before:content-['·']";
+
 export function Activity({
   clock,
   mark,
@@ -394,42 +396,52 @@ export function Activity({
     <div
       data-slot='activity'
       data-stalled={stall > 0 || undefined}
-      className='flex min-w-0 flex-wrap items-center gap-x-2'
+      className='flex min-w-0 items-start gap-2'
       style={{ '--stall': stall } as CSSProperties}
     >
-      <output className='flex min-w-0 items-center gap-2'>
-        <TraceIcon>
-          <LiveMark
-            className='size-3.5'
-            state={mark ?? poses[tool ? 'working' : 'pondering']}
-          />
-        </TraceIcon>
-        <AnimatePresence initial={false} mode='wait'>
-          <m.span
-            key={label}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              'min-w-0',
-              band === 'mark' ? 'sr-only' : 'animate-in duration-base fade-in'
-            )}
-            exit={{ opacity: 0, y: -4 }}
-            initial={{ opacity: 0, y: 4 }}
-            transition={{ ...fade.base, y: spring.snap }}
-          >
-            <TraceLine status='running'>
-              <TraceTitle>{label}</TraceTitle>
-            </TraceLine>
-          </m.span>
-        </AnimatePresence>
-      </output>
-      {timed && (
-        <TraceDescription className='text-sm' role='timer'>
-          · {duration(elapsed)}
-        </TraceDescription>
-      )}
-      {note && (
-        <output className='text-sm text-muted-foreground'>· {note}</output>
-      )}
+      <TraceIcon className='h-5'>
+        <LiveMark
+          className='size-3.5'
+          state={mark ?? poses[tool ? 'working' : 'pondering']}
+        />
+      </TraceIcon>
+      <div className='flex min-w-0 flex-1 flex-wrap gap-x-3 overflow-x-clip text-sm text-muted-foreground'>
+        <div className='flex max-w-full min-w-0 gap-x-3'>
+          <output className='flex min-w-0'>
+            <AnimatePresence initial={false} mode='wait'>
+              <m.span
+                key={label}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  'min-w-0',
+                  band === 'mark'
+                    ? 'sr-only'
+                    : 'animate-in duration-base fade-in'
+                )}
+                exit={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: 4 }}
+                transition={{ ...fade.base, y: spring.snap }}
+              >
+                <TraceLine status='running'>
+                  <TraceTitle>{label}</TraceTitle>
+                </TraceLine>
+              </m.span>
+            </AnimatePresence>
+          </output>
+          {timed && (
+            <span
+              className={cn(
+                aside,
+                'shrink-0 text-muted-foreground/70 tabular-nums'
+              )}
+              role='timer'
+            >
+              {duration(elapsed)}
+            </span>
+          )}
+        </div>
+        {note && <output className={aside}>{note}</output>}
+      </div>
     </div>
   );
 }

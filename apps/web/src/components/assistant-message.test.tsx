@@ -418,7 +418,7 @@ test('a pending approval clears its throat once, then swallows the answer', asyn
 
   const mark = () =>
     screen.container
-      .querySelector('output [data-slot=live-mark]')
+      .querySelector('[data-slot=live-mark]')
       ?.getAttribute('data-state');
 
   const seen = [mark()];
@@ -660,14 +660,14 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
   expect(seen).toEqual([
     [false, 'pondering', null, 'foo'],
     [true, 'pondering', null, 'foo'],
-    [true, 'pondering', 'true', 'foo· 10s'],
+    [true, 'pondering', 'true', 'foo10s'],
     [
       true,
       'pondering',
       'true',
-      'foo· 20s· still on it, the model is slow right now',
+      'foo20sstill on it, the model is slow right now',
     ],
-    [true, 'pondering', null, 'foo· 1m 0s· You can leave this'],
+    [true, 'pondering', null, 'foo1m 0sYou can leave this'],
   ]);
 });
 
