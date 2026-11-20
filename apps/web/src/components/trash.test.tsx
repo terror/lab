@@ -40,6 +40,37 @@ test('trashed chats can be restored or deleted forever', async () => {
     ]);
 });
 
+test('emptying the trash shows the empty state once the rows are gone', async () => {
+  let items = [
+    {
+      deletedAt: '2026-01-02T00:00:00.000Z',
+      id: 7,
+      kind: 'conversation',
+      title: 'foo',
+    },
+  ];
+
+  stubFetch(({ pathname }, init) => {
+    if (init?.method === 'DELETE') {
+      items = [];
+
+      return Response.json({ chats: [] });
+    }
+
+    return pathname === '/api/trash'
+      ? Response.json({ items })
+      : Response.json({ preferences: {} });
+  });
+
+  const { screen } = await renderWithQuery(<Trash />);
+
+  await screen.getByRole('button', { name: 'Empty trash' }).click();
+  await screen.getByRole('button', { name: 'Delete forever' }).click();
+
+  await expect.element(screen.getByText('Nothing to throw out')).toBeVisible();
+  await expect.element(screen.getByText('foo')).not.toBeInTheDocument();
+});
+
 test('deleting a project forever clears the drafts of its chats', async () => {
   stubFetch(({ pathname }) =>
     pathname === '/api/trash'

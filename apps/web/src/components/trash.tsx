@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
+import { Dissolve } from '@/components/ui/dissolve';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
 import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
+import { dissolve } from '@/lib/motion';
 import {
   type TrashItem,
   deleteForever,
@@ -20,9 +22,16 @@ import {
   trashQueryOptions,
   useTrashAction,
 } from '@/lib/trash';
-import { useEmpty } from '@/lib/voice';
+import { useEmpty, useQuiet } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Ellipsis, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
+import {
+  AnimatePresence,
+  m,
+  useIsPresent,
+  usePresenceData,
+  useReducedMotion,
+} from 'motion/react';
 import { useState } from 'react';
 
 const kinds: Record<
@@ -36,18 +45,42 @@ const kinds: Record<
   project: { icon: Folder, name: ({ title }) => title ?? 'Untitled project' },
 };
 
-function TrashRow({ item }: { item: TrashItem }) {
+const MotionListRow = m.create(ListRow);
+
+const gone = { opacity: 0, transition: { duration: 0 } };
+
+function TrashRow({ index, item }: { index: number; item: TrashItem }) {
   const [confirming, setConfirming] = useState(false);
 
   const restore = useTrashAction(restoreFromTrash);
   const remove = useTrashAction(deleteForever);
 
+  const present = useIsPresent();
+  const emptying = usePresenceData() === true;
+  const reduced = useReducedMotion();
+  const quiet = useQuiet();
+  const still = reduced || quiet;
+
   const { icon: Icon, name: title } = kinds[item.kind];
 
   const name = title(item);
 
+  const deleting = !remove.isIdle && !remove.isError;
+
+  const exit = (emptied: boolean) => {
+    if (still || !(emptied || deleting)) {
+      return gone;
+    }
+
+    return dissolve(emptied ? index : 0);
+  };
+
   return (
-    <ListRow
+    <MotionListRow
+      className='overflow-hidden'
+      exit='exit'
+      inert={!present}
+      variants={{ exit }}
       actions={
         <>
           <Button
@@ -90,17 +123,23 @@ function TrashRow({ item }: { item: TrashItem }) {
         </>
       }
     >
-      <Icon
-        aria-hidden='true'
-        className='size-4 shrink-0 text-muted-foreground'
-      />
-      <span className='flex min-w-0 flex-col'>
-        <span className='truncate font-medium'>{name}</span>
-        <span className='truncate text-muted-foreground'>
-          Deleted {shortDate(item.deletedAt)}
+      <Dissolve
+        active={!present && !still && (emptying || deleting)}
+        className='items-center gap-3'
+        order={emptying ? index : 0}
+      >
+        <Icon
+          aria-hidden='true'
+          className='size-4 shrink-0 text-muted-foreground'
+        />
+        <span className='flex min-w-0 flex-col'>
+          <span className='truncate font-medium'>{name}</span>
+          <span className='truncate text-muted-foreground'>
+            Deleted {shortDate(item.deletedAt)}
+          </span>
         </span>
-      </span>
-    </ListRow>
+      </Dissolve>
+    </MotionListRow>
   );
 }
 
@@ -108,10 +147,16 @@ export function Trash() {
   const trash = useQuery(trashQueryOptions);
 
   const [confirming, setConfirming] = useState(false);
+  const [emptying, setEmptying] = useState(false);
+  const [listed, setListed] = useState(false);
 
   const empty = useTrashAction(emptyTrash);
 
   const count = trash.data?.length ?? 0;
+
+  if (count > 0 && !listed) {
+    setListed(true);
+  }
 
   const emptyState = useEmpty('trash');
 
@@ -137,18 +182,38 @@ export function Trash() {
       {trash.isLoadingError && (
         <LoadError onRetry={() => trash.refetch()} subject='the trash' />
       )}
-      {trash.isSuccess && count === 0 && <EmptyState {...emptyState} />}
-      {count > 0 && (
+      {trash.isSuccess && count === 0 && !listed && (
+        <EmptyState {...emptyState} />
+      )}
+      {listed && (
         <ul className='flex flex-col gap-0.5'>
-          {trash.data?.map((item) => (
-            <TrashRow key={`${item.kind}-${item.id}`} item={item} />
-          ))}
+          <AnimatePresence
+            custom={emptying}
+            initial={false}
+            onExitComplete={() => {
+              if (count === 0) {
+                setListed(false);
+                setEmptying(false);
+              }
+            }}
+          >
+            {trash.data?.map((item, index) => (
+              <TrashRow
+                key={`${item.kind}-${item.id}`}
+                index={index}
+                item={item}
+              />
+            ))}
+          </AnimatePresence>
         </ul>
       )}
       <ConfirmDialog
         action='Delete forever'
         description={`${count} ${count === 1 ? 'item' : 'items'} will be deleted permanently. This can’t be undone.`}
-        onConfirm={() => empty.mutate(undefined)}
+        onConfirm={() => {
+          setEmptying(true);
+          empty.mutate(undefined, { onError: () => setEmptying(false) });
+        }}
         onOpenChange={setConfirming}
         open={confirming}
         title='Empty the trash?'
