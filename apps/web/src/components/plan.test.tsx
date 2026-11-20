@@ -1,7 +1,12 @@
 import { ToolConversation } from '@/components/tools';
 import { confetti } from '@/lib/confetti';
 import { preferencesQueryOptions } from '@/lib/preferences';
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import {
+  preferencesClient,
+  renderWithQuery,
+  requestUrl,
+  stubFetch,
+} from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -121,7 +126,7 @@ function plan(status: 'active' | 'done') {
 }
 
 test('a plan celebrates once when its last step is done', async () => {
-  const { screen } = await renderWithQuery(plan('active'));
+  const { screen } = await renderWithQuery(plan('active'), preferencesClient());
 
   await screen.rerender(plan('done'));
   await screen.rerender(plan('active'));

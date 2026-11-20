@@ -1,3 +1,4 @@
+import { defaultPreferences } from '@lab/server/schemas';
 import addonA11y from '@storybook/addon-a11y';
 import addonDocs from '@storybook/addon-docs';
 import addonThemes, { withThemeByClassName } from '@storybook/addon-themes';
@@ -10,6 +11,8 @@ import '../src/index.css';
 import { watchModality } from '../src/lib/modality';
 import { modelsQueryOptions } from '../src/lib/models';
 import { spring } from '../src/lib/motion';
+import { preferencesQueryOptions } from '../src/lib/preferences';
+import { profileQueryOptions } from '../src/lib/profile';
 import { catalog } from './fixtures';
 
 watchModality();
@@ -27,6 +30,11 @@ export default definePreview({
       });
 
       queryClient.setQueryData(modelsQueryOptions.queryKey, catalog);
+      queryClient.setQueryData(profileQueryOptions.queryKey, { admin: false });
+      queryClient.setQueryData(
+        preferencesQueryOptions.queryKey,
+        defaultPreferences
+      );
 
       return (
         <QueryClientProvider client={queryClient}>

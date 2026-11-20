@@ -4,7 +4,12 @@ import { Toaster } from '@/components/ui/sonner';
 import { conversationsQueryKey } from '@/lib/conversations';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { useQuiet } from '@/lib/voice';
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
+import {
+  preferencesClient,
+  renderWithQuery,
+  requestUrl,
+  stubFetch,
+} from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient, useQuery } from '@tanstack/react-query';
 import {
@@ -48,7 +53,10 @@ async function row(
     }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    preferencesClient()
+  );
 
   const link = screen.getByRole('link', { name: /^foo/ });
 
@@ -111,7 +119,10 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
     routeTree: createRootRoute({ component: Naming }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    preferencesClient()
+  );
 
   await screen.getByRole('button', { name: 'qux' }).click();
 
@@ -184,7 +195,10 @@ test('chats that finish in the background hand their marks over to dots, six at 
     routeTree: createRootRoute({ component: Finishing }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    preferencesClient()
+  );
 
   const seen: ReturnType<typeof marks>[] = [];
 

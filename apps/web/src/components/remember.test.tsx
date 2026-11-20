@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { spring } from '@/lib/motion';
 import { preferencesQueryOptions } from '@/lib/preferences';
-import { renderWithQuery } from '@/test/helpers';
+import { preferencesClient, renderWithQuery } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
 import {
@@ -105,7 +105,10 @@ test('a saved memory shows in the reply', async () => {
     }),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { screen } = await renderWithQuery(
+    <RouterProvider router={router} />,
+    preferencesClient()
+  );
 
   await expect.element(screen.getByText('Remembered')).toBeVisible();
 

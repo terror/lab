@@ -4,7 +4,7 @@ import { authClient } from './auth';
 import { call, client } from './client';
 import { useRefreshMutation } from './mutations';
 
-const profileQueryOptions = queryOptions({
+export const profileQueryOptions = queryOptions({
   queryKey: ['profile'],
   queryFn: ({ signal }) =>
     call(client.profile.$get(undefined, { init: { signal } })),

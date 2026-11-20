@@ -1,7 +1,7 @@
 import { ToolConversation } from '@/components/tools';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { preferencesQueryOptions } from '@/lib/preferences';
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { preferencesClient, renderWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -107,7 +107,8 @@ test('a pending question waits for an answer instead of working', async () => {
       results={new Map()}
       streaming
       working
-    />
+    />,
+    preferencesClient()
   );
 
   await expect
@@ -151,7 +152,8 @@ test('a stopped question or approval can no longer be answered', async () => {
         }
         streaming={false}
       />
-    </ToolConversation>
+    </ToolConversation>,
+    preferencesClient()
   );
 
   await expect
@@ -413,7 +415,7 @@ test('a pending approval clears its throat once, then swallows the answer', asyn
     vi.useRealTimers();
   });
 
-  const { screen } = await renderWithQuery(approval());
+  const { screen } = await renderWithQuery(approval(), preferencesClient());
 
   const mark = () =>
     screen.container

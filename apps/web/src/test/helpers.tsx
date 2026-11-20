@@ -1,6 +1,8 @@
+import { preferencesQueryOptions } from '@/lib/preferences';
+import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { vi } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { render, renderHook } from 'vitest-browser-react';
 
 export function requestUrl(input: RequestInfo | URL) {
@@ -28,7 +30,17 @@ export function fetchedPaths(fetch: ReturnType<typeof stubFetch>) {
   });
 }
 
+export function preferencesClient(preferences = defaultPreferences) {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, preferences);
+
+  return client;
+}
+
 function wrapper(client: QueryClient) {
+  onTestFinished(() => client.clear());
+
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
