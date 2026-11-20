@@ -17,7 +17,7 @@ test('a card keeps unbroken text inside it and gives its title link a 44px hit a
   const screen = await render(
     <NeedsYouCard
       className='w-80'
-      link={(title) => <a href='#foo'>{title}</a>}
+      renderLink={(title) => <a href='#foo'>{title}</a>}
       title={'bar'.repeat(60)}
     >
       <p>{'baz'.repeat(60)}</p>

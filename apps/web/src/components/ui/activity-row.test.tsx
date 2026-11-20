@@ -11,7 +11,7 @@ test('an activity row is one link that holds its title, state and detail, with t
         detail='bar'
         glyph='*'
         label='quux'
-        link={(row) => <a href='#baz'>{row}</a>}
+        renderLink={(row) => <a href='#baz'>{row}</a>}
         meta='qux'
         time='2h'
         title='foo'
@@ -43,13 +43,14 @@ test('a row shows its meta whole beside a title that fits, and not at all beside
       const line = meta.parentElement?.getBoundingClientRect();
       const box = meta.getBoundingClientRect();
 
-      return (
-        line !== undefined &&
-        box.top < line.bottom &&
-        box.right <= line.right &&
-        meta.scrollWidth <= meta.clientWidth
-      );
+      if (line === undefined || box.top >= line.bottom) {
+        return 'absent';
+      }
+
+      return box.right <= line.right && meta.scrollWidth <= meta.clientWidth
+        ? 'whole'
+        : 'cut';
     });
 
-  expect(shown).toEqual([true, false]);
+  expect(shown).toEqual(['whole', 'absent']);
 });

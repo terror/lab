@@ -12,35 +12,37 @@ type Tile = {
 function ShelfTile({
   className,
   glyph,
-  link,
   meta,
+  renderLink,
   title,
   ...props
 }: Tile &
   (
-    | { link: (tile: React.ReactNode) => React.ReactElement }
+    | { renderLink: (tile: React.ReactNode) => React.ReactElement }
     | (Omit<
         React.ComponentProps<'button'>,
         'children' | 'className' | 'title' | 'type'
-      > & { link?: undefined })
+      > & { renderLink?: undefined })
   )) {
-  const body = (
-    <>
-      {glyph ? (
-        <span
-          data-slot='shelf-tile-glyph'
-          className="mt-0.5 flex size-4 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg:not([class*='size-'])]:size-4"
-        >
-          {glyph}
-        </span>
+  const mark = glyph ? (
+    <span
+      data-slot='shelf-tile-glyph'
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg:not([class*='size-'])]:size-4",
+        Boolean(meta) && 'mt-0.5 self-start'
+      )}
+    >
+      {glyph}
+    </span>
+  ) : null;
+
+  const words = (
+    <span className='flex min-w-0 flex-col'>
+      <span className='truncate font-medium'>{title}</span>
+      {meta ? (
+        <span className='truncate text-xs text-muted-foreground'>{meta}</span>
       ) : null}
-      <span className='flex min-w-0 flex-col'>
-        <span className='truncate font-medium'>{title}</span>
-        {meta ? (
-          <span className='truncate text-xs text-muted-foreground'>{meta}</span>
-        ) : null}
-      </span>
-    </>
+    </span>
   );
 
   const classes = cn(
@@ -48,17 +50,23 @@ function ShelfTile({
     className
   );
 
-  if (link) {
+  if (renderLink) {
     return (
       <Slot.Root data-slot='shelf-tile' className={classes}>
-        {link(body)}
+        {renderLink(
+          <>
+            {mark}
+            {words}
+          </>
+        )}
       </Slot.Root>
     );
   }
 
   return (
     <button data-slot='shelf-tile' className={classes} type='button' {...props}>
-      {body}
+      {mark}
+      {words}
     </button>
   );
 }

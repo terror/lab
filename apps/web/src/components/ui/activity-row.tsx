@@ -8,9 +8,9 @@ function ActivityRow({
   detail,
   glyph,
   label,
-  link,
   meta,
   progress,
+  renderLink,
   time,
   title,
   ...props
@@ -19,13 +19,19 @@ function ActivityRow({
   detail?: React.ReactNode;
   glyph: React.ReactNode;
   label?: string;
-  link?: (row: React.ReactNode) => React.ReactElement;
   meta?: React.ReactNode;
   progress?: React.ReactNode;
+  renderLink?: (row: React.ReactNode) => React.ReactElement;
   time?: React.ReactNode;
   title: React.ReactNode;
 }) {
   const second = Boolean(detail) || Boolean(progress);
+
+  const when = time ? (
+    <span className='text-xs whitespace-nowrap text-muted-foreground tabular-nums'>
+      {time}
+    </span>
+  ) : undefined;
 
   const body = (
     <>
@@ -62,23 +68,23 @@ function ActivityRow({
     <ListRow
       actions={
         actions ? (
-          <span className='flex min-w-16 justify-end pointer-coarse:min-w-0'>
-            {actions}
+          <span className='grid justify-items-end *:col-start-1 *:row-start-1'>
+            <span
+              aria-hidden='true'
+              className='invisible flex pointer-coarse:hidden'
+            >
+              {when}
+            </span>
+            <span className='flex'>{actions}</span>
           </span>
         ) : undefined
       }
-      asChild={link !== undefined}
+      asChild={renderLink !== undefined}
       className={cn('[&_[data-slot=list-row-status]]:justify-end', className)}
-      status={
-        time ? (
-          <span className='text-xs whitespace-nowrap text-muted-foreground tabular-nums'>
-            {time}
-          </span>
-        ) : undefined
-      }
+      status={when}
       {...props}
     >
-      {link ? link(body) : body}
+      {renderLink ? renderLink(body) : body}
     </ListRow>
   );
 }

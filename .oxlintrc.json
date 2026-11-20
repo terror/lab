@@ -81,11 +81,11 @@
           },
           {
             "message": "Text takes the ink tier. Raw and wash fail contrast.",
-            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)(-wash)?(/|!|$)"
+            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
           },
           {
             "message": "Ink is full strength. A faded ink fails contrast.",
-            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)-ink/"
+            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
           },
           {
             "message": "A status never colors a border, ring, or outline.",
@@ -128,11 +128,11 @@
               },
               {
                 "message": "Text takes the ink tier. Raw and wash fail contrast.",
-                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)(-wash)?(/|!|$)"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
               },
               {
                 "message": "Ink is full strength. A faded ink fails contrast.",
-                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)-ink/"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
               },
               {
                 "message": "A status never colors a border, ring, or outline.",
@@ -164,11 +164,11 @@
               },
               {
                 "message": "Text takes the ink tier. Raw and wash fail contrast.",
-                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)(-wash)?(/|!|$)"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
               },
               {
                 "message": "Ink is full strength. A faded ink fails contrast.",
-                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-status-(attention|live|done)-ink/"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
               },
               {
                 "message": "A status never colors a border, ring, or outline.",

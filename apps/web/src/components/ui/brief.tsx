@@ -48,7 +48,9 @@ function BriefToken({
       type='button'
       {...props}
     >
-      {attention && count > 0 && <Dot className='self-center' tone='attention' />}
+      {attention && count > 0 && (
+        <Dot className='self-center' tone='attention' />
+      )}
       <RollingNumber animated={!still} steady value={count} />
       {children}
     </button>

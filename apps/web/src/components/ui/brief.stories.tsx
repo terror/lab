@@ -26,7 +26,7 @@ function Sentence() {
   const finished = 2 - running;
 
   return (
-    <div className='flex w-96 flex-col items-center gap-4 text-center'>
+    <div className='flex w-full max-w-96 flex-col items-center gap-4 text-center'>
       <Brief>
         <BriefToken count={finished}>
           {finished === 1 ? 'chat finished' : 'chats finished'}
@@ -57,7 +57,7 @@ export const Default = meta.story({ render: () => <Sentence /> });
 
 export const Plain = meta.story({
   render: () => (
-    <Brief className='w-96 text-center' still>
+    <Brief className='w-full max-w-96 text-center' still>
       <BriefToken count={1}>finished</BriefToken> ·{' '}
       <BriefToken attention count={1}>
         needs you

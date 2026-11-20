@@ -13,7 +13,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'A chat that is waiting on you, shown outside the chat. The card always names the chat and shows what Lab asked in full, with a way to open the chat. Pass link to make the chat’s name open it. Name each action with the chat, so a list of cards reads apart. A question shows every option at equal weight, with no default. An approval shows the action and its summary with Review and Deny; approving happens in the chat, never here.',
+          'A chat that is waiting on you, shown outside the chat. The card always names the chat and shows what Lab asked in full, with a way to open the chat. Pass renderLink to make the chat’s name open it. Name each action with the chat, so a list of cards reads apart. A question shows every option at equal weight, with no default. An approval shows the action and its summary with Review and Deny; approving happens in the chat, never here.',
       },
     },
   },
@@ -33,8 +33,8 @@ export const Review = meta.story({
           Review
         </Button>
       }
-      className='w-120'
-      link={(title) => <a href='#foo'>{title}</a>}
+      className='w-full max-w-120'
+      renderLink={(title) => <a href='#foo'>{title}</a>}
       title='Balcony watering schedule'
     />
   ),
@@ -45,15 +45,15 @@ export const Question = meta.story({
     <NeedsYouCard
       actions={
         <Button
-          aria-label='Open Sourdough starter names'
+          aria-label='Open chat: Sourdough starter names'
           size='sm'
           variant='quiet'
         >
           Open chat
         </Button>
       }
-      className='w-120'
-      link={(title) => <a href='#foo'>{title}</a>}
+      className='w-full max-w-120'
+      renderLink={(title) => <a href='#foo'>{title}</a>}
       title='Sourdough starter names'
     >
       <p>What tone should the names have?</p>
@@ -87,8 +87,8 @@ export const Approval = meta.story({
           </Button>
         </>
       }
-      className='w-120'
-      link={(title) => <a href='#foo'>{title}</a>}
+      className='w-full max-w-120'
+      renderLink={(title) => <a href='#foo'>{title}</a>}
       title='Monday motivation'
     >
       <ApprovalSummary

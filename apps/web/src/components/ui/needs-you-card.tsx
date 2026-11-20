@@ -10,21 +10,29 @@ function NeedsYouCard({
   className,
   glyph = <Dot tone='attention' />,
   label = 'Needs you',
-  link,
+  renderLink,
   title,
   ...props
 }: Omit<React.ComponentProps<'div'>, 'title'> & {
   actions?: React.ReactNode;
   glyph?: React.ReactNode;
   label?: string;
-  link?: (title: React.ReactNode) => React.ReactElement;
+  renderLink?: (title: React.ReactNode) => React.ReactElement;
   title: React.ReactNode;
 }) {
-  const name = <span className='truncate'>{title}</span>;
+  const id = React.useId();
+
+  const name = (
+    <span className='truncate' id={id}>
+      {title}
+    </span>
+  );
 
   return (
     <Card
+      aria-labelledby={id}
       className={cn('gap-3 text-sm', className)}
+      role='group'
       variant='outline'
       {...props}
     >
@@ -33,12 +41,12 @@ function NeedsYouCard({
           {glyph}
         </span>
         <span className='flex min-w-0 flex-1 font-medium'>
-          {link ? (
+          {renderLink ? (
             <Slot.Root
               data-slot='needs-you-card-link'
               className='hit-area relative flex min-w-0 rounded-sm underline-offset-4 hover:underline'
             >
-              {link(name)}
+              {renderLink(name)}
             </Slot.Root>
           ) : (
             name
@@ -54,7 +62,9 @@ function NeedsYouCard({
         </div>
       ) : null}
       {actions ? (
-        <div className='flex flex-wrap items-center gap-2 pl-7'>{actions}</div>
+        <div className='flex flex-wrap items-center gap-2 pl-7 pointer-coarse:mt-2'>
+          {actions}
+        </div>
       ) : null}
     </Card>
   );

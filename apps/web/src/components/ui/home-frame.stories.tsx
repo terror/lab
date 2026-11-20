@@ -13,7 +13,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'The frame of the home page. The message box’s top edge sits at --home-anchor: 38% of the panel’s height, and never less than 17rem, which holds the mark, a two-line heading and a three-line brief. What goes above it grows upward from that line and what goes below hangs from it, so content that arrives late never moves the box you are about to type in. The frame fills its parent, so give that a height.',
+          'The frame of the home page. The message box’s top edge sits at --home-anchor: 38% of the panel’s height. A short panel holds it at 14rem so the heading and brief still fit, and a very short one raises it so the box stays on screen. What goes above it grows upward from that line and what goes below hangs from it, so content that arrives late never moves the box you are about to type in. The frame fills its parent, so give that a height.',
       },
     },
   },
@@ -25,7 +25,7 @@ function Frame() {
   const [arrived, setArrived] = useState(false);
 
   return (
-    <div className='flex h-96 w-96 flex-col rounded-card border'>
+    <div className='flex h-150 w-full max-w-96 flex-col rounded-card border'>
       <HomeFrame
         above={
           <>

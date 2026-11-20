@@ -7,11 +7,13 @@ function RollingNumber({
   animated = true,
   className,
   format,
+  steady = false,
   value,
 }: {
   animated?: boolean;
   className?: string;
   format?: Format;
+  steady?: boolean;
   value: number;
 }) {
   const quiet = useQuiet();
@@ -27,10 +29,11 @@ function RollingNumber({
         className={cn('-my-[0.25em] tabular-nums', className)}
         data-slot='rolling-number'
         format={format}
+        isolate={steady}
         locales='en-US'
         opacityTiming={roll.fade}
         spinTiming={roll.turn}
-        transformTiming={roll.turn}
+        transformTiming={steady ? { duration: 0 } : roll.turn}
         value={value}
       />
     </>
