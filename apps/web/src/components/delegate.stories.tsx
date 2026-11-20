@@ -56,3 +56,36 @@ function Live() {
 }
 
 export const Finishing = meta.story({ render: () => <Live /> });
+
+export const Failed = meta.story({
+  render: () => (
+    <div className='w-96'>
+      {toolRenderer('delegate').inline?.({
+        active: false,
+        args: {},
+        callId: 'call-2',
+        details: {
+          subagents: [
+            {
+              status: 'done',
+              summary: 'Chat 16: three days in Baixa-Chiado, Sintra on day 3.',
+              title: 'Lisbon trip plan',
+            },
+            {
+              status: 'done',
+              summary: 'Chat 34: a 25/5 timer with a session log.',
+              title: 'Pomodoro timer',
+            },
+            {
+              status: 'failed',
+              summary: 'Couldn’t open chat 41: it’s in Trash.',
+              title: 'Balcony watering',
+            },
+          ],
+        },
+        history: [],
+        output: '',
+      })}
+    </div>
+  ),
+});
