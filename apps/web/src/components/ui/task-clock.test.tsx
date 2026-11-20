@@ -56,12 +56,14 @@ test('the hand turns with the wait and each wind-up adds a turn', async () => {
   expect([
     await hand({}),
     await hand({ progress: 0.5 }),
+    await hand({ progress: Number.NaN }),
     await hand({ progress: 2 }),
     await hand({ progress: 0.25, turns: 1 }),
     await hand({ progress: 0.25, turns: 1 }, 'quiet'),
   ]).toEqual([
     'rotate(0deg)',
     'rotate(180deg)',
+    'rotate(0deg)',
     'rotate(360deg)',
     'rotate(450deg)',
     'rotate(90deg)',

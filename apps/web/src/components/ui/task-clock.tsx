@@ -19,7 +19,7 @@ function TaskClock({
   const quiet = useQuiet();
 
   const fraction =
-    paused || progress === undefined
+    paused || progress === undefined || !Number.isFinite(progress)
       ? undefined
       : Math.min(Math.max(progress, 0), 1);
 
