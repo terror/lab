@@ -28,7 +28,7 @@ export async function call(
 }
 
 export async function idle(id: number) {
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );

@@ -161,7 +161,7 @@ export async function selectConnectors(
   const name = connectorsExtensionName(ownerId);
 
   const stored = (
-    await harness.snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
+    await harness().snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
   )?.extensions;
 
   if (Array.isArray(stored) || stored?.add?.includes(name)) {
@@ -181,7 +181,11 @@ export async function selectConnectors(
 
 export async function submitMessage(
   conversation: Conversation,
-  draft: { attachments: Attachment[]; content: string },
+  draft: {
+    attachments: Attachment[];
+    content: string;
+    requestId?: string;
+  },
   whenBusy: 'followUp' | 'steer' = 'followUp'
 ) {
   if (draft.content.length > MESSAGE_LENGTH) {
@@ -197,6 +201,7 @@ export async function submitMessage(
   return conversation.submit(
     {
       type: 'input',
+      requestId: draft.requestId,
       whenBusy,
       content: prompt(draft),
       entry: {

@@ -7,7 +7,7 @@ import { usagePipeline } from './usage';
 type Pipeline = {
   backfill?: () => Promise<unknown>;
   flush: () => Promise<void>;
-  start?: () => void;
+  start?: () => CommitObservation;
 };
 
 const pipelines: readonly Pipeline[] = [
@@ -18,9 +18,9 @@ const pipelines: readonly Pipeline[] = [
   historyPipeline,
 ];
 
-export function backfillAll() {
+export async function backfillAll() {
   for (const { backfill } of pipelines) {
-    void backfill?.().catch(console.error);
+    await backfill?.();
   }
 }
 
@@ -29,7 +29,22 @@ export async function flushAll() {
 }
 
 export function startPipelines() {
-  for (const { start } of pipelines) {
-    start?.();
+  const observations: CommitObservation[] = [];
+
+  const stop = () =>
+    observations.forEach((observation) => observation.detach());
+
+  try {
+    for (const { start } of pipelines) {
+      if (start) {
+        observations.push(start());
+      }
+    }
+  } catch (error) {
+    stop();
+    throw error;
   }
+
+  return stop;
 }
+import type { CommitObservation } from '@earendil-works/pi-durable';

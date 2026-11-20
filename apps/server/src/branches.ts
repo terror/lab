@@ -212,7 +212,11 @@ async function resend(
   entry: EntryRecord,
   content: string
 ) {
-  const agent = await harness.snapshot(AgentDoc, source.id, BACKGROUND_CONTEXT);
+  const agent = await harness().snapshot(
+    AgentDoc,
+    source.id,
+    BACKGROUND_CONTEXT
+  );
 
   const draft = { attachments: entryAttachments(entry), content };
 
@@ -251,14 +255,14 @@ async function regenerate(
 
 async function openBranch(parent: Parent, agent: AgentChange | undefined) {
   if (parent.entryId === null) {
-    return harness.createConversation(
+    return harness().createConversation(
       { agent, ownership: { kind: 'ownerless' } },
       BACKGROUND_CONTEXT
     );
   }
 
   const origin = found(
-    await harness.conversation(
+    await harness().conversation(
       parent.conversationId as ConversationId,
       BACKGROUND_CONTEXT
     ),
@@ -298,7 +302,11 @@ export async function branchChat(
       ? await resend(source, entry, request.content)
       : await regenerate(ownerId, request.model);
 
-  const title = await harness.snapshot(TitleDoc, source.id, BACKGROUND_CONTEXT);
+  const title = await harness().snapshot(
+    TitleDoc,
+    source.id,
+    BACKGROUND_CONTEXT
+  );
 
   const conversation = await openBranch(parent, plan.change);
 
@@ -307,7 +315,7 @@ export async function branchChat(
     conversation,
     { parent, projectId, title: title?.title ?? undefined },
     async () => {
-      const artifacts = await harness.snapshot(
+      const artifacts = await harness().snapshot(
         ArtifactsDoc,
         conversation.id,
         BACKGROUND_CONTEXT

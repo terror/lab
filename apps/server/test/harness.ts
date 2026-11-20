@@ -1,6 +1,6 @@
 import type { ExtensionDeps } from '@lab/harness';
 
-import { harnessDeps } from '../src/harness';
+import { harnessDeps } from '../src/runtime';
 
 export function emptyDeps(): ExtensionDeps {
   return {

@@ -162,7 +162,7 @@ test('deleting an account removes its data and signs it out', async () => {
       .then((rows) =>
         rows.map(({ id: chatId, ownerId: owner }) => [chatId, owner])
       ),
-    memory: await harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT),
+    memory: await harness().snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT),
     users: await db
       .select({ id: schema.user.id })
       .from(schema.user)

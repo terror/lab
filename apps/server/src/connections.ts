@@ -266,5 +266,18 @@ export function connectorState(id: number): ConnectorState {
 export async function startConnectors() {
   const rows = await db.select().from(schema.connector);
 
-  await Promise.all(rows.map(refreshConnector));
+  const results = await Promise.allSettled(rows.map(refreshConnector));
+
+  const errors = results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason] : []
+  );
+
+  if (errors.length > 0) {
+    throw new AggregateError(errors, 'Failed to start connectors');
+  }
+}
+
+export async function stopConnectors() {
+  await Promise.all(queues.values());
+  await Promise.all([...entries.keys()].map(removeConnector));
 }

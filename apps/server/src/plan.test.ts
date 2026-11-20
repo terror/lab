@@ -68,7 +68,7 @@ test('the agent follows the plan the user edits while it works', async () => {
   expect({
     edits,
     outputs: await toolOutputs(headers, id),
-    plan: await harness.snapshot(
+    plan: await harness().snapshot(
       PlanDoc,
       id as ConversationId,
       BACKGROUND_CONTEXT
@@ -216,7 +216,7 @@ test('a retried reply starts from the plan it had before it', async () => {
   await settle(branch.id);
 
   expect({
-    plan: await harness.snapshot(
+    plan: await harness().snapshot(
       PlanDoc,
       branch.id as ConversationId,
       BACKGROUND_CONTEXT
@@ -252,7 +252,7 @@ test('the event stream stops following the plan when it stops following the chat
 
   const id = await chat(headers, { content: 'foo' });
 
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -266,7 +266,7 @@ test('the event stream stops following the plan when it stops following the chat
     'watch'
   );
 
-  const plans = spyOn(harness, 'watchDoc');
+  const plans = spyOn(harness(), 'watchDoc');
 
   const response = await raw(headers, `/conversations/${id}/events`);
 

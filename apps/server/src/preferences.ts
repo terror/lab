@@ -21,7 +21,7 @@ const change = validator(
 async function current(ownerId: string) {
   return preferencesSchema.parse({
     ...defaultPreferences,
-    ...(await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
+    ...(await harness().snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
   });
 }
 
@@ -31,7 +31,7 @@ const preferences = new Hono()
     c.json({ preferences: await current(c.get('user').id) })
   )
   .patch('/', change, async (c) => {
-    await harness.commit(async (tx) => {
+    await harness().commit(async (tx) => {
       Object.assign(
         await tx.doc(PreferencesDoc, c.get('user').id, null),
         c.req.valid('json')

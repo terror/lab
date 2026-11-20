@@ -240,7 +240,7 @@ test('an edited first message starts a branch with the current model', async () 
 
   expect({
     agent: (
-      await harness.snapshot(
+      await harness().snapshot(
         AgentDoc,
         edited as ConversationId,
         BACKGROUND_CONTEXT

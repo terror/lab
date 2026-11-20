@@ -20,8 +20,8 @@ export function observe<T>(
 ) {
   return {
     flush: queue.flush,
-    start: () => {
-      harness.observeCommits({
+    start: () =>
+      harness().observeCommits({
         advance: ({ changes }) => {
           const items = select(changes);
 
@@ -30,8 +30,7 @@ export function observe<T>(
           }
         },
         end: () => undefined,
-      });
-    },
+      }),
   };
 }
 
@@ -50,7 +49,7 @@ export async function eachEntry(
   after?: number,
   cursor?: Cursor
 ): Promise<void> {
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -78,7 +77,7 @@ export async function eachEntry(
 }
 
 async function subagentsOf(id: number, cursor?: Cursor): Promise<number[]> {
-  const page = await harness.commit(
+  const page = await harness().commit(
     (tx) =>
       tx.scanConversations(
         { ownerConversationId: id as ConversationId },

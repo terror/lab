@@ -102,6 +102,7 @@ export {
 } from './project';
 export {
   ProfileDoc,
+  ScheduledChatsDoc,
   type ScheduleAccess,
   type ScheduleChange,
   type ScheduleInput,

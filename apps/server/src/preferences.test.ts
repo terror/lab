@@ -72,7 +72,7 @@ test('stored preferences omit retired settings and fill missing defaults', async
 
   const { body } = await call(headers, 'GET', '/auth/get-session');
 
-  await harness.commit(async (tx) => {
+  await harness().commit(async (tx) => {
     const doc = await tx.doc(PreferencesDoc, body.user.id, null);
 
     Object.assign(doc, { hints: ['foo'], theme: 'dark' });

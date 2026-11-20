@@ -1,13 +1,16 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { schema } from '@lab/db';
-import type {
-  ScheduleAccess,
-  ScheduleUpdate,
-  ScheduledTask,
+import {
+  ScheduledChatsDoc,
+  type ScheduleAccess,
+  type ScheduleUpdate,
+  type ScheduledTask,
 } from '@lab/harness';
 import { Cron } from 'croner';
 import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm';
 
 import { db } from './db';
+import { harness } from './harness';
 import { requireOwner } from './records';
 
 const table = schema.scheduledTask;
@@ -118,6 +121,12 @@ export async function deleteTask(ownerId: string, id: number) {
     .delete(table)
     .where(and(eq(table.id, id), eq(table.ownerId, ownerId)))
     .returning();
+
+  if (row) {
+    await harness().commit(async (tx) => {
+      delete (await tx.doc(ScheduledChatsDoc, ownerId, null))[String(id)];
+    }, BACKGROUND_CONTEXT);
+  }
 
   return row && toTask(row);
 }

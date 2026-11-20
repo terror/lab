@@ -20,8 +20,9 @@ async function settings(headers: Headers) {
 }
 
 async function timezone(ownerId: string | undefined) {
-  return (await harness.snapshot(ProfileDoc, ownerId ?? '', BACKGROUND_CONTEXT))
-    ?.timezone;
+  return (
+    await harness().snapshot(ProfileDoc, ownerId ?? '', BACKGROUND_CONTEXT)
+  )?.timezone;
 }
 
 test('settings and memories belong to the user who made them', async () => {
@@ -70,25 +71,25 @@ test('global settings from before users are adopted once', async () => {
     version: 1,
   });
 
-  await harness.commit(async (tx) => {
+  await harness().commit(async (tx) => {
     (await tx.doc(legacy)).instructions = 'foo';
   }, BACKGROUND_CONTEXT);
 
   const ownerId = randomUUID();
 
   const instructions = async () =>
-    (await harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT))
+    (await harness().snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT))
       ?.instructions;
 
-  await adoptGlobalDocs(harness, ownerId, BACKGROUND_CONTEXT);
+  await adoptGlobalDocs(harness(), ownerId, BACKGROUND_CONTEXT);
 
   const adopted = await instructions();
 
-  await harness.commit(async (tx) => {
+  await harness().commit(async (tx) => {
     (await tx.doc(MemoryDoc, ownerId, null)).instructions = 'bar';
   }, BACKGROUND_CONTEXT);
 
-  await adoptGlobalDocs(harness, ownerId, BACKGROUND_CONTEXT);
+  await adoptGlobalDocs(harness(), ownerId, BACKGROUND_CONTEXT);
 
   expect([adopted, await instructions()]).toEqual(['foo', 'bar']);
 });

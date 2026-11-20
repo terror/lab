@@ -87,7 +87,7 @@ async function recover(deleted: boolean) {
     name: 'foo',
   });
 
-  const source = await harness.createConversation(
+  const source = await harness().createConversation(
     { ownership: { kind: 'ownerless' } },
     BACKGROUND_CONTEXT
   );

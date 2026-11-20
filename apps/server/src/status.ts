@@ -107,6 +107,18 @@ type Channel = {
 
 const channels = new Map<number, Channel>();
 
+const pending = new Set<Promise<void>>();
+
+export async function stopStatus() {
+  for (const { controller } of channels.values()) {
+    controller.abort();
+  }
+
+  channels.clear();
+
+  await Promise.all(pending);
+}
+
 function channel(id: number) {
   const existing = channels.get(id);
 
@@ -141,7 +153,14 @@ export function subscribeStatus(id: number, send: Send) {
   subscribed.listeners.add(listener);
 
   return {
-    report: (view: ConversationView) => subscribed.reporter.report(view),
+    report: (view: ConversationView) => {
+      const task = subscribed.reporter.report(view);
+
+      pending.add(task);
+      void task.finally(() => pending.delete(task));
+
+      return task;
+    },
     unsubscribe: () => {
       if (!subscribed.listeners.delete(listener)) {
         return;

@@ -1,11 +1,14 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import type { ConversationId } from '@earendil-works/pi-durable';
+import type {
+  ConversationRecord,
+  Cursor,
+  Harness,
+} from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { and, eq, ilike, inArray, isNotNull, isNull } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 import { db } from './db';
-import { harness } from './harness';
 import { storable } from './text';
 
 export function serial() {
@@ -74,13 +77,54 @@ export function contains(column: AnyPgColumn, search: string) {
 
 type Chat = { id: number; ownerId: string };
 
-async function delegator(conversationId: number) {
-  const record = await harness.commit(
-    (tx) => tx.conversation(conversationId as ConversationId),
-    BACKGROUND_CONTEXT
-  );
+const parents = new Map<number, number>();
 
-  return record?.owner?.conversationId;
+const knownChats = new Map<number, Promise<Chat>>();
+
+function remember(record: ConversationRecord) {
+  if (record.owner) {
+    parents.set(record.id, record.owner.conversationId);
+  }
+}
+
+export async function trackOwners(harness: Harness) {
+  const observation = harness.observeCommits({
+    advance: ({ changes }) => {
+      for (const change of changes) {
+        if (change.type === 'conversation') {
+          remember(change.value);
+        }
+      }
+    },
+    end: () => undefined,
+  });
+
+  const detach = () => {
+    observation.detach();
+    parents.clear();
+    knownChats.clear();
+  };
+
+  const read = async (cursor?: Cursor): Promise<void> => {
+    const page = await harness.commit(
+      (tx) => tx.scanConversations({}, 100, cursor),
+      BACKGROUND_CONTEXT
+    );
+
+    page.items.forEach(remember);
+
+    if (page.next !== undefined) {
+      await read(page.next);
+    }
+  };
+
+  try {
+    await read();
+    return detach;
+  } catch (error) {
+    detach();
+    throw error;
+  }
 }
 
 export async function chatOf(
@@ -92,7 +136,7 @@ export async function chatOf(
     return { id: conversationId, ownerId };
   }
 
-  const parent = await delegator(conversationId);
+  const parent = parents.get(conversationId);
 
   return parent === undefined ? undefined : chatOf(parent);
 }
@@ -110,8 +154,6 @@ async function lookupChat(conversationId: number) {
 
   return chat;
 }
-
-const knownChats = new Map<number, Promise<Chat>>();
 
 export function requireChat(conversationId: number) {
   const known = knownChats.get(conversationId) ?? lookupChat(conversationId);

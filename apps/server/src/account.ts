@@ -6,6 +6,7 @@ import {
   MemoryDoc,
   PreferencesDoc,
   ProfileDoc,
+  ScheduledChatsDoc,
   SkillsDoc,
 } from '@lab/harness';
 import { asc, eq, sql } from 'drizzle-orm';
@@ -126,11 +127,11 @@ async function usage(ownerId: string) {
 
 async function settings(ownerId: string) {
   const [computer, memory, preferences, profile, skills] = await Promise.all([
-    harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT),
-    harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT),
-    harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT),
-    harness.snapshot(ProfileDoc, ownerId, BACKGROUND_CONTEXT),
-    harness.snapshot(SkillsDoc, ownerId, BACKGROUND_CONTEXT),
+    harness().snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT),
+    harness().snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT),
+    harness().snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT),
+    harness().snapshot(ProfileDoc, ownerId, BACKGROUND_CONTEXT),
+    harness().snapshot(SkillsDoc, ownerId, BACKGROUND_CONTEXT),
   ]);
 
   return { computer, memory, preferences, profile, skills };
@@ -194,7 +195,7 @@ export async function deleteAccount(ownerId: string) {
 
   for (const { id } of conversations) {
     await (
-      await harness.conversation(id as ConversationId, BACKGROUND_CONTEXT)
+      await harness().conversation(id as ConversationId, BACKGROUND_CONTEXT)
     )?.abort(BACKGROUND_CONTEXT);
   }
 
@@ -204,11 +205,12 @@ export async function deleteAccount(ownerId: string) {
     await removeConnector(id);
   }
 
-  await harness.commit(async (tx) => {
+  await harness().commit(async (tx) => {
     await tx.retireDoc(ComputerDoc, ownerId);
     await tx.retireDoc(MemoryDoc, ownerId);
     await tx.retireDoc(PreferencesDoc, ownerId);
     await tx.retireDoc(ProfileDoc, ownerId);
+    await tx.retireDoc(ScheduledChatsDoc, ownerId);
     await tx.retireDoc(SkillsDoc, ownerId);
   }, BACKGROUND_CONTEXT);
 

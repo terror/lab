@@ -161,7 +161,7 @@ async function watchPlan(conversation: Conversation) {
     await tx.doc(PlanDoc, conversation.id);
   }, BACKGROUND_CONTEXT);
 
-  return harness.watchDoc(PlanDoc, conversation.id, BACKGROUND_CONTEXT);
+  return harness().watchDoc(PlanDoc, conversation.id, BACKGROUND_CONTEXT);
 }
 
 const conversations = new Hono()
@@ -204,7 +204,7 @@ const conversations = new Hono()
   .get('/:id', idParam, ownedChat, async (c) => {
     const { conversation } = c.var;
 
-    const doc = await harness.snapshot(
+    const doc = await harness().snapshot(
       TitleDoc,
       conversation.id,
       BACKGROUND_CONTEXT
@@ -365,7 +365,7 @@ const conversations = new Hono()
 
       const { steer, ...draft } = c.req.valid('json');
 
-      const agent = await harness.snapshot(
+      const agent = await harness().snapshot(
         AgentDoc,
         conversation.id,
         BACKGROUND_CONTEXT
@@ -412,7 +412,7 @@ const conversations = new Hono()
 
       const { conversation } = c.var;
 
-      const result = await harness.abortSubmission(
+      const result = await harness().abortSubmission(
         submissionId as SubmissionId,
         BACKGROUND_CONTEXT,
         conversation.id

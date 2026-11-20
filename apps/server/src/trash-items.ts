@@ -53,7 +53,7 @@ function trashed(ownerId: string, id: number) {
 }
 
 async function purgeChat(ownerId: string, id: number) {
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -230,7 +230,7 @@ export async function moveToTrash(
 
   for (const chat of chats ?? []) {
     if (chat !== running) {
-      const conversation = await harness.conversation(
+      const conversation = await harness().conversation(
         chat as ConversationId,
         BACKGROUND_CONTEXT
       );
