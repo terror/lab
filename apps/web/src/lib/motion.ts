@@ -27,6 +27,10 @@ export const roll = {
   turn: { duration: 300, easing: `cubic-bezier(${easeOut.join(', ')})` },
 } as const;
 
+export const tween = {
+  sink: { duration: 0.18, ease: easeIn },
+} as const satisfies Record<string, Transition>;
+
 export const stagger = 0.03;
 
 export const story = 0.5;
