@@ -4,14 +4,15 @@ import { render } from 'vitest-browser-react';
 
 import { HomeFrame } from './home-frame';
 
-test('the anchor stays at 38% of the frame however much sits around it, holds at 14rem in a short frame, and leaves room for the box in a very short one', async () => {
+test('the anchor stays at 38% of the frame while what sits above fits, holds at 14rem in a short frame, leaves room for the box in a very short one, and gives way before anything above is cut off', async () => {
   const tops = [];
 
   for (const [height, lines] of [
     ['h-200', 1],
-    ['h-200', 9],
-    ['h-125', 9],
+    ['h-200', 5],
+    ['h-125', 5],
     ['h-75', 1],
+    ['h-125', 9],
   ] as const) {
     const screen = await render(
       <div className={height}>
@@ -39,5 +40,5 @@ test('the anchor stays at 38% of the frame however much sits around it, holds at
     await screen.unmount();
   }
 
-  expect(tops).toEqual([304, 304, 224, 172]);
+  expect(tops).toEqual([304, 304, 224, 172, 372]);
 });

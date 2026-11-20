@@ -42,7 +42,7 @@ function BriefToken({
     <button
       data-slot='brief-token'
       className={cn(
-        'hit-area relative -mx-1 inline-flex items-baseline gap-1.5 rounded-sm px-1 font-medium text-foreground before:absolute before:inset-0 before:-z-1 before:rounded-sm before:transition-colors hover:before:bg-muted pointer-coarse:after:-z-1',
+        'hit-area relative -mx-1 inline-flex items-baseline gap-1 rounded-sm px-1 font-medium text-foreground before:absolute before:inset-0 before:-z-1 before:rounded-sm before:transition-colors hover:before:bg-muted pointer-coarse:after:-z-1',
         className
       )}
       type='button'
