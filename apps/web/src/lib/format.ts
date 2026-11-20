@@ -9,17 +9,20 @@ const otherYear = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-const currency = new Intl.NumberFormat('en-US', {
+const currencyFormat = {
   currency: 'USD',
   style: 'currency',
-});
+} as const satisfies Intl.NumberFormatOptions;
 
-const precise = new Intl.NumberFormat('en-US', {
-  currency: 'USD',
+const preciseFormat = {
+  ...currencyFormat,
   maximumFractionDigits: 4,
   minimumFractionDigits: 4,
-  style: 'currency',
-});
+} as const satisfies Intl.NumberFormatOptions;
+
+const currency = new Intl.NumberFormat('en-US', currencyFormat);
+
+const precise = new Intl.NumberFormat('en-US', preciseFormat);
 
 const sizeUnits = ['B', 'KB', 'MB', 'GB'] as const;
 
@@ -51,6 +54,10 @@ export function formatBytes(size: number) {
   );
 
   return `${sizeNumber.format(size / 1000 ** power)} ${sizeUnits[power]}`;
+}
+
+export function spendFormat(value: number) {
+  return value > 0 && value < 1 ? preciseFormat : currencyFormat;
 }
 
 export function formatSpend(value: number) {
