@@ -87,3 +87,37 @@ test('a building artifact draws one more cell of its face for every 600 characte
 
   expect(lit).toEqual(['6.5,6.5', '6.5,0.5', '3.5,6.5', '9.5,6.5']);
 });
+
+function building(content: string) {
+  return (
+    <ToolConversation value={7}>
+      {artifactRenderers.artifact_create.inline({
+        active: true,
+        args: { content, id: 'foo', title: 'bar' },
+        callId: 'baz',
+        details: undefined,
+        history: [],
+        output: '',
+      })}
+    </ToolConversation>
+  );
+}
+
+test('a building artifact holds its frame’s room before the first character arrives', async () => {
+  const { screen } = await renderWithQuery(building(''));
+
+  const reserved = screen.container.querySelector<HTMLElement>(
+    '[data-slot=skeleton]'
+  )?.style.height;
+
+  await screen.rerender(building('<p>qux</p>'));
+
+  await expect
+    .poll(() => screen.container.querySelector('iframe')?.style.height)
+    .toBe('360px');
+
+  expect({
+    reserved,
+    skeleton: screen.container.querySelector('[data-slot=skeleton]'),
+  }).toEqual({ reserved: '360px', skeleton: null });
+});
