@@ -1,7 +1,8 @@
-import { PinMenu } from '@/components/artifact-apps';
+import { PinMenu, useAppStatus } from '@/components/artifact-apps';
 import { SandboxFrame } from '@/components/sandbox-frame';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusNote } from '@/components/ui/status-note';
 import { Unavailable } from '@/components/unavailable';
 import { artifactCalls, useArtifact } from '@/lib/artifacts';
 import { useLibraryImages } from '@/lib/library';
@@ -9,14 +10,18 @@ import { Link, useParams } from '@tanstack/react-router';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 
-export function ArtifactPage() {
-  const { artifactId, conversationId } = useParams({
-    from: '/chat/apps/$conversationId/$artifactId',
-  });
-
+function AppPage({
+  artifactId,
+  conversationId,
+}: {
+  artifactId: string;
+  conversationId: number;
+}) {
   const artifact = useArtifact(conversationId, artifactId);
 
   const html = useLibraryImages(artifact.data?.content ?? '');
+
+  const { status } = useAppStatus(conversationId, artifactId);
 
   const onCall = useMemo(
     () => artifactCalls(conversationId, artifactId),
@@ -46,6 +51,7 @@ export function ArtifactPage() {
     <div className='flex min-h-0 flex-1 flex-col'>
       <header className='flex h-12 shrink-0 items-center gap-2 px-4'>
         <h1 className='truncate text-sm font-medium'>{title}</h1>
+        <StatusNote>{status}</StatusNote>
         <div className='ml-auto flex items-center gap-1'>
           <Button asChild size='icon' variant='quiet'>
             <Link
@@ -67,5 +73,19 @@ export function ArtifactPage() {
         <SandboxFrame html={html} onCall={onCall} title={title} />
       </div>
     </div>
+  );
+}
+
+export function ArtifactPage() {
+  const { artifactId, conversationId } = useParams({
+    from: '/chat/apps/$conversationId/$artifactId',
+  });
+
+  return (
+    <AppPage
+      key={`${conversationId}:${artifactId}`}
+      artifactId={artifactId}
+      conversationId={conversationId}
+    />
   );
 }

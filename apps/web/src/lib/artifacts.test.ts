@@ -1,7 +1,8 @@
 import { requestUrl, stubFetch } from '@/test/helpers';
 import { expect, test } from 'vitest';
+import { renderHook } from 'vitest-browser-react';
 
-import { artifactCalls } from './artifacts';
+import { artifactCalls, useArtifactActivity } from './artifacts';
 
 test('artifact calls reach the store one at a time and ask only on a gesture', async () => {
   const pending: (() => void)[] = [];
@@ -74,4 +75,27 @@ test('artifact calls reach the store one at a time and ask only on a gesture', a
     ],
     waiting: 1,
   });
+});
+
+test('an app counts as asking Lab while its lab.ask is pending', async () => {
+  const answers: (() => void)[] = [];
+
+  stubFetch(
+    () =>
+      new Promise((resolve) =>
+        answers.push(() => resolve(Response.json({ text: 'baz' })))
+      )
+  );
+
+  const { result } = await renderHook(() => useArtifactActivity(1, 'foo'));
+
+  const asked = artifactCalls(1, 'foo')('ask', { prompt: 'bar' }, true);
+
+  await expect.poll(() => result.current).toEqual({ asking: 1 });
+
+  answers[0]?.();
+
+  await asked;
+
+  await expect.poll(() => result.current).toEqual({ asking: 0 });
 });

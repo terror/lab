@@ -1,6 +1,7 @@
 import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 import { notFound } from '@tanstack/react-router';
 import type { InferResponseType } from 'hono/client';
+import { useSyncExternalStore } from 'react';
 import { z } from 'zod';
 
 import { call, callIfFound, client } from './client';
@@ -30,10 +31,46 @@ export function appSeed(conversationId: number, artifactId: string) {
   return `app:${conversationId}:${artifactId}` as const;
 }
 
+type Activity = { asking: number };
+
+const idle: Activity = { asking: 0 };
+
+const activities = new Map<string, Activity>();
+
+const watchers = new Set<() => void>();
+
+function report(key: string, change: (activity: Activity) => Activity) {
+  activities.set(key, change(activities.get(key) ?? idle));
+
+  for (const watcher of watchers) {
+    watcher();
+  }
+}
+
+function watch(watcher: () => void) {
+  watchers.add(watcher);
+
+  return () => {
+    watchers.delete(watcher);
+  };
+}
+
+export function useArtifactActivity(
+  conversationId: number | undefined,
+  artifactId: string
+) {
+  const key =
+    conversationId === undefined ? '' : appSeed(conversationId, artifactId);
+
+  return useSyncExternalStore(watch, () => activities.get(key) ?? idle);
+}
+
 export function artifactCalls(conversationId: number, artifactId: string) {
   const param = { artifactId, id: String(conversationId) };
 
   const artifact = client.conversations[':id'].artifacts[':artifactId'];
+
+  const seed = appSeed(conversationId, artifactId);
 
   let saving = Promise.resolve<unknown>(undefined);
 
@@ -55,8 +92,14 @@ export function artifactCalls(conversationId: number, artifactId: string) {
           );
         }
 
-        return (await call(artifact.ask.$post({ json: { prompt }, param })))
-          .text;
+        report(seed, ({ asking }) => ({ asking: asking + 1 }));
+
+        try {
+          return (await call(artifact.ask.$post({ json: { prompt }, param })))
+            .text;
+        } finally {
+          report(seed, ({ asking }) => ({ asking: asking - 1 }));
+        }
       }),
     ],
     [
