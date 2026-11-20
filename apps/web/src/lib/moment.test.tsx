@@ -148,9 +148,10 @@ test('asking again leaves a playing moment alone, whether the budget or a hidden
 
   const marks = [[fizz.result.current.mark, hop.result.current.mark]];
 
+  await act(() => fizz.result.current.play());
+
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
 
-  await act(() => fizz.result.current.play());
   await act(() => hop.result.current.play());
 
   marks.push([fizz.result.current.mark, hop.result.current.mark]);
