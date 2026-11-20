@@ -12,7 +12,6 @@ import {
   setBudget,
 } from '@/lib/usage';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type SubmitEvent, useEffect, useState } from 'react';
@@ -26,18 +25,25 @@ const messages = {
 
 const pouredKey = 'lab:poured';
 
-function usePour() {
-  const quiet = useQuiet();
-
+function Flask({ limit, spent }: { limit: number; spent: number }) {
   const [pour] = useState(
-    () => !quiet && window.sessionStorage.getItem(pouredKey) === null
+    () => window.sessionStorage.getItem(pouredKey) === null
   );
 
   useEffect(() => {
     window.sessionStorage.setItem(pouredKey, 'true');
   }, []);
 
-  return pour;
+  return (
+    <Meter
+      label='Monthly budget used'
+      pour={pour}
+      tone={budgetLevel({ limit, spent })}
+      value={spent / limit}
+      valueText={`${formatSpend(spent)} of ${formatSpend(limit)}`}
+      variant='flask'
+    />
+  );
 }
 
 function month() {
@@ -144,8 +150,6 @@ function BudgetForm({ budget }: { budget: Budget }) {
 export function BudgetPanel() {
   const budget = useQuery(budgetQueryOptions);
 
-  const pour = usePour();
-
   if (!budget.data) {
     return null;
   }
@@ -154,15 +158,7 @@ export function BudgetPanel() {
 
   return (
     <Card className='flex-row items-start gap-5' variant='outline'>
-      {limit !== null && (
-        <Meter
-          label='Monthly budget used'
-          pour={pour}
-          tone={budgetLevel(budget.data)}
-          value={spent / limit}
-          variant='flask'
-        />
-      )}
+      {limit !== null && <Flask limit={limit} spent={spent} />}
       <div className='flex min-w-0 flex-1 flex-col gap-4'>
         <div className='flex flex-col gap-1'>
           <h2 className='text-sm font-medium'>Monthly budget</h2>
