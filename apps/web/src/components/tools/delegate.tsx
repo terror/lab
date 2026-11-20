@@ -46,8 +46,14 @@ function subagents({ args, details }: ToolView): Subagent[] {
   );
 }
 
-function finished(list: readonly Subagent[]) {
-  return list.filter(({ status }) => status === 'done').length;
+function tally(list: readonly Subagent[], status: Subagent['status']) {
+  return list.filter((subagent) => subagent.status === status).length;
+}
+
+function failures(list: readonly Subagent[]) {
+  const failed = tally(list, 'failed');
+
+  return failed > 0 ? ` · ${failed} failed` : '';
 }
 
 const FOLD_DELAY_MS = 700;
@@ -94,6 +100,17 @@ function Row({
     return heading;
   }
 
+  if (state === 'failed') {
+    return (
+      <>
+        {heading}
+        <p className='pb-1.5 pl-6 text-sm wrap-break-word text-destructive'>
+          {summary}
+        </p>
+      </>
+    );
+  }
+
   return (
     <TraceCollapsible>
       <TraceCollapsibleTrigger>{heading}</TraceCollapsibleTrigger>
@@ -133,12 +150,13 @@ function Subagents(view: ToolView) {
       <TraceCollapsible onOpenChange={setOpen} open={open}>
         <CollapsibleTrigger className='group/lanes flex w-full items-center gap-2 rounded-control text-left text-sm'>
           <Split aria-hidden='true' className='size-4 text-muted-foreground' />
-          <span className='font-medium'>{plural(list.length, 'subagent')}</span>
-          <ProgressCount
-            className='ml-auto'
-            done={finished(list)}
-            total={list.length}
-          />
+          <span className='min-w-0 truncate font-medium'>
+            {plural(list.length, 'subagent')}
+          </span>
+          <span className='ml-auto text-xs whitespace-nowrap text-muted-foreground tabular-nums'>
+            <ProgressCount done={tally(list, 'done')} total={list.length} />
+            {failures(list)}
+          </span>
           <ChevronRight
             aria-hidden='true'
             className='size-4 text-muted-foreground transition-transform group-aria-expanded/lanes:rotate-90'
@@ -166,7 +184,7 @@ export const delegateRenderers = {
       const list = subagents(view);
 
       return list.length > 0
-        ? `${finished(list)} of ${list.length} done`
+        ? `${tally(list, 'done')} of ${list.length} done${failures(list)}`
         : undefined;
     },
     title: (view) => {

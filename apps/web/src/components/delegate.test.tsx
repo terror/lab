@@ -1,5 +1,5 @@
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { type ToolView, toolRenderer } from './tools';
 
@@ -30,7 +30,7 @@ async function rows(active: boolean) {
   return { screen, states };
 }
 
-test('a delegate call lists its subagents and opens their reports', async () => {
+test('a delegate call lists its subagents, shows why one failed and opens their reports', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -48,12 +48,12 @@ test('a delegate call lists its subagents and opens their reports', async () => 
   await expect.element(stopped.screen.getByText('baz')).toBeVisible();
 
   expect([working.states, stopped.states]).toEqual([
-    ['fooDone', 'barFailed', 'bobRunning'],
-    ['fooDone', 'barFailed', 'bobStopped'],
+    ['fooDone', 'barFailedqux', 'bobRunning'],
+    ['fooDone', 'barFailedqux', 'bobStopped'],
   ]);
 });
 
-function lanes(status: 'done' | 'running') {
+function lanes(status: 'done' | 'failed' | 'running') {
   return toolRenderer('delegate').inline?.({
     ...view,
     active: true,
@@ -78,4 +78,62 @@ test('a delegate call folds its lanes once every subagent is done', async () => 
   await expect
     .element(screen.getByRole('list'))
     .toHaveTextContent('fooDonebarDone');
+});
+
+async function expanded(status: 'done' | 'failed') {
+  const { screen } = await renderWithQuery(lanes('running'));
+
+  await screen.rerender(lanes(status));
+
+  vi.advanceTimersByTime(700);
+
+  await screen.rerender(lanes(status));
+
+  const state = screen
+    .getByRole('button', { name: /2 subagents/ })
+    .element()
+    .getAttribute('aria-expanded');
+
+  await screen.unmount();
+
+  return state;
+}
+
+test('a delegate call stays open when a subagent failed', async ({
+  onTestFinished,
+}) => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  expect([await expanded('done'), await expanded('failed')]).toEqual([
+    'false',
+    'true',
+  ]);
+});
+
+async function header(status: 'done' | 'failed' | 'running') {
+  const { screen } = await renderWithQuery(lanes(status));
+
+  const text = screen
+    .getByRole('button', { name: /2 subagents/ })
+    .element().textContent;
+
+  await screen.unmount();
+
+  return text;
+}
+
+test('a delegate call counts the subagents that are done and the ones that failed', async () => {
+  expect([
+    await header('running'),
+    await header('done'),
+    await header('failed'),
+  ]).toEqual([
+    '2 subagents1 of 2 done',
+    '2 subagents2 of 2 done',
+    '2 subagents1 of 2 done · 1 failed',
+  ]);
 });
