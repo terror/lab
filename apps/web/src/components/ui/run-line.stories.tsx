@@ -10,6 +10,7 @@ import {
   RunLineTime,
   RunLineToggle,
   RunLineVerb,
+  RunTab,
 } from './run-line';
 import { TraceCollapsible, TraceCollapsibleContent } from './trace';
 
@@ -116,6 +117,28 @@ export const Narrow = meta.story({
         <TraceCollapsibleContent>Twelve steps</TraceCollapsibleContent>
       </TraceCollapsible>
       <p className='text-sm'>The line above stays one row high.</p>
+    </div>
+  ),
+});
+
+export const Docked = meta.story({
+  render: () => (
+    <div className='flex items-end gap-3'>
+      <RunTab>
+        <span className='sr-only'>Show what Lab is doing: </span>
+        <RunLine fit mark={<LiveMark className='size-3.5' state='thinking' />}>
+          <RunLineVerb live>Reading carris.pt/avisos</RunLineVerb>
+          <RunLineTime>34s</RunLineTime>
+        </RunLine>
+      </RunTab>
+      <RunTab>
+        <RunLine fit mark={<LiveMark className='size-3.5' state='waiting' />}>
+          <RunLineVerb className='text-status-attention-ink'>
+            Needs you
+          </RunLineVerb>
+          <RunLineNote>Which neighbourhood?</RunLineNote>
+        </RunLine>
+      </RunTab>
     </div>
   ),
 });

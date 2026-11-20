@@ -160,6 +160,10 @@ export function resultId(callId: string) {
   return `result-${callId}`;
 }
 
+export function approvalId(callId: string) {
+  return `approval-${callId}`;
+}
+
 export function ToolCards({ call, progress, result, working }: CallProps) {
   const view = useToolView(call, progress, result, working);
 
@@ -174,7 +178,11 @@ export function ToolCards({ call, progress, result, working }: CallProps) {
   return (
     <>
       {approval && (
-        <div className='mt-1.5 mb-2'>
+        <div
+          className='mt-1.5 mb-2 rounded-card'
+          id={approvalId(call.id)}
+          tabIndex={-1}
+        >
           <ApprovalCard
             active={view.active}
             approval={approval}

@@ -1,7 +1,7 @@
 import { Markdown } from '@/components/markdown';
 import { MessageActions, type Retry } from '@/components/message-actions';
 import { Plan } from '@/components/plan';
-import { type Retry as Backoff, Run } from '@/components/run';
+import { type Retry as Backoff, Run, RunHead } from '@/components/run';
 import { ToolCards } from '@/components/tool-steps';
 import type { ToolProgress, ToolResult } from '@/components/tools';
 import { LiveMark } from '@/components/ui/live-mark';
@@ -19,7 +19,7 @@ import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import { m } from 'motion/react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useContext, useState } from 'react';
 
 export type { ToolProgress, ToolResult };
 
@@ -128,7 +128,16 @@ export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
 
 const noRounds: readonly Round[] = [];
 
-function Arrival({ children, late }: { children: ReactNode; late: boolean }) {
+function Arrival({
+  anchor,
+  children,
+  late,
+}: {
+  anchor: boolean;
+  children: ReactNode;
+  late: boolean;
+}) {
+  const register = useContext(RunHead);
   const [glide] = useState(late);
   const [settled, setSettled] = useState(!late);
 
@@ -140,7 +149,9 @@ function Arrival({ children, late }: { children: ReactNode; late: boolean }) {
       onAnimationComplete={() => setSettled(true)}
       transition={{ ...fade.base, height: spring.glide }}
     >
-      <div className='pb-3'>{children}</div>
+      <div className='pb-3' ref={anchor ? register : undefined}>
+        {children}
+      </div>
     </m.div>
   );
 }
@@ -150,6 +161,7 @@ export function AssistantMessage({
   backoff,
   clock,
   failure,
+  hop,
   latest = false,
   model,
   onRetry,
@@ -169,6 +181,7 @@ export function AssistantMessage({
   backoff?: Backoff;
   clock?: Clock;
   failure?: RunFailureReason;
+  hop?: 'done' | 'proud';
   latest?: boolean;
   model?: ModelChoice;
   onRetry?: Retry;
@@ -218,11 +231,12 @@ export function AssistantMessage({
     <Message>
       <MessageContent className='gap-3 text-base'>
         {shown && (
-          <Arrival late={hidden}>
+          <Arrival anchor={latest || working} late={hidden}>
             <Run
               activity={activity}
               clock={clock}
               failed={failure !== undefined}
+              hop={hop}
               latest={latest}
               progress={progress}
               results={results}

@@ -107,11 +107,11 @@ export const moments = {
     use: 'A square caret pulses at the end of a reply while it streams.',
   },
   'chat.thinking': {
-    plain: 'Always “Thinking”.',
+    plain: 'It only says the model is slow right now.',
     quiet: 'plain',
     reduced: 'still',
     tier: 'run',
-    use: 'The thinking line says more as a wait passes 4, 20 and 90 seconds.',
+    use: 'A run’s line adds “still on it” when the model has been silent for twenty seconds.',
   },
   'copy.fold': {
     plain: 'The icon swaps to a check.',

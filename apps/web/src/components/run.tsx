@@ -1,5 +1,6 @@
 import { approvalOf } from '@/components/approval-card';
 import {
+  approvalId,
   type Call,
   callStatus,
   Pause,
@@ -16,6 +17,7 @@ import {
   toolRenderer,
   type ToolResult,
 } from '@/components/tools';
+import { text } from '@/components/tools/format';
 import { Dot } from '@/components/ui/dot';
 import { LiveMark } from '@/components/ui/live-mark';
 import {
@@ -27,15 +29,17 @@ import {
   RunLineTime,
   RunLineToggle,
   RunLineVerb,
+  RunTab,
 } from '@/components/ui/run-line';
 import {
   TraceCollapsible,
   TraceCollapsibleContent,
 } from '@/components/ui/trace';
 import { useAhem, useAnswer } from '@/lib/asking';
-import { cheerFor, useCheer } from '@/lib/cheer';
+import { cheerFor } from '@/lib/cheer';
 import { plural } from '@/lib/format';
 import { locate } from '@/lib/locate';
+import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import { type Clock, presence, usePresence } from '@/lib/presence';
 import { type Step, worked } from '@/lib/spans';
@@ -45,7 +49,13 @@ import type { Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import { say, useQuiet } from '@/lib/voice';
 import { AnimatePresence, m } from 'motion/react';
-import { type ReactNode, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 type Results = ReadonlyMap<string, ToolResult>;
 
@@ -121,25 +131,25 @@ const poses = {
   writing: 'idle',
 } as const;
 
-function LiveLine({
-  activity,
-  calls,
-  clock,
-  open,
-  progress,
-  results,
-  retry,
-  writing,
-}: {
+type Live = {
   activity: string | undefined;
   calls: readonly Call[];
   clock: Clock | undefined;
-  open: boolean;
   progress: Progress;
   results: Results;
   retry: Retry | undefined;
   writing: boolean;
-}) {
+};
+
+function useLive({
+  activity,
+  calls,
+  clock,
+  progress,
+  results,
+  retry,
+  writing,
+}: Live) {
   const quiet = useQuiet();
 
   const history = useContext(ToolHistory);
@@ -154,10 +164,10 @@ function LiveLine({
 
   const approval = approvalOf(view?.details);
 
+  const pending = approval !== undefined && approval.decision === undefined;
+
   const asking =
-    current !== undefined &&
-    (current.name === 'ask_user' ||
-      (approval !== undefined && approval.decision === undefined));
+    current !== undefined && (current.name === 'ask_user' || pending);
 
   const ahem = useAhem(current?.id ?? '', asking && !quiet);
 
@@ -165,7 +175,7 @@ function LiveLine({
 
   const settled = useSettled(done);
 
-  const { band, elapsed, pose, slow, stall } = usePresence(clock, {
+  const shown = usePresence(clock, {
     tool: current !== undefined,
     waiting: asking,
     writing,
@@ -180,7 +190,7 @@ function LiveLine({
     );
 
   const verbs = [
-    asking && approval && 'Waiting for your approval',
+    asking && pending && 'Waiting for your approval',
     asking && 'Waiting for your answer',
     retry && 'Retrying',
     past(settled),
@@ -192,7 +202,76 @@ function LiveLine({
 
   const label = useSteady(verb, HOLD_MS);
 
-  const paused = asking || retry !== undefined;
+  const state = asking && ahem ? 'ahem' : poses[shown.pose];
+
+  const asked = pending ? approval.action : text(current?.arguments.question);
+
+  const anchor = pending ? approvalId : resultId;
+
+  return {
+    ...shown,
+    asking,
+    done,
+    label,
+    mark:
+      asking && quiet ? (
+        <Dot tone='attention' />
+      ) : (
+        <LiveMark className='size-3.5' state={answer ?? state} />
+      ),
+    paused: asking || retry !== undefined,
+    prompt: asking ? asked : undefined,
+    target: asking && current ? anchor(current.id) : undefined,
+    tick: label === past(done.at(-1)),
+    verb,
+  };
+}
+
+function Verb({
+  label,
+  live,
+  tick,
+}: {
+  label: string;
+  live: boolean;
+  tick: boolean;
+}) {
+  return (
+    <AnimatePresence initial={false} mode='popLayout'>
+      <m.span
+        key={label}
+        animate={{ opacity: 1, y: 0 }}
+        className='flex min-w-12 shrink-100'
+        exit={{ opacity: 0, y: -4 }}
+        initial={{ opacity: 0, y: 4 }}
+        transition={{ ...fade.base, y: spring.snap }}
+      >
+        <RunLineVerb live={live} tick={tick}>
+          {label}
+        </RunLineVerb>
+      </m.span>
+    </AnimatePresence>
+  );
+}
+
+function LiveLine({ open, ...run }: Live & { open: boolean }) {
+  const voiced = useMoment('chat.thinking');
+
+  const { calls, clock, retry } = run;
+
+  const {
+    band,
+    done,
+    elapsed,
+    label,
+    mark,
+    paused,
+    pose,
+    slow,
+    stall,
+    tick,
+    verb,
+  } = useLive(run);
 
   const timed = (band === 'summary' || band === 'leave') && !paused;
 
@@ -206,37 +285,14 @@ function LiveLine({
 
   const now = clock && clock.start + clock.waited + elapsed;
 
-  const state = asking && ahem ? 'ahem' : poses[pose];
-
   return (
-    <RunLine
-      mark={
-        asking && quiet ? (
-          <Dot tone='attention' />
-        ) : (
-          <LiveMark className='size-3.5' state={answer ?? state} />
-        )
-      }
-      stall={stall}
-    >
+    <RunLine mark={mark} stall={stall}>
       {(band !== 'mark' || paused) && (
-        <AnimatePresence initial={false} mode='popLayout'>
-          <m.span
-            key={label}
-            animate={{ opacity: 1, y: 0 }}
-            className='flex min-w-12 shrink-100'
-            exit={{ opacity: 0, y: -4 }}
-            initial={{ opacity: 0, y: 4 }}
-            transition={{ ...fade.base, y: spring.snap }}
-          >
-            <RunLineVerb
-              live={pose === 'pondering' || pose === 'working'}
-              tick={label === past(done.at(-1))}
-            >
-              {label}
-            </RunLineVerb>
-          </m.span>
-        </AnimatePresence>
+        <Verb
+          label={label}
+          live={pose === 'pondering' || pose === 'working'}
+          tick={tick}
+        />
       )}
       {timed && <RunLineTime>{duration(elapsed)}</RunLineTime>}
       {steps && (
@@ -246,7 +302,7 @@ function LiveLine({
       {leave && <RunLineNote>You can leave this</RunLineNote>}
       {stalled && (
         <RunLineNote className='shrink-10000'>
-          {say('stall', undefined, { quiet, seed: '' })}
+          {say('stall', undefined, { quiet: !voiced.on, seed: '' })}
         </RunLineNote>
       )}
       {retry && <RunLineSummary>{retry.error}</RunLineSummary>}
@@ -256,6 +312,57 @@ function LiveLine({
         {retry ? 'Retrying' : (stages[pose] ?? verb)}
       </output>
     </RunLine>
+  );
+}
+
+function DockLive({ onJump, ...run }: Live & { onJump: () => void }) {
+  const {
+    asking,
+    band,
+    elapsed,
+    label,
+    mark,
+    paused,
+    pose,
+    prompt,
+    stall,
+    target,
+    tick,
+  } = useLive(run);
+
+  const timed = (band === 'summary' || band === 'leave') && !paused;
+
+  if (asking) {
+    return (
+      <RunTab
+        onClick={() => {
+          if (!(target && locate(target))) {
+            onJump();
+          }
+        }}
+      >
+        <RunLine fit mark={mark}>
+          <RunLineVerb className='shrink-0 text-status-attention-ink'>
+            Needs you
+          </RunLineVerb>
+          {prompt && <RunLineNote>{prompt}</RunLineNote>}
+        </RunLine>
+      </RunTab>
+    );
+  }
+
+  return (
+    <RunTab onClick={onJump}>
+      <span className='sr-only'>Show what Lab is doing: </span>
+      <RunLine fit mark={mark} stall={stall}>
+        <Verb
+          label={label}
+          live={pose === 'pondering' || pose === 'working'}
+          tick={tick}
+        />
+        {timed && <RunLineTime roomy>{duration(elapsed)}</RunLineTime>}
+      </RunLine>
+    </RunTab>
   );
 }
 
@@ -386,10 +493,65 @@ function Detail({ call, results }: { call: Call; results: Results }) {
   return <ToolBody {...view} name={call.name} />;
 }
 
+function callsOf(steps: readonly Step[]) {
+  return steps.flatMap((step) => (step.kind === 'tool' ? [step.call] : []));
+}
+
+const cheers = {
+  done: 'run.done',
+  idle: undefined,
+  proud: 'run.proud',
+} as const;
+
+export function cheerOf(
+  steps: readonly Step[],
+  span: Span | undefined,
+  results: Results
+) {
+  const calls = callsOf(steps);
+
+  return cheers[cheerFor(worked(span, calls, results) ?? 0, calls.length)];
+}
+
+export function asks(
+  steps: readonly Step[],
+  progress: Progress,
+  results: Results
+) {
+  const current = callsOf(steps).findLast(({ id }) => !results.has(id));
+
+  const approval = approvalOf(current && progress.get(current.id)?.details);
+
+  return (
+    current !== undefined &&
+    (current.name === 'ask_user' ||
+      (approval !== undefined && approval.decision === undefined))
+  );
+}
+
+type Hop = 'done' | 'proud' | undefined;
+
+export const RunHead = createContext<
+  ((element: HTMLElement | null) => void) | undefined
+>(undefined);
+
+type RunProps = {
+  activity: string | undefined;
+  clock: Clock | undefined;
+  progress: Progress;
+  results: Results;
+  retry: Retry | undefined;
+  span: Span | undefined;
+  steps: readonly Step[];
+  working: boolean;
+  writing: boolean;
+};
+
 export function Run({
   activity,
   clock,
   failed,
+  hop,
   latest,
   progress,
   results,
@@ -398,28 +560,12 @@ export function Run({
   steps,
   working,
   writing,
-}: {
-  activity: string | undefined;
-  clock: Clock | undefined;
-  failed: boolean;
-  latest: boolean;
-  progress: Progress;
-  results: Results;
-  retry: Retry | undefined;
-  span: Span | undefined;
-  steps: readonly Step[];
-  working: boolean;
-  writing: boolean;
-}) {
-  const quiet = useQuiet();
-
-  const cheer = useCheer(working);
+}: RunProps & { failed: boolean; hop: Hop; latest: boolean }) {
+  const living = useMoment('run.mark');
 
   const [open, setOpen] = useState(false);
 
-  const calls = steps.flatMap((step) =>
-    step.kind === 'tool' ? [step.call] : []
-  );
+  const calls = callsOf(steps);
 
   const total = worked(span, calls, results);
 
@@ -427,13 +573,6 @@ export function Run({
 
   const single =
     !working && calls.length === 1 && (total ?? 0) < presence.bands.summary;
-
-  const marks = {
-    cheer: cheerFor(total ?? 0, calls.length),
-    held: 'idle',
-    rest: 'idle',
-    working: 'idle',
-  } as const;
 
   return (
     <TraceCollapsible onOpenChange={setOpen} open={open}>
@@ -452,9 +591,9 @@ export function Run({
         <Receipt
           calls={calls}
           mark={
-            !quiet &&
+            living.on &&
             latest &&
-            !failed && <LiveMark className='size-3.5' state={marks[cheer]} />
+            !failed && <LiveMark className='size-3.5' state={hop ?? 'idle'} />
           }
           onOpen={() => setOpen(true)}
           open={open}
@@ -484,6 +623,50 @@ export function Run({
         )}
       </TraceCollapsibleContent>
     </TraceCollapsible>
+  );
+}
+
+export function Dock({
+  hop,
+  onJump,
+  shown,
+  span,
+  steps,
+  working,
+  ...run
+}: RunProps & { hop: Hop; onJump: () => void; shown: boolean }) {
+  const calls = callsOf(steps);
+
+  const total = worked(span, calls, run.results);
+
+  return (
+    <AnimatePresence>
+      {shown && (
+        <m.div
+          key='dock'
+          animate={{ opacity: 1, y: 0 }}
+          className='absolute bottom-full left-8 flex w-max max-w-1/3 translate-y-px'
+          exit={{ opacity: 0, transition: fade.leave, y: 8 }}
+          initial={{ opacity: 0, y: 8 }}
+          transition={{ ...fade.base, y: spring.snap }}
+        >
+          {working ? (
+            <DockLive {...run} calls={calls} onJump={onJump} />
+          ) : (
+            <RunTab onClick={onJump}>
+              <span className='sr-only'>Show the finished run: </span>
+              <RunLine fit mark={<LiveMark className='size-3.5' state={hop} />}>
+                <RunLineVerb>
+                  {total === undefined
+                    ? 'Worked'
+                    : `Worked for ${duration(total)}`}
+                </RunLineVerb>
+              </RunLine>
+            </RunTab>
+          )}
+        </m.div>
+      )}
+    </AnimatePresence>
   );
 }
 
