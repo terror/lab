@@ -2,6 +2,7 @@ import { UserAvatar } from '@/components/account-menu';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ErrorMessage } from '@/components/error-message';
 import { LoadError } from '@/components/load-error';
+import { SettingRow } from '@/components/setting-row';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
 import { PageHeader } from '@/components/ui/page';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusNote } from '@/components/ui/status-note';
 import { Textarea } from '@/components/ui/textarea';
 import { signOut, useUser } from '@/lib/auth';
 import {
@@ -29,14 +31,25 @@ import {
 } from '@/lib/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, ImagePlus, LoaderCircle, Trash2 } from 'lucide-react';
-import { type SubmitEvent, useRef, useState } from 'react';
+import { type SubmitEvent, useId, useRef, useState } from 'react';
 
-function Instructions({ initial }: { initial: string }) {
-  const [value, setValue] = useState(initial);
-
-  const save = useMemoryUpdate((instructions: string) =>
+function useInstructionsUpdate() {
+  return useMemoryUpdate((instructions: string) =>
     updateMemory({ instructions })
   );
+}
+
+function Instructions({
+  initial,
+  save,
+}: {
+  initial: string;
+  save: ReturnType<typeof useInstructionsUpdate>;
+}) {
+  const [value, setValue] = useState(initial);
+  const description = useId();
+
+  const dirty = value !== initial;
 
   const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,25 +57,36 @@ function Instructions({ initial }: { initial: string }) {
   };
 
   return (
-    <form className='flex flex-col gap-3' onSubmit={onSubmit}>
+    <form className='flex flex-col gap-2.5' onSubmit={onSubmit}>
+      <div className='flex min-h-10 items-center gap-3'>
+        <div className='flex min-w-0 flex-1 flex-col gap-0.5 text-sm'>
+          <label className='font-medium' htmlFor='instructions'>
+            Custom instructions
+          </label>
+          <span className='text-muted-foreground' id={description}>
+            What Lab should know about you and how it should respond.
+          </span>
+        </div>
+        <div className='flex shrink-0 items-center gap-2.5'>
+          <StatusNote>
+            {save.isSuccess && !dirty ? 'Saved' : undefined}
+          </StatusNote>
+          {dirty && (
+            <Button disabled={save.isPending} size='sm' type='submit'>
+              Save
+            </Button>
+          )}
+        </div>
+      </div>
       <Textarea
-        aria-label='Custom instructions'
+        aria-describedby={description}
+        className='max-h-80 min-h-24 resize-none'
         id='instructions'
         maxLength={4_000}
         onChange={(event) => setValue(event.target.value)}
         placeholder='I’m a software engineer. Keep answers short and show code first.'
-        rows={5}
         value={value}
       />
-      <div className='flex justify-end'>
-        <Button
-          disabled={value === initial || save.isPending}
-          size='sm'
-          type='submit'
-        >
-          Save
-        </Button>
-      </div>
     </form>
   );
 }
@@ -79,50 +103,59 @@ function Picture() {
   const error = upload.error ?? remove.error;
   const pending = upload.isPending || remove.isPending;
 
-  return (
-    <section className='flex flex-col gap-3'>
-      <SectionHeading>Picture</SectionHeading>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-busy={pending}
-            aria-label='Edit profile picture'
-            className='size-16 rounded-full border-0 p-0'
-            disabled={pending}
-            size='icon'
-            variant='ghost'
-          >
-            <span aria-hidden='true'>
-              <UserAvatar
-                className='size-16 text-lg transition-opacity group-hover/button:opacity-80'
-                user={user}
-              />
-              <span className='absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full bg-background text-muted-foreground shadow-xs ring-2 ring-background group-hover/button:text-foreground'>
-                {pending ? (
-                  <LoaderCircle className='animate-spin' />
-                ) : (
-                  <Camera />
-                )}
-              </span>
+  const control = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-busy={pending}
+          aria-label='Edit profile picture'
+          className='size-10 rounded-full border-0 p-0'
+          disabled={pending}
+          size='icon'
+          variant='ghost'
+        >
+          <span aria-hidden='true'>
+            <UserAvatar
+              className='size-10 transition-opacity group-hover/button:opacity-80'
+              user={user}
+            />
+            <span className='absolute -right-0.5 -bottom-0.5 flex size-4.5 items-center justify-center rounded-full bg-background text-muted-foreground shadow-xs ring-2 ring-background group-hover/button:text-foreground'>
+              {pending ? (
+                <LoaderCircle className='size-3 animate-spin' />
+              ) : (
+                <Camera className='size-3' />
+              )}
             </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onSelect={() => input.current?.click()}>
-            <ImagePlus aria-hidden='true' />
-            {user.image ? 'Change picture' : 'Upload picture'}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end'>
+        <DropdownMenuItem onSelect={() => input.current?.click()}>
+          <ImagePlus aria-hidden='true' />
+          {user.image ? 'Change picture' : 'Upload picture'}
+        </DropdownMenuItem>
+        {user.image && (
+          <DropdownMenuItem
+            onSelect={() => setConfirming(true)}
+            variant='destructive'
+          >
+            <Trash2 aria-hidden='true' />
+            Remove picture
           </DropdownMenuItem>
-          {user.image && (
-            <DropdownMenuItem
-              onSelect={() => setConfirming(true)}
-              variant='destructive'
-            >
-              <Trash2 aria-hidden='true' />
-              Remove picture
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <ul className='flex flex-col gap-0.5'>
+        <SettingRow
+          control={control}
+          description='PNG, JPEG, GIF, or WebP.'
+          label='Picture'
+        />
+      </ul>
       <input
         ref={input}
         accept='image/png,image/jpeg,image/gif,image/webp'
@@ -149,7 +182,7 @@ function Picture() {
         open={confirming}
         title='Remove your picture?'
       />
-    </section>
+    </div>
   );
 }
 
@@ -165,30 +198,37 @@ export function YourData() {
   });
 
   return (
-    <section className='flex flex-col gap-3'>
+    <section className='flex flex-col gap-2'>
       <SectionHeading>Your data</SectionHeading>
-      <p className='text-sm text-muted-foreground'>
-        {admin
-          ? 'Download your chats, settings, and memories.'
-          : 'Download your chats, settings, and memories, or delete your account and everything in it.'}
-      </p>
-      <div className='flex gap-2'>
-        <Button asChild size='sm' variant='outline'>
-          <a download href={exportUrl}>
-            Export data
-          </a>
-        </Button>
+      <ul className='flex flex-col gap-0.5'>
+        <SettingRow
+          control={
+            <Button asChild size='sm' variant='outline'>
+              <a download href={exportUrl}>
+                Export data
+              </a>
+            </Button>
+          }
+          description='Your chats, settings, and memories.'
+          label='Download a copy'
+        />
         {!admin && (
-          <Button
-            disabled={remove.isPending}
-            onClick={() => setConfirming(true)}
-            size='sm'
-            variant='ghost'
-          >
-            Delete account
-          </Button>
+          <SettingRow
+            control={
+              <Button
+                disabled={remove.isPending}
+                onClick={() => setConfirming(true)}
+                size='sm'
+                variant='destructive'
+              >
+                Delete account
+              </Button>
+            }
+            description='Permanently delete your chats, projects, files, memories, connectors, and computer.'
+            label='Delete account'
+          />
         )}
-      </div>
+      </ul>
       {remove.error && <ErrorMessage>{remove.error.message}</ErrorMessage>}
       <ConfirmDialog
         action='Delete account'
@@ -204,19 +244,16 @@ export function YourData() {
 
 export function Profile() {
   const memory = useQuery(memoryQueryOptions);
+  const save = useInstructionsUpdate();
 
   return (
     <>
       <PageHeader
-        description='Your picture and instructions.'
+        description='Your picture, instructions, and data.'
         title='Profile'
       />
-      <Picture />
-      <section className='flex flex-col gap-3'>
-        <SectionHeading>Custom instructions</SectionHeading>
-        <p className='text-sm text-muted-foreground'>
-          What Lab should know about you and how it should respond.
-        </p>
+      <div className='flex flex-col gap-5'>
+        <Picture />
         {memory.isPending && <Skeleton className='h-30 w-full rounded-md' />}
         {memory.isLoadingError && (
           <LoadError
@@ -228,9 +265,10 @@ export function Profile() {
           <Instructions
             key={memory.data.instructions}
             initial={memory.data.instructions}
+            save={save}
           />
         )}
-      </section>
+      </div>
       <YourData />
     </>
   );
