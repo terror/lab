@@ -198,7 +198,7 @@
 }
 
 :root {
-  --home-anchor: 38cqh;
+  --home-anchor: max(38cqh, 17rem);
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 300ms;

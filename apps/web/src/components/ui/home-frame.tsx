@@ -15,7 +15,7 @@ function HomeFrame({
     <div
       data-slot='home-frame'
       className={cn(
-        '@container-size flex min-h-0 flex-1 flex-col overflow-y-auto',
+        '@container-size flex size-full min-h-0 flex-1 scrollbar-gutter-both flex-col overflow-y-auto',
         className
       )}
       {...props}

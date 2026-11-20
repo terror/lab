@@ -12,7 +12,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'One sentence that says what happened while you were away. Each count is a button that jumps to its items, and a count rolls when it changes. Only the count that needs you carries a dot. Pass still for the plain form, which lists the counts and never rolls. The sentence is a polite live region, so a screen reader hears a count change without losing its place.',
+          'One sentence that says what happened while you were away. Each count is a button that jumps to its items, and a count rolls when it changes. Only the count that needs you carries a dot. Pass still to Brief for the plain form, which lists the counts and never rolls. The sentence is a polite live region, so a screen reader hears it again when a count changes. On a touch screen a count’s hit area reaches 44px into free space, and a tap on a count always lands on that count.',
       },
     },
   },
@@ -33,7 +33,7 @@ function Sentence() {
           {finished === 1 ? 'chat finished' : 'chats finished'}
         </BriefToken>{' '}
         and{' '}
-        <BriefToken count={1} tone='attention'>
+        <BriefToken attention count={1}>
           needs you
         </BriefToken>
         .{' '}
@@ -58,18 +58,12 @@ export const Default = meta.story({ render: () => <Sentence /> });
 
 export const Plain = meta.story({
   render: () => (
-    <Brief className='w-96 text-center'>
-      <BriefToken count={1} still>
-        finished
-      </BriefToken>{' '}
-      ·{' '}
-      <BriefToken count={1} still tone='attention'>
+    <Brief className='w-96 text-center' still>
+      <BriefToken count={1}>finished</BriefToken> ·{' '}
+      <BriefToken attention count={1}>
         needs you
       </BriefToken>{' '}
-      ·{' '}
-      <BriefToken count={1} still>
-        running
-      </BriefToken>
+      · <BriefToken count={1}>running</BriefToken>
     </Brief>
   ),
 });

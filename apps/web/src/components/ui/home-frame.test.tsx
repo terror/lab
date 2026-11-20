@@ -4,12 +4,16 @@ import { render } from 'vitest-browser-react';
 
 import { HomeFrame } from './home-frame';
 
-test('the anchor stays at 38% of the frame however much sits above and below it', async () => {
+test('the anchor stays at 38% of the frame, and no higher than 17rem, however much sits around it', async () => {
   const tops = [];
 
-  for (const lines of [1, 3]) {
+  for (const [height, lines] of [
+    ['h-200', 1],
+    ['h-200', 9],
+    ['h-125', 9],
+  ] as const) {
     const screen = await render(
-      <div className='flex h-125 flex-col'>
+      <div className={height}>
         <HomeFrame
           above={Array.from({ length: lines }, (_, index) => (
             <p key={index}>foo</p>
@@ -34,5 +38,5 @@ test('the anchor stays at 38% of the frame however much sits above and below it'
     await screen.unmount();
   }
 
-  expect(tops).toEqual([190, 190]);
+  expect(tops).toEqual([304, 304, 272]);
 });
