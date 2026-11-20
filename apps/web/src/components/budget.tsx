@@ -12,8 +12,10 @@ import {
   setBudget,
 } from '@/lib/usage';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useReducedMotion } from 'motion/react';
 import { type SubmitEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -26,13 +28,20 @@ const messages = {
 const pouredKey = 'lab:poured';
 
 function Flask({ limit, spent }: { limit: number; spent: number }) {
+  const quiet = useQuiet();
+  const reduced = useReducedMotion();
+
   const [pour] = useState(
     () => window.sessionStorage.getItem(pouredKey) === null
   );
 
+  const poured = pour && !quiet && reduced !== true;
+
   useEffect(() => {
-    window.sessionStorage.setItem(pouredKey, 'true');
-  }, []);
+    if (poured) {
+      window.sessionStorage.setItem(pouredKey, 'true');
+    }
+  }, [poured]);
 
   return (
     <Meter
@@ -157,18 +166,20 @@ export function BudgetPanel() {
   const { limit, spent } = budget.data;
 
   return (
-    <Card className='flex-row items-start gap-5' variant='outline'>
-      {limit !== null && <Flask limit={limit} spent={spent} />}
-      <div className='flex min-w-0 flex-1 flex-col gap-4'>
-        <div className='flex flex-col gap-1'>
-          <h2 className='text-sm font-medium'>Monthly budget</h2>
-          <p className='text-sm text-muted-foreground'>
-            Get an alert at 80% and 100% of a monthly spend limit.
-          </p>
+    <Card className='gap-4' variant='outline'>
+      <div className='flex items-start gap-5'>
+        {limit !== null && <Flask limit={limit} spent={spent} />}
+        <div className='flex min-w-0 flex-1 flex-col gap-4'>
+          <div className='flex flex-col gap-1'>
+            <h2 className='text-sm font-medium'>Monthly budget</h2>
+            <p className='text-sm text-muted-foreground'>
+              Get an alert at 80% and 100% of a monthly spend limit.
+            </p>
+          </div>
+          {limit !== null && <Spent limit={limit} spent={spent} />}
         </div>
-        {limit !== null && <Spent limit={limit} spent={spent} />}
-        <BudgetForm budget={budget.data} />
       </div>
+      <BudgetForm budget={budget.data} />
     </Card>
   );
 }
