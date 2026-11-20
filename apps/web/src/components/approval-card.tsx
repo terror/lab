@@ -1,7 +1,7 @@
 import { Answered } from '@/components/answered';
 import { ErrorMessage } from '@/components/error-message';
+import { NeedsYou } from '@/components/needs-you';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useAnswer } from '@/lib/conversations';
 import { cn } from '@/lib/utils';
 import { Check, X } from 'lucide-react';
@@ -62,6 +62,10 @@ export function approvalOf(details: unknown) {
     ?.approval;
 }
 
+function Scope({ summary }: { summary: readonly string[] }) {
+  return summary.map((line) => <ClampedText key={line}>{line}</ClampedText>);
+}
+
 export function ApprovalSummary({
   action,
   summary,
@@ -72,9 +76,7 @@ export function ApprovalSummary({
   return (
     <div className='flex flex-col gap-1'>
       <p className='text-sm font-medium'>{action}</p>
-      {summary.map((line) => (
-        <ClampedText key={line}>{line}</ClampedText>
-      ))}
+      <Scope summary={summary} />
     </div>
   );
 }
@@ -111,13 +113,18 @@ export function ApprovalCard({
       }
       prompt={approval.action}
     >
-      <Card className='gap-3' variant='outline'>
-        <ApprovalSummary action={approval.action} summary={approval.summary} />
+      <NeedsYou active={active} title={approval.action}>
+        {approval.summary.length > 0 && (
+          <div className='flex flex-col gap-1'>
+            <Scope summary={approval.summary} />
+          </div>
+        )}
         <div className='flex gap-2'>
           <Button
             disabled={locked}
             onClick={() => send.mutate('approved')}
             size='sm'
+            variant='outline'
           >
             Approve
           </Button>
@@ -125,13 +132,13 @@ export function ApprovalCard({
             disabled={locked}
             onClick={() => send.mutate('denied')}
             size='sm'
-            variant='ghost'
+            variant='outline'
           >
             Deny
           </Button>
         </div>
         {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
-      </Card>
+      </NeedsYou>
     </Answered>
   );
 }

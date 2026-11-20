@@ -26,3 +26,41 @@ test('approving sends the decision and shows it', async () => {
     callId: 'baz',
   });
 });
+
+async function shown(summary: string[]) {
+  const { screen } = await renderWithQuery(
+    <ApprovalCard
+      active
+      approval={{ action: 'foo', summary }}
+      callId='baz'
+      conversationId={7}
+    />
+  );
+
+  const card = screen.getByRole('group', { name: 'foo' }).element();
+
+  const found = {
+    buttons: [...card.querySelectorAll('button')].map(
+      ({ dataset, textContent }) => [textContent, dataset.size, dataset.variant]
+    ),
+    sections: [...(card.firstElementChild?.children ?? [])].map(
+      ({ textContent }) => textContent
+    ),
+  };
+
+  await screen.unmount();
+
+  return found;
+}
+
+test('an approval lists its scope above Approve and Deny at equal weight', async () => {
+  const buttons = [
+    ['Approve', 'sm', 'outline'],
+    ['Deny', 'sm', 'outline'],
+  ];
+
+  expect([await shown(['bar', 'qux']), await shown([])]).toEqual([
+    { buttons, sections: ['Needs youfoo', 'barqux', 'ApproveDeny'] },
+    { buttons, sections: ['Needs youfoo', 'ApproveDeny'] },
+  ]);
+});
