@@ -210,7 +210,7 @@ export function Settings() {
 
   return (
     <div className='@container flex h-svh flex-col bg-background'>
-      <header className='flex shrink-0 items-center border-b px-2 py-2'>
+      <header className='flex shrink-0 items-center px-2 py-2'>
         <BackToChat />
       </header>
       <div className='min-h-0 flex-1 overflow-y-auto'>
