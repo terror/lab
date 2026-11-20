@@ -140,8 +140,6 @@ async function shake(mark: Element) {
 }
 
 test('shaking the home mark fizzes once a session and only bubbles after that', async () => {
-  window.sessionStorage.removeItem('lab:fizzed');
-
   const { screen } = await renderHome();
 
   const mark = screen.container.querySelector('[data-slot=live-mark]');
@@ -159,7 +157,11 @@ test('shaking the home mark fizzes once a session and only bubbles after that', 
 
   await expect.poll(state).toBe('bubble');
 
-  expect(window.sessionStorage.getItem('lab:fizzed')).toBe('true');
+  expect(
+    Object.keys(
+      JSON.parse(window.sessionStorage.getItem('lab:foo:moments') ?? '{}')
+    )
+  ).toEqual(['home.fizz']);
 });
 
 test('the home mark stays put when Lab is quiet', async () => {
@@ -185,8 +187,6 @@ test('a mark that was shaken still wakes with a start after its next doze', asyn
   onTestFinished(() => {
     vi.useRealTimers();
   });
-
-  window.sessionStorage.removeItem('lab:fizzed');
 
   const { screen } = await renderHome();
 

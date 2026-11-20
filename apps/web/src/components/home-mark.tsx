@@ -1,14 +1,13 @@
 import { LiveMark } from '@/components/ui/live-mark';
 import { useDraft, useUnreadChats } from '@/lib/conversations';
+import { useMoment } from '@/lib/moment';
 import { spring, useMaxFeatures } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import {
   LazyMotion,
   animate,
   m,
   useMotionValue,
-  useReducedMotion,
   useSpring,
   useTransform,
   useVelocity,
@@ -25,24 +24,14 @@ const SHAKES = 5;
 
 const SHAKE_MS = 1_600;
 
-const fizzedKey = 'lab:fizzed';
-
 function leash(offset: number) {
   return LEASH * Math.tanh(offset / LEASH);
 }
 
-function release(reversals: readonly number[]) {
+function shaken(reversals: readonly number[]) {
   const now = performance.now();
 
-  const shaken = reversals.filter((at) => now - at < SHAKE_MS).length >= SHAKES;
-
-  if (!shaken || window.sessionStorage.getItem(fizzedKey) !== null) {
-    return 'bubble';
-  }
-
-  window.sessionStorage.setItem(fizzedKey, 'true');
-
-  return 'fizz';
+  return reversals.filter((at) => now - at < SHAKE_MS).length >= SHAKES;
 }
 
 const poses = {
@@ -121,8 +110,9 @@ function useDoze(enabled: boolean) {
 }
 
 export function HomeMark({ assemble }: { assemble: boolean }) {
-  const quiet = useQuiet();
-  const reduced = useReducedMotion();
+  const idle = useMoment('home.idle').on;
+  const playful = useMoment('home.toy').on;
+  const fizz = useMoment('home.fizz');
   const unread = useUnreadChats();
   const [draft] = useDraft('new');
 
@@ -130,7 +120,7 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
 
   const busy = (unread.data?.running ?? 0) + waiting.length > 0;
 
-  const lively = !quiet && !reduced && !busy;
+  const lively = idle && !busy;
 
   const leaning = useLean(draft) && lively;
 
@@ -141,8 +131,6 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
     idle: assemble ? 'assemble' : 'idle',
     wake: 'wake',
   } as const;
-
-  const playful = !quiet && !reduced;
 
   const { features } = useMaxFeatures();
 
@@ -190,7 +178,9 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
         onDragEnd={() => {
           void animate(x, 0, spring.pop);
           void animate(y, 0, spring.pop);
-          setToy(release(shake.current.reversals));
+          setToy(
+            shaken(shake.current.reversals) && fizz.play() ? 'fizz' : 'bubble'
+          );
         }}
         onDragStart={() => {
           shake.current = { direction: 0, reversals: [] };
