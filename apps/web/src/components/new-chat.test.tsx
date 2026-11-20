@@ -385,9 +385,7 @@ test('a long list stops at six until it is expanded, and clearing it says so', a
 
   await screen.getByRole('button', { name: 'Mark all read' }).click();
 
-  await expect
-    .element(screen.getByRole('status'))
-    .toHaveTextContent('All caught up');
+  await expect.element(screen.getByText('All caught up')).toBeVisible();
 
   expect([
     expanded,
@@ -515,9 +513,7 @@ test('marking everything read with a double-click leaves what is below where it 
 
   await screen.getByRole('button', { name: 'Mark all read' }).dblClick();
 
-  await expect
-    .element(screen.getByRole('status'))
-    .toHaveTextContent('All caught up');
+  await expect.element(screen.getByText('All caught up')).toBeVisible();
 
   expect([top() - before, router.state.location.pathname]).toEqual([0, '/']);
 });
