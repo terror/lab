@@ -47,66 +47,6 @@ export function say<K extends keyof Voice>(
   return pool[hash(`${key}:${seed}`) % pool.length] ?? lines.plain(context);
 }
 
-const briefKinds = ['finished', 'needs', 'running'] as const;
-
-export type BriefKind = (typeof briefKinds)[number];
-
-type BriefPart =
-  | { count: number; kind: BriefKind; text: string }
-  | { kind?: undefined; text: string };
-
-const briefWords = {
-  finished: {
-    first: ['chat finished', 'chats finished'],
-    later: ['finished', 'finished'],
-    plain: ['finished', 'finished'],
-  },
-  needs: {
-    first: ['chat needs you', 'chats need you'],
-    later: ['needs you', 'need you'],
-    plain: ['needs you', 'need you'],
-  },
-  running: {
-    first: ['chat is running', 'chats are running'],
-    later: ['is still running', 'are still running'],
-    plain: ['running', 'running'],
-  },
-} as const;
-
-function briefForm(quiet: boolean, index: number) {
-  if (quiet) {
-    return 'plain';
-  }
-
-  return index === 0 ? 'first' : 'later';
-}
-
-function briefJoin(quiet: boolean, kind: BriefKind) {
-  if (quiet) {
-    return ' · ';
-  }
-
-  return kind === 'running' ? '. ' : ' and ';
-}
-
-export function brief(counts: Record<BriefKind, number>, quiet: boolean) {
-  const kinds = briefKinds.filter((kind) => counts[kind] > 0);
-
-  const parts = kinds.flatMap((kind, index): BriefPart[] => {
-    const count = counts[kind];
-
-    const token = {
-      count,
-      kind,
-      text: briefWords[kind][briefForm(quiet, index)][count === 1 ? 0 : 1],
-    };
-
-    return index === 0 ? [token] : [{ text: briefJoin(quiet, kind) }, token];
-  });
-
-  return quiet || parts.length === 0 ? parts : [...parts, { text: '.' }];
-}
-
 type Copy = { description: string; title: string };
 
 const empties = {
