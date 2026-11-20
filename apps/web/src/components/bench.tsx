@@ -17,7 +17,7 @@ import {
 } from '@/lib/conversations';
 import { ago, duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { type BriefKind, say, useQuiet } from '@/lib/voice';
+import type { BriefKind } from '@/lib/voice';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { X } from 'lucide-react';
@@ -282,7 +282,6 @@ export function Bench({
   onExpand: () => void;
 }) {
   const queryClient = useQueryClient();
-  const quiet = useQuiet();
   const unread = useUnreadChats();
   const [had, setHad] = useState(false);
   const [held, setHeld] = useState<number>();
@@ -361,7 +360,7 @@ export function Bench({
           <span className='flex size-4 items-center justify-center'>
             <Dot tone='done' />
           </span>
-          {say('caughtUp', undefined, { quiet, seed: '' })}
+          All caught up
         </output>
       </div>
     );

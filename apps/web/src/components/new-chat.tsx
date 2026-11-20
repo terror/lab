@@ -7,62 +7,19 @@ import { HomeFrame } from '@/components/ui/home-frame';
 import { useBlank } from '@/lib/capabilities';
 import { startChatKey, useDraft, useUnreadChats } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
+import { useMoment } from '@/lib/moment';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { type BriefKind, brief, say, useQuiet } from '@/lib/voice';
+import { type BriefKind, brief, say } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
 import {
   Fragment,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { z } from 'zod';
-
-const visitSchema = z.object({ at: z.number() });
-
-function greetedKey(user: string) {
-  return `lab:${user}:greeted`;
-}
-
-function storedVisit(user: string) {
-  try {
-    return visitSchema.safeParse(
-      JSON.parse(window.sessionStorage.getItem(greetedKey(user)) ?? 'null')
-    ).data;
-  } catch {
-    return undefined;
-  }
-}
-
-function useVisit(user: string) {
-  const [visit] = useState(() => {
-    const stored = storedVisit(user);
-
-    const at = Date.now();
-
-    if (
-      stored &&
-      new Date(stored.at).toDateString() === new Date(at).toDateString()
-    ) {
-      return { ...stored, first: false };
-    }
-
-    return { at, first: true };
-  });
-
-  useEffect(() => {
-    window.sessionStorage.setItem(
-      greetedKey(user),
-      JSON.stringify({ at: visit.at })
-    );
-  }, [user, visit]);
-
-  return visit;
-}
 
 function select(input: HTMLTextAreaElement | null, text: string) {
   const at = text.indexOf('…');
@@ -119,16 +76,18 @@ function Words({ text }: { text: string }) {
 }
 
 export function NewChat({ user }: { user: { id: string } }) {
-  const { at, first } = useVisit(user.id);
-  const quiet = useQuiet();
+  const first = useMoment('home.arrive').on;
+  const voiced = useMoment('home.prompt').on;
+  const rolling = useMoment('home.brief-roll').on;
   const shelf = useShelf();
   const unread = useUnreadChats();
+  const [day] = useState(() => new Date().toDateString());
   const greeting = say('greeting', undefined, {
-    quiet,
-    seed: `${user.id}:${new Date(at).toDateString()}`,
+    quiet: !voiced,
+    seed: `${user.id}:${day}`,
   });
-  const hello = shelf.fresh && !quiet;
-  const fade = hello || (first && !quiet);
+  const hello = shelf.fresh && voiced;
+  const fade = hello || (first && voiced);
   const [draft, setDraft] = useDraft('new');
   const [preview, setPreview] = useState<string>();
   const [expanded, setExpanded] = useState(false);
@@ -201,7 +160,7 @@ export function NewChat({ user }: { user: { id: string } }) {
               'opacity-0 transition duration-fast ease-in motion-safe:-translate-y-2'
           )}
         >
-          <HomeMark assemble={first && !quiet} />
+          <HomeMark assemble={first && voiced} />
           <h1 className='text-3xl font-semibold tracking-tight text-balance sm:text-4xl'>
             {fade ? <Words text={greeting} /> : greeting}
           </h1>
@@ -215,8 +174,8 @@ export function NewChat({ user }: { user: { id: string } }) {
             </p>
           )}
           {news && (
-            <Brief still={quiet}>
-              {brief(counts, quiet).map((part, index) =>
+            <Brief still={!rolling}>
+              {brief(counts, !rolling).map((part, index) =>
                 part.kind === undefined ? (
                   <Fragment key={index}>{part.text}</Fragment>
                 ) : (

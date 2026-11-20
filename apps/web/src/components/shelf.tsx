@@ -2,11 +2,11 @@ import { ShelfTile } from '@/components/ui/shelf-tile';
 import { useRecentPins } from '@/lib/artifacts';
 import { useCapabilities } from '@/lib/capabilities';
 import { useLatestChats } from '@/lib/conversations';
+import { useMoment } from '@/lib/moment';
 import { useProjects } from '@/lib/projects';
 import { type ScheduledTask, schedulesQueryOptions } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
@@ -38,7 +38,7 @@ function settled({
 }
 
 export function useShelf() {
-  const quiet = useQuiet();
+  const offering = useMoment('home.try').on;
   const chats = useLatestChats();
   const projects = useProjects();
   const tasks = useQuery(schedulesQueryOptions);
@@ -76,7 +76,7 @@ export function useShelf() {
       label: `Improve ${spare.title}`,
       prompt: `Suggest three improvements for my ${spare.title} app.`,
     },
-    quiet ? undefined : lines.find(({ tried }) => !tried),
+    offering ? lines.find(({ tried }) => !tried) : undefined,
   ];
 
   return {

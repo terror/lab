@@ -150,6 +150,22 @@ export const moments = {
     tier: 'run',
     use: 'Home rises in on the first visit of a session.',
   },
+  'home.brief-roll': {
+    plain: 'Plain counts that never roll.',
+    quiet: 'plain',
+    reduced: 'still',
+    tier: 'run',
+    use: 'Home says in one sentence what finished, what needs you and what is running, and a count rolls when it changes.',
+  },
+  'home.caught-up': {
+    budget: [{ max: 1, per: 'day' }],
+    mark: 'done',
+    ms: 1_000,
+    quiet: 'skip',
+    reduced: 'still',
+    tier: 'landmark',
+    use: 'You clear the last thing on home, and the mark hops once a day.',
+  },
   'home.fizz': {
     budget: [{ max: 1, per: 'session' }],
     mark: 'fizz',
@@ -179,6 +195,13 @@ export const moments = {
     reduced: 'skip',
     tier: 'egg',
     use: 'You pick the home mark up, and it bubbles when you let go.',
+  },
+  'home.try': {
+    plain: 'Only lines about your own projects and apps.',
+    quiet: 'plain',
+    reduced: 'still',
+    tier: 'ambient',
+    use: 'On a day with no news, home offers one thing Lab can do that you haven’t tried.',
   },
   'image.develop': {
     ms: 900,

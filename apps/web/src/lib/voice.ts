@@ -5,7 +5,6 @@ import { usePreference } from './preferences';
 import { hash } from './seed';
 
 type Voice = {
-  caughtUp: undefined;
   greeting: undefined;
   stall: undefined;
 };
@@ -16,10 +15,6 @@ type Lines<T> = {
 };
 
 const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
-  caughtUp: {
-    plain: () => 'Nothing new',
-    pool: () => ['All caught up'],
-  },
   greeting: {
     plain: () => 'What are we working on?',
     pool: () => [
