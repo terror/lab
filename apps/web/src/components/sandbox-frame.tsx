@@ -1,6 +1,6 @@
 import { spring } from '@/lib/motion';
 import { useDark } from '@/lib/theme';
-import { m, useReducedMotion } from 'motion/react';
+import { m } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -105,8 +105,6 @@ export function SandboxFrame({
   const [gliding, setGliding] = useState(from !== undefined);
   const [arrived, setArrived] = useState(false);
   const [closed, setClosed] = useState(false);
-
-  const reduced = useReducedMotion();
 
   useEffect(() => {
     handle.current = onCall;
@@ -215,7 +213,7 @@ export function SandboxFrame({
         height: gliding ? undefined : shown,
       }}
       title={title}
-      transition={reduced || !glide ? { duration: 0 } : spring.glide}
+      transition={glide ? spring.glide : { duration: 0 }}
     />
   );
 }

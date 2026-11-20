@@ -16,7 +16,7 @@ import { appSeed, artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
 import { plural } from '@/lib/format';
 import { useLibraryImages } from '@/lib/library';
-import { useQuiet } from '@/lib/voice';
+import { useMoment } from '@/lib/moment';
 import { Link } from '@tanstack/react-router';
 import {
   AppWindow,
@@ -116,9 +116,9 @@ const CELL_CHARACTERS = 600;
 
 function BuildingFace({ id, length }: { id?: string; length: number }) {
   const conversationId = useContext(ToolConversation);
-  const quiet = useQuiet();
+  const face = useMoment('apps.face').on;
 
-  if (conversationId === undefined || !id || quiet) {
+  if (conversationId === undefined || !id || !face) {
     return undefined;
   }
 
@@ -284,7 +284,9 @@ function Errors({
 
 function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
   const [arrival] = useState(() => built.has(callId));
-  const quiet = useQuiet();
+  const develop = useMoment('apps.develop').on;
+  const glide = useMoment('apps.glide').on;
+  const peek = useMoment('apps.peek').on;
   const [showCode, setShowCode] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -322,7 +324,7 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
 
   return (
     <section aria-label={title} className='group/artifact relative'>
-      <Peek className='right-4' rise={!quiet} shown={asking} />
+      <Peek className='right-4' rise={peek} shown={asking} />
       <Card className='gap-0 overflow-hidden p-0' variant='inset'>
         <header className='flex items-center gap-2 px-4 py-2'>
           <h3 className='truncate text-sm font-medium'>{title}</h3>
@@ -387,9 +389,9 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
           <div hidden={showCode}>
             {html !== undefined && (
               <SandboxFrame
-                arriving={arrival && !quiet}
+                arriving={arrival && develop}
                 from={arrival ? PREVIEW_HEIGHT : undefined}
-                glide={!quiet}
+                glide={glide}
                 html={html}
                 onCall={onCall}
                 onError={onError}

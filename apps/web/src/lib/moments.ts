@@ -43,6 +43,31 @@ export type Moment =
   | (Common & Shape & { quiet: 'skip'; reduced: 'skip'; tier: 'egg' });
 
 export const moments = {
+  'apps.develop': {
+    quiet: 'skip',
+    reduced: 'still',
+    tier: 'ambient',
+    use: 'An app that finishes building in view develops from its grey preview into full color.',
+  },
+  'apps.face': {
+    quiet: 'skip',
+    reduced: 'still',
+    tier: 'ambient',
+    use: 'An app being built draws its pixel face a cell at a time as its code streams in.',
+  },
+  'apps.glide': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'An app that finishes building in view glides from its preview height to its own.',
+  },
+  'apps.peek': {
+    plain: 'The mark fades in place.',
+    quiet: 'plain',
+    reduced: 'still',
+    tier: 'ambient',
+    use: 'Lab’s mark rises over an app card’s top edge while the app waits on lab.ask.',
+  },
   'ask.ahem': {
     budget: [{ by: 'call', max: 1, per: 'session' }],
     mark: 'ahem',
