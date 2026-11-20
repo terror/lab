@@ -16,6 +16,15 @@ function TaskClock({
 
   const fraction = Math.min(Math.max(progress ?? 0, 0), 1);
 
+  const [cycle, setCycle] = React.useState({ fraction, laps: 0 });
+
+  if (cycle.fraction !== fraction) {
+    setCycle({
+      fraction,
+      laps: fraction < cycle.fraction ? cycle.laps + 1 : cycle.laps,
+    });
+  }
+
   return (
     <svg
       aria-hidden='true'
@@ -38,7 +47,7 @@ function TaskClock({
         data-winding={turns !== settled || undefined}
         onTransitionEnd={() => setSettled(turns)}
         style={{
-          transform: `rotate(${(fraction + turns) * 360}deg)`,
+          transform: `rotate(${(fraction + turns + cycle.laps) * 360}deg)`,
           transformOrigin: '12px 12px',
         }}
         x1='12'
