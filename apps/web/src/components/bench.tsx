@@ -1,21 +1,24 @@
+import { ApprovalSummary } from '@/components/approval-card';
+import { toolRenderer } from '@/components/tools/registry';
 import { ActivityRow } from '@/components/ui/activity-row';
 import { Button } from '@/components/ui/button';
 import { Dot } from '@/components/ui/dot';
 import { LiveMark } from '@/components/ui/live-mark';
 import { NeedsYouCard } from '@/components/ui/needs-you-card';
+import { Pips } from '@/components/ui/pips';
 import {
   conversationTitle,
   conversationsQueryKey,
   readConversation,
   useUnreadChats,
 } from '@/lib/conversations';
-import { ago } from '@/lib/time';
+import { ago, duration } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { type BriefKind, say, useQuiet } from '@/lib/voice';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 const VISIBLE = 6;
@@ -28,17 +31,52 @@ export function focusItem(item: Element | null | undefined) {
 
 type Unread = NonNullable<ReturnType<typeof useUnreadChats>['data']>;
 
+type Run = Unread['runs'][number];
+
+type Ask = Unread['waiting'][number]['ask'];
+
 type Item =
   | { chat: Unread['waiting'][number]; kind: 'needs' }
   | { chat: Unread['chats'][number]; kind: 'finished' }
-  | { count: number; kind: 'running' };
+  | { kind: 'running'; run: Run };
 
-function benchItems({ chats, running, waiting }: Unread): Item[] {
+function benchItems({ chats, runs, waiting }: Unread): Item[] {
   return [
     ...waiting.map((chat) => ({ chat, kind: 'needs' as const })),
     ...chats.map((chat) => ({ chat, kind: 'finished' as const })),
-    ...(running > 0 ? [{ count: running, kind: 'running' as const }] : []),
+    ...runs.map((run) => ({ kind: 'running' as const, run })),
   ];
+}
+
+function asked(ask: Ask) {
+  if (ask?.kind === 'question') {
+    return <p>{ask.question}</p>;
+  }
+
+  if (ask?.kind === 'approval') {
+    return <ApprovalSummary action={ask.action} summary={ask.summary} />;
+  }
+
+  return undefined;
+}
+
+function doing({ step, tool }: Run) {
+  if (step) {
+    return `Step ${step.index} of ${step.count} · ${step.label}`;
+  }
+
+  if (tool === null) {
+    return undefined;
+  }
+
+  return toolRenderer(tool).title({
+    active: true,
+    args: {},
+    callId: '',
+    details: undefined,
+    history: [],
+    output: '',
+  });
 }
 
 function Needs({
@@ -66,7 +104,9 @@ function Needs({
         }
         className={cn('transition-colors', lit && 'bg-muted')}
         title={title}
-      />
+      >
+        {asked(chat.ask)}
+      </NeedsYouCard>
     </li>
   );
 }
@@ -111,14 +151,30 @@ function Finished({
   );
 }
 
-function Running({ count, lit }: { count: number; lit: boolean }) {
+function Running({ lit, now, run }: { lit: boolean; now: number; run: Run }) {
   return (
     <ActivityRow
-      className={cn('hover:bg-transparent', lit && 'bg-muted')}
+      className={cn(lit && 'bg-muted')}
       data-kind='running'
+      detail={doing(run)}
       glyph={<LiveMark className='size-4' state='thinking' />}
-      tabIndex={-1}
-      title={`${count} ${count === 1 ? 'chat' : 'chats'} running`}
+      label='Running'
+      progress={
+        run.step ? (
+          <Pips done={run.step.index - 1} total={run.step.count} />
+        ) : undefined
+      }
+      renderLink={(row) => (
+        <Link params={{ id: run.id }} to='/c/$id'>
+          {row}
+        </Link>
+      )}
+      time={
+        run.startedAt === null
+          ? undefined
+          : duration(now - new Date(run.startedAt).getTime())
+      }
+      title={conversationTitle(run.title)}
     />
   );
 }
@@ -139,6 +195,19 @@ export function Bench({
   const [held, setHeld] = useState<number>();
   const list = useRef<HTMLUListElement>(null);
   const wrapper = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(Date.now);
+
+  const going = (unread.data?.runs.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!going) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+
+    return () => window.clearInterval(timer);
+  }, [going]);
 
   const read = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(readConversation)),
@@ -223,7 +292,12 @@ export function Bench({
           }
 
           return (
-            <Running key='running' count={item.count} lit={lit === 'running'} />
+            <Running
+              key={`running-${item.run.id}`}
+              lit={lit === 'running'}
+              now={now}
+              run={item.run}
+            />
           );
         })}
       </ul>

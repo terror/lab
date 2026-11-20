@@ -118,7 +118,7 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
 
   const waiting = unread.data?.waiting ?? [];
 
-  const busy = (unread.data?.running ?? 0) + waiting.length > 0;
+  const busy = (unread.data?.runs?.length ?? 0) + waiting.length > 0;
 
   const lively = idle && !busy;
 

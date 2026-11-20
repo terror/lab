@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 
 import { signIn, signInAdmin } from '../test/auth';
 import {
+  answer,
   call,
   chat,
   raw,
@@ -168,10 +169,7 @@ test('the agent finds connector tools and asks before using them, even ones that
   });
 
   for (const callId of ['foo', 'baz']) {
-    await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-      answer: 'approved',
-      callId,
-    });
+    await answer(headers, body.id, callId, 'approved');
   }
 
   await settle(body.id);
@@ -221,10 +219,7 @@ test('connector approvals show every argument in full', async () => {
     content: 'foo',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'denied',
-    callId: 'baz',
-  });
+  await answer(headers, body.id, 'baz', 'denied');
 
   await settle(body.id);
 
@@ -265,10 +260,7 @@ test('a connector the user trusts runs its read-only tools without asking, also 
     content: 'foo',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'approved',
-    callId: 'baz',
-  });
+  await answer(headers, body.id, 'baz', 'approved');
 
   await settle(body.id);
 
@@ -321,10 +313,7 @@ test('stopping a chat stops its connector call', async () => {
     content: 'foo',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'approved',
-    callId: 'bar',
-  });
+  await answer(headers, body.id, 'bar', 'approved');
 
   await waiting.promise;
 
@@ -424,10 +413,7 @@ test('the agent manages connectors with the user’s approval', async () => {
     content: 'foo',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'approved',
-    callId: 'foo',
-  });
+  await answer(headers, body.id, 'foo', 'approved');
 
   await settle(body.id);
 
@@ -444,10 +430,7 @@ test('the agent manages connectors with the user’s approval', async () => {
     content: 'bar',
   });
 
-  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-    answer: 'approved',
-    callId: 'baz',
-  });
+  await answer(headers, body.id, 'baz', 'approved');
 
   await settle(body.id);
 

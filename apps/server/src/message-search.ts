@@ -40,7 +40,9 @@ function segments(headline: string): Segment[] {
 }
 
 export function plain(text: string) {
-  return text.replace(/\*\*|__|`+|^#+\s+/gm, '');
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*|__|`+|^#+\s+|^\s*(?:[-*+]|\d+\.)\s+(?:\[[ xX]\]\s+)?/gm, '');
 }
 
 export function markedSnippet(snippet: readonly Segment[]) {

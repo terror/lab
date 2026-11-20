@@ -238,7 +238,7 @@ function SchedulePrompt() {
 export function Scheduled() {
   const [filter, setFilter] = useState<Filter>('active');
 
-  const busy = (useUnreadChats().data?.running ?? 0) > 0;
+  const busy = (useUnreadChats().data?.runs?.length ?? 0) > 0;
 
   const schedules = useQuery({
     ...schedulesQueryOptions,

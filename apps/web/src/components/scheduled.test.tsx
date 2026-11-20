@@ -114,7 +114,7 @@ test('a running task shows the working mark and an unread one its dot', async ()
       chats: [
         { finishedAt: '', id: 8, preview: '', scheduled: true, title: '' },
       ],
-      running: 1,
+      runs: [{ id: 9, startedAt: null, step: null, title: null, tool: null }],
       waiting: [],
     },
     '/api/schedules': {

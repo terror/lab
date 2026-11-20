@@ -56,7 +56,7 @@ function renderSidebar({
     if (pathname === '/api/conversations/unread') {
       return Response.json({
         chats,
-        running: 1,
+        runs: [{ id: 9, startedAt: null, step: null, title: null, tool: null }],
         waiting: [{ id: 2, title: 'baz' }],
       });
     }

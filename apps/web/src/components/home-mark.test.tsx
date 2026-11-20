@@ -25,7 +25,7 @@ function renderHome(personality: 'default' | 'quiet' = 'default') {
   const preferences = { ...defaultPreferences, personality };
 
   stubFetch(() =>
-    Response.json({ chats: [], preferences, running: 0, waiting: [] })
+    Response.json({ chats: [], preferences, runs: [], waiting: [] })
   );
 
   const client = new QueryClient();

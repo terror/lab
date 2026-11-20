@@ -63,7 +63,7 @@ function useTabSignal() {
   const { data } = useQuery({
     ...unreadChatsQueryOptions,
     enabled: hidden,
-    refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 60_000),
+    refetchInterval: ({ state }) => (state.data?.runs?.length ? 2_000 : 60_000),
     refetchIntervalInBackground: true,
   });
 

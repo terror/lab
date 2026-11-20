@@ -155,7 +155,7 @@ export function NewChat({ user }: { user: { id: string } }) {
   const counts = {
     finished: unread.data?.chats.length ?? 0,
     needs: unread.data?.waiting.length ?? 0,
-    running: unread.data?.running ?? 0,
+    running: unread.data?.runs.length ?? 0,
   };
 
   const news = counts.finished + counts.needs + counts.running > 0;

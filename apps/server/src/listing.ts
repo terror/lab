@@ -5,6 +5,7 @@ import {
   type LiveState,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
+import { PlanDoc } from '@lab/harness';
 import {
   type AnyColumn,
   type SQL,
@@ -166,7 +167,16 @@ export async function running() {
 }
 
 const approvalSchema = z.object({
-  approval: z.object({ action: z.string(), decision: z.never().optional() }),
+  approval: z.object({
+    action: z.string(),
+    decision: z.never().optional(),
+    summary: z.array(z.string()).default([]),
+  }),
+});
+
+const questionSchema = z.object({
+  options: z.array(z.string()),
+  question: z.string(),
 });
 
 type Slot =
@@ -180,20 +190,56 @@ function asksUser({ details, name, status }: Slot) {
   );
 }
 
-async function waiting(ids: number[]) {
+function ask({ callId, details }: Slot) {
+  const approval = approvalSchema.safeParse(details);
+
+  if (approval.success) {
+    const { action, summary } = approval.data.approval;
+
+    return { action, callId, kind: 'approval' as const, summary };
+  }
+
+  const question = questionSchema.safeParse(details);
+
+  return question.success
+    ? { callId, kind: 'question' as const, ...question.data }
+    : null;
+}
+
+function slots(live: LiveState | null | undefined): Slot[] {
+  return [...(live?.tools ?? []), ...(live?.nestedTools ?? [])];
+}
+
+async function snapshots(ids: number[]) {
   const live = await Promise.all(
     ids.map((id) =>
       harness.snapshot(LiveDoc, id as ConversationId, BACKGROUND_CONTEXT)
     )
   );
 
-  return new Set(
-    ids.filter((_, index) =>
-      [...(live[index]?.tools ?? []), ...(live[index]?.nestedTools ?? [])].some(
-        asksUser
-      )
-    )
+  return new Map(ids.map((id, index) => [id, slots(live[index])]));
+}
+
+async function waiting(ids: number[]) {
+  const live = await snapshots(ids);
+
+  return new Set(ids.filter((id) => live.get(id)?.some(asksUser)));
+}
+
+export async function awaited(id: number, callId: string) {
+  const live = await snapshots([id]);
+
+  return (live.get(id) ?? []).some(
+    (slot) => slot.callId === callId && slot.status !== 'done'
   );
+}
+
+function planStep(steps: readonly { status: string; text: string }[]) {
+  const at = steps.findIndex(({ status }) => status !== 'done');
+
+  const step = steps[at];
+
+  return step ? { count: steps.length, index: at + 1, label: step.text } : null;
 }
 
 export async function listConversations(
@@ -302,17 +348,23 @@ export async function listUnread(user: User) {
 
   const busy = new Set(active.map(({ id }) => id));
 
-  const asking = await waiting([...busy]);
+  const live = await snapshots([...busy]);
+
+  const asking = active.filter(({ id }) => live.get(id)?.some(asksUser));
+
+  const going = active.filter(({ id }) => !live.get(id)?.some(asksUser));
 
   const finished = rows.filter(({ id }) => !busy.has(id));
 
   const ids = finished.map(({ id }) => id);
 
+  const goingIds = going.map(({ id }) => id);
+
   const text = schema.messageText;
 
   const task = schema.scheduledTask;
 
-  const [previews, scheduled] = await Promise.all([
+  const [previews, scheduled, starts, plans] = await Promise.all([
     db
       .selectDistinctOn([text.conversationId], {
         id: text.conversationId,
@@ -325,11 +377,26 @@ export async function listUnread(user: User) {
       .select({ id: task.conversationId })
       .from(task)
       .where(inArray(task.conversationId, ids)),
+    db
+      .selectDistinctOn([text.conversationId], {
+        id: text.conversationId,
+        startedAt: text.createdAt,
+      })
+      .from(text)
+      .where(and(inArray(text.conversationId, goingIds), eq(text.role, 'user')))
+      .orderBy(text.conversationId, desc(text.entryId)),
+    Promise.all(
+      goingIds.map((id) =>
+        harness.snapshot(PlanDoc, id as ConversationId, BACKGROUND_CONTEXT)
+      )
+    ),
   ]);
 
   const texts = new Map(previews.map(({ id, preview }) => [id, preview]));
 
   const tasks = new Set(scheduled.map(({ id }) => id));
+
+  const started = new Map(starts.map(({ id, startedAt }) => [id, startedAt]));
 
   return {
     chats: finished.map(({ finishedAt, id, title }) => ({
@@ -339,7 +406,19 @@ export async function listUnread(user: User) {
       scheduled: tasks.has(id),
       title,
     })),
-    running: busy.size - asking.size,
-    waiting: active.filter(({ id }) => asking.has(id)),
+    runs: going.map(({ id, title }, index) => ({
+      id,
+      startedAt: started.get(id)?.toISOString() ?? null,
+      step: planStep(plans[index]?.steps ?? []),
+      title,
+      tool:
+        (live.get(id) ?? []).filter(({ status }) => status === 'running').at(-1)
+          ?.name ?? null,
+    })),
+    waiting: asking.map(({ id, title }) => ({
+      ask: (live.get(id) ?? []).filter(asksUser).map(ask).at(0) ?? null,
+      id,
+      title,
+    })),
   };
 }

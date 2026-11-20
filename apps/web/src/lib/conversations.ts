@@ -101,7 +101,10 @@ export const unreadChatsQueryOptions = queryOptions({
   queryKey: [...conversationsQueryKey, 'unread'],
   queryFn: ({ signal }) =>
     call(client.conversations.unread.$get(undefined, { init: { signal } })),
-  refetchInterval: ({ state }) => (state.data?.running ? 2_000 : 30_000),
+  refetchInterval: ({ state }) =>
+    (state.data?.runs?.length ?? 0) + (state.data?.waiting?.length ?? 0) > 0
+      ? 2_000
+      : 30_000,
 });
 
 export function useUnreadChats() {

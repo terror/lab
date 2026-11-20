@@ -4,7 +4,14 @@ import { skills as extension } from '@lab/harness';
 import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
-import { call, chat, settle, toolDetails, toolOutputs } from '../test/client';
+import {
+  answer,
+  call,
+  chat,
+  settle,
+  toolDetails,
+  toolOutputs,
+} from '../test/client';
 import { script, toolCall } from '../test/models';
 
 type Listed = {
@@ -24,16 +31,13 @@ async function listed(headers: Headers) {
   return (body.skills as Listed[]).map(fields);
 }
 
-async function answered(headers: Headers, answers: Record<string, string>) {
+async function answered(headers: Headers, answers: [string, string][]) {
   const { body } = await call(headers, 'POST', '/conversations', {
     content: 'foo',
   });
 
-  for (const [callId, answer] of Object.entries(answers)) {
-    await call(headers, 'POST', `/conversations/${body.id}/answers`, {
-      answer,
-      callId,
-    });
+  for (const [callId, value] of answers) {
+    await answer(headers, body.id, callId, value);
   }
 
   await settle(body.id);
@@ -94,7 +98,7 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
     fauxAssistantMessage('foo')
   );
 
-  const created = await answered(headers, { foo: 'approved' });
+  const created = await answered(headers, [['foo', 'approved']]);
 
   const [{ id }] = (await call(headers, 'GET', '/skills')).body.skills;
 
@@ -106,7 +110,7 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
     fauxAssistantMessage('foo')
   );
 
-  const changed = await answered(headers, { bar: 'approved' });
+  const changed = await answered(headers, [['bar', 'approved']]);
 
   const details = [
     ...(await toolDetails(headers, created)),
@@ -156,7 +160,10 @@ test('the agent saves or changes a skill only once the user approves', async () 
     fauxAssistantMessage('foo')
   );
 
-  const denied = await answered(headers, { bar: 'denied', foo: 'denied' });
+  const denied = await answered(headers, [
+    ['foo', 'denied'],
+    ['bar', 'denied'],
+  ]);
 
   expect({
     details: await toolDetails(headers, denied),
