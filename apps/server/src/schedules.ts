@@ -11,6 +11,7 @@ import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
 import { rateLimit } from './limits';
+import { running } from './listing';
 import {
   deleteTask,
   knownTimezone,
@@ -40,7 +41,19 @@ const MISSING = 'Scheduled task not found';
 
 const schedules = new Hono()
   .use(requireUser)
-  .get('/', async (c) => c.json({ tasks: await listTasks(c.get('user').id) }))
+  .get('/', async (c) => {
+    const [tasks, busy] = await Promise.all([
+      listTasks(c.get('user').id),
+      running(),
+    ]);
+
+    return c.json({
+      tasks: tasks.map((task) => ({
+        ...task,
+        running: task.conversationId !== null && busy.has(task.conversationId),
+      })),
+    });
+  })
   .put('/timezone', timezone, async (c) => {
     await harness.commit(async (tx) => {
       (await tx.doc(ProfileDoc, c.get('user').id, null)).timezone =
