@@ -121,3 +121,34 @@ test('the tab marks a chat that finished or needs you while it was hidden', asyn
     ['foo', '/favicon.svg']
   );
 });
+
+function AppTitle() {
+  useDocumentTitle('foo · Lab', 'app:1:bar');
+
+  return null;
+}
+
+test('an app’s own tab wears its face', async () => {
+  const link = document.createElement('link');
+
+  link.rel = 'icon';
+  link.href = '/favicon.svg';
+  document.head.append(link);
+
+  stubFetch(() => Response.json(working));
+
+  const { screen } = await renderWithQuery(<AppTitle />);
+
+  await expect
+    .poll(tab)
+    .toEqual([
+      'foo · Lab',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><style>.s{fill:#0a0a0a}@media (prefers-color-scheme:dark){.s{fill:#fafafa}}</style><g class="s"><rect x="13" y="13" width="6" height="6"/><rect x="1" y="1" width="6" height="6"/><rect x="25" y="1" width="6" height="6"/><rect x="7" y="7" width="6" height="6"/><rect x="19" y="7" width="6" height="6"/><rect x="13" y="25" width="6" height="6"/><rect x="1" y="13" width="6" height="6"/><rect x="25" y="13" width="6" height="6"/><rect x="13" y="7" width="6" height="6"/><rect x="1" y="25" width="6" height="6"/><rect x="25" y="25" width="6" height="6"/><rect x="7" y="1" width="6" height="6"/><rect x="19" y="1" width="6" height="6"/></g></svg>',
+    ]);
+
+  await screen.unmount();
+
+  expect(tab()).toEqual(['Lab', '/favicon.svg']);
+
+  link.remove();
+});
