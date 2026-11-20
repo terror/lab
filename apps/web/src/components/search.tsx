@@ -415,7 +415,7 @@ function EmptyQuery({
     },
   ];
 
-  const tries: Row[] = (capabilities ?? [])
+  const tries: Row[] = (onTry ? (capabilities ?? []) : [])
     .filter(({ prompt, tried }) => prompt !== undefined && !tried)
     .slice(0, TRIES)
     .map(({ icon, id, label, prompt = '' }) => ({

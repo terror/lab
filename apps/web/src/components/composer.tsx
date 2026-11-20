@@ -375,11 +375,13 @@ export function Composer({
       event.key === 'Enter' &&
       !event.shiftKey &&
       !event.nativeEvent.isComposing &&
-      (command || !touch) &&
-      value.slice(selectionStart, selectionEnd) !== '…'
+      (command || !touch)
     ) {
       event.preventDefault();
-      submit(steering && command);
+
+      if (value.slice(selectionStart, selectionEnd) !== '…') {
+        submit(steering && command);
+      }
     }
   };
 
