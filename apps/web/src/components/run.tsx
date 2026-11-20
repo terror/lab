@@ -264,8 +264,6 @@ function Verb({
 }
 
 function LiveLine({ open, ...run }: Live & { open: boolean }) {
-  const voiced = useMoment('chat.thinking');
-
   const { calls, clock, retry } = run;
 
   const {
@@ -311,7 +309,7 @@ function LiveLine({ open, ...run }: Live & { open: boolean }) {
       {leave && <RunLineNote>You can leave this</RunLineNote>}
       {stalled && (
         <RunLineNote className='shrink-10000'>
-          {say('stall', undefined, { quiet: !voiced.on, seed: '' })}
+          {say('stall', undefined, '')}
         </RunLineNote>
       )}
       {retry && <RunLineSummary>{retry.error}</RunLineSummary>}

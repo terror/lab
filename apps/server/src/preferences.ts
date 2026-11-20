@@ -23,10 +23,12 @@ const change = validator(
 const hint = validator('json', z.object({ id: z.string().min(1).max(64) }));
 
 async function current(ownerId: string) {
-  return {
+  const { chatSort, hints, lineNumbers, theme } = {
     ...defaultPreferences,
     ...(await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
   };
+
+  return { chatSort, hints, lineNumbers, theme };
 }
 
 const preferences = new Hono()
@@ -52,11 +54,7 @@ const preferences = new Hono()
 
       const seen = doc.hints ?? [];
 
-      if (
-        doc.personality === 'quiet' ||
-        seen.includes(id) ||
-        seen.length >= HINT_LIMIT
-      ) {
+      if (seen.includes(id) || seen.length >= HINT_LIMIT) {
         return false;
       }
 

@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import {
   type RefObject,
   useCallback,
@@ -13,7 +12,6 @@ import { confetti } from './confetti';
 import { useMediaQuery } from './media';
 import { type Moment, type MomentId, moments } from './moments';
 import { stagger } from './motion';
-import { type Preferences, preferencesQueryOptions } from './preferences';
 import { readStored, writeStored } from './storage';
 
 type Entry<Id extends MomentId> = (typeof moments)[Id];
@@ -227,22 +225,11 @@ function wait(start: () => void) {
   };
 }
 
-function quietOf({ personality }: Preferences) {
-  return personality === 'quiet';
-}
-
-function useQuiet() {
-  return (
-    useQuery({ ...preferencesQueryOptions, select: quietOf }).data ?? false
-  );
-}
-
 export function useMoment<Id extends MomentId>(
   id: Id | undefined,
   ...[options]: Args<Id>
 ): Handle<Id> {
   const moment: Moment | undefined = id && moments[id];
-  const quiet = useQuiet();
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [state, setState] = useState(rest);
 
@@ -252,10 +239,7 @@ export function useMoment<Id extends MomentId>(
     when,
   }: { anchor?: Anchor; subject?: Subject; when?: boolean } = options ?? {};
 
-  const fine =
-    moment !== undefined &&
-    !(quiet && moment.quiet !== 'keep') &&
-    !(reduced && moment.reduced === 'skip');
+  const fine = moment !== undefined && !(reduced && moment.reduced === 'skip');
 
   const subjected = moment?.budget?.some(({ by }) => by !== undefined) ?? false;
 

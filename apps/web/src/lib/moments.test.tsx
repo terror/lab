@@ -1,10 +1,7 @@
 import '@/index.css';
 import { LiveMark } from '@/components/ui/live-mark';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { clearStored } from '@/lib/storage';
 import { renderWithQuery } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
@@ -40,9 +37,8 @@ test('every moment is used, and nothing gates a flourish around the registry', (
 
   expect({
     bursts: naming('confetti(', /^\/src\/lib\/(confetti|moment)\.ts$/),
-    quiet: naming('useQuiet', /^\/src\/lib\/moment\.ts$/),
     unused: ids.filter((id) => !callers.includes(`'${id}'`)),
-  }).toEqual({ bursts: [], quiet: [], unused: [] });
+  }).toEqual({ bursts: [], unused: [] });
 });
 
 test('every moment is filed in order under a surface, says when it plays, and keeps the registry’s limits', () => {
@@ -100,21 +96,11 @@ function Probe({ fire, id }: { fire: boolean; id: MomentId }) {
   );
 }
 
-async function playing(
-  asked: readonly MomentId[],
-  personality: 'default' | 'quiet' = 'default'
-) {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality,
-  });
-
+async function playing(asked: readonly MomentId[]) {
   const probes = (fire: boolean) =>
     asked.map((id, index) => <Probe key={index} fire={fire} id={id} />);
 
-  const { screen } = await renderWithQuery(probes(false), client);
+  const { screen } = await renderWithQuery(probes(false));
 
   await screen.rerender(probes(true));
 
@@ -145,12 +131,10 @@ test('every budget grants exactly its smallest limit when asked once too often',
   );
 });
 
-test('Quiet and reduced motion turn off exactly the moments that say so', async ({
+test('reduced motion turns off exactly the moments that say so', async ({
   onTestFinished,
 }) => {
   const lively = await playing(ids);
-
-  const quiet = await playing(ids, 'quiet');
 
   await cdp().send('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
@@ -162,9 +146,8 @@ test('Quiet and reduced motion turn off exactly the moments that say so', async 
     });
   });
 
-  expect({ lively, quiet, reduced: await playing(ids) }).toEqual({
+  expect({ lively, reduced: await playing(ids) }).toEqual({
     lively: ids,
-    quiet: ids.filter((id) => moments[id].quiet === 'keep'),
     reduced: ids.filter((id) => moments[id].reduced === 'still'),
   });
 });

@@ -1,9 +1,6 @@
 import { confetti } from '@/lib/confetti';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { setStorageUser } from '@/lib/storage';
 import { renderHookWithQuery, renderWithQuery } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode, act } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
@@ -15,17 +12,6 @@ vi.mock('@/lib/confetti', () => ({ confetti: vi.fn() }));
 afterEach(() => {
   vi.useRealTimers();
 });
-
-function preferring(personality: 'default' | 'quiet') {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality,
-  });
-
-  return client;
-}
 
 function ledger(area: Storage) {
   return JSON.parse(area.getItem('lab:foo:moments') ?? '{}') as Record<
@@ -42,9 +28,8 @@ test('plan confetti plays once for each plan and three times a day', async () =>
 
   let plan = { subject: 'foo', when: false };
 
-  const { rerender } = await renderHookWithQuery(
-    () => useMoment('plan.complete', { anchor, ...plan }),
-    preferring('default')
+  const { rerender } = await renderHookWithQuery(() =>
+    useMoment('plan.complete', { anchor, ...plan })
   );
 
   const complete = async (subject: string) => {
@@ -97,10 +82,7 @@ test('a session budget belongs to one user in one tab until midnight', async () 
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date(2026, 10, 18, 23));
 
-  const { result } = await renderHookWithQuery(
-    () => useMoment('home.fizz'),
-    preferring('default')
-  );
+  const { result } = await renderHookWithQuery(() => useMoment('home.fizz'));
 
   const plays: boolean[] = [];
 
@@ -133,15 +115,9 @@ test('a session budget belongs to one user in one tab until midnight', async () 
 });
 
 test('asking again leaves a playing moment alone, whether the budget or a hidden tab says no', async () => {
-  const fizz = await renderHookWithQuery(
-    () => useMoment('home.fizz'),
-    preferring('default')
-  );
+  const fizz = await renderHookWithQuery(() => useMoment('home.fizz'));
 
-  const hop = await renderHookWithQuery(
-    () => useMoment('run.done'),
-    preferring('default')
-  );
+  const hop = await renderHookWithQuery(() => useMoment('run.done'));
 
   await act(() => fizz.result.current.play());
   await act(() => hop.result.current.play());
@@ -177,7 +153,7 @@ function rows(finished: boolean) {
 test('a burst plays six at once in order, and each holds for its duration and its place', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
-  const { screen } = await renderWithQuery(rows(false), preferring('default'));
+  const { screen } = await renderWithQuery(rows(false));
 
   const shown = () =>
     [...screen.container.querySelectorAll('output')].map(
@@ -209,9 +185,8 @@ test('a burst plays six at once in order, and each holds for its duration and it
 test('a condition that holds at mount is no event, a state ends with its cue, and each subject is counted on its own', async () => {
   let ask = { subject: 'foo', when: true };
 
-  const { rerender, result } = await renderHookWithQuery(
-    () => useMoment('ask.ahem', ask),
-    preferring('default')
+  const { rerender, result } = await renderHookWithQuery(() =>
+    useMoment('ask.ahem', ask)
   );
 
   const marks = [[result.current.mark]];
@@ -238,76 +213,6 @@ test('a condition that holds at mount is no event, a state ends with its cue, an
   ]);
 });
 
-test('Quiet uses up a mount cue and ends a state for good', async () => {
-  const hushed = preferring('quiet');
-
-  const entrance = await renderHookWithQuery(
-    () => useMoment('empty.enter', { subject: 'foo' }),
-    hushed
-  );
-
-  hushed.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  await entrance.rerender();
-
-  const client = preferring('default');
-
-  let when = false;
-
-  const ahem = await renderHookWithQuery(
-    () => useMoment('ask.ahem', { subject: 'bar', when }),
-    client
-  );
-
-  when = true;
-
-  await ahem.rerender();
-
-  const marks = [ahem.result.current.mark];
-
-  for (const personality of ['quiet', 'default'] as const) {
-    client.setQueryData(preferencesQueryOptions.queryKey, {
-      ...defaultPreferences,
-      personality,
-    });
-
-    await ahem.rerender();
-
-    marks.push(ahem.result.current.mark);
-  }
-
-  expect({
-    entered: entrance.result.current.on,
-    kept: Object.keys(ledger(window.sessionStorage)),
-    marks,
-  }).toEqual({
-    entered: false,
-    kept: ['ask.ahem/bar'],
-    marks: ['ahem', undefined, undefined],
-  });
-});
-
-test('a moment asked for under Quiet never plays, even once Quiet is off', async () => {
-  const client = preferring('quiet');
-
-  const { rerender, result } = await renderHookWithQuery(
-    () => useMoment('home.fizz'),
-    client
-  );
-
-  const played = await act(() => result.current.play());
-
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  await rerender();
-
-  expect({
-    kept: ledger(window.sessionStorage),
-    on: result.current.on,
-    played,
-  }).toEqual({ kept: {}, on: false, played: false });
-});
-
 function hide() {
   const visibility = vi
     .spyOn(document, 'visibilityState', 'get')
@@ -321,7 +226,6 @@ function hide() {
 }
 
 type Waiting = {
-  client: QueryClient;
   cue: { when: boolean };
   rerender: () => Promise<void>;
   unmount: () => Promise<void>;
@@ -334,12 +238,10 @@ test('a moment that waits for a hidden tab spends once it is seen, unless its re
     subject: string,
     before: (waiting: Waiting) => Promise<void>
   ) {
-    const client = preferring('default');
     const cue = { when: false };
 
-    const { rerender, result, unmount } = await renderHookWithQuery(
-      () => useMoment('plan.complete', { anchor, subject, ...cue }),
-      client
+    const { rerender, result, unmount } = await renderHookWithQuery(() =>
+      useMoment('plan.complete', { anchor, subject, ...cue })
     );
 
     cue.when = true;
@@ -348,7 +250,7 @@ test('a moment that waits for a hidden tab spends once it is seen, unless its re
 
     const waiting = result.current.on;
 
-    await before({ client, cue, rerender, unmount });
+    await before({ cue, rerender, unmount });
     await show(true);
 
     const outcome = {
@@ -376,15 +278,7 @@ test('a moment that waits for a hidden tab spends once it is seen, unless its re
 
       return rerender();
     }),
-    await seen('qux', ({ client, rerender }) => {
-      client.setQueryData(preferencesQueryOptions.queryKey, {
-        ...defaultPreferences,
-        personality: 'quiet',
-      });
-
-      return rerender();
-    }),
-  ]).toEqual([spent, spent, spent, spent]);
+  ]).toEqual([spent, spent, spent]);
 });
 
 test('a moment that doesn’t wait is skipped in a hidden tab and never plays for that cue', async () => {
@@ -392,9 +286,8 @@ test('a moment that doesn’t wait is skipped in a hidden tab and never plays fo
 
   let when = false;
 
-  const { rerender, result } = await renderHookWithQuery(
-    () => useMoment('rail.done', { when }),
-    preferring('default')
+  const { rerender, result } = await renderHookWithQuery(() =>
+    useMoment('rail.done', { when })
   );
 
   when = true;
@@ -423,9 +316,8 @@ test('a moment that doesn’t wait is skipped in a hidden tab and never plays fo
 test('a moment goes off when its subject goes away and stays off when it comes back', async () => {
   let subject: string | undefined = 'foo';
 
-  const { rerender, result } = await renderHookWithQuery(
-    () => useMoment('empty.enter', { subject }),
-    preferring('default')
+  const { rerender, result } = await renderHookWithQuery(() =>
+    useMoment('empty.enter', { subject })
   );
 
   const on = [result.current.on];
@@ -442,9 +334,8 @@ test('a moment goes off when its subject goes away and stays off when it comes b
 });
 
 test('a subject that never equals itself is still one subject', async () => {
-  const { result } = await renderHookWithQuery(
-    () => useMoment('empty.enter', { subject: Number.NaN }),
-    preferring('default')
+  const { result } = await renderHookWithQuery(() =>
+    useMoment('empty.enter', { subject: Number.NaN })
   );
 
   expect({
@@ -456,14 +347,12 @@ test('a subject that never equals itself is still one subject', async () => {
 test('a moment with nowhere to show its effect, or nowhere to keep its count, plays nothing and spends nothing', async () => {
   let when = false;
 
-  const nowhere = await renderHookWithQuery(
-    () =>
-      useMoment('plan.complete', {
-        anchor: { current: null },
-        subject: 'foo',
-        when,
-      }),
-    preferring('default')
+  const nowhere = await renderHookWithQuery(() =>
+    useMoment('plan.complete', {
+      anchor: { current: null },
+      subject: 'foo',
+      when,
+    })
   );
 
   when = true;
@@ -476,10 +365,7 @@ test('a moment with nowhere to show its effect, or nowhere to keep its count, pl
     throw new DOMException('foo', 'QuotaExceededError');
   });
 
-  const fizz = await renderHookWithQuery(
-    () => useMoment('home.fizz'),
-    preferring('default')
-  );
+  const fizz = await renderHookWithQuery(() => useMoment('home.fizz'));
 
   const played = await act(() => fizz.result.current.play());
 
@@ -498,9 +384,8 @@ test('the ledger keeps the fifty newest subjects of a moment and drops ids that 
 
   let ask = { subject: 0, when: false };
 
-  const { rerender } = await renderHookWithQuery(
-    () => useMoment('ask.ahem', ask),
-    preferring('default')
+  const { rerender } = await renderHookWithQuery(() =>
+    useMoment('ask.ahem', ask)
   );
 
   for (let subject = 0; subject <= 50; subject += 1) {
@@ -527,9 +412,7 @@ function Arrival() {
 test('a moment cued by its mount spends once when effects run twice', async () => {
   const screen = await render(
     <StrictMode>
-      <QueryClientProvider client={preferring('default')}>
-        <Arrival />
-      </QueryClientProvider>
+      <Arrival />
     </StrictMode>
   );
 

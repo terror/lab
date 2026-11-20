@@ -1,15 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
-import { Label } from '@/components/ui/label';
 import { LiveMark } from '@/components/ui/live-mark';
-import { Switch } from '@/components/ui/switch';
 import { useMoment } from '@/lib/moment';
 import { type Moment, type MomentId, moments } from '@/lib/moments';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { clearStored } from '@/lib/storage';
-import { defaultPreferences } from '@lab/server/schemas';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useId, useRef, useState } from 'react';
+import { useDeferredValue, useRef, useState } from 'react';
 
 type Limit = NonNullable<Moment['budget']>[number];
 
@@ -33,8 +28,6 @@ const each = {
   session: 'per session',
   tick: 'at once',
 } satisfies Record<Limit['per'], string>;
-
-const quiets = { keep: 'Kept', skip: 'Off' };
 
 const reductions = {
   skip: 'Off',
@@ -99,7 +92,6 @@ function Row({ id }: { id: MomentId }) {
       <td className='py-3 pr-4 whitespace-nowrap'>
         {entry.budget?.map(limitText).join(' · ') ?? 'No limit'}
       </td>
-      <td className='py-3 pr-4'>{entry.plain ?? quiets[entry.quiet]}</td>
       <td className='py-3 pr-4'>{reductions[entry.reduced]}</td>
       <td className='py-3 pr-4'>{hiddenText(entry)}</td>
       <td className='py-3 pr-4 whitespace-nowrap tabular-nums'>
@@ -128,28 +120,10 @@ function Row({ id }: { id: MomentId }) {
 }
 
 export function MomentsTable() {
-  const queryClient = useQueryClient();
-  const { data = defaultPreferences } = useQuery(preferencesQueryOptions);
-
-  const quiet = useId();
-
   const ids = Object.keys(moments) as MomentId[];
 
   return (
     <div className='flex flex-col gap-2 text-sm'>
-      <div className='flex items-center gap-2 self-end'>
-        <Switch
-          checked={data.personality === 'quiet'}
-          id={quiet}
-          onCheckedChange={(checked) =>
-            queryClient.setQueryData(preferencesQueryOptions.queryKey, {
-              ...data,
-              personality: checked ? 'quiet' : 'default',
-            })
-          }
-        />
-        <Label htmlFor={quiet}>Quiet</Label>
-      </div>
       <table className='w-full min-w-3xl text-left'>
         <thead>
           <tr className='border-b text-xs text-muted-foreground'>
@@ -158,9 +132,6 @@ export function MomentsTable() {
             </th>
             <th className='py-2 pr-4 font-medium' scope='col'>
               Budget
-            </th>
-            <th className='py-2 pr-4 font-medium' scope='col'>
-              Quiet
             </th>
             <th className='py-2 pr-4 font-medium' scope='col'>
               Reduced motion
@@ -181,7 +152,7 @@ export function MomentsTable() {
             <tr className='border-b'>
               <th
                 className='pt-8 pb-2 font-normal'
-                colSpan={7}
+                colSpan={6}
                 scope='rowgroup'
               >
                 <span className='text-base font-semibold capitalize'>

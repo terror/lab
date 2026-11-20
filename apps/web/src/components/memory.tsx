@@ -29,7 +29,7 @@ import {
   useMemoryUpdate,
 } from '@/lib/memory';
 import { undoToast } from '@/lib/undo';
-import { useEmpty } from '@/lib/voice';
+import { emptyCopy } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { type SubmitEvent, useState } from 'react';
@@ -136,7 +136,7 @@ export function Memory() {
 
   const [adding, setAdding] = useState(false);
 
-  const emptyState = useEmpty('memory');
+  const emptyState = emptyCopy('memory');
 
   const update = useMemoryUpdate((referenceChats: boolean) =>
     updateMemory({ referenceChats })

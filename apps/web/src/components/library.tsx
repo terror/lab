@@ -37,7 +37,7 @@ import { fade, spring, stagger } from '@/lib/motion';
 import { usePersistentState } from '@/lib/storage';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { useEmpty } from '@/lib/voice';
+import { emptyCopy } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
@@ -348,7 +348,7 @@ function LibraryEmpty({
   filtered: boolean;
   onClear: () => void;
 }) {
-  const emptyState = useEmpty(filtered ? 'matches' : 'library');
+  const emptyState = emptyCopy(filtered ? 'matches' : 'library');
 
   if (filtered) {
     return (

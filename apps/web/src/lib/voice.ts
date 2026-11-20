@@ -1,6 +1,5 @@
 import type { Pose } from '@/components/ui/empty-state';
 
-import { useMoment } from './moment';
 import { hash } from './seed';
 
 type Voice = {
@@ -8,146 +7,81 @@ type Voice = {
   stall: undefined;
 };
 
-type Lines<T> = {
-  plain: (context: T) => string;
-  pool: (context: T) => readonly string[];
-};
+type Lines<T> = (context: T) => readonly [string, ...string[]];
 
 const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
-  greeting: {
-    plain: () => 'What are we working on?',
-    pool: () => [
-      'What are we working on?',
-      'What would you like to make?',
-      'What should we tackle next?',
-      'What would you like to explore?',
-      'Where should we start?',
-      'What can I help with?',
-    ],
-  },
-  stall: {
-    plain: () => 'the model is slow right now',
-    pool: () => ['still on it, the model is slow right now'],
-  },
+  greeting: () => [
+    'What are we working on?',
+    'What would you like to make?',
+    'What should we tackle next?',
+    'What would you like to explore?',
+    'Where should we start?',
+    'What can I help with?',
+  ],
+  stall: () => ['still on it, the model is slow right now'],
 };
 
 export function say<K extends keyof Voice>(
   key: K,
   context: Voice[K],
-  { quiet, seed }: { quiet: boolean; seed: string }
+  seed: string
 ) {
   const lines: Lines<Voice[K]> = voice[key];
 
-  if (quiet) {
-    return lines.plain(context);
-  }
+  const pool = lines(context);
 
-  const pool = lines.pool(context);
-
-  return pool[hash(`${key}:${seed}`) % pool.length] ?? lines.plain(context);
+  return pool[hash(`${key}:${seed}`) % pool.length] ?? pool[0];
 }
 
 type Copy = { description: string; title: string };
 
 const empties = {
   active: {
-    plain: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No active tasks',
-    },
+    description: 'Describe a task above and Lab will run it on schedule.',
     pose: 'asleep',
-    voiced: {
-      description: 'Describe a task above and Lab will run it on schedule.',
-      title: 'Nothing on the clock',
-    },
+    title: 'Nothing on the clock',
   },
   library: {
-    plain: {
-      description: 'Images and files from your chats land here.',
-      title: 'Nothing on the shelves yet',
-    },
+    description: 'Images and files from your chats collect here.',
     pose: 'default',
-    voiced: {
-      description: 'Images and files from your chats collect here.',
-      title: 'Empty shelves',
-    },
+    title: 'Empty shelves',
   },
   matches: {
-    plain: {
-      description: 'Nothing here matches that search and filter.',
-      title: 'No matches',
-    },
+    description: 'Try fewer words or another filter.',
     pose: 'puzzled',
-    voiced: {
-      description: 'Try fewer words or another filter.',
-      title: 'No matches',
-    },
+    title: 'No matches',
   },
   memory: {
-    plain: {
-      description:
-        'Tell it something worth remembering in any chat, or add a memory here.',
-      title: 'Lab hasn’t learned anything yet',
-    },
+    description:
+      'Tell Lab something worth keeping in any chat, or add a memory here.',
     pose: 'default',
-    voiced: {
-      description:
-        'Tell Lab something worth keeping in any chat, or add a memory here.',
-      title: 'An empty jar',
-    },
+    title: 'An empty jar',
   },
   paused: {
-    plain: {
-      description: 'A task you pause waits here until you resume it.',
-      title: 'No paused tasks',
-    },
+    description: 'A task you pause waits here until you resume it.',
     pose: 'asleep',
-    voiced: {
-      description: 'A task you pause waits here until you resume it.',
-      title: 'No paused tasks',
-    },
+    title: 'No paused tasks',
   },
   project: {
-    plain: {
-      description: 'Start one above and it lands here.',
-      title: 'No chats in this project yet',
-    },
+    description: 'Start a chat above and it lands here.',
     pose: 'stretching',
-    voiced: {
-      description: 'Start a chat above and it lands here.',
-      title: 'A fresh project',
-    },
+    title: 'A fresh project',
   },
   tasks: {
-    plain: {
-      description: 'Describe one above and Lab will set it up.',
-      title: 'No scheduled tasks yet',
-    },
+    description: 'Describe a task above and Lab will run it on schedule.',
     pose: 'asleep',
-    voiced: {
-      description: 'Describe a task above and Lab will run it on schedule.',
-      title: 'Nothing on the clock',
-    },
+    title: 'Nothing on the clock',
   },
   trash: {
-    plain: {
-      description: 'Chats and projects you delete land here.',
-      title: 'All clean',
-    },
+    description:
+      'Chats and projects you delete wait here until you restore them or delete them for good.',
     pose: 'drained',
-    voiced: {
-      description:
-        'Chats and projects you delete wait here until you restore them or delete them for good.',
-      title: 'Nothing to throw out',
-    },
+    title: 'Nothing to throw out',
   },
-} satisfies Record<string, { plain: Copy; pose: Pose; voiced: Copy }>;
+} satisfies Record<string, Copy & { pose: Pose }>;
 
 export type EmptyView = keyof typeof empties;
 
-export function useEmpty(view: EmptyView): Copy & { pose?: Pose } {
-  const spoken = useMoment('empty.voice').on;
-  const { plain, pose, voiced } = empties[view];
-
-  return spoken ? { ...voiced, pose } : plain;
+export function emptyCopy(view: EmptyView): Copy & { pose: Pose } {
+  return empties[view];
 }

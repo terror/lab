@@ -20,7 +20,7 @@ import { usePins } from '@/lib/artifacts';
 import { useConversations } from '@/lib/conversations';
 import { useNote } from '@/lib/hints';
 import { useProject } from '@/lib/projects';
-import { useEmpty } from '@/lib/voice';
+import { emptyCopy } from '@/lib/voice';
 import { useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -39,7 +39,7 @@ function ProjectChats({ id, instructed }: { id: number; instructed: boolean }) {
 
   useNote('project', !instructed && (chats.data?.length ?? 0) >= 3);
 
-  const emptyState = useEmpty('project');
+  const emptyState = emptyCopy('project');
 
   if (chats.isPending) {
     return <ListSkeleton />;

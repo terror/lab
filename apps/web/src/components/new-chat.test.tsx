@@ -48,7 +48,6 @@ function settle() {
 async function renderHome({
   answer = () => new Response(null, { status: 204 }),
   chats = [],
-  personality = 'default',
   pins = [],
   projects = [],
   start = () => Response.json({ id: 1 }, { status: 201 }),
@@ -59,7 +58,6 @@ async function renderHome({
 }: {
   answer?: () => Response;
   chats?: object[];
-  personality?: string;
   pins?: object[];
   projects?: object[];
   start?: () => Response | Promise<Response>;
@@ -68,11 +66,9 @@ async function renderHome({
   unread?: () => Response | Promise<Response>;
   user?: string;
 } = {}) {
-  const preferences = { ...defaultPreferences, personality };
-
   window.localStorage.setItem(
     'lab:foo:preferences',
-    JSON.stringify(preferences)
+    JSON.stringify(defaultPreferences)
   );
 
   const responses: Record<string, unknown> = {
@@ -89,7 +85,7 @@ async function renderHome({
     '/api/conversations': { conversations: chats, next: null },
     '/api/conversations/pins': { pins },
     '/api/models': { default: null, models: [] },
-    '/api/preferences': { preferences },
+    '/api/preferences': { preferences: defaultPreferences },
     '/api/profile': {},
     '/api/projects': { projects },
     '/api/schedules': { tasks },
@@ -244,18 +240,6 @@ test('the greeting stays the same throughout a session', async () => {
     'What are we working on?',
     'What are we working on?',
   ]);
-});
-
-test('a quiet home shows the mark at rest on the first visit', async () => {
-  const { screen } = await renderHome({ personality: 'quiet' });
-
-  await expect.element(screen.getByRole('heading')).toBeVisible();
-
-  expect(
-    screen.container
-      .querySelector('[data-slot=live-mark]')
-      ?.getAttribute('data-state')
-  ).toBe('idle');
 });
 
 test('home steps aside and holds the composer in place while a chat starts', async () => {

@@ -14,12 +14,12 @@ function plain(markdown: string) {
     .replace(/[*_`#>~|]/g, '');
 }
 
-function CopyIcon({ copied, quiet }: { copied: boolean; quiet: boolean }) {
+function CopyIcon({ copied, still }: { copied: boolean; still: boolean }) {
   return (
     <svg
       aria-hidden='true'
       className='size-4 overflow-visible'
-      data-quiet={quiet || undefined}
+      data-still={still || undefined}
       data-slot='copy-icon'
       data-state={copied ? 'copied' : 'idle'}
       fill='none'
@@ -62,7 +62,7 @@ function CopyAction({ text }: { text: string }) {
           void navigator.clipboard.writeText(text).then(() => setCopied(true));
         }}
       >
-        <CopyIcon copied={copied} quiet={!fold} />
+        <CopyIcon copied={copied} still={!fold} />
       </IconButton>
       <span aria-live='polite' className='sr-only'>
         {copied ? 'Copied' : ''}

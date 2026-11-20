@@ -1,10 +1,7 @@
 import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { useDraft } from '@/lib/conversations';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { expect, test, vi } from 'vitest';
 
@@ -21,18 +18,10 @@ function Home() {
   );
 }
 
-function renderHome(personality: 'default' | 'quiet' = 'default') {
-  const preferences = { ...defaultPreferences, personality };
+function renderHome() {
+  stubFetch(() => Response.json({ chats: [], runs: [], waiting: [] }));
 
-  stubFetch(() =>
-    Response.json({ chats: [], preferences, runs: [], waiting: [] })
-  );
-
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, preferences);
-
-  return renderWithQuery(<Home />, client);
+  return renderWithQuery(<Home />);
 }
 
 test('the home mark leans in when the draft changes', async () => {
@@ -89,28 +78,6 @@ test('the home mark dozes after six idle minutes and wakes when the pointer move
   expect(seen).toEqual(['idle', 'idle', 'doze', 'wake']);
 });
 
-test('the home mark never dozes when Lab is quiet', async ({
-  onTestFinished,
-}) => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-
-  onTestFinished(() => {
-    vi.useRealTimers();
-  });
-
-  const { screen } = await renderHome('quiet');
-
-  vi.advanceTimersByTime(360_000);
-
-  await screen.rerender(<Home />);
-
-  expect(
-    screen.container
-      .querySelector('[data-slot=live-mark]')
-      ?.getAttribute('data-state')
-  ).toBe('idle');
-});
-
 function frame() {
   return new Promise((resolve) => {
     requestAnimationFrame(resolve);
@@ -162,21 +129,6 @@ test('shaking the home mark fizzes once a session and only bubbles after that', 
       JSON.parse(window.sessionStorage.getItem('lab:foo:moments') ?? '{}')
     )
   ).toEqual(['home.fizz']);
-});
-
-test('the home mark stays put when Lab is quiet', async () => {
-  const { screen } = await renderHome('quiet');
-
-  const mark = screen.container.querySelector('[data-slot=live-mark]');
-
-  await import('@/lib/motion-max');
-  await frame();
-
-  await shake(mark ?? document.body);
-
-  await frame();
-
-  expect(mark?.getAttribute('data-state')).toBe('idle');
 });
 
 test('a mark that was shaken still wakes with a start after its next doze', async ({

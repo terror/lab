@@ -1,23 +1,9 @@
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 
 import { TaskClock } from './task-clock';
 
 type Props = Parameters<typeof TaskClock>[0];
-
-function client(personality: 'default' | 'quiet' = 'default') {
-  const query = new QueryClient();
-
-  query.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality,
-  });
-
-  return query;
-}
 
 function transform(container: HTMLElement) {
   const line = container.querySelector('line');
@@ -25,21 +11,16 @@ function transform(container: HTMLElement) {
   return line instanceof SVGElement ? line.style.transform : '';
 }
 
-async function hand(props: Props, personality?: 'default' | 'quiet') {
-  const { screen } = await renderWithQuery(
-    <TaskClock {...props} />,
-    client(personality)
-  );
+async function hand(props: Props) {
+  const { screen } = await renderWithQuery(<TaskClock {...props} />);
 
   return transform(screen.container);
 }
 
 async function sequence(steps: Props[]) {
-  const query = client();
-
   const [first, ...rest] = steps;
 
-  const { screen } = await renderWithQuery(<TaskClock {...first} />, query);
+  const { screen } = await renderWithQuery(<TaskClock {...first} />);
 
   const seen = [transform(screen.container)];
 
@@ -59,14 +40,12 @@ test('the hand turns with the wait and each wind-up adds a turn', async () => {
     await hand({ progress: Number.NaN }),
     await hand({ progress: 2 }),
     await hand({ progress: 0.25, turns: 1 }),
-    await hand({ progress: 0.25, turns: 1 }, 'quiet'),
   ]).toEqual([
     'rotate(0deg)',
     'rotate(180deg)',
     'rotate(0deg)',
     'rotate(360deg)',
     'rotate(450deg)',
-    'rotate(90deg)',
   ]);
 });
 

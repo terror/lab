@@ -44,10 +44,7 @@ export function NewChat({ user }: { user: { id: string } }) {
   const first = useMoment('home.arrive').on;
   const voiced = useMoment('home.prompt').on;
   const [day] = useState(() => new Date().toDateString());
-  const greeting = say('greeting', undefined, {
-    quiet: !voiced,
-    seed: `${user.id}:${day}`,
-  });
+  const greeting = say('greeting', undefined, `${user.id}:${day}`);
   const fade = first && voiced;
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);

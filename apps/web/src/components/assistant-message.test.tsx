@@ -1,9 +1,6 @@
 import { ToolConversation } from '@/components/tools';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
@@ -432,40 +429,6 @@ test('a pending approval clears its throat once, then swallows the answer', asyn
   expect(seen).toEqual(['waiting', 'ahem', 'gulp', 'thinking']);
 });
 
-test('a pending approval keeps its plain dot when Lab is quiet', async () => {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality: 'quiet',
-  });
-
-  const { screen } = await renderWithQuery(approval(), client);
-
-  expect(
-    [
-      ...screen.container.querySelectorAll(
-        '[data-slot=run-line-mark] [data-slot]'
-      ),
-    ].map((mark) => mark.getAttribute('data-slot'))
-  ).toEqual(['dot']);
-});
-
-test('a finished turn shows no mark when Lab is quiet', async () => {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality: 'quiet',
-  });
-
-  const { screen } = await renderWithQuery(reply(false), client);
-
-  await expect.element(screen.getByText('Worked for 2m 31s')).toBeVisible();
-
-  expect(screen.container.querySelector('[data-slot=live-mark]')).toBeNull();
-});
-
 const attempts = {
   failed: { failure: 'model_error', retrying: false },
   retrying: { failure: 'model_error', retrying: true },
@@ -512,23 +475,6 @@ test('a failed reply slips when told to, mends on Retry, and holds still if the 
   }
 
   expect(seen).toEqual(['broken', 'error', 'recover', 'broken']);
-});
-
-test('a failed run keeps its plain icon when Lab is quiet', async () => {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality: 'quiet',
-  });
-
-  const { screen } = await renderWithQuery(attempt('failed'), client);
-
-  expect(
-    [
-      ...screen.getByRole('alert').element().querySelectorAll('[data-slot]'),
-    ].map((part) => part.getAttribute('data-slot'))
-  ).toEqual(['trace-icon', 'status-icon']);
 });
 
 async function spin(failure: 'aborted' | 'model_error') {

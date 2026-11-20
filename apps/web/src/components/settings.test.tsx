@@ -138,7 +138,7 @@ test('on a wide screen Settings opens on Appearance beside the nav', async () =>
     .toBeVisible();
 });
 
-test('the personality setting saves to the account', async () => {
+test('the line numbers setting saves to the account', async () => {
   await page.viewport(1280, 800);
 
   const fetch = stubFetch(() => Response.json({ admin: false }));
@@ -150,7 +150,9 @@ test('the personality setting saves to the account', async () => {
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
 
-  await screen.getByRole('button', { name: 'Quiet' }).click();
+  await screen
+    .getByRole('switch', { name: 'Line numbers in code blocks' })
+    .click();
 
   await expect
     .poll(() =>
@@ -158,5 +160,5 @@ test('the personality setting saves to the account', async () => {
         .filter(([, init]) => init?.method === 'PATCH')
         .map(([input, init]) => [requestUrl(input).pathname, init?.body])
     )
-    .toEqual([['/api/preferences', JSON.stringify({ personality: 'quiet' })]]);
+    .toEqual([['/api/preferences', JSON.stringify({ lineNumbers: true })]]);
 });

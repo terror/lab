@@ -28,7 +28,7 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
-import { type EmptyView, useEmpty } from '@/lib/voice';
+import { type EmptyView, emptyCopy } from '@/lib/voice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
@@ -248,7 +248,7 @@ export function Scheduled() {
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
 
-  const emptyState = useEmpty(filters[filter].empty);
+  const emptyState = emptyCopy(filters[filter].empty);
 
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
