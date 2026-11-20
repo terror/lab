@@ -7,6 +7,13 @@ const userKey = `${prefix}user`;
 
 let user: string | undefined;
 
+type Area = 'device' | 'tab';
+
+const areas = {
+  device: () => window.localStorage,
+  tab: () => window.sessionStorage,
+} satisfies Record<Area, () => Storage>;
+
 const listeners = new Set<() => void>();
 
 function subscribeStorage(listener: () => void) {
@@ -35,8 +42,8 @@ function scoped(key: string) {
   return `${prefix}${user}:${key}`;
 }
 
-function getItem(key: string) {
-  return user === undefined ? null : window.localStorage.getItem(scoped(key));
+function getItem(key: string, area: Area = 'device') {
+  return user === undefined ? null : areas[area]().getItem(scoped(key));
 }
 
 export function setStorageUser(id: string) {
@@ -45,7 +52,14 @@ export function setStorageUser(id: string) {
   }
 
   window.localStorage.setItem(userKey, JSON.stringify(id));
+
+  const before = user;
+
   user = id;
+
+  return () => {
+    user = before;
+  };
 }
 
 function notify() {
@@ -54,23 +68,36 @@ function notify() {
   }
 }
 
-export function readStored<T>(key: string, schema: z.ZodType<T>, fallback: T) {
-  return parse(getItem(key), schema, fallback);
+export function readStored<T>(
+  key: string,
+  schema: z.ZodType<T>,
+  fallback: T,
+  area?: Area
+) {
+  return parse(getItem(key, area), schema, fallback);
 }
 
-export function writeStored(key: string, value: unknown) {
+export function writeStored(
+  key: string,
+  value: unknown,
+  area: Area = 'device'
+) {
   if (user === undefined) {
     return;
   }
 
-  window.localStorage.setItem(scoped(key), JSON.stringify(value));
+  areas[area]().setItem(scoped(key), JSON.stringify(value));
   notify();
 }
 
 export function clearStored() {
-  for (const key of Object.keys(window.localStorage)) {
-    if (key.startsWith(prefix)) {
-      window.localStorage.removeItem(key);
+  for (const area of Object.values(areas)) {
+    const storage = area();
+
+    for (const key of Object.keys(storage)) {
+      if (key.startsWith(prefix)) {
+        storage.removeItem(key);
+      }
     }
   }
 
