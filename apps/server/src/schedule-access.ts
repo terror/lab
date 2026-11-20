@@ -1,13 +1,16 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { schema } from '@lab/db';
-import type {
-  ScheduleAccess,
-  ScheduleUpdate,
-  ScheduledTask,
+import {
+  ScheduledChatsDoc,
+  type ScheduleAccess,
+  type ScheduleUpdate,
+  type ScheduledTask,
 } from '@lab/harness';
 import { Cron } from 'croner';
 import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm';
 
 import { db } from './db';
+import { harness } from './harness';
 import { requireOwner } from './records';
 
 const table = schema.scheduledTask;
@@ -119,28 +122,61 @@ export async function deleteTask(ownerId: string, id: number) {
     .where(and(eq(table.id, id), eq(table.ownerId, ownerId)))
     .returning();
 
+  if (row) {
+    await harness().commit(async (tx) => {
+      delete (await tx.doc(ScheduledChatsDoc, ownerId, null))[String(id)];
+    }, BACKGROUND_CONTEXT);
+  }
+
   return row && toTask(row);
 }
 
 export const scheduleAccess: ScheduleAccess = {
-  create: async (conversationId, input) => {
+  create: async ({ conversationId, taskId }, input) => {
     const ownerId = await requireOwner(conversationId);
 
-    const [row] = await db
-      .insert(table)
-      .values({
-        ...input,
-        conversationId,
-        nextRunAt: nextRun(input.cron, input.timezone, new Date()),
-        ownerId,
-      })
-      .returning();
+    const creation = schema.scheduledTaskCreation;
 
-    if (!row) {
-      throw new Error('Unable to schedule the task.');
-    }
+    return db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(creation)
+        .values({ ownerId, taskId })
+        .onConflictDoNothing()
+        .returning();
 
-    return toTask(row);
+      if (!created) {
+        const [row] = await tx
+          .select(getTableColumns(table))
+          .from(creation)
+          .innerJoin(table, eq(table.id, creation.scheduledTaskId))
+          .where(
+            and(eq(creation.taskId, taskId), eq(creation.ownerId, ownerId))
+          );
+
+        return row && toTask(row);
+      }
+
+      const [row] = await tx
+        .insert(table)
+        .values({
+          ...input,
+          conversationId,
+          nextRunAt: nextRun(input.cron, input.timezone, new Date()),
+          ownerId,
+        })
+        .returning();
+
+      if (!row) {
+        throw new Error('Unable to schedule the task.');
+      }
+
+      await tx
+        .update(creation)
+        .set({ scheduledTaskId: row.id })
+        .where(and(eq(creation.taskId, taskId), eq(creation.ownerId, ownerId)));
+
+      return toTask(row);
+    });
   },
   delete: async (conversationId, id) =>
     deleteTask(await requireOwner(conversationId), id),

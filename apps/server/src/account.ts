@@ -6,6 +6,7 @@ import {
   MemoryDoc,
   PreferencesDoc,
   ProfileDoc,
+  ScheduledChatsDoc,
   SkillsDoc,
 } from '@lab/harness';
 import { asc, eq, sql } from 'drizzle-orm';
@@ -209,6 +210,7 @@ export async function deleteAccount(ownerId: string) {
     await tx.retireDoc(MemoryDoc, ownerId);
     await tx.retireDoc(PreferencesDoc, ownerId);
     await tx.retireDoc(ProfileDoc, ownerId);
+    await tx.retireDoc(ScheduledChatsDoc, ownerId);
     await tx.retireDoc(SkillsDoc, ownerId);
   }, BACKGROUND_CONTEXT);
 
