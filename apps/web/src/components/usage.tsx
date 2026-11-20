@@ -10,15 +10,15 @@ import { SectionHeading } from '@/components/ui/section-heading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { conversationTitle } from '@/lib/conversations';
 import { calendarDate, formatSpend, spendFormat } from '@/lib/format';
+import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import { usePersistentState } from '@/lib/storage';
 import { type Usage, usageQueryOptions } from '@/lib/usage';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { type Format } from '@number-flow/react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { AnimatePresence, m, useReducedMotion } from 'motion/react';
+import { AnimatePresence, m } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -296,8 +296,7 @@ export function UsagePanel() {
 
   const data = usage.isError ? undefined : usage.data;
 
-  const quiet = useQuiet();
-  const reduced = useReducedMotion();
+  const rises = useMoment('places.ledger').on;
 
   const [shown, setShown] = useState({ days, risen: false });
 
@@ -361,7 +360,7 @@ export function UsagePanel() {
             <SpendChart
               key={shown.days}
               daily={data.daily}
-              rise={shown.risen && !quiet && !reduced}
+              rise={shown.risen && rises}
             />
           </div>
         )}

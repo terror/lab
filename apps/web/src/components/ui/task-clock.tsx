@@ -1,6 +1,6 @@
+import { useMoment } from '@/lib/moment';
 import { story } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import * as React from 'react';
 
 function TaskClock({
@@ -16,7 +16,7 @@ function TaskClock({
   since?: string;
   turns?: number;
 }) {
-  const quiet = useQuiet();
+  const quiet = !useMoment('places.wind').on;
 
   const fraction =
     paused || progress === undefined || !Number.isFinite(progress)

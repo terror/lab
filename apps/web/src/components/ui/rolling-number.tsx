@@ -1,6 +1,6 @@
+import { useMoment } from '@/lib/moment';
 import { roll } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import NumberFlow, { type Format } from '@number-flow/react';
 
 function RollingNumber({
@@ -16,7 +16,7 @@ function RollingNumber({
   steady?: boolean;
   value: number;
 }) {
-  const quiet = useQuiet();
+  const rolls = useMoment('places.roll').on;
 
   return (
     <>
@@ -24,7 +24,7 @@ function RollingNumber({
         {new Intl.NumberFormat('en-US', format).format(value)}
       </span>
       <NumberFlow
-        animated={animated && !quiet}
+        animated={animated && rolls}
         aria-hidden='true'
         className={cn('-my-[0.25em] tabular-nums', className)}
         data-slot='rolling-number'

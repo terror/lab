@@ -14,6 +14,7 @@ import { ListRow, ListSkeleton } from '@/components/ui/list-row';
 import { PageHeader } from '@/components/ui/page';
 import { conversationTitle } from '@/lib/conversations';
 import { shortDate } from '@/lib/format';
+import { useMoment } from '@/lib/moment';
 import { dissolve } from '@/lib/motion';
 import {
   type TrashItem,
@@ -24,7 +25,7 @@ import {
   trashQueryOptions,
   useTrashAction,
 } from '@/lib/trash';
-import { useEmpty, useQuiet } from '@/lib/voice';
+import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Ellipsis, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
 import {
@@ -32,7 +33,6 @@ import {
   m,
   useIsPresent,
   usePresenceData,
-  useReducedMotion,
 } from 'motion/react';
 import { useState } from 'react';
 
@@ -103,9 +103,7 @@ function TrashRow({ index, item }: { index: number; item: TrashItem }) {
 
   const present = useIsPresent();
   const emptying = usePresenceData() === true;
-  const reduced = useReducedMotion();
-  const quiet = useQuiet();
-  const still = reduced || quiet;
+  const still = !useMoment('places.dissolve').on;
 
   const { icon: Icon, name: title } = kinds[item.kind];
 
