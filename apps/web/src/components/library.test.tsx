@@ -1,3 +1,4 @@
+import { readStored, setStorageUser, writeStored } from '@/lib/storage';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
 import {
   RouterProvider,
@@ -5,7 +6,8 @@ import {
   createRootRoute,
   createRouter,
 } from '@tanstack/react-router';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { z } from 'zod';
 
 import { Library } from './library';
 
@@ -64,4 +66,30 @@ test('a saved file that is not a pdf opens as text', async () => {
   await expect
     .element(screen.getByRole('dialog').getByText('foo,bar'))
     .toBeVisible();
+});
+
+test('a visit to the Library marks everything before it as seen', async ({
+  onTestFinished,
+}) => {
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  vi.useFakeTimers({ now: new Date('2026-01-02T00:00:00Z'), toFake: ['Date'] });
+
+  setStorageUser('foo');
+  writeStored('library-seen', '2026-01-01T00:00:00.000Z');
+
+  stubFetch(() => Response.json({ items: [], next: null }));
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Library }),
+  });
+
+  await renderWithQuery(<RouterProvider router={router} />);
+
+  await expect
+    .poll(() => readStored('library-seen', z.string(), ''))
+    .toBe('2026-01-02T00:00:00.000Z');
 });

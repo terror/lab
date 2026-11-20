@@ -168,6 +168,12 @@ export const moments = {
     tier: 'run',
     use: 'Lab saves a memory while you watch, so a ribbon drops and a highlighter sweeps the note.',
   },
+  'places.fresh': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'Library items made since your last visit drop onto the shelf, six staggered at most.',
+  },
   'places.grow': {
     quiet: 'skip',
     reduced: 'skip',

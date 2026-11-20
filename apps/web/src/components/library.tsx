@@ -33,7 +33,8 @@ import {
   useLibrarySearch,
 } from '@/lib/library';
 import { useMoment } from '@/lib/moment';
-import { fade, spring } from '@/lib/motion';
+import { fade, spring, stagger } from '@/lib/motion';
+import { usePersistentState } from '@/lib/storage';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useEmpty } from '@/lib/voice';
@@ -41,7 +42,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
 import { AnimatePresence, m, useIsPresent } from 'motion/react';
-import { type KeyboardEvent, type ReactNode, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from 'react';
+import { z } from 'zod';
 
 type Filter = 'all' | LibraryKind;
 
@@ -55,6 +57,8 @@ const grid =
   'grid grid-cols-2 gap-2 @container @md:grid-cols-3 @xl:grid-cols-4';
 
 const RESHELVE_LIMIT = 60;
+
+const seenSchema = z.string().optional();
 
 const settle = {
   animate: {
@@ -72,7 +76,38 @@ const reshelve = {
   transition: { layout: spring.glide, opacity: fade.base },
 } as const;
 
-function Shelved({ children, glide }: { children: ReactNode; glide: boolean }) {
+type Entrance = 'drop' | 'fade' | 'still';
+
+function entrance(kind: Entrance, order: number) {
+  const delay = Math.min(order, 5) * stagger;
+
+  const entrances = {
+    drop: {
+      initial: { opacity: 0, y: -12 },
+      transition: {
+        layout: spring.glide,
+        opacity: { ...fade.base, delay },
+        y: { ...spring.lively, delay },
+      },
+    },
+    fade: {},
+    still: { initial: false as const },
+  };
+
+  return entrances[kind];
+}
+
+function Shelved({
+  children,
+  enter,
+  glide,
+  order,
+}: {
+  children: ReactNode;
+  enter: Entrance;
+  glide: boolean;
+  order: number;
+}) {
   const present = useIsPresent();
 
   return (
@@ -81,6 +116,8 @@ function Shelved({ children, glide }: { children: ReactNode; glide: boolean }) {
       inert={!present}
       layout={glide && 'position'}
       {...reshelve}
+      {...entrance(enter, order)}
+      animate={{ opacity: 1, y: 0 }}
     >
       {children}
     </m.div>
@@ -88,12 +125,14 @@ function Shelved({ children, glide }: { children: ReactNode; glide: boolean }) {
 }
 
 function Shelf({
+  enter,
   glide,
   items,
   onOpen,
   shared,
   title,
 }: {
+  enter: (item: LibraryItem) => { kind: Entrance; order: number };
   glide: boolean;
   items: LibraryItem[];
   onOpen: (id: number) => void;
@@ -111,9 +150,14 @@ function Shelf({
     >
       <SectionHeading>{title}</SectionHeading>
       <div className={grid}>
-        <AnimatePresence initial={false}>
+        <AnimatePresence>
           {items.map((item) => (
-            <Shelved key={item.id} glide={glide}>
+            <Shelved
+              key={item.id}
+              enter={enter(item).kind}
+              glide={glide}
+              order={enter(item).order}
+            >
               <Tile
                 item={item}
                 layoutId={shared ? `library-${item.id}` : undefined}
@@ -358,6 +402,54 @@ export function Library() {
 
   const glide = items.length <= RESHELVE_LIMIT;
 
+  const drops = useMoment('places.fresh').on;
+
+  const [seen, setSeen] = usePersistentState(
+    'library-seen',
+    seenSchema,
+    undefined
+  );
+
+  const [visit] = useState(() => ({ since: seen, start: Date.now() }));
+
+  const [arrived, setArrived] = useState(false);
+
+  useEffect(() => {
+    setSeen(new Date(visit.start).toISOString());
+  }, [setSeen, visit.start]);
+
+  const stocked = items.length > 0;
+
+  useEffect(() => {
+    if (!stocked) {
+      return undefined;
+    }
+
+    const frame = requestAnimationFrame(() => setArrived(true));
+
+    return () => cancelAnimationFrame(frame);
+  }, [stocked]);
+
+  const fresh = items
+    .filter(
+      ({ createdAt }) =>
+        drops &&
+        !arrived &&
+        visit.since !== undefined &&
+        createdAt > visit.since
+    )
+    .map(({ id }) => id);
+
+  const enter = (item: LibraryItem) => {
+    const order = fresh.indexOf(item.id);
+
+    if (order >= 0) {
+      return { kind: 'drop' as const, order };
+    }
+
+    return { kind: arrived ? ('fade' as const) : ('still' as const), order: 0 };
+  };
+
   return (
     <div className='min-h-0 flex-1 overflow-y-auto'>
       <Page className='@container'>
@@ -394,6 +486,7 @@ export function Library() {
               {groupByPeriod(items).map(([title, group]) => (
                 <Shelf
                   key={title}
+                  enter={enter}
                   glide={glide}
                   items={group}
                   onOpen={(id) => setOpen({ id, stepped: false })}
