@@ -128,7 +128,7 @@ function Needs({
     actions: React.ReactNode,
     settled = false
   ) => (
-    <li data-kind='needs'>
+    <li className='pb-1' data-kind='needs'>
       <NeedsYouCard
         actions={actions}
         onBlur={(event) => {
