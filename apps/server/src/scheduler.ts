@@ -109,7 +109,8 @@ async function submitTask(row: Row, requestId: string, tx: Transaction) {
   }
 
   const submitted = await harness.commit(
-    (tx) => tx.submissionByRequest(conversation.id, requestId),
+    (transaction) =>
+      transaction.submissionByRequest(conversation.id, requestId),
     BACKGROUND_CONTEXT
   );
 

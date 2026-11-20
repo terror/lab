@@ -241,9 +241,46 @@ test('tasks skip runs while their chat is in the trash', async () => {
       stored: id,
     },
   });
+
+  async function replace(conversationId: number) {
+    await call(headers, 'DELETE', `/conversations/${conversationId}`);
+
+    const purged = await call(
+      headers,
+      'DELETE',
+      `/trash/conversation/${conversationId}`
+    );
+    const run = await call(headers, 'POST', `/schedules/${created.id}/run`);
+    const target = run.body.task.conversationId;
+
+    await settle(target);
+
+    expect({
+      chats: (await call(headers, 'GET', '/conversations')).body.conversations
+        .length,
+      messages: await messages(headers, target),
+      purged,
+      replaced: target !== conversationId,
+      status: run.status,
+    }).toEqual({
+      chats: 1,
+      messages: ['bar'],
+      purged: { body: { chats: [conversationId] }, status: 200 },
+      replaced: true,
+      status: 200,
+    });
+
+    return target;
+  }
+
+  await replace(await replace(id));
+  await call(headers, 'DELETE', `/schedules/${created.id}`);
 });
 
 test('scheduled occurrences survive failed submission and failed acknowledgement', async () => {
+  const due = new Date('2026-01-01T00:00:00Z');
+  const now = new Date('2026-01-01T00:00:30Z');
+
   async function runCase(
     fresh: boolean,
     phase: 'before' | 'created' | 'accepted'
@@ -253,9 +290,6 @@ test('scheduled occurrences survive failed submission and failed acknowledgement
     const original = await ask(headers, 'approved');
 
     const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
-
-    const due = new Date('2026-01-01T00:00:00Z');
-    const now = new Date('2026-01-01T00:00:30Z');
 
     const [row] = await db
       .update(schema.scheduledTask)
@@ -357,6 +391,8 @@ test('scheduled occurrences survive failed submission and failed acknowledgement
 });
 
 test('polls recheck tasks paused or deleted after selection', async () => {
+  const now = new Date('2026-01-01T00:00:30Z');
+
   async function runCase(method: 'PATCH' | 'DELETE') {
     const headers = await signIn();
     const original = await ask(headers, 'approved');
@@ -378,7 +414,7 @@ test('polls recheck tasks paused or deleted after selection', async () => {
       }
     );
 
-    await runDueTasks(new Date('2026-01-01T00:00:30Z'));
+    await runDueTasks(now);
     interrupted.mockRestore();
     await settle(original.id);
 
