@@ -19,7 +19,7 @@ import { type Format } from '@number-flow/react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { z } from 'zod';
 
 const ranges = [
@@ -104,6 +104,8 @@ function SpendChart({ daily, rise }: { daily: Day[]; rise: boolean }) {
   const first = daily[0];
   const last = daily.at(-1);
 
+  const tapped = useRef<Day>(undefined);
+
   const leave = (entry: Day) => {
     setDay((current) => (current === entry ? undefined : current));
   };
@@ -123,8 +125,21 @@ function SpendChart({ daily, rise }: { daily: Day[]; rise: boolean }) {
             aria-label={`${calendarDate(entry.date)}: ${formatSpend(entry.cost)}`}
             className='group flex h-full min-w-0 flex-1 items-end focus-ring-inset'
             onBlur={() => leave(entry)}
-            onClick={() => setDay(entry)}
+            onClick={(event) => {
+              if (tapped.current === entry) {
+                event.currentTarget.blur();
+                setDay(undefined);
+              } else {
+                setDay(entry);
+              }
+            }}
             onFocus={() => setDay(entry)}
+            onPointerDown={(event) => {
+              tapped.current =
+                event.pointerType === 'touch' && day === entry
+                  ? entry
+                  : undefined;
+            }}
             onPointerEnter={() => setDay(entry)}
             onPointerLeave={(event) => {
               if (event.pointerType !== 'touch') {
@@ -235,6 +250,8 @@ export function UsagePanel() {
     placeholderData: keepPreviousData,
   });
 
+  const data = usage.isError ? undefined : usage.data;
+
   const quiet = useQuiet();
   const reduced = useReducedMotion();
 
@@ -265,51 +282,49 @@ export function UsagePanel() {
           Spend
         </SectionHeading>
         {usage.isPending && <UsageSkeleton />}
-        {usage.isLoadingError && (
+        {usage.isError && (
           <LoadError onRetry={() => usage.refetch()} subject='usage' />
         )}
-        {usage.data?.models.length === 0 && (
+        {data?.models.length === 0 && (
           <EmptyState
             description='Spend and tokens show up here after your first chat in this range.'
             title='Nothing spent yet'
           />
         )}
-        {usage.data && usage.data.models.length > 0 && (
-          <>
+        {data && data.models.length > 0 && (
+          <div
+            aria-busy={usage.isPlaceholderData || undefined}
+            className='flex flex-col gap-4 transition-opacity duration-base aria-busy:opacity-60'
+          >
             <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
               <Stat
-                format={spendFormat(usage.data.summary?.cost ?? 0)}
+                format={spendFormat(data.summary?.cost ?? 0)}
                 label='Spend'
-                value={usage.data.summary?.cost ?? 0}
+                value={data.summary?.cost ?? 0}
               />
               <Stat
                 format={compactFormat}
                 label='Input tokens'
-                value={usage.data.summary?.input ?? 0}
+                value={data.summary?.input ?? 0}
               />
               <Stat
                 format={compactFormat}
                 label='Output tokens'
-                value={usage.data.summary?.output ?? 0}
+                value={data.summary?.output ?? 0}
               />
-              <Stat
-                label='Responses'
-                value={usage.data.summary?.responses ?? 0}
-              />
+              <Stat label='Responses' value={data.summary?.responses ?? 0} />
             </div>
             <SpendChart
               key={shown.days}
-              daily={usage.data.daily}
+              daily={data.daily}
               rise={shown.risen && !quiet && !reduced}
             />
-          </>
+          </div>
         )}
       </section>
-      {usage.data && usage.data.models.length > 0 && (
-        <Models models={usage.data.models} />
-      )}
-      {usage.data && usage.data.conversations.length > 0 && (
-        <Chats conversations={usage.data.conversations} />
+      {data && data.models.length > 0 && <Models models={data.models} />}
+      {data && data.conversations.length > 0 && (
+        <Chats conversations={data.conversations} />
       )}
     </>
   );
