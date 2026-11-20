@@ -3,18 +3,18 @@ import type { ComponentProps } from 'react';
 
 type Mark = NonNullable<ComponentProps<typeof LiveMark>['state']>;
 
-type Limit = {
-  by?: string;
-  max: number;
-  per: 'day' | 'ever' | 'session' | 'tick';
-};
+type Limit =
+  | { by?: string; max: number; per: 'day' | 'ever' | 'session' }
+  | { by?: never; max: number; per: 'tick' };
+
+type Budget = readonly [Limit, ...Limit[]];
 
 type Fallback =
   | { plain: string; quiet: 'plain' }
   | { plain?: never; quiet: 'keep' | 'skip' };
 
 type Common = Fallback & {
-  budget?: readonly Limit[];
+  budget?: Budget;
   hidden?: 'wait';
   reduced: 'skip' | 'still';
   use: string;
@@ -36,7 +36,7 @@ export type Moment =
   | (Common & { effect?: never; mark?: Mark; ms?: number; tier: 'run' })
   | (Common &
       Shape & {
-        budget: readonly [Limit, ...Limit[]];
+        budget: Budget;
         quiet: 'plain' | 'skip';
         tier: 'landmark';
       })

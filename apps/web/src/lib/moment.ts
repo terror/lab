@@ -22,6 +22,9 @@ type Subject = number | string;
 
 type Anchor = RefObject<Element | null>;
 
+type Limits<Id extends MomentId> =
+  Entry<Id> extends { budget: readonly (infer Limit)[] } ? Limit : never;
+
 type Requested = {
   [Id in MomentId]: Entry<Id> extends
     | { budget: readonly unknown[] }
@@ -31,24 +34,24 @@ type Requested = {
 }[MomentId];
 
 type Subjected = {
-  [Id in MomentId]: Entry<Id> extends { budget: readonly (infer Limit)[] }
-    ? Limit extends { by: string }
-      ? Id
-      : never
-    : never;
+  [Id in MomentId]: [Extract<Limits<Id>, { by: string }>] extends [never]
+    ? never
+    : Id;
 }[MomentId];
 
 type Anchored = {
   [Id in MomentId]: Entry<Id> extends { effect: string } ? Id : never;
 }[MomentId];
 
-type Options<Id extends MomentId> = (Id extends Requested
-  ? { when?: boolean }
-  : { when?: never }) &
-  (Id extends Subjected
-    ? { subject: Subject | undefined }
-    : { subject?: never }) &
-  (Id extends Anchored ? { anchor: Anchor } : { anchor?: never });
+type Options<Id extends MomentId> = ([Extract<Id, Requested>] extends [never]
+  ? { when?: never }
+  : { when?: boolean }) &
+  ([Extract<Id, Subjected>] extends [never]
+    ? { subject?: never }
+    : { subject: Subject | undefined }) &
+  ([Extract<Id, Anchored>] extends [never]
+    ? { anchor?: never }
+    : { anchor: Anchor });
 
 type Args<Id extends MomentId> =
   Partial<Options<Id>> extends Options<Id>
@@ -87,15 +90,8 @@ const ticks = new Map<MomentId, number>();
 const waiting = new Set<() => void>();
 
 const effects = {
-  confetti: (anchor: Element | null) => {
-    if (anchor) {
-      void confetti(anchor);
-    }
-  },
-} satisfies Record<
-  NonNullable<Moment['effect']>,
-  (anchor: Element | null) => void
->;
+  confetti: (anchor: Element) => void confetti(anchor),
+} satisfies Record<NonNullable<Moment['effect']>, (anchor: Element) => void>;
 
 function since(per: keyof typeof homes, now: number) {
   return per === 'ever' ? 0 : new Date(now).setHours(0, 0, 0, 0);
@@ -124,7 +120,8 @@ function bounded(ledger: Ledger) {
 }
 
 function spend(id: MomentId, subject: Subject | undefined) {
-  const { budget = [] }: Moment = moments[id];
+  const entry: Moment = moments[id];
+  const budget = [...(entry.budget ?? [])];
   const now = Date.now();
   const order = ticks.get(id) ?? 0;
 
@@ -156,25 +153,41 @@ function spend(id: MomentId, subject: Subject | undefined) {
     return undefined;
   }
 
-  for (const home of new Set(counted.map((limit) => limit.home))) {
-    const ledger = ledgers[home];
+  const kept = {
+    device: new Map<string, { from: number; max: number }>(),
+    tab: new Map<string, { from: number; max: number }>(),
+  };
 
-    const keyed = Object.groupBy(
-      counted.filter((limit) => limit.home === home),
-      ({ key }) => key
-    );
+  for (const { from, home, key, max } of counted) {
+    const wider = kept[home].get(key) ?? { from, max };
 
-    for (const [key, limits = []] of Object.entries(keyed)) {
-      const from = Math.min(...limits.map((limit) => limit.from));
-      const most = Math.max(...limits.map((limit) => limit.max));
+    kept[home].set(key, {
+      from: Math.min(from, wider.from),
+      max: Math.max(max, wider.max),
+    });
+  }
 
-      ledger[key] = [
-        ...(ledger[key] ?? []).filter((at) => at >= from),
-        now,
-      ].slice(-most);
+  const written = [...new Set(counted.map((limit) => limit.home))].map(
+    (home) => {
+      const ledger = ledgers[home];
+
+      for (const [key, { from, max }] of kept[home]) {
+        ledger[key] = [
+          ...(ledger[key] ?? []).filter((at) => at >= from),
+          now,
+        ].slice(-max);
+      }
+
+      return { home, ledger: bounded(ledger) };
     }
+  );
 
-    writeStored('moments', bounded(ledger), home);
+  try {
+    for (const { home, ledger } of written) {
+      writeStored('moments', ledger, home);
+    }
+  } catch {
+    return undefined;
   }
 
   if (burst) {
@@ -246,7 +259,17 @@ export function useMoment<Id extends MomentId>(
 
   const subjected = moment?.budget?.some(({ by }) => by !== undefined) ?? false;
 
-  const ready = fine && !(subjected && subject === undefined);
+  const eligible =
+    moment !== undefined && !(subjected && subject === undefined);
+
+  const ready = fine && eligible;
+
+  const [scope, setScope] = useState({ id, ready, subject });
+
+  if (scope.id !== id || scope.ready !== ready || scope.subject !== subject) {
+    setScope({ id, ready, subject });
+    setState(rest);
+  }
 
   const shot = moment?.ms !== undefined;
 
@@ -266,22 +289,22 @@ export function useMoment<Id extends MomentId>(
 
   const start = useCallback(() => {
     const current = live.current;
+    const { effect }: Partial<Moment> = current.id ? moments[current.id] : {};
+    const target = current.anchor?.current;
 
     const order =
-      current.ready && current.id !== undefined
+      current.ready && current.id !== undefined && !(effect && !target)
         ? spend(current.id, current.subject)
         : undefined;
 
-    if (order === undefined || current.id === undefined) {
-      setState(rest);
+    if (order === undefined) {
+      setState((held) => (held.phase === 'pending' ? rest : held));
 
       return false;
     }
 
-    const { effect }: Moment = moments[current.id];
-
-    if (effect) {
-      effects[effect](current.anchor?.current ?? null);
+    if (effect && target) {
+      effects[effect](target);
     }
 
     setState({ order, phase: 'on' });
@@ -310,7 +333,7 @@ export function useMoment<Id extends MomentId>(
   }, [start]);
 
   useLayoutEffect(() => {
-    const cue = cued && ready ? (subject ?? true) : false;
+    const cue = cued && eligible ? (subject ?? true) : false;
 
     if (cue === false || cue === asked.current) {
       return;
@@ -318,7 +341,7 @@ export function useMoment<Id extends MomentId>(
 
     asked.current = cue;
     request();
-  }, [cued, ready, request, subject]);
+  }, [cued, eligible, request, subject]);
 
   useLayoutEffect(() => {
     const before = was.current === true;

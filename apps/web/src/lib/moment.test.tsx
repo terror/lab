@@ -121,7 +121,32 @@ test('a session budget belongs to one user in one tab until midnight', async () 
 
   await play();
 
-  expect(plays).toEqual([true, false, true, false, true]);
+  expect({
+    device: ledger(window.localStorage),
+    plays,
+    tab: Object.keys(ledger(window.sessionStorage)),
+  }).toEqual({
+    device: {},
+    plays: [true, false, true, false, true],
+    tab: ['home.fizz'],
+  });
+});
+
+test('a refused request leaves a playing moment alone', async () => {
+  const { result } = await renderHookWithQuery(
+    () => useMoment('home.fizz'),
+    preferring('default')
+  );
+
+  await act(() => result.current.play());
+
+  const marks = [result.current.mark];
+
+  await act(() => result.current.play());
+
+  marks.push(result.current.mark);
+
+  expect(marks).toEqual(['fizz', 'fizz']);
 });
 
 function Row({ finished }: { finished: boolean }) {
@@ -168,7 +193,7 @@ test('a burst plays six at once in order, and each holds for its duration and it
   ]);
 });
 
-test('a condition that holds at mount is no event, and each subject is counted on its own', async () => {
+test('a condition that holds at mount is no event, a state ends with its cue, and each subject is counted on its own', async () => {
   let ask = { subject: 'foo', when: true };
 
   const { rerender, result } = await renderHookWithQuery(
@@ -176,21 +201,77 @@ test('a condition that holds at mount is no event, and each subject is counted o
     preferring('default')
   );
 
-  const marks = [result.current.mark];
+  const marks = [[result.current.mark]];
 
   for (const subject of ['foo', 'foo', 'bar']) {
     ask = { subject, when: false };
 
     await rerender();
 
+    const off = result.current.mark;
+
     ask = { subject, when: true };
 
     await rerender();
 
-    marks.push(result.current.mark);
+    marks.push([off, result.current.mark]);
   }
 
-  expect(marks).toEqual([undefined, 'ahem', undefined, 'ahem']);
+  expect(marks).toEqual([
+    [undefined],
+    [undefined, 'ahem'],
+    [undefined, undefined],
+    [undefined, 'ahem'],
+  ]);
+});
+
+test('Quiet uses up a mount cue and ends a state for good', async () => {
+  const hushed = preferring('quiet');
+
+  const entrance = await renderHookWithQuery(
+    () => useMoment('empty.enter', { subject: 'foo' }),
+    hushed
+  );
+
+  hushed.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  await entrance.rerender();
+
+  const client = preferring('default');
+
+  let when = false;
+
+  const ahem = await renderHookWithQuery(
+    () => useMoment('ask.ahem', { subject: 'bar', when }),
+    client
+  );
+
+  when = true;
+
+  await ahem.rerender();
+
+  const marks = [ahem.result.current.mark];
+
+  for (const personality of ['quiet', 'default'] as const) {
+    client.setQueryData(preferencesQueryOptions.queryKey, {
+      ...defaultPreferences,
+      personality,
+    });
+
+    await ahem.rerender();
+
+    marks.push(ahem.result.current.mark);
+  }
+
+  expect({
+    entered: entrance.result.current.on,
+    kept: Object.keys(ledger(window.sessionStorage)),
+    marks,
+  }).toEqual({
+    entered: false,
+    kept: ['ask.ahem/bar'],
+    marks: ['ahem', undefined, undefined],
+  });
 });
 
 test('a moment asked for under Quiet never plays, even once Quiet is off', async () => {
@@ -226,55 +307,71 @@ function hide() {
   };
 }
 
-test('a moment that waits for a hidden tab spends once it is seen, and is dropped if its host goes first', async () => {
+type Waiting = {
+  client: QueryClient;
+  cue: { when: boolean };
+  rerender: () => Promise<void>;
+  unmount: () => Promise<void>;
+};
+
+test('a moment that waits for a hidden tab spends once it is seen, unless its reason goes first', async () => {
   const show = hide();
 
-  const seen = [];
-
-  for (const [subject, leave] of [
-    ['foo', false],
-    ['bar', true],
-  ] as const) {
-    let when = false;
+  async function seen(
+    subject: string,
+    before: (waiting: Waiting) => Promise<void>
+  ) {
+    const client = preferring('default');
+    const cue = { when: false };
 
     const { rerender, result, unmount } = await renderHookWithQuery(
-      () => useMoment('plan.complete', { anchor, subject, when }),
-      preferring('default')
+      () => useMoment('plan.complete', { anchor, subject, ...cue }),
+      client
     );
 
-    when = true;
+    cue.when = true;
 
     await rerender();
 
     const waiting = result.current.on;
 
-    if (leave) {
-      await unmount();
-    }
-
+    await before({ client, cue, rerender, unmount });
     await show(true);
 
-    seen.push({
+    const outcome = {
       bursts: vi.mocked(confetti).mock.calls.length,
       kept: Object.keys(ledger(window.localStorage)).toSorted(),
       waiting,
-    });
+    };
 
     await show(false);
+
+    return outcome;
   }
 
-  expect(seen).toEqual([
-    {
-      bursts: 1,
-      kept: ['plan.complete', 'plan.complete/foo'],
-      waiting: false,
-    },
-    {
-      bursts: 1,
-      kept: ['plan.complete', 'plan.complete/foo'],
-      waiting: false,
-    },
-  ]);
+  const spent = {
+    bursts: 1,
+    kept: ['plan.complete', 'plan.complete/foo'],
+    waiting: false,
+  };
+
+  expect([
+    await seen('foo', async () => undefined),
+    await seen('bar', ({ unmount }) => unmount()),
+    await seen('baz', ({ cue, rerender }) => {
+      cue.when = false;
+
+      return rerender();
+    }),
+    await seen('qux', ({ client, rerender }) => {
+      client.setQueryData(preferencesQueryOptions.queryKey, {
+        ...defaultPreferences,
+        personality: 'quiet',
+      });
+
+      return rerender();
+    }),
+  ]).toEqual([spent, spent, spent, spent]);
 });
 
 test('a moment that doesn’t wait is skipped in a hidden tab and never plays for that cue', async () => {
@@ -310,7 +407,7 @@ test('a moment that doesn’t wait is skipped in a hidden tab and never plays fo
   expect(marks).toEqual([undefined, undefined, 'done']);
 });
 
-test('a moment goes off when its subject goes away', async () => {
+test('a moment goes off when its subject goes away and stays off when it comes back', async () => {
   let subject: string | undefined = 'foo';
 
   const { rerender, result } = await renderHookWithQuery(
@@ -320,13 +417,82 @@ test('a moment goes off when its subject goes away', async () => {
 
   const on = [result.current.on];
 
-  subject = undefined;
+  for (const next of [undefined, 'foo']) {
+    subject = next;
 
-  await rerender();
+    await rerender();
 
-  on.push(result.current.on);
+    on.push(result.current.on);
+  }
 
-  expect(on).toEqual([true, false]);
+  expect(on).toEqual([true, false, false]);
+});
+
+test('a moment with nowhere to show its effect, or nowhere to keep its count, plays nothing and spends nothing', async () => {
+  let when = false;
+
+  const nowhere = await renderHookWithQuery(
+    () =>
+      useMoment('plan.complete', {
+        anchor: { current: null },
+        subject: 'foo',
+        when,
+      }),
+    preferring('default')
+  );
+
+  when = true;
+
+  await nowhere.rerender();
+
+  const kept = ledger(window.localStorage);
+
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new DOMException('foo', 'QuotaExceededError');
+  });
+
+  const fizz = await renderHookWithQuery(
+    () => useMoment('home.fizz'),
+    preferring('default')
+  );
+
+  const played = await act(() => fizz.result.current.play());
+
+  expect({
+    kept,
+    on: [nowhere.result.current.on, fizz.result.current.on],
+    played,
+  }).toEqual({ kept: {}, on: [false, false], played: false });
+});
+
+test('the ledger keeps the fifty newest subjects of a moment and drops ids that left the registry', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 10, 18, 9));
+
+  window.sessionStorage.setItem('lab:foo:moments', '{"foo.bar":[1]}');
+
+  let ask = { subject: 0, when: false };
+
+  const { rerender } = await renderHookWithQuery(
+    () => useMoment('ask.ahem', ask),
+    preferring('default')
+  );
+
+  for (let subject = 0; subject <= 50; subject += 1) {
+    ask = { subject, when: false };
+
+    await rerender();
+
+    ask = { subject, when: true };
+
+    await rerender();
+
+    vi.advanceTimersByTime(1);
+  }
+
+  expect(Object.keys(ledger(window.sessionStorage))).toEqual(
+    Array.from({ length: 50 }, (_, index) => `ask.ahem/${50 - index}`)
+  );
 });
 
 function Arrival() {

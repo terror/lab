@@ -27,6 +27,13 @@ const spans = {
   tick: 'at once',
 } satisfies Record<Limit['per'], string>;
 
+const each = {
+  day: 'per day',
+  ever: 'ever',
+  session: 'per session',
+  tick: 'at once',
+} satisfies Record<Limit['per'], string>;
+
 const quiets = { keep: 'Kept', skip: 'Off' };
 
 const reductions = {
@@ -45,7 +52,7 @@ function hiddenText({ budget, hidden, ms }: Moment) {
 function limitText({ by, max, per }: Limit) {
   return by === undefined
     ? `${max} ${spans[per]}`
-    : `${max} per ${by}, ${spans[per]}`;
+    : `${max} per ${by}, ${each[per]}`;
 }
 
 function Live({ armed, id }: { armed: boolean; id: MomentId }) {
@@ -78,12 +85,17 @@ function Row({ id }: { id: MomentId }) {
   const [run, setRun] = useState(0);
   const entry: Moment = moments[id];
 
+  const staged =
+    entry.budget !== undefined ||
+    entry.mark !== undefined ||
+    entry.ms !== undefined;
+
   return (
     <tr className='border-b align-top last:border-b-0'>
-      <td className='py-3 pr-4'>
+      <th className='py-3 pr-4 font-normal' scope='row'>
         <code className='text-xs'>{id}</code>
         <p className='mt-1 max-w-sm text-muted-foreground'>{entry.use}</p>
-      </td>
+      </th>
       <td className='py-3 pr-4 whitespace-nowrap'>
         {entry.budget?.map(limitText).join(' · ') ?? 'No limit'}
       </td>
@@ -96,17 +108,19 @@ function Row({ id }: { id: MomentId }) {
       <td className='py-3'>
         <div className='flex h-8 items-center justify-end gap-3'>
           <Live key={run} armed={run > 0} id={id} />
-          <Button
-            aria-label={`Replay ${id}`}
-            onClick={() => {
-              clearStored();
-              setRun(run + 1);
-            }}
-            size='sm'
-            variant='outline'
-          >
-            Replay
-          </Button>
+          {staged && (
+            <Button
+              aria-label={`Replay ${id}`}
+              onClick={() => {
+                clearStored();
+                setRun(run + 1);
+              }}
+              size='sm'
+              variant='outline'
+            >
+              Replay
+            </Button>
+          )}
         </div>
       </td>
     </tr>

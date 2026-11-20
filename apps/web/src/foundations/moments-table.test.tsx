@@ -1,5 +1,5 @@
 import { confetti } from '@/lib/confetti';
-import { moments } from '@/lib/moments';
+import { type Moment, moments } from '@/lib/moments';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
@@ -9,6 +9,8 @@ import { expect, test, vi } from 'vitest';
 import { MomentsTable } from './moments-table';
 
 vi.mock('@/lib/confetti', () => ({ confetti: vi.fn() }));
+
+const entries: [string, Moment][] = Object.entries(moments);
 
 test('the table lists every moment, replays one that spent its budget, and shows what Quiet keeps', async () => {
   const client = new QueryClient();
@@ -34,10 +36,15 @@ test('the table lists every moment, replays one that spent its budget, and shows
   );
 
   expect({
-    kept: rows.filter(({ chip }) => chip === 'On').map(({ id }) => id),
+    kept: rows
+      .filter(({ chip }) => chip === 'On')
+      .map(({ id }) => id)
+      .toSorted(),
     listed: rows.map(({ id }) => id).toSorted(),
   }).toEqual({
-    kept: ['home.arrive', 'tab.signal'],
-    listed: Object.keys(moments).toSorted(),
+    kept: entries
+      .filter(([, { ms, quiet }]) => quiet === 'keep' && ms === undefined)
+      .map(([id]) => id),
+    listed: entries.map(([id]) => id),
   });
 });

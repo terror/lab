@@ -19,14 +19,8 @@ const entries = Object.entries(moments) as [MomentId, Moment][];
 
 const ids = entries.map(([id]) => id);
 
-test('every moment is filed in order under a surface, says when it plays, caps its landmarks, and waits only for a request', () => {
+test('every moment is filed in order under a surface, says when it plays, and keeps the registry’s limits', () => {
   expect({
-    adrift: entries
-      .filter(
-        ([, { budget, hidden, ms }]) =>
-          hidden !== undefined && budget === undefined && ms === undefined
-      )
-      .map(([id]) => id),
     filed: ids.filter((id) => !/^[a-z]+\.[a-z]+(-[a-z]+)*$/.test(id)),
     ordered: ids.toSorted(),
     said: entries
@@ -39,7 +33,29 @@ test('every moment is filed in order under a surface, says when it plays, caps i
           !moment.budget.some(({ per }) => per === 'day' || per === 'ever')
       )
       .map(([id]) => id),
-  }).toEqual({ adrift: [], filed: [], ordered: ids, said: [], uncapped: [] });
+    unsized: entries
+      .filter(
+        ([, { budget = [], ms = 1 }]) =>
+          ms <= 0 || budget.some(({ max }) => max < 1)
+      )
+      .map(([id]) => id),
+    waits: entries
+      .filter(([, { hidden }]) => hidden === 'wait')
+      .map(([id]) => id),
+  }).toEqual({
+    filed: [],
+    ordered: ids,
+    said: [],
+    uncapped: [],
+    unsized: [],
+    waits: [
+      'empty.enter',
+      'home.arrive',
+      'plan.complete',
+      'run.done',
+      'run.proud',
+    ],
+  });
 });
 
 function Probe({ fire, id }: { fire: boolean; id: MomentId }) {
