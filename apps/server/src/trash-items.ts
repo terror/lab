@@ -2,11 +2,10 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { type TrashKind, trashKinds } from '@lab/harness';
-import { and, asc, desc, eq, isNotNull, not, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, not, sql } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
-import { plain } from './message-search';
 import { restoreProject, trashProject } from './project-access';
 import { liveChat } from './records';
 import { removeChatFolder } from './sandbox';
@@ -28,8 +27,6 @@ const projectTable = schema.project;
 const deletion = schema.conversationDeletion;
 
 const outsideTrashedProject = sql`not exists (select 1 from ${projectTable} where ${projectTable.id} = ${table.projectId} and ${projectTable.deletedAt} is not null)`;
-
-const PEEK_LENGTH = 200;
 
 const purged = sql`exists (select 1 from ${deletion} where ${deletion.id} = ${table.id})`;
 
@@ -279,75 +276,4 @@ export async function emptyTrash(ownerId: string) {
   }
 
   return chats;
-}
-
-async function opening(id: number, role: 'assistant' | 'user') {
-  const text = schema.messageText;
-
-  const [row] = await db
-    .select({ text: sql<string>`left(${text.text}, ${PEEK_LENGTH})` })
-    .from(text)
-    .where(and(eq(text.conversationId, id), eq(text.role, role)))
-    .orderBy(asc(text.entryId))
-    .limit(1);
-
-  return row === undefined ? null : plain(row.text);
-}
-
-async function previewChat(ownerId: string, id: number) {
-  const [row] = await db
-    .select({ startedAt: table.createdAt })
-    .from(table)
-    .where(trashed(ownerId, id));
-
-  if (!row) {
-    return undefined;
-  }
-
-  const [count, question, reply] = await Promise.all([
-    db.$count(schema.messageText, eq(schema.messageText.conversationId, id)),
-    opening(id, 'user'),
-    opening(id, 'assistant'),
-  ]);
-
-  return {
-    count,
-    kind: 'conversation' as const,
-    question,
-    reply,
-    startedAt: row.startedAt.toISOString(),
-  };
-}
-
-async function previewProject(ownerId: string, id: number) {
-  const [row] = await db
-    .select({ id: projectTable.id })
-    .from(projectTable)
-    .where(trashedProject(ownerId, id));
-
-  if (!row) {
-    return undefined;
-  }
-
-  const [chats, count] = await Promise.all([
-    db
-      .select({ title: table.title })
-      .from(table)
-      .where(eq(table.projectId, id))
-      .orderBy(desc(table.lastMessageAt), desc(table.id))
-      .limit(3),
-    db.$count(table, eq(table.projectId, id)),
-  ]);
-
-  return {
-    chats: chats.map(({ title }) => title),
-    count,
-    kind: 'project' as const,
-  };
-}
-
-export function previewTrash(kind: TrashKind, ownerId: string, id: number) {
-  return kind === 'conversation'
-    ? previewChat(ownerId, id)
-    : previewProject(ownerId, id);
 }
