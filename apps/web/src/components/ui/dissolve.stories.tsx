@@ -3,14 +3,13 @@ import {
   m,
   useIsPresent,
   usePresenceData,
-  useReducedMotion,
 } from 'motion/react';
 import { useState } from 'react';
 
 import preview from '../../../.storybook/preview';
 import { themes } from '../../../.storybook/themes';
+import { useMoment } from '../../lib/moment';
 import { dissolve } from '../../lib/motion';
-import { useQuiet } from '../../lib/voice';
 import { Button } from './button';
 import { Dissolve } from './dissolve';
 
@@ -26,8 +25,7 @@ const names = ['foo', 'bar', 'baz'];
 function Row({ index, name }: { index: number; name: string }) {
   const present = useIsPresent();
   const emptying = usePresenceData() === true;
-  const quiet = useQuiet();
-  const reduced = useReducedMotion();
+  const on = useMoment('places.dissolve').on;
 
   return (
     <m.li
@@ -35,8 +33,7 @@ function Row({ index, name }: { index: number; name: string }) {
       exit='gone'
       inert={!present}
       variants={{
-        gone: (all: boolean) =>
-          dissolve(all ? index : 0, quiet || reduced === true),
+        gone: (all: boolean) => dissolve(all ? index : 0, !on),
       }}
     >
       <Dissolve

@@ -1,8 +1,7 @@
 import { markOutline } from '@/components/lab-mark';
+import { useMoment } from '@/lib/moment';
 import { story } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
-import { useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
 const interior =
@@ -64,9 +63,8 @@ function Flask({
   value: number;
 }) {
   const id = React.useId();
-  const quiet = useQuiet();
-  const reduced = useReducedMotion();
-  const still = !pour || quiet || reduced === true;
+  const pours = useMoment('places.pour').on;
+  const still = !pour || !pours;
 
   const [poured, setPoured] = React.useState(still);
   const [settled, setSettled] = React.useState(still);

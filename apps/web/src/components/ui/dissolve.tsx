@@ -1,6 +1,6 @@
+import { useMoment } from '@/lib/moment';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import * as React from 'react';
 
 const grains = [
@@ -29,11 +29,11 @@ function Dissolve({
   className?: string;
   order?: number;
 }) {
-  const quiet = useQuiet();
+  const on = useMoment('places.dissolve').on;
 
   const delay = Math.min(order, 5) * stagger;
 
-  const dissolving = active && !quiet;
+  const dissolving = active && on;
 
   return (
     <span

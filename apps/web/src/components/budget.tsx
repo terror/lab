@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Meter } from '@/components/ui/meter';
 import { formatSpend } from '@/lib/format';
+import { useMoment } from '@/lib/moment';
 import { usePersistentState } from '@/lib/storage';
 import { undoToast } from '@/lib/undo';
 import {
@@ -12,10 +13,8 @@ import {
   setBudget,
 } from '@/lib/usage';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useReducedMotion } from 'motion/react';
 import { type SubmitEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -28,14 +27,13 @@ const messages = {
 const pouredKey = 'lab:poured';
 
 function Flask({ limit, spent }: { limit: number; spent: number }) {
-  const quiet = useQuiet();
-  const reduced = useReducedMotion();
+  const on = useMoment('places.pour').on;
 
   const [pour] = useState(
     () => window.sessionStorage.getItem(pouredKey) === null
   );
 
-  const poured = pour && !quiet && reduced !== true;
+  const poured = pour && on;
 
   useEffect(() => {
     if (poured) {

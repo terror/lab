@@ -18,6 +18,7 @@ import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { TaskClock } from '@/components/ui/task-clock';
 import { conversationsQueryKey, useUnreadChats } from '@/lib/conversations';
+import { useMoment } from '@/lib/moment';
 import {
   type ScheduledTask,
   deleteTask,
@@ -27,7 +28,7 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
-import { type EmptyView, useEmpty, useQuiet } from '@/lib/voice';
+import { type EmptyView, useEmpty } from '@/lib/voice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
@@ -139,14 +140,14 @@ function TaskRow({ now, task }: { now: number; task: ScheduledTask }) {
 
   const [confirming, setConfirming] = useState(false);
 
-  const quiet = useQuiet();
+  const winds = useMoment('places.wind').on;
 
   const [wound, setWound] = useState({ enabled: task.enabled, turns: 0 });
 
   if (wound.enabled !== task.enabled) {
     setWound({
       enabled: task.enabled,
-      turns: task.enabled && !quiet ? wound.turns + 1 : wound.turns,
+      turns: task.enabled && winds ? wound.turns + 1 : wound.turns,
     });
   }
 

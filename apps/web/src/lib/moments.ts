@@ -168,6 +168,12 @@ export const moments = {
     tier: 'run',
     use: 'Lab saves a memory while you watch, so a ribbon drops and a highlighter sweeps the note.',
   },
+  'places.dissolve': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'Delete forever and Empty trash wipe a row into falling grey pixels before it closes.',
+  },
   'places.fresh': {
     quiet: 'skip',
     reduced: 'skip',
@@ -179,6 +185,30 @@ export const moments = {
     reduced: 'skip',
     tier: 'ambient',
     use: 'A Library image grows from its tile into the viewer and back.',
+  },
+  'places.ledger': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'Usage bars rise together when you change the range.',
+  },
+  'places.pour': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'The budget flask pours once a session on first view.',
+  },
+  'places.roll': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'A count that changes in place rolls to its new value.',
+  },
+  'places.wind': {
+    quiet: 'skip',
+    reduced: 'skip',
+    tier: 'ambient',
+    use: 'Resuming a scheduled task winds its clock hand once.',
   },
   'plan.complete': {
     budget: [
