@@ -93,10 +93,12 @@ function Flask({
     return () => clearTimeout(timer);
   }, [poured, settled]);
 
-  const level = poured ? surface(value) : 29;
+  const full = tone === 'over' ? 3 : surface(value);
+  const level = poured ? Math.min(full, value > 0 ? 27 : 29) : 29;
 
   return (
     <svg
+      aria-hidden='true'
       className='h-18 w-16 shrink-0 overflow-visible'
       fill='none'
       shapeRendering='crispEdges'
@@ -116,9 +118,10 @@ function Flask({
           style={{ transform: `translateY(${level}px)` }}
         >
           <rect
-            className={
-              tone === 'over' ? 'fill-destructive' : 'fill-foreground/25'
-            }
+            className={cn(
+              'forced-colors:fill-[CanvasText]',
+              tone === 'over' ? 'fill-destructive' : 'fill-foreground/45'
+            )}
             height='32'
             width='32'
           />
@@ -134,7 +137,7 @@ function Flask({
         </g>
       </g>
       <path
-        className='stroke-muted-foreground'
+        className='stroke-muted-foreground forced-colors:stroke-[CanvasText]'
         d={markOutline}
         strokeWidth='2'
       />
