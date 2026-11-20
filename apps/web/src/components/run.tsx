@@ -35,7 +35,7 @@ import {
   TraceCollapsible,
   TraceCollapsibleContent,
 } from '@/components/ui/trace';
-import { useAhem, useAnswer } from '@/lib/asking';
+import { useKeptWaiting } from '@/lib/asking';
 import { cheerFor } from '@/lib/cheer';
 import { plural } from '@/lib/format';
 import { locate } from '@/lib/locate';
@@ -47,7 +47,7 @@ import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import type { Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
-import { say, useQuiet } from '@/lib/voice';
+import { say } from '@/lib/voice';
 import { AnimatePresence, m } from 'motion/react';
 import {
   createContext,
@@ -150,8 +150,6 @@ function useLive({
   retry,
   writing,
 }: Live) {
-  const quiet = useQuiet();
-
   const history = useContext(ToolHistory);
 
   const done = calls.filter(({ id }) => results.has(id));
@@ -169,9 +167,20 @@ function useLive({
   const asking =
     current !== undefined && (current.name === 'ask_user' || pending);
 
-  const ahem = useAhem(current?.id ?? '', asking && !quiet);
+  const asked = asking ? current.id : undefined;
 
-  const answer = useAnswer(asking && !quiet, approval?.decision === 'denied');
+  const denied = approval?.decision === 'denied';
+
+  const waiting = useMoment('ask.mark');
+
+  const ahem = useMoment('ask.ahem', {
+    subject: asked,
+    when: useKeptWaiting(asked),
+  });
+
+  const gulp = useMoment('ask.gulp', { when: !asking && !denied });
+
+  const drift = useMoment('ask.drift', { when: !asking && denied });
 
   const settled = useSettled(done);
 
@@ -202,9 +211,9 @@ function useLive({
 
   const label = useSteady(verb, HOLD_MS);
 
-  const state = asking && ahem ? 'ahem' : poses[shown.pose];
+  const state = gulp.mark ?? drift.mark ?? ahem.mark ?? poses[shown.pose];
 
-  const asked = pending ? approval.action : text(current?.arguments.question);
+  const prompt = pending ? approval.action : text(current?.arguments.question);
 
   const anchor = pending ? approvalId : resultId;
 
@@ -214,13 +223,13 @@ function useLive({
     done,
     label,
     mark:
-      asking && quiet ? (
+      asking && !waiting.on ? (
         <Dot tone='attention' />
       ) : (
-        <LiveMark className='size-3.5' state={answer ?? state} />
+        <LiveMark className='size-3.5' state={state} />
       ),
     paused: asking || retry !== undefined,
-    prompt: asking ? asked : undefined,
+    prompt: asking ? prompt : undefined,
     target: asking && current ? anchor(current.id) : undefined,
     tick: label === past(done.at(-1)),
     verb,
