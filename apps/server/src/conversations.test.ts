@@ -802,6 +802,28 @@ test('deleted conversations go to the trash until purged', async () => {
   });
 });
 
+test('a trashed conversation can be previewed before it is purged', async () => {
+  const headers = await signIn();
+
+  const id = await create(headers);
+
+  await call(headers, 'DELETE', `/conversations/${id}`);
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/trash/conversation/${id}/preview`
+  );
+
+  expect({ ...body, startedAt: typeof body.startedAt }).toEqual({
+    count: 2,
+    kind: 'conversation',
+    question: 'foo',
+    reply: 'foo',
+    startedAt: 'string',
+  });
+});
+
 test('conversations can be pinned', async () => {
   const headers = await signIn();
 

@@ -8,9 +8,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import type { ReactNode } from 'react';
 
 export function ConfirmDialog({
   action,
+  children,
   description,
   onConfirm,
   onOpenChange,
@@ -18,6 +20,7 @@ export function ConfirmDialog({
   title,
 }: {
   action: string;
+  children?: ReactNode;
   description: string;
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +34,7 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} variant='destructive'>

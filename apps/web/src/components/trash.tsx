@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Dissolve } from '@/components/ui/dissolve';
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ import {
   deleteForever,
   emptyTrash,
   restoreFromTrash,
+  trashPreviewQueryOptions,
   trashQueryOptions,
   useTrashAction,
 } from '@/lib/trash';
@@ -46,6 +48,50 @@ const kinds: Record<
 };
 
 const MotionListRow = m.create(ListRow);
+
+function TrashPeek({ item }: { item: TrashItem }) {
+  const preview = useQuery(trashPreviewQueryOptions(item));
+
+  if (!preview.data) {
+    return null;
+  }
+
+  if (preview.data.kind === 'project') {
+    const { chats, count } = preview.data;
+
+    if (count === 0) {
+      return null;
+    }
+
+    return (
+      <Card className='gap-1 px-4 py-3 text-sm' variant='inset'>
+        <span className='text-xs text-muted-foreground'>
+          {count} {count === 1 ? 'chat' : 'chats'}
+        </span>
+        <ul className='flex flex-col'>
+          {chats.map((title, index) => (
+            <li key={index} className='truncate'>
+              {conversationTitle(title)}
+            </li>
+          ))}
+        </ul>
+      </Card>
+    );
+  }
+
+  const { count, question, reply, startedAt } = preview.data;
+
+  return (
+    <Card className='gap-2 px-4 py-3 text-sm' variant='inset'>
+      <span className='text-xs text-muted-foreground'>
+        {count} {count === 1 ? 'message' : 'messages'} · started{' '}
+        {shortDate(startedAt)}
+      </span>
+      {question && <p className='line-clamp-2 font-medium'>{question}</p>}
+      {reply && <p className='line-clamp-3 text-muted-foreground'>{reply}</p>}
+    </Card>
+  );
+}
 
 const gone = { opacity: 0, transition: { duration: 0 } };
 
@@ -119,7 +165,9 @@ function TrashRow({ index, item }: { index: number; item: TrashItem }) {
             onOpenChange={setConfirming}
             open={confirming}
             title='Delete forever?'
-          />
+          >
+            <TrashPeek item={item} />
+          </ConfirmDialog>
         </>
       }
     >
