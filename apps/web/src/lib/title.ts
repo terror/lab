@@ -5,6 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { client } from './client';
 import { unreadChatsQueryOptions } from './conversations';
+import { useMoment } from './moment';
 
 type Unread = InferResponseType<typeof client.conversations.unread.$get, 200>;
 
@@ -55,6 +56,7 @@ function subscribe(onChange: () => void) {
 }
 
 function useTabSignal() {
+  const allowed = useMoment('tab.signal').on;
   const hidden = useSyncExternalStore(subscribe, () => document.hidden);
   const [before, setBefore] = useState<Seen>();
 
@@ -73,7 +75,7 @@ function useTabSignal() {
     setBefore(undefined);
   }
 
-  return before && data && arrived(before, data);
+  return allowed && before && data && arrived(before, data);
 }
 
 export function useDocumentTitle(title: string) {

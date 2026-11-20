@@ -405,13 +405,7 @@ test('the collapsed rail hops once when a chat finishes in the background', asyn
   await client.invalidateQueries();
 
   await expect.poll(state).toBe('done');
-
-  mark
-    .element()
-    .querySelector('[data-part=sparkle]')
-    ?.dispatchEvent(new AnimationEvent('animationend', { bubbles: true }));
-
-  await expect.poll(state).toBe('thinking');
+  await expect.poll(state, { timeout: 3_000 }).toBe('thinking');
 });
 
 test('the collapsed rail holds still when a chat finishes and Lab is quiet', async () => {

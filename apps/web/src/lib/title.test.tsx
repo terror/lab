@@ -1,4 +1,7 @@
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { defaultPreferences } from '@lab/server/schemas';
+import { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 
 import { useDocumentTitle } from './title';
@@ -56,7 +59,11 @@ async function arrive(before: object, after: object, away: string[]) {
 
   hide(true);
 
-  const { screen } = await renderWithQuery(<Title />);
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  const { screen } = await renderWithQuery(<Title />, client);
 
   await expect.poll(() => fetch.mock.calls.length).toBe(1);
 

@@ -25,19 +25,12 @@ import {
 import { LiveMark } from '@/components/ui/live-mark';
 import { conversationTitle } from '@/lib/conversations';
 import { useHandoff } from '@/lib/handoff';
+import { useMoment } from '@/lib/moment';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { Link } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
-import {
-  type AnimationEvent,
-  type CSSProperties,
-  Fragment,
-  type ReactNode,
-  useRef,
-  useState,
-} from 'react';
+import { type CSSProperties, Fragment, type ReactNode, useRef } from 'react';
 
 type Activity = 'idle' | 'running' | 'unread' | 'waiting';
 
@@ -124,17 +117,13 @@ export function ConversationItem({
 
   const current = activity(conversation, selected);
 
-  const quiet = useQuiet();
-  const [order, settle] = useHandoff(quiet ? 'quiet' : current);
-  const [named, setNamed] = useState(conversation.title);
-  const [arrived, setArrived] = useState(false);
+  const handoff = useHandoff(current);
+
+  const arrived = useMoment('row.title', {
+    when: conversation.title !== null,
+  }).on;
 
   const title = conversationTitle(conversation.title);
-
-  if (named !== conversation.title) {
-    setNamed(conversation.title);
-    setArrived(named === null);
-  }
 
   if (renaming.editing) {
     return (
@@ -158,24 +147,18 @@ export function ConversationItem({
     actions.closed(event);
   };
 
-  const landed = (event: AnimationEvent) => {
-    if (
-      event.target instanceof Element &&
-      event.target.matches('[data-part=dot]')
-    ) {
-      settle();
-    }
-  };
-
   const mark =
-    order === undefined ? (
+    handoff.mark === undefined ? (
       indicator?.mark
     ) : (
       <LiveMark
         className='size-3.5'
-        onAnimationEnd={landed}
-        state='handoff'
-        style={{ '--live-mark-delay': `${order * stagger}s` } as CSSProperties}
+        state={handoff.mark}
+        style={
+          {
+            '--live-mark-delay': `${handoff.order * stagger}s`,
+          } as CSSProperties
+        }
       />
     );
 
