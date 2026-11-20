@@ -23,6 +23,7 @@ test('each state of the mark runs its own animation and idle runs none', async (
     'idle',
     'assemble',
     'thinking',
+    'pondering',
     'done',
     'proud',
     'handoff',
@@ -75,6 +76,11 @@ test('each state of the mark runs its own animation and idle runs none', async (
     ],
     held: ['live-mark-slosh-blue', 'live-mark-slosh-yellow'],
     idle: [],
+    pondering: [
+      'live-mark-ponder',
+      'live-mark-slosh-blue',
+      'live-mark-slosh-yellow',
+    ],
     proud: ['live-mark-hop-big', 'live-mark-lid', 'live-mark-sparkle'],
     recover: ['live-mark-assemble', 'live-mark-mend'],
     thinking: [
@@ -134,6 +140,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
     'held',
     'bubble',
     'fizz',
+    'pondering',
   ] as const) {
     const screen = await render(<LiveMark data-testid='foo' state={state} />);
 
@@ -174,6 +181,7 @@ test('under reduced motion the mark only fades and dims, and the dot holds still
       gulp: [],
       handoff: ['live-mark-hide', 'live-mark-show'],
       held: [],
+      pondering: [],
       proud: [],
       recover: [],
       thinking: ['live-mark-dim'],

@@ -36,10 +36,17 @@ async function loadEntries(
   return page as unknown as Page<EntryRecord, Cursor>;
 }
 
+type Pulse = { at: number; began: number; fresh: boolean };
+
 export function useConversation(id: number) {
   const [view, setView] = useState<TranscriptView>();
   const [status, setStatus] = useState<string>();
   const [plan, setPlan] = useState<Plan>();
+  const [pulse, setPulse] = useState<Pulse>(() => ({
+    at: Date.now(),
+    began: Date.now(),
+    fresh: false,
+  }));
   const transcript = useRef<ConversationTranscript>(undefined);
 
   useEffect(() => {
@@ -55,25 +62,49 @@ export function useConversation(id: number) {
 
     let base: ConversationView | undefined;
 
+    let run = { began: Date.now(), fresh: false, running: false };
+
+    const live = () => base?.docs['pi.live'] as LiveState | undefined;
+
+    const beat = (fresh: boolean) => {
+      const at = Date.now();
+
+      const running = live()?.run !== undefined;
+
+      if (running !== run.running) {
+        run = { began: at, fresh, running };
+      }
+
+      setPulse({ at, began: run.began, fresh: run.fresh });
+    };
+
     source.addEventListener('value', (event) => {
       base = JSON.parse(event.data);
       setView(base && current.merge(base));
+      beat(false);
     });
 
     source.addEventListener('ops', (event) => {
       if (base) {
+        const before = live();
+
         base = applyImmutable(base, JSON.parse(event.data) as Op[]);
         setView(current.merge(base));
 
-        if (!(base.docs['pi.live'] as LiveState | undefined)?.run) {
+        if (live() !== before) {
+          beat(true);
+        }
+
+        if (!live()?.run) {
           setStatus(undefined);
         }
       }
     });
 
     source.addEventListener('status', (event) => {
-      if ((base?.docs['pi.live'] as LiveState | undefined)?.run) {
+      if (live()?.run) {
         setStatus(event.data);
+        beat(true);
       }
     });
 
@@ -96,5 +127,5 @@ export function useConversation(id: number) {
     }
   }, []);
 
-  return { view, status, plan, loadEarlier, fillGap };
+  return { view, status, plan, pulse, loadEarlier, fillGap };
 }

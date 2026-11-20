@@ -24,12 +24,20 @@ import {
 import { useAhem, useAnswer } from '@/lib/asking';
 import { plural } from '@/lib/format';
 import { fade, spring } from '@/lib/motion';
+import { type Clock, usePresence } from '@/lib/presence';
+import type { Step } from '@/lib/spans';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
-import type { Part, Span } from '@/lib/transcript';
-import { useQuiet } from '@/lib/voice';
+import type { Part } from '@/lib/transcript';
+import { cn } from '@/lib/utils';
+import { say, useQuiet } from '@/lib/voice';
 import { AnimatePresence, m } from 'motion/react';
-import { type ComponentProps, useContext, useState } from 'react';
+import {
+  type ComponentProps,
+  type CSSProperties,
+  useContext,
+  useState,
+} from 'react';
 
 type CallStatus = ToolResult['status'] | 'running';
 
@@ -84,6 +92,12 @@ type CallProps = {
   working: boolean;
 };
 
+function took(span: { end: number; start: number } | undefined) {
+  return span && span.end - span.start >= 1_000
+    ? duration(span.end - span.start)
+    : undefined;
+}
+
 function ToolStep({
   call,
   progress,
@@ -102,6 +116,8 @@ function ToolStep({
   const Icon = renderer.icon;
 
   const ticked = tick && status === 'done';
+
+  const time = took(result?.span);
 
   const active = renderer.title({ ...view, active: true });
 
@@ -126,6 +142,7 @@ function ToolStep({
               · {summary}
             </span>
           )}
+          {time && <TraceDescription>· {time}</TraceDescription>}
         </TraceLine>
       </TraceCollapsibleTrigger>
       <TraceCollapsibleContent className='mt-1.5 mb-2 ml-0 flex flex-col gap-3 border-l-0 pl-0'>
@@ -205,10 +222,11 @@ export function LiveSteps({
 export function StepStatus({
   activity,
   call,
+  clock,
   progress,
   result,
   working,
-}: CallProps & { activity: string | undefined }) {
+}: CallProps & { activity: string | undefined; clock: Clock | undefined }) {
   const view = useToolView(call, progress, result, working);
 
   const approval = approvalOf(view.details);
@@ -247,67 +265,48 @@ export function StepStatus({
 
   const status = view.active ? toolRenderer(call.name).title(view) : 'Thinking';
 
-  return <Activity mark={answer} status={activity ?? status} />;
-}
-
-function waited(span: Span, waits: readonly Span[]) {
-  return waits
-    .toSorted((first, second) => first.start - second.start)
-    .reduce(
-      (counted, wait) => {
-        const start = Math.max(wait.start, counted.from);
-        const end = Math.min(wait.end, span.end);
-
-        if (end <= start) {
-          return counted;
-        }
-
-        return { from: end, total: counted.total + end - start };
-      },
-      { from: span.start, total: 0 }
-    ).total;
-}
-
-function waitingSpans(
-  calls: readonly Call[],
-  results: ReadonlyMap<string, ToolResult>
-) {
-  return calls.flatMap((call) => {
-    const result = results.get(call.id);
-
-    const asked =
-      call.name === 'ask_user' || approvalOf(result?.details) !== undefined;
-
-    return asked && result?.span ? [result.span] : [];
-  });
-}
-
-export function timeWorked(
-  span: Span | undefined,
-  calls: readonly Call[],
-  results: ReadonlyMap<string, ToolResult>
-) {
   return (
-    span && span.end - span.start - waited(span, waitingSpans(calls, results))
+    <Activity
+      clock={clock}
+      mark={answer}
+      status={activity ?? status}
+      tool={view.active}
+    />
+  );
+}
+
+const pauses = { thought: 'Thought', waited: 'Waited on the model' };
+
+function Pause({ kind, span }: Extract<Step, { kind: 'thought' | 'waited' }>) {
+  return (
+    <TraceLine className='h-6.5'>
+      <TraceIcon>
+        <StatusIcon status='done' />
+      </TraceIcon>
+      <TraceTitle>{pauses[kind]}</TraceTitle>
+      <TraceDescription>· {duration(span.end - span.start)}</TraceDescription>
+    </TraceLine>
   );
 }
 
 export function Worked({
-  calls,
   mark,
   progress,
   results,
+  rows,
   worked,
   working,
 }: {
-  calls: readonly Call[];
   mark: ComponentProps<typeof LiveMark>['state'];
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
+  rows: readonly Step[];
   worked: number | undefined;
   working: boolean;
 }) {
-  const statuses = calls.map(({ id }) => callStatus(results.get(id), working));
+  const statuses = rows.flatMap((step) =>
+    step.kind === 'tool' ? [callStatus(results.get(step.call.id), working)] : []
+  );
 
   const failed = statuses.filter((status) => status === 'failed').length;
 
@@ -341,15 +340,19 @@ export function Worked({
           </TraceLine>
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent className='flex flex-col gap-1'>
-          {calls.map((call) => (
-            <ToolStep
-              key={call.id}
-              call={call}
-              progress={progress.get(call.id)}
-              result={results.get(call.id)}
-              working={working}
-            />
-          ))}
+          {rows.map((step) =>
+            step.kind === 'tool' ? (
+              <ToolStep
+                key={step.call.id}
+                call={step.call}
+                progress={progress.get(step.call.id)}
+                result={results.get(step.call.id)}
+                working={working}
+              />
+            ) : (
+              <Pause key={step.key} kind={step.kind} span={step.span} />
+            )
+          )}
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>
@@ -358,34 +361,75 @@ export function Worked({
 
 const STATUS_HOLD_MS = 800;
 
+const poses = { pondering: 'pondering', working: 'thinking' } as const;
+
 export function Activity({
-  mark = 'thinking',
+  clock,
+  mark,
   status,
+  tool = false,
 }: {
-  mark?: 'drift' | 'gulp' | 'thinking';
+  clock?: Clock;
+  mark?: 'drift' | 'gulp';
   status: string;
+  tool?: boolean;
 }) {
+  const quiet = useQuiet();
+
   const label = useSteady(status, STATUS_HOLD_MS);
 
+  const { band, elapsed, slow, stall } = usePresence(clock, {
+    tool,
+    waiting: false,
+    writing: false,
+  });
+
+  const timed = band === 'summary' || band === 'leave';
+
+  const leave = band === 'leave' ? 'You can leave this' : undefined;
+
+  const note = slow ? say('stall', undefined, { quiet, seed: '' }) : leave;
+
   return (
-    <output className='flex items-center gap-2'>
-      <TraceIcon>
-        <LiveMark className='size-3.5' state={mark} />
-      </TraceIcon>
-      <AnimatePresence initial={false} mode='wait'>
-        <m.span
-          key={label}
-          animate={{ opacity: 1, y: 0 }}
-          className='min-w-0'
-          exit={{ opacity: 0, y: -4 }}
-          initial={{ opacity: 0, y: 4 }}
-          transition={{ ...fade.base, y: spring.snap }}
-        >
-          <TraceLine status='running'>
-            <TraceTitle>{label}</TraceTitle>
-          </TraceLine>
-        </m.span>
-      </AnimatePresence>
-    </output>
+    <div
+      data-slot='activity'
+      data-stalled={stall > 0 || undefined}
+      className='flex min-w-0 flex-wrap items-center gap-x-2'
+      style={{ '--stall': stall } as CSSProperties}
+    >
+      <output className='flex min-w-0 items-center gap-2'>
+        <TraceIcon>
+          <LiveMark
+            className='size-3.5'
+            state={mark ?? poses[tool ? 'working' : 'pondering']}
+          />
+        </TraceIcon>
+        <AnimatePresence initial={false} mode='wait'>
+          <m.span
+            key={label}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              'min-w-0',
+              band === 'mark' ? 'sr-only' : 'animate-in duration-base fade-in'
+            )}
+            exit={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: 4 }}
+            transition={{ ...fade.base, y: spring.snap }}
+          >
+            <TraceLine status='running'>
+              <TraceTitle>{label}</TraceTitle>
+            </TraceLine>
+          </m.span>
+        </AnimatePresence>
+      </output>
+      {timed && (
+        <TraceDescription className='text-sm' role='timer'>
+          · {duration(elapsed)}
+        </TraceDescription>
+      )}
+      {note && (
+        <output className='text-sm text-muted-foreground'>· {note}</output>
+      )}
+    </div>
   );
 }

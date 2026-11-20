@@ -30,6 +30,7 @@ function LiveMark({
     | 'handoff'
     | 'held'
     | 'idle'
+    | 'pondering'
     | 'proud'
     | 'recover'
     | 'thinking'

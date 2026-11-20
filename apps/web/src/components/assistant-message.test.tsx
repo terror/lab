@@ -8,6 +8,7 @@ import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
 import { AssistantMessage, type ToolResult } from './assistant-message';
+import { Activity } from './tool-steps';
 
 const parts = [
   {
@@ -610,4 +611,115 @@ test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
   await screen.rerender(reply(false));
 
   expect([hopped, mark()]).toEqual(['proud', 'idle']);
+});
+
+function thinkingSince(at: number) {
+  return <Activity clock={{ at, start: 100_000, waited: 0 }} status='foo' />;
+}
+
+test('a thinking line starts as the mark alone, then counts, stalls and says it can be left', async ({
+  onTestFinished,
+}) => {
+  vi.useFakeTimers({ toFake: ['Date', 'clearTimeout', 'setTimeout'] });
+  vi.setSystemTime(100_000);
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  const { screen } = await renderWithQuery(thinkingSince(100_000));
+
+  const shown = () => {
+    const activity = screen.container.querySelector('[data-slot=activity]');
+
+    return [
+      activity?.querySelector('.sr-only') === null,
+      activity
+        ?.querySelector('[data-slot=live-mark]')
+        ?.getAttribute('data-state'),
+      activity?.getAttribute('data-stalled'),
+      activity?.textContent,
+    ];
+  };
+
+  const seen = [shown()];
+
+  for (const [wait, at] of [
+    [2_000, 100_000],
+    [8_000, 100_000],
+    [10_000, 100_000],
+    [40_000, 160_000],
+  ] as const) {
+    vi.advanceTimersByTime(wait);
+
+    await screen.rerender(thinkingSince(at));
+
+    seen.push(shown());
+  }
+
+  expect(seen).toEqual([
+    [false, 'pondering', null, 'foo'],
+    [true, 'pondering', null, 'foo'],
+    [true, 'pondering', 'true', 'foo· 10s'],
+    [
+      true,
+      'pondering',
+      'true',
+      'foo· 20s· still on it, the model is slow right now',
+    ],
+    [true, 'pondering', null, 'foo· 1m 0s· You can leave this'],
+  ]);
+});
+
+test('a finished turn’s steps say how long they took and where the model thought or stalled', async () => {
+  stubFetch(() =>
+    Response.json({
+      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
+    })
+  );
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <AssistantMessage
+        parts={[{ thinking: 'foo', type: 'thinking' }, ...parts]}
+        progress={new Map()}
+        results={
+          new Map<string, ToolResult>([
+            [
+              'a',
+              {
+                output: '',
+                span: { end: 6_000, start: 4_000 },
+                status: 'done',
+              },
+            ],
+            ['b', { output: '', status: 'done' }],
+          ])
+        }
+        rounds={[
+          { at: 0, parts: 2, span: { end: 4_000, start: 0 } },
+          { at: 2, parts: 3, span: { end: 16_000, start: 15_000 } },
+        ]}
+        span={{ end: 16_000, start: 0 }}
+        streaming={false}
+      />
+    </TooltipProvider>
+  );
+
+  await screen
+    .getByRole('button', { name: 'Worked for 16s · 2 actions' })
+    .click();
+
+  expect(
+    [
+      ...screen.container.querySelectorAll(
+        '[data-slot=trace-collapsible-content-inner] [data-slot=trace-line]'
+      ),
+    ].map((row) => row.textContent)
+  ).toEqual([
+    'Thought· 4s',
+    'Searched the web for “foo”· 2s',
+    'Waited on the model· 9s',
+    'Read a page',
+  ]);
 });

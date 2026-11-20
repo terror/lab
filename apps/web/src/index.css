@@ -417,6 +417,12 @@
   }
 }
 
+@property --stall {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
 @property --caret-alpha {
   syntax: '<number>';
   inherits: true;
@@ -870,6 +876,12 @@
   }
   75% {
     transform: translateY(-1px);
+  }
+}
+
+@keyframes live-mark-ponder {
+  from {
+    transform: none;
   }
 }
 
@@ -1363,6 +1375,28 @@
   transform: translate(-2px, 1px) rotate(-8deg);
 }
 
+[data-slot='live-mark'][data-state='pondering'] [data-part='coral'] {
+  transform: rotate(7deg);
+  transform-origin: 16px 18px;
+}
+
+[data-slot='activity'] {
+  transition: --stall var(--motion-fast) linear;
+}
+
+[data-slot='activity'][data-stalled] [data-slot='live-mark'] {
+  filter: saturate(calc(1 - 0.75 * var(--stall)));
+  opacity: calc(1 - 0.25 * var(--stall));
+}
+
+[data-slot='activity'] [data-slot='trace-title'] {
+  --shimmer-color: color-mix(
+    in oklab,
+    var(--muted-foreground) calc(var(--stall) * 100%),
+    var(--foreground)
+  );
+}
+
 [data-slot='live-mark'][data-state='broken']
   :where([data-part='blue'], [data-part='yellow']) {
   transform: translate(var(--dx), var(--dy));
@@ -1505,6 +1539,18 @@
     animation:
       live-mark-slosh-yellow 0.45s ease-in-out 0s 11,
       live-mark-slosh-yellow 0.9s ease-in-out 4.95s infinite;
+  }
+
+  [data-slot='live-mark'][data-state='pondering'] [data-part='coral'] {
+    animation: live-mark-ponder var(--motion-story) var(--ease-out) both;
+  }
+
+  [data-slot='live-mark'][data-state='pondering'] [data-part='blue'] {
+    animation: live-mark-slosh-blue 3.4s ease-in-out infinite;
+  }
+
+  [data-slot='live-mark'][data-state='pondering'] [data-part='yellow'] {
+    animation: live-mark-slosh-yellow 4.6s ease-in-out infinite;
   }
 
   [data-slot='live-mark']:is([data-state='bubble'], [data-state='fizz'])

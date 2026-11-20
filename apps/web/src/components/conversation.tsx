@@ -49,8 +49,10 @@ import {
   setConversationModel,
   usePreferredModel,
 } from '@/lib/models';
+import type { Clock } from '@/lib/presence';
 import { useSlip } from '@/lib/run-failure';
 import { runPhase } from '@/lib/run-phase';
+import { runTiming } from '@/lib/spans';
 import {
   cachedRows,
   type Gap,
@@ -69,7 +71,6 @@ import {
   visible,
 } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
-import { useThinking } from '@/lib/voice';
 import {
   type AgentState,
   type InboxState,
@@ -110,6 +111,7 @@ const noParts: readonly Part[] = [];
 
 const TranscriptRow = memo(function TranscriptRow({
   activity,
+  clock,
   failed,
   failure,
   latest,
@@ -127,6 +129,7 @@ const TranscriptRow = memo(function TranscriptRow({
   working,
 }: {
   activity: string | undefined;
+  clock: Clock | undefined;
   failed: boolean;
   failure: RunFailureReason | undefined;
   latest: boolean;
@@ -195,6 +198,7 @@ const TranscriptRow = memo(function TranscriptRow({
     return (
       <AssistantMessage
         activity={activity}
+        clock={clock}
         failure={failure}
         latest={latest}
         model={row.model}
@@ -204,6 +208,7 @@ const TranscriptRow = memo(function TranscriptRow({
         progress={progress}
         results={results}
         retrying={retrying}
+        rounds={row.rounds}
         slip={slip}
         span={row.span}
         streaming={row.streaming ?? false}
@@ -390,6 +395,7 @@ function ConversationView({ id }: { id: number }) {
     view,
     status: activity,
     plan,
+    pulse,
     loadEarlier,
     fillGap,
   } = useConversation(id);
@@ -506,10 +512,30 @@ function ConversationView({ id }: { id: number }) {
 
   useRunEnd(id, running);
 
-  const waiting = useThinking(running ? anchor?.key : undefined);
+  const first = live?.run?.first;
+
+  const requested = live?.generation?.message?.timestamp;
+
+  const timing = useMemo(
+    () =>
+      running
+        ? runTiming(committed, results, {
+            first,
+            requested,
+            seen: { at: pulse.began, fresh: pulse.fresh },
+          })
+        : undefined,
+    [committed, first, pulse.began, pulse.fresh, requested, results, running]
+  );
+
+  const clock = useMemo(
+    () =>
+      timing && { at: pulse.at, start: timing.start, waited: timing.waited },
+    [pulse.at, timing]
+  );
 
   const thinking =
-    phase.kind === 'thinking' ? (activity ?? waiting) : undefined;
+    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
 
   const last = rows.at(-1)?.row;
 
@@ -547,6 +573,7 @@ function ConversationView({ id }: { id: number }) {
                   >
                     <TranscriptRow
                       activity={row === inline ? thinking : undefined}
+                      clock={running && row === last ? clock : undefined}
                       latest={row === latest && !running}
                       failed={earlier.isError || gap.isError}
                       failure={row === failedReply ? failure : undefined}
@@ -573,10 +600,10 @@ function ConversationView({ id }: { id: number }) {
                   <RetryStatus retry={phase.retry} />
                 )}
                 {thinking !== undefined && inline === undefined && (
-                  <Activity status={thinking} />
+                  <Activity clock={clock} status={thinking} />
                 )}
                 {!running && (live?.compactions?.length ?? 0) > 0 && (
-                  <Activity status='Summarizing earlier messages' />
+                  <Activity status='Summarizing earlier messages' tool />
                 )}
                 {failure !== undefined && failedReply === undefined && (
                   <RunFailure
