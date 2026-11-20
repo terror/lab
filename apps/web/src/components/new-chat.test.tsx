@@ -299,3 +299,23 @@ test('home steps aside and holds the composer in place while a chat starts', asy
 
   await expect.poll(glideOrigin).toBeUndefined();
 });
+
+test('arriving to try something selects the blank in the drafted prompt', async () => {
+  setStorageUser('foo');
+  window.localStorage.setItem('lab:foo:draft:new', '"foo … bar"');
+
+  const { router, screen } = await renderHome();
+
+  await router.navigate({ state: { blank: true }, to: '/' });
+
+  const message = screen.getByLabelText('Message').element();
+
+  await expect.poll(() => document.activeElement).toBe(message);
+
+  expect(
+    message instanceof HTMLTextAreaElement && [
+      message.selectionStart,
+      message.selectionEnd,
+    ]
+  ).toEqual([4, 5]);
+});

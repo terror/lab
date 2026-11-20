@@ -32,12 +32,14 @@ function CommandDialog({
   description = 'Search for a command to run...',
   children,
   className,
+  onCloseAutoFocus,
   showCloseButton = false,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string;
   description?: string;
   className?: string;
+  onCloseAutoFocus?: (event: Event) => void;
   showCloseButton?: boolean;
 }) {
   return (
@@ -47,6 +49,7 @@ function CommandDialog({
           'top-1/3 translate-y-0 overflow-hidden rounded-dialog! p-0',
           className
         )}
+        onCloseAutoFocus={onCloseAutoFocus}
         showCloseButton={showCloseButton}
       >
         <DialogHeader className='sr-only'>

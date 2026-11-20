@@ -11,8 +11,10 @@ import {
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { Pills } from '@/components/ui/pills';
+import { useCapabilities } from '@/lib/capabilities';
 import {
   conversationTitle,
+  useDraft,
   useLatestChats,
   usePinnedConversations,
   useStartChat,
@@ -56,6 +58,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -89,6 +92,8 @@ const PREVIEW = 3;
 const RECENT = 5;
 
 const PROJECTS = 5;
+
+const TRIES = 2;
 
 type Destination = {
   icon: LucideIcon;
@@ -338,10 +343,13 @@ function useResultGroups(query: string, onDone: () => void) {
 function EmptyQuery({
   onDone,
   onNewProject,
+  onTry,
 }: {
   onDone: () => void;
   onNewProject: () => void;
+  onTry: (prompt: string) => void;
 }) {
+  const capabilities = useCapabilities();
   const pinned = usePinnedConversations();
   const recents = useLatestChats();
   const projects = useProjects();
@@ -406,11 +414,22 @@ function EmptyQuery({
     },
   ];
 
+  const tries: Row[] = (capabilities ?? [])
+    .filter(({ prompt, tried }) => prompt !== undefined && !tried)
+    .slice(0, TRIES)
+    .map(({ icon, id, label, prompt = '' }) => ({
+      icon,
+      key: `try-${id}`,
+      onSelect: () => onTry(prompt),
+      title: label,
+    }));
+
   return (
     <>
       <Group heading='Recent' rows={recent} />
       <Group heading='Go to' rows={destinationRows} />
       <Group heading='Actions' rows={actions} />
+      <Group heading='Try' rows={tries} />
     </>
   );
 }
@@ -470,9 +489,11 @@ function Footer({ ask, scope }: { ask: boolean; scope: boolean }) {
 function Palette({
   onDone,
   onNewProject,
+  onTry,
 }: {
   onDone: () => void;
   onNewProject: () => void;
+  onTry: (prompt: string) => void;
 }) {
   const [model] = useChatModel();
 
@@ -593,7 +614,13 @@ function Palette({
         </p>
       )}
       <CommandList className='max-h-96 px-1.5 pb-1.5'>
-        {!query && <EmptyQuery onDone={onDone} onNewProject={onNewProject} />}
+        {!query && (
+          <EmptyQuery
+            onDone={onDone}
+            onNewProject={onNewProject}
+            onTry={onTry}
+          />
+        )}
         {sections.map(({ hidden, id, label, rows }) => (
           <CommandGroup key={id} heading={label}>
             {rows.map((row) => (
@@ -645,8 +672,21 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
 
+  const [, setDraft] = useDraft('new');
+  const trying = useRef(false);
+
   const openSearch = useCallback(() => setOpen(true), []);
   const close = useCallback(() => setOpen(false), []);
+
+  const onTry = useCallback(
+    (prompt: string) => {
+      setDraft(prompt);
+      trying.current = true;
+      setOpen(false);
+      void navigate({ state: { blank: true }, to: '/' });
+    },
+    [navigate, setDraft]
+  );
 
   useSeen('palette', open);
 
@@ -687,6 +727,12 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       <CommandDialog
         className='rounded-2xl! sm:max-w-xl'
         description='Search chats, projects, scheduled tasks, files, and settings'
+        onCloseAutoFocus={(event) => {
+          if (trying.current) {
+            trying.current = false;
+            event.preventDefault();
+          }
+        }}
         onOpenChange={setOpen}
         open={open}
         title='Search'
@@ -697,6 +743,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
             close();
             setEditing({ kind: 'new' });
           }}
+          onTry={onTry}
         />
       </CommandDialog>
       <ProjectDialog

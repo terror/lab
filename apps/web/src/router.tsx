@@ -198,6 +198,10 @@ export const router = createRouter({
 });
 
 declare module '@tanstack/react-router' {
+  interface HistoryState {
+    blank?: boolean;
+  }
+
   interface Register {
     router: typeof router;
   }

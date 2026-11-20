@@ -1,6 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { preferencesQueryOptions } from '@/lib/preferences';
 import { queryClient } from '@/lib/query-client';
+import { setStorageUser } from '@/lib/storage';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
@@ -23,8 +24,12 @@ const recent = Array.from({ length: 6 }, (_, index) => ({
   title: 'bar',
 }));
 
-function stubWorkspace() {
+function stubWorkspace(tried?: Record<string, boolean>) {
   return stubFetch(({ pathname, searchParams }, init) => {
+    if (pathname === '/api/capabilities' && tried) {
+      return Response.json({ tried });
+    }
+
     if (init?.method === 'POST') {
       return Response.json({ error: 'bar' }, { status: 400 });
     }
@@ -243,4 +248,59 @@ test('opening search counts the palette as tried', async () => {
       )
     )
     .toEqual([JSON.stringify({ id: 'palette' })]);
+});
+
+test('an empty query offers two untried things, and trying one drafts a new chat', async () => {
+  setStorageUser('foo');
+
+  stubWorkspace({
+    apps: true,
+    branches: false,
+    helpers: false,
+    images: false,
+    plan: false,
+    schedules: false,
+  });
+
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  const { router } = await openSearch(client);
+
+  await expect
+    .poll(values)
+    .toEqual([
+      'recent-6',
+      'recent-1',
+      'recent-2',
+      'recent-3',
+      'recent-4',
+      'go-library',
+      'go-scheduled',
+      'go-trash',
+      'go-settings',
+      'go-project-7',
+      'go-project-8',
+      'go-project-9',
+      'go-project-10',
+      'go-project-11',
+      'new-chat',
+      'new-project',
+      'theme',
+      'try-schedules',
+      'try-images',
+    ]);
+
+  await userEvent.click(
+    document.querySelector('[data-value=try-images]') ?? document.body
+  );
+
+  await expect
+    .poll(() => ({
+      blank: router.state.location.state.blank,
+      draft: window.localStorage.getItem('lab:foo:draft:new'),
+      pathname: router.state.location.pathname,
+    }))
+    .toEqual({ blank: true, draft: '"Make an image of …"', pathname: '/' });
 });

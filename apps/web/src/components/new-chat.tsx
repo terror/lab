@@ -8,6 +8,7 @@ import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { say, useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
+import { useLocation } from '@tanstack/react-router';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -53,6 +54,14 @@ function useVisit(user: string) {
   return visit;
 }
 
+function select(input: HTMLTextAreaElement | null, text: string) {
+  const at = text.indexOf('…');
+  const [start, end] = at === -1 ? [text.length, text.length] : [at, at + 1];
+
+  input?.focus();
+  input?.setSelectionRange(start, end);
+}
+
 function Words({ text }: { text: string }) {
   return text.split(' ').map((word, index) => (
     <Fragment key={index}>
@@ -82,6 +91,15 @@ export function NewChat({ user }: { user: { id: string } }) {
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);
   const starting = useIsMutating({ mutationKey: startChatKey }) > 0;
+  const blank = useLocation({
+    select: ({ state }) => (state.blank === true ? state.key : undefined),
+  });
+
+  useEffect(() => {
+    if (blank !== undefined) {
+      select(input.current, input.current?.value ?? '');
+    }
+  }, [blank]);
 
   useLayoutEffect(() => {
     const top = composer.current?.getBoundingClientRect().top;
@@ -95,8 +113,7 @@ export function NewChat({ user }: { user: { id: string } }) {
 
   const prompt = (text: string) => {
     setDraft(text);
-    input.current?.focus();
-    input.current?.setSelectionRange(text.length, text.length);
+    select(input.current, text);
   };
 
   return (
