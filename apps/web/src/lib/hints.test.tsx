@@ -1,4 +1,4 @@
-import { type Preferences, preferencesQueryOptions } from '@/lib/preferences';
+import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderHookWithQuery, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
@@ -24,7 +24,6 @@ test('a hint shows once the account confirms it is new, one a session', async ()
   const server = {
     ...defaultPreferences,
     hints: ['bar', 'baz'],
-    personality: 'quiet' as Preferences['personality'],
   };
 
   client.setQueryData(preferencesQueryOptions.queryKey, {
@@ -58,17 +57,6 @@ test('a hint shows once the account confirms it is new, one a session', async ()
       client
     );
 
-    const quiet = result.current;
-
-    server.personality = 'default';
-
-    await act(() =>
-      client.setQueryData(preferencesQueryOptions.queryKey, {
-        ...server,
-        hints: ['bar'],
-      })
-    );
-
     await vi.waitFor(() => expect(result.current[2]).toBe('foo'));
 
     const shown = result.current;
@@ -93,7 +81,6 @@ test('a hint shows once the account confirms it is new, one a session', async ()
       after: again.result.current,
       claimed,
       ineligible,
-      quiet,
       remounted,
       shown,
     }).toEqual({
@@ -103,7 +90,6 @@ test('a hint shows once the account confirms it is new, one a session', async ()
         ['foo', true],
       ],
       ineligible: [false, false, undefined],
-      quiet: [false, false, undefined],
       remounted: [false, false, 'foo'],
       shown: [false, false, 'foo'],
     });

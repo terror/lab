@@ -1,7 +1,4 @@
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderHookWithQuery } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -15,7 +12,6 @@ vi.mock('./moments', () => ({
         { max: 2, per: 'day' },
       ],
       ms: 100,
-      quiet: 'skip',
       reduced: 'still',
       tier: 'run',
       use: 'Foo.',
@@ -35,14 +31,7 @@ test('two limits counted under one key each keep their own count', async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date(2026, 10, 18, 9));
 
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  const { result } = await renderHookWithQuery(
-    () => useShot('foo.bar'),
-    client
-  );
+  const { result } = await renderHookWithQuery(() => useShot('foo.bar'));
 
   const plays: boolean[] = [];
 

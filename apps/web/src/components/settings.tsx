@@ -12,7 +12,7 @@ import { Page, PageHeader } from '@/components/ui/page';
 import { Pills } from '@/components/ui/pills';
 import { Switch } from '@/components/ui/switch';
 import { UsagePanel } from '@/components/usage';
-import { type Preferences, usePreference } from '@/lib/preferences';
+import { usePreference } from '@/lib/preferences';
 import {
   type SettingsSection,
   settingsSectionInfo,
@@ -37,22 +37,13 @@ const themes: { label: string; value: Theme }[] = [
   { label: 'System', value: 'system' },
 ];
 
-const personalities: {
-  label: string;
-  value: Preferences['personality'];
-}[] = [
-  { label: 'Default', value: 'default' },
-  { label: 'Quiet', value: 'quiet' },
-];
-
 function Appearance() {
   const [theme, setTheme] = useTheme();
   const [lineNumbers, setLineNumbers] = usePreference('lineNumbers');
-  const [personality, setPersonality] = usePreference('personality');
 
   return (
     <>
-      <PageHeader description='Theme and personality.' title='Appearance' />
+      <PageHeader description='Theme and code blocks.' title='Appearance' />
       <ul className='flex flex-col gap-0.5'>
         <SettingRow
           control={
@@ -75,18 +66,6 @@ function Appearance() {
           }
           htmlFor='line-numbers'
           label='Line numbers in code blocks'
-        />
-        <SettingRow
-          control={
-            <Pills
-              label='Personality'
-              onValueChange={setPersonality}
-              options={personalities}
-              value={personality}
-            />
-          }
-          description='How much Lab says beyond the facts.'
-          label='Personality'
         />
       </ul>
     </>

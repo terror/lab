@@ -1,7 +1,4 @@
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
 import '@/index.css';
 
@@ -112,31 +109,6 @@ test('a streaming reply ends in a pulsing caret that fades once it finishes', as
     ],
     pulse: 'none',
   });
-});
-
-test('a reply streams without a caret when Lab is quiet', async () => {
-  stubFetch(() => Response.json({}));
-
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality: 'quiet',
-  });
-
-  const { screen } = await renderWithQuery(
-    <Markdown streaming>foo</Markdown>,
-    client
-  );
-
-  await expect.element(screen.getByText('foo')).toBeVisible();
-
-  expect(
-    getComputedStyle(
-      screen.container.querySelector('p') ?? document.body,
-      '::after'
-    ).content
-  ).toBe('none');
 });
 
 test('finished messages are not patched as if they were cut off', async () => {

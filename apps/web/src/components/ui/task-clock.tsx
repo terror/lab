@@ -16,7 +16,7 @@ function TaskClock({
   since?: string;
   turns?: number;
 }) {
-  const quiet = !useMoment('places.wind').on;
+  const still = !useMoment('places.wind').on;
 
   const fraction =
     paused || progress === undefined || !Number.isFinite(progress)
@@ -43,7 +43,7 @@ function TaskClock({
     });
   }
 
-  const wound = quiet ? 0 : turns;
+  const wound = still ? 0 : turns;
 
   const [settled, setSettled] = React.useState(wound);
 
@@ -75,9 +75,9 @@ function TaskClock({
     >
       <circle cx='12' cy='12' r='10' />
       <line
-        data-quiet={quiet || undefined}
+        data-still={still || undefined}
         data-winding={wound !== settled || undefined}
-        className='transition-transform duration-slow ease-out data-quiet:transition-none data-winding:duration-story motion-reduce:transition-none'
+        className='transition-transform duration-slow ease-out data-still:transition-none data-winding:duration-story motion-reduce:transition-none'
         style={{
           transform: `rotate(${(cycle.fraction + cycle.laps + wound) * 360}deg)`,
           transformOrigin: '12px 12px',

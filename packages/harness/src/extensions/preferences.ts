@@ -65,9 +65,9 @@ export function preferences(owner: Owner) {
 
         Object.assign(doc, change);
 
-        const { chatSort, lineNumbers, personality, theme } = doc;
+        const { chatSort, lineNumbers, theme } = doc;
 
-        return { chatSort, lineNumbers, personality, theme };
+        return { chatSort, lineNumbers, theme };
       }, context);
 
       return {

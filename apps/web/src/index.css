@@ -1672,33 +1672,33 @@
       highlight-fade 900ms var(--ease-out) 1900ms forwards;
   }
 
-  [data-slot='copy-icon']:not([data-quiet]) [data-part='back'] {
+  [data-slot='copy-icon']:not([data-still]) [data-part='back'] {
     transition:
       transform 140ms var(--ease-in),
       opacity 140ms var(--ease-in);
   }
 
-  [data-slot='copy-icon']:not([data-quiet]) [data-part='front'] {
+  [data-slot='copy-icon']:not([data-still]) [data-part='front'] {
     transition: opacity var(--motion-fast) var(--ease-out);
   }
 
-  [data-slot='copy-icon']:not([data-quiet]) [data-part='check'] {
+  [data-slot='copy-icon']:not([data-still]) [data-part='check'] {
     transition:
       opacity 150ms var(--ease-out),
       stroke-dashoffset 0ms linear 150ms;
   }
 
-  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+  [data-slot='copy-icon'][data-state='copied']:not([data-still])
     [data-part='back'] {
     transform: translate(6px, 6px);
   }
 
-  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+  [data-slot='copy-icon'][data-state='copied']:not([data-still])
     [data-part='front'] {
     transition-delay: 110ms;
   }
 
-  [data-slot='copy-icon'][data-state='copied']:not([data-quiet])
+  [data-slot='copy-icon'][data-state='copied']:not([data-still])
     [data-part='check'] {
     transition:
       stroke-dashoffset 180ms var(--ease-out) 120ms,

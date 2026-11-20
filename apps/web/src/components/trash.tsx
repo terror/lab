@@ -23,7 +23,7 @@ import {
   trashQueryOptions,
   useTrashAction,
 } from '@/lib/trash';
-import { useEmpty } from '@/lib/voice';
+import { emptyCopy } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Ellipsis, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
 import {
@@ -156,7 +156,7 @@ export function Trash() {
     setListed(true);
   }
 
-  const emptyState = useEmpty('trash');
+  const emptyState = emptyCopy('trash');
 
   return (
     <>

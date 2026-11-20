@@ -1,7 +1,4 @@
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderWithQuery } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
@@ -18,35 +15,16 @@ const square = vi.hoisted(
 
 vi.mock('@/lib/uploads', () => ({ uploadUrl: () => square }));
 
-async function develop(personality: 'default' | 'quiet') {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality,
-  });
-
+test('an image develops from blurred and grey once it loads', async () => {
   const { screen } = await renderWithQuery(
-    <ImageCard name='foo' src={pixel} />,
-    client
+    <ImageCard name='foo' src={pixel} />
   );
 
   const image = screen.getByRole('img', { name: 'foo' });
 
   await expect.element(image).toHaveAttribute('data-loaded');
 
-  const { animationName } = getComputedStyle(image.element());
-
-  await screen.unmount();
-
-  return animationName;
-}
-
-test('an image develops from blurred and grey once it loads unless Lab is quiet', async () => {
-  expect([await develop('default'), await develop('quiet')]).toEqual([
-    'develop',
-    'none',
-  ]);
+  expect(getComputedStyle(image.element()).animationName).toBe('develop');
 });
 
 test('a generated image keeps the square frame it reserved while it was being made', async () => {

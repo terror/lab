@@ -19,16 +19,11 @@ test('preferences are shared by the settings and the agent', async () => {
   ];
 
   const patched = await call(headers, 'PATCH', '/preferences', {
-    personality: 'quiet',
     theme: 'light',
   });
 
   const invalid = await call(headers, 'PATCH', '/preferences', {
     theme: 'foo',
-  });
-
-  const quiet = await call(headers, 'POST', '/preferences/hints', {
-    id: 'bar',
   });
 
   script(
@@ -45,7 +40,6 @@ test('preferences are shared by the settings and the agent', async () => {
     invalid: invalid.status,
     outputs: await toolOutputs(headers, id),
     patched: patched.body,
-    quiet: quiet.body.fresh,
   }).toEqual({
     claims: [true, false],
     final: {
@@ -53,7 +47,6 @@ test('preferences are shared by the settings and the agent', async () => {
         chatSort: 'title',
         hints: ['foo'],
         lineNumbers: true,
-        personality: 'quiet',
         theme: 'light',
       },
     },
@@ -62,7 +55,6 @@ test('preferences are shared by the settings and the agent', async () => {
         chatSort: 'activity',
         hints: [],
         lineNumbers: false,
-        personality: 'default',
         theme: 'system',
       },
     },
@@ -75,11 +67,9 @@ test('preferences are shared by the settings and the agent', async () => {
         chatSort: 'activity',
         hints: ['foo'],
         lineNumbers: false,
-        personality: 'quiet',
         theme: 'light',
       },
     },
-    quiet: false,
   });
 });
 
@@ -92,7 +82,7 @@ test('preferences saved before a setting existed get its default', async () => {
     const doc = await tx.doc(PreferencesDoc, body.user.id, null);
 
     Object.assign(doc, { theme: 'dark' });
-    delete (doc as Partial<typeof doc>).personality;
+    delete (doc as Partial<typeof doc>).lineNumbers;
   }, BACKGROUND_CONTEXT);
 
   expect((await call(headers, 'GET', '/preferences')).body).toEqual({
@@ -100,7 +90,6 @@ test('preferences saved before a setting existed get its default', async () => {
       chatSort: 'activity',
       hints: [],
       lineNumbers: false,
-      personality: 'default',
       theme: 'dark',
     },
   });

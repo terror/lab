@@ -2,10 +2,8 @@ import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
 import { conversationsQueryKey } from '@/lib/conversations';
-import { preferencesQueryOptions, usePreference } from '@/lib/preferences';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
-import { QueryClient, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   RouterProvider,
   createMemoryHistory,
@@ -138,12 +136,10 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
 
 function Finishing() {
   const [running, setRunning] = useState(true);
-  const [personality] = usePreference('personality');
 
   return (
     <>
       <Button onClick={() => setRunning(false)}>qux</Button>
-      <output>{personality}</output>
       <ul>
         {[1, 2, 3, 4, 5, 6, 7].map((id) => (
           <ConversationItem
@@ -214,37 +210,6 @@ test('chats that finish in the background hand their marks over to dots, six at 
     ['live-mark', 'handoff', '0.15s'],
     ['dot', undefined, ''],
   ]);
-});
-
-test('finished chats swap straight to their dots when Lab is quiet, and stay dots when it stops being quiet', async () => {
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, {
-    ...defaultPreferences,
-    personality: 'quiet',
-  });
-
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routeTree: createRootRoute({ component: Finishing }),
-  });
-
-  const { screen } = await renderWithQuery(
-    <RouterProvider router={router} />,
-    client
-  );
-
-  await screen.getByRole('button', { name: 'qux' }).click();
-
-  const dots = Array.from({ length: 7 }, () => ['dot', undefined, '']);
-
-  await expect.poll(marks).toEqual(dots);
-
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  await expect.element(screen.getByText('default')).toBeVisible();
-
-  expect(marks()).toEqual(dots);
 });
 
 test('leaving a rename returns focus to the chat’s options', async () => {
