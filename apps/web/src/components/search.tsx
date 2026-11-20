@@ -11,8 +11,10 @@ import {
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { Pills } from '@/components/ui/pills';
+import { tryPrompt, useCapabilities } from '@/lib/capabilities';
 import {
   conversationTitle,
+  useDraft,
   useLatestChats,
   usePinnedConversations,
   useStartChat,
@@ -28,7 +30,7 @@ import {
 } from '@/lib/settings';
 import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
-import { useNavigate } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Command as CommandPrimitive } from 'cmdk';
 import {
   Clock,
@@ -56,6 +58,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -89,6 +92,8 @@ const PREVIEW = 3;
 const RECENT = 5;
 
 const PROJECTS = 5;
+
+const TRIES = 2;
 
 type Destination = {
   icon: LucideIcon;
@@ -127,6 +132,7 @@ type Row = {
   onSelect: () => void;
   snippet?: Segment[] | null;
   title: string;
+  verb?: string;
 };
 
 function Highlighted({ segments }: { segments: readonly Segment[] }) {
@@ -177,7 +183,7 @@ function ResultRow({ row }: { row: Row }) {
               {row.keys ? <Keys keys={row.keys} /> : row.meta}
             </span>
             <span className='hidden items-center gap-1.5 group-data-selected:flex'>
-              Open <Kbd>↵</Kbd>
+              {row.verb ?? 'Open'} <Kbd>↵</Kbd>
             </span>
           </span>
         </span>
@@ -338,10 +344,13 @@ function useResultGroups(query: string, onDone: () => void) {
 function EmptyQuery({
   onDone,
   onNewProject,
+  onTry,
 }: {
   onDone: () => void;
   onNewProject: () => void;
+  onTry: ((prompt: string) => void) | undefined;
 }) {
+  const capabilities = useCapabilities(onTry !== undefined);
   const pinned = usePinnedConversations();
   const recents = useLatestChats();
   const projects = useProjects();
@@ -406,9 +415,21 @@ function EmptyQuery({
     },
   ];
 
+  const tries: Row[] = (onTry ? (capabilities ?? []) : [])
+    .filter(({ prompt, tried }) => prompt !== undefined && !tried)
+    .slice(0, TRIES)
+    .map(({ icon, id, label, prompt = '' }) => ({
+      icon,
+      key: `try-${id}`,
+      onSelect: () => onTry?.(prompt),
+      title: label,
+      verb: 'Try',
+    }));
+
   return (
     <>
       <Group heading='Recent' rows={recent} />
+      <Group heading='Try' rows={tries} />
       <Group heading='Go to' rows={destinationRows} />
       <Group heading='Actions' rows={actions} />
     </>
@@ -468,13 +489,18 @@ function Footer({ ask, scope }: { ask: boolean; scope: boolean }) {
 }
 
 function Palette({
+  drafted,
   onDone,
   onNewProject,
+  onTry,
 }: {
+  drafted: boolean;
   onDone: () => void;
   onNewProject: () => void;
+  onTry: (prompt: string) => void;
 }) {
   const [model] = useChatModel();
+  const [tryable] = useState(!drafted);
 
   const start = useStartChat({ inlineError: false });
 
@@ -593,7 +619,13 @@ function Palette({
         </p>
       )}
       <CommandList className='max-h-96 px-1.5 pb-1.5'>
-        {!query && <EmptyQuery onDone={onDone} onNewProject={onNewProject} />}
+        {!query && (
+          <EmptyQuery
+            onDone={onDone}
+            onNewProject={onNewProject}
+            onTry={tryable ? onTry : undefined}
+          />
+        )}
         {sections.map(({ hidden, id, label, rows }) => (
           <CommandGroup key={id} heading={label}>
             {rows.map((row) => (
@@ -645,8 +677,25 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
 
+  const [draft] = useDraft('new');
+  const home = useLocation({ select: ({ pathname }) => pathname === '/' });
+  const trying = useRef(false);
+
   const openSearch = useCallback(() => setOpen(true), []);
   const close = useCallback(() => setOpen(false), []);
+
+  const onTry = useCallback(
+    (prompt: string) => {
+      tryPrompt(prompt);
+      trying.current = true;
+      setOpen(false);
+
+      if (!home) {
+        void navigate({ to: '/' });
+      }
+    },
+    [home, navigate]
+  );
 
   useSeen('palette', open);
 
@@ -687,16 +736,24 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       <CommandDialog
         className='rounded-2xl! sm:max-w-xl'
         description='Search chats, projects, scheduled tasks, files, and settings'
+        onCloseAutoFocus={(event) => {
+          if (trying.current) {
+            trying.current = false;
+            event.preventDefault();
+          }
+        }}
         onOpenChange={setOpen}
         open={open}
         title='Search'
       >
         <Palette
+          drafted={draft.trim() !== ''}
           onDone={close}
           onNewProject={() => {
             close();
             setEditing({ kind: 'new' });
           }}
+          onTry={onTry}
         />
       </CommandDialog>
       <ProjectDialog

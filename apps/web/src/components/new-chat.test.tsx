@@ -1,5 +1,6 @@
 import '@/index.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { tryPrompt } from '@/lib/capabilities';
 import { glideOrigin } from '@/lib/glide';
 import { setStorageUser } from '@/lib/storage';
 import { renderWithQuery, stubFetch } from '@/test/helpers';
@@ -298,4 +299,25 @@ test('home steps aside and holds the composer in place while a chat starts', asy
   started.resolve(new Response(null, { status: 500 }));
 
   await expect.poll(glideOrigin).toBeUndefined();
+});
+
+test('trying a prompt drafts it and selects its blank', async () => {
+  setStorageUser('foo');
+
+  const { screen } = await renderHome();
+
+  await expect.element(screen.getByLabelText('Message')).toBeVisible();
+
+  tryPrompt('foo … bar');
+
+  const message = screen.getByLabelText('Message').element();
+
+  await expect.poll(() => document.activeElement).toBe(message);
+
+  expect(
+    message instanceof HTMLTextAreaElement && [
+      message.selectionStart,
+      message.selectionEnd,
+    ]
+  ).toEqual([4, 5]);
 });

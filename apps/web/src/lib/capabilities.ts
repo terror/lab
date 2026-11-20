@@ -10,9 +10,10 @@ import {
   Search,
   UsersRound,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { call, client } from './client';
+import { writeDraft } from './conversations';
 import { useHint, useLedger } from './hints';
 import { useQuiet } from './voice';
 
@@ -77,6 +78,7 @@ const catalog: Capability[] = [
 
 const capabilitiesQueryOptions = queryOptions({
   queryKey: ['capabilities'],
+  staleTime: 60_000,
   queryFn: async ({ signal }) =>
     (await call(client.capabilities.$get(undefined, { init: { signal } })))
       .tried,
@@ -135,4 +137,40 @@ export function useTip(enabled: boolean, idle: boolean) {
   }, [retire, tip]);
 
   return tip;
+}
+
+let blank = false;
+
+const blankListeners = new Set<() => void>();
+
+function setBlank(next: boolean) {
+  blank = next;
+
+  for (const listener of blankListeners) {
+    listener();
+  }
+}
+
+function subscribeBlank(listener: () => void) {
+  blankListeners.add(listener);
+
+  return () => {
+    blankListeners.delete(listener);
+  };
+}
+
+export function tryPrompt(prompt: string) {
+  writeDraft('new', prompt);
+  setBlank(true);
+}
+
+export function useBlank(select: () => void) {
+  const pending = useSyncExternalStore(subscribeBlank, () => blank);
+
+  useEffect(() => {
+    if (pending) {
+      setBlank(false);
+      select();
+    }
+  }, [pending, select]);
 }

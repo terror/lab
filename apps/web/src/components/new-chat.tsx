@@ -2,13 +2,21 @@ import { HomeMark } from '@/components/home-mark';
 import { StartComposer } from '@/components/start-composer';
 import { Suggestions } from '@/components/suggestions';
 import { UnreadChips } from '@/components/unread-chips';
+import { useBlank } from '@/lib/capabilities';
 import { startChatKey, useDraft, useLatestChats } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { say, useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { z } from 'zod';
 
 const visitSchema = z.object({ at: z.number() });
@@ -53,6 +61,14 @@ function useVisit(user: string) {
   return visit;
 }
 
+function select(input: HTMLTextAreaElement | null, text: string) {
+  const at = text.indexOf('…');
+  const [start, end] = at === -1 ? [text.length, text.length] : [at, at + 1];
+
+  input?.focus();
+  input?.setSelectionRange(start, end);
+}
+
 function Words({ text }: { text: string }) {
   return text.split(' ').map((word, index) => (
     <Fragment key={index}>
@@ -83,6 +99,10 @@ export function NewChat({ user }: { user: { id: string } }) {
   const composer = useRef<HTMLDivElement>(null);
   const starting = useIsMutating({ mutationKey: startChatKey }) > 0;
 
+  useBlank(
+    useCallback(() => select(input.current, input.current?.value ?? ''), [])
+  );
+
   useLayoutEffect(() => {
     const top = composer.current?.getBoundingClientRect().top;
 
@@ -95,8 +115,7 @@ export function NewChat({ user }: { user: { id: string } }) {
 
   const prompt = (text: string) => {
     setDraft(text);
-    input.current?.focus();
-    input.current?.setSelectionRange(text.length, text.length);
+    select(input.current, text);
   };
 
   return (

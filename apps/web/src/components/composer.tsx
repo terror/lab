@@ -369,6 +369,8 @@ export function Composer({
 
     const command = event.metaKey || event.ctrlKey;
 
+    const { selectionEnd, selectionStart, value } = event.currentTarget;
+
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
@@ -376,7 +378,10 @@ export function Composer({
       (command || !touch)
     ) {
       event.preventDefault();
-      submit(steering && command);
+
+      if (value.slice(selectionStart, selectionEnd) !== '…') {
+        submit(steering && command);
+      }
     }
   };
 

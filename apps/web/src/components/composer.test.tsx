@@ -374,3 +374,37 @@ test('focus moves to the message box when a stopped run ends', async () => {
     screen.getByLabelText('Message').element()
   );
 });
+
+test('enter leaves a draft alone while its blank is selected', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const onSubmit = vi.fn();
+
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <Composer
+        attachments={[]}
+        draft='foo … bar'
+        model={undefined}
+        onAttachmentsChange={() => undefined}
+        onDraftChange={() => undefined}
+        onModelChange={() => undefined}
+        onSubmit={onSubmit}
+      />
+    </TooltipProvider>
+  );
+
+  const message = screen.getByLabelText('Message');
+
+  await message.click();
+
+  const element = message.element();
+
+  if (element instanceof HTMLTextAreaElement) {
+    element.setSelectionRange(4, 5);
+  }
+
+  await userEvent.keyboard('{Enter}');
+
+  expect(onSubmit.mock.calls).toEqual([]);
+});
