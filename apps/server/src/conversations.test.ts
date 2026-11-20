@@ -51,7 +51,7 @@ test('conversations are created with the chosen model', async () => {
     thinkingLevel: 'off',
   });
 
-  const agent = await harness.snapshot(AgentDoc, body.id, BACKGROUND_CONTEXT);
+  const agent = await harness().snapshot(AgentDoc, body.id, BACKGROUND_CONTEXT);
 
   expect([agent?.model, agent?.thinkingLevel]).toEqual([
     { modelId: 'anthropic/claude-haiku-5.5', provider: 'vercel-ai-gateway' },
@@ -93,11 +93,11 @@ test('messages longer than the limit are rejected', async () => {
 test('conversations are not listed when their first message fails', async () => {
   const headers = await signIn();
 
-  const createConversation = harness.createConversation.bind(harness);
+  const createConversation = harness().createConversation.bind(harness());
 
   let created = 0;
 
-  spyOn(harness, 'createConversation').mockImplementationOnce(
+  spyOn(harness(), 'createConversation').mockImplementationOnce(
     async (options, context) => {
       const conversation = await createConversation(options, context);
 
@@ -550,9 +550,9 @@ test('running conversations are marked in the list', async () => {
 
   const id = await create(headers);
 
-  const inspection = await harness.inspect(BACKGROUND_CONTEXT);
+  const inspection = await harness().inspect(BACKGROUND_CONTEXT);
 
-  spyOn(harness, 'inspect').mockResolvedValueOnce({
+  spyOn(harness(), 'inspect').mockResolvedValueOnce({
     ...inspection,
     tasks: [
       {
@@ -615,7 +615,7 @@ test('messages can steer the running answer', async () => {
 
   const id = await create(headers);
 
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -628,7 +628,7 @@ test('messages can steer the running answer', async () => {
 
   await settle();
 
-  spyOn(harness, 'conversation').mockResolvedValueOnce(conversation);
+  spyOn(harness(), 'conversation').mockResolvedValueOnce(conversation);
 
   await call(headers, 'POST', `/conversations/${id}/messages`, {
     content: 'bar',
@@ -670,7 +670,7 @@ test('queued messages can be cancelled', async () => {
     await call(headers, 'DELETE', `/conversations/${id}/submissions/999999`)
   ).toEqual({ body: { error: 'Message not found' }, status: 404 });
 
-  const abort = spyOn(harness, 'abortSubmission').mockResolvedValueOnce(
+  const abort = spyOn(harness(), 'abortSubmission').mockResolvedValueOnce(
     'aborted'
   );
 
@@ -992,9 +992,9 @@ test('running conversations are counted instead of listed as unread', async () =
 
   const id = await create(headers);
 
-  const inspection = await harness.inspect(BACKGROUND_CONTEXT);
+  const inspection = await harness().inspect(BACKGROUND_CONTEXT);
 
-  spyOn(harness, 'inspect').mockResolvedValueOnce({
+  spyOn(harness(), 'inspect').mockResolvedValueOnce({
     ...inspection,
     tasks: [
       {

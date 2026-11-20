@@ -37,7 +37,7 @@ export const ownedChat = createMiddleware<{
 
   const conversation =
     record &&
-    (await harness.conversation(
+    (await harness().conversation(
       record.id as ConversationId,
       BACKGROUND_CONTEXT
     ));
@@ -74,7 +74,7 @@ export async function renameChat(
 
   const conversation =
     chat &&
-    (await harness.conversation(id as ConversationId, BACKGROUND_CONTEXT));
+    (await harness().conversation(id as ConversationId, BACKGROUND_CONTEXT));
 
   if (!chat || !conversation) {
     return undefined;
@@ -175,7 +175,7 @@ export async function createChat(
     title?: string;
   }
 ) {
-  const conversation = await harness.createConversation(
+  const conversation = await harness().createConversation(
     { agent: change, ownership: { kind: 'ownerless' } },
     BACKGROUND_CONTEXT
   );

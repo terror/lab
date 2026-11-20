@@ -50,7 +50,7 @@ export async function openHarness(
   const storage = await openNodeSqliteStorage(path);
 
   try {
-    const harness = await Harness.open(
+    return await Harness.open(
       storage,
       {
         models,
@@ -60,10 +60,6 @@ export async function openHarness(
       },
       context
     );
-
-    harness.resume();
-
-    return harness;
   } catch (error) {
     await storage.close(BACKGROUND_CONTEXT).catch(() => {});
     throw error;

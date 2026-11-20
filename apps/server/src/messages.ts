@@ -161,7 +161,7 @@ export async function selectConnectors(
   const name = connectorsExtensionName(ownerId);
 
   const stored = (
-    await harness.snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
+    await harness().snapshot(AgentDoc, conversation.id, BACKGROUND_CONTEXT)
   )?.extensions;
 
   if (Array.isArray(stored) || stored?.add?.includes(name)) {

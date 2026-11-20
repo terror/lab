@@ -88,7 +88,7 @@ test('preferences saved before a setting existed get its default', async () => {
 
   const { body } = await call(headers, 'GET', '/auth/get-session');
 
-  await harness.commit(async (tx) => {
+  await harness().commit(async (tx) => {
     const doc = await tx.doc(PreferencesDoc, body.user.id, null);
 
     Object.assign(doc, { theme: 'dark' });

@@ -25,7 +25,7 @@ const hint = validator('json', z.object({ id: z.string().min(1).max(64) }));
 async function current(ownerId: string) {
   return {
     ...defaultPreferences,
-    ...(await harness.snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
+    ...(await harness().snapshot(PreferencesDoc, ownerId, BACKGROUND_CONTEXT)),
   };
 }
 
@@ -35,7 +35,7 @@ const preferences = new Hono()
     c.json({ preferences: await current(c.get('user').id) })
   )
   .patch('/', change, async (c) => {
-    await harness.commit(async (tx) => {
+    await harness().commit(async (tx) => {
       Object.assign(
         await tx.doc(PreferencesDoc, c.get('user').id, null),
         c.req.valid('json')
@@ -47,7 +47,7 @@ const preferences = new Hono()
   .post('/hints', hint, async (c) => {
     const { id } = c.req.valid('json');
 
-    const fresh = await harness.commit(async (tx) => {
+    const fresh = await harness().commit(async (tx) => {
       const doc = await tx.doc(PreferencesDoc, c.get('user').id, null);
 
       const seen = doc.hints ?? [];

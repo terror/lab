@@ -18,7 +18,7 @@ const settings = validator('json', z.object({ network: z.enum(networkModes) }));
 
 async function networkMode(ownerId: string) {
   return (
-    (await harness.snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
+    (await harness().snapshot(ComputerDoc, ownerId, BACKGROUND_CONTEXT))
       ?.network ?? 'full'
   );
 }
@@ -37,7 +37,7 @@ const computer = new Hono()
   .patch('/', settings, async (c) => {
     const { network } = c.req.valid('json');
 
-    await harness.commit(async (tx) => {
+    await harness().commit(async (tx) => {
       (await tx.doc(ComputerDoc, c.get('user').id, null)).network = network;
     }, BACKGROUND_CONTEXT);
 

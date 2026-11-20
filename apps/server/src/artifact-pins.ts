@@ -35,7 +35,7 @@ export async function listPins(ownerId: string) {
 
   const pins = await Promise.all(
     rows.map(async (row) => {
-      const doc = await harness.snapshot(
+      const doc = await harness().snapshot(
         ArtifactsDoc,
         row.conversationId as ConversationId,
         BACKGROUND_CONTEXT

@@ -19,7 +19,7 @@ export async function askModel(
   prompt: string,
   signal: AbortSignal
 ) {
-  const agent = await harness.snapshot(
+  const agent = await harness().snapshot(
     AgentDoc,
     conversationId,
     BACKGROUND_CONTEXT

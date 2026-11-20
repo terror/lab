@@ -2,11 +2,9 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type {
   CommitChange,
   Conversation,
-  ConversationDocToken,
   ConversationId,
   Cursor,
   EntryRecord,
-  JsonObject,
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { TitleDoc } from '@lab/harness';
@@ -16,33 +14,13 @@ import { db } from './db';
 import { harness } from './harness';
 import { isMessage } from './message-entry';
 import { observe } from './pipeline';
-import { serial } from './records';
 
-type Columns = Partial<
-  Omit<typeof schema.conversation.$inferInsert, 'id' | 'ownerId'>
+type Columns = Pick<
+  typeof schema.conversation.$inferInsert,
+  'title' | 'lastMessageAt'
 >;
 
-type Projection = {
-  read: (id: ConversationId) => Promise<Columns>;
-  source: (change: CommitChange) => ConversationId | undefined;
-};
-
-function projection<T extends JsonObject>(
-  doc: ConversationDocToken<T>,
-  columns: (value: T) => Columns
-): Projection {
-  return {
-    read: async (id) => {
-      const value = await harness.snapshot(doc, id, BACKGROUND_CONTEXT);
-
-      return value ? columns(value) : {};
-    },
-    source: (change) =>
-      change.type === 'document' && change.record.kind === doc.definition.kind
-        ? change.conversationId
-        : undefined,
-  };
-}
+const latest = new Map<number, number>();
 
 async function latestMessage(
   conversation: Conversation,
@@ -59,69 +37,67 @@ async function latestMessage(
   return latestMessage(conversation, page.next);
 }
 
-const lastMessage: Projection = {
-  read: async (id) => {
-    const conversation = await harness.conversation(id, BACKGROUND_CONTEXT);
+function changes(changes: readonly CommitChange[]) {
+  const updates = new Map<number, Columns>();
 
-    const entry = conversation && (await latestMessage(conversation));
+  for (const change of changes) {
+    if (
+      change.type === 'document' &&
+      change.kind === 'change' &&
+      change.record.kind === TitleDoc.definition.kind &&
+      change.conversationId !== undefined
+    ) {
+      const title = change.value.title;
 
-    const timestamp = entry?.model?.[0]?.timestamp;
+      if (typeof title === 'string' || title === null) {
+        updates.set(change.conversationId, {
+          ...updates.get(change.conversationId),
+          title,
+        });
+      }
+    }
 
-    return timestamp === undefined
-      ? {}
-      : { lastMessageAt: new Date(timestamp) };
-  },
-  source: (change) =>
-    change.type === 'entry' && isMessage(change.value)
-      ? change.value.conversationId
-      : undefined,
-};
+    if (change.type === 'entry' && isMessage(change.value)) {
+      const { conversationId, id, model } = change.value;
+      const timestamp = model?.[0]?.timestamp;
 
-const projections = [
-  projection(TitleDoc, ({ title }) => ({ title })),
-  lastMessage,
-];
-
-async function project(id: ConversationId) {
-  const columns = await Promise.all(projections.map(({ read }) => read(id)));
-
-  const values = Object.assign({}, ...columns);
-
-  if (Object.keys(values).length === 0) {
-    return;
+      if (timestamp !== undefined && id >= (latest.get(conversationId) ?? 0)) {
+        latest.set(conversationId, id);
+        updates.set(conversationId, {
+          ...updates.get(conversationId),
+          lastMessageAt: new Date(timestamp),
+        });
+      }
+    }
   }
 
-  await db
-    .update(schema.conversation)
-    .set(values)
-    .where(eq(schema.conversation.id, id));
+  return [...updates];
 }
 
-const queue = serial();
-
-async function projectEach(ids: readonly ConversationId[]) {
-  for (const id of ids) {
-    await project(id);
+async function project(updates: readonly (readonly [number, Columns])[]) {
+  for (const [id, values] of updates) {
+    await db
+      .update(schema.conversation)
+      .set(values)
+      .where(eq(schema.conversation.id, id));
   }
 }
+
+const observer = observe(changes, project);
 
 export const projectionPipeline = {
   backfill: projectAll,
-  ...observe(
-    (changes) => [
-      ...new Set(
-        changes.flatMap((change) =>
-          projections.flatMap(({ source }) => {
-            const id = source(change);
+  flush: observer.flush,
+  start: () => {
+    const observation = observer.start();
 
-            return id === undefined ? [] : [id];
-          })
-        )
-      ),
-    ],
-    projectEach,
-    queue
-  ),
+    return {
+      detach: () => {
+        observation.detach();
+        latest.clear();
+      },
+    };
+  },
 };
 
 export const flushProjections = projectionPipeline.flush;
@@ -131,5 +107,33 @@ export async function projectAll() {
     .select({ id: schema.conversation.id })
     .from(schema.conversation);
 
-  await projectEach(rows.map(({ id }) => id as ConversationId));
+  for (const { id } of rows) {
+    const title = await harness().snapshot(
+      TitleDoc,
+      id as ConversationId,
+      BACKGROUND_CONTEXT
+    );
+
+    const conversation = await harness().conversation(
+      id as ConversationId,
+      BACKGROUND_CONTEXT
+    );
+
+    const entry = conversation && (await latestMessage(conversation));
+    const timestamp = entry?.model?.[0]?.timestamp;
+    const values: Columns = {};
+
+    if (title) {
+      values.title = title.title;
+    }
+
+    if (entry && timestamp !== undefined) {
+      latest.set(id, entry.id);
+      values.lastMessageAt = new Date(timestamp);
+    }
+
+    if (Object.keys(values).length > 0) {
+      await project([[id, values]]);
+    }
+  }
 }

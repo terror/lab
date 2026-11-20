@@ -21,7 +21,7 @@ test('a chat can be compacted with the helper model', async () => {
 
   await idle(id);
 
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -64,7 +64,7 @@ test('stopping a chat cancels its compaction', async () => {
 
   const id = await create(headers);
 
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );

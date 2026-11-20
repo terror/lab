@@ -156,7 +156,7 @@ function after(cursor: string, sort: Sort) {
 }
 
 export async function running() {
-  const { tasks } = await harness.inspect(BACKGROUND_CONTEXT);
+  const { tasks } = await harness().inspect(BACKGROUND_CONTEXT);
 
   return new Set<number>(
     tasks
@@ -183,7 +183,7 @@ function asksUser({ details, name, status }: Slot) {
 async function waiting(ids: number[]) {
   const live = await Promise.all(
     ids.map((id) =>
-      harness.snapshot(LiveDoc, id as ConversationId, BACKGROUND_CONTEXT)
+      harness().snapshot(LiveDoc, id as ConversationId, BACKGROUND_CONTEXT)
     )
   );
 

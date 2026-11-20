@@ -12,7 +12,7 @@ test('closing the event stream right away stops the watch', async () => {
 
   const id = await create(headers);
 
-  const conversation = await harness.conversation(
+  const conversation = await harness().conversation(
     id as ConversationId,
     BACKGROUND_CONTEXT
   );
@@ -31,9 +31,9 @@ test('closing the event stream right away stops the watch', async () => {
     return watch;
   });
 
-  const original = harness.conversation.bind(harness);
+  const original = harness().conversation.bind(harness());
 
-  const lookup = spyOn(harness, 'conversation').mockImplementation(
+  const lookup = spyOn(harness(), 'conversation').mockImplementation(
     async (target, context) =>
       target === conversation.id ? conversation : original(target, context)
   );

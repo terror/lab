@@ -37,6 +37,11 @@ for (const { datname } of stale) {
 await admin.unsafe(`create database "${database}"`);
 
 afterAll(async () => {
+  const { startRuntime } = await import('../src/runtime');
+  const { db } = await import('../src/db');
+
+  await (await startRuntime()).close();
+  await db.$client.close();
   await admin.unsafe(`drop database if exists "${database}" with (force)`);
   await admin.close();
 });
@@ -98,10 +103,6 @@ const server = await import('../src/models');
 
 server.models.setProvider(faux.provider);
 
-const { openLabHarness } = await import('../src/harness');
+const { startRuntime } = await import('../src/runtime');
 
-await openLabHarness();
-
-const { startPipelines } = await import('../src/pipelines');
-
-startPipelines();
+await startRuntime();

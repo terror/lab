@@ -37,7 +37,10 @@ export async function runTask(row: Row) {
 
   const conversation =
     chat &&
-    (await harness.conversation(chat.id as ConversationId, BACKGROUND_CONTEXT));
+    (await harness().conversation(
+      chat.id as ConversationId,
+      BACKGROUND_CONTEXT
+    ));
 
   if (conversation) {
     await submitMessage(conversation, draft);

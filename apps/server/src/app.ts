@@ -111,7 +111,7 @@ const api = new Hono()
   .get('/health', async (c) => {
     await ping(db);
 
-    const { scheduling } = await harness.inspect(BACKGROUND_CONTEXT);
+    const { scheduling } = await harness().inspect(BACKGROUND_CONTEXT);
 
     if (scheduling !== 'running') {
       throw new HTTPException(503, { message: 'Harness is not running' });

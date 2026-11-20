@@ -81,7 +81,7 @@ test('signed-in requests over 1 MB are refused unless they carry a file or a mes
 });
 
 test('health fails when the harness is not running', async () => {
-  spyOn(harness, 'inspect').mockResolvedValueOnce({
+  spyOn(harness(), 'inspect').mockResolvedValueOnce({
     scheduling: 'closing',
     submissions: [],
     tasks: [],

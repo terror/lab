@@ -11,7 +11,7 @@ import { harness } from './harness';
 import { keyParam, validator } from './validator';
 
 async function read(ownerId: string) {
-  const doc = await harness.snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT);
+  const doc = await harness().snapshot(MemoryDoc, ownerId, BACKGROUND_CONTEXT);
 
   return {
     instructions: doc?.instructions ?? '',
@@ -39,7 +39,7 @@ const memory = new Hono()
   .patch('/', settings, async (c) => {
     const { instructions, referenceChats } = c.req.valid('json');
 
-    await harness.commit(async (tx) => {
+    await harness().commit(async (tx) => {
       const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       if (instructions !== undefined) {
@@ -56,7 +56,7 @@ const memory = new Hono()
   .post('/', addition, async (c) => {
     const { text } = c.req.valid('json');
 
-    const added = await harness.commit(async (tx) => {
+    const added = await harness().commit(async (tx) => {
       const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       if (doc.memories.length >= MEMORY_LIMIT) {
@@ -81,7 +81,7 @@ const memory = new Hono()
   .delete('/:id', keyParam, async (c) => {
     const { id } = c.req.valid('param');
 
-    const removed = await harness.commit(async (tx) => {
+    const removed = await harness().commit(async (tx) => {
       const doc = await tx.doc(MemoryDoc, c.get('user').id, null);
 
       const index = doc.memories.findIndex((entry) => entry.id === id);

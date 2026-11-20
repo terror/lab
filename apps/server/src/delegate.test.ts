@@ -33,7 +33,7 @@ import { conversationOwner } from './records';
 import { createSandboxAccess, useSandboxProvider } from './sandbox';
 import { usagePipeline } from './usage';
 
-type Harness = typeof harness;
+type Harness = ReturnType<typeof harness>;
 
 type Request = Parameters<FauxResponseFactory>[0];
 
@@ -139,7 +139,7 @@ test('delegated tasks run in parallel with narrow tools and report back', async 
 
   const id = await chat(headers, { content: 'foo' });
 
-  const ids = await subagents(harness, id);
+  const ids = await subagents(harness(), id);
 
   const { body } = await call(headers, 'GET', '/conversations');
 
@@ -192,7 +192,7 @@ test('subagents count as part of the chat that started them', async () => {
 
   const ownerId = await conversationOwner(id);
 
-  const ids = await subagents(harness, id);
+  const ids = await subagents(harness(), id);
 
   const [first = 0 as ConversationId] = ids;
 
@@ -295,9 +295,9 @@ test('stopping a chat stops its subagents', async () => {
 
   await settle(body.id);
 
-  const ids = await subagents(harness, body.id);
+  const ids = await subagents(harness(), body.id);
 
-  const briefs = await harness.commit(
+  const briefs = await harness().commit(
     (tx) => Promise.all(ids.map((id) => tx.submissionByRequest(id, 'brief'))),
     BACKGROUND_CONTEXT
   );
@@ -484,7 +484,7 @@ test('delegating stops at the monthly limit', async () => {
 
   expect({
     outputs: await toolOutputs(headers, id),
-    subagents: await subagents(harness, id),
+    subagents: await subagents(harness(), id),
   }).toEqual({
     outputs: ['You’ve used this month’s $1.00 limit'],
     subagents: [],

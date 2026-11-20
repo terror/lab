@@ -51,7 +51,7 @@ const pinning = validator(
 const artifact = createMiddleware<{
   Variables: { artifact: Artifact; conversation: Conversation };
 }>(async (c, next) => {
-  const doc = await harness.snapshot(
+  const doc = await harness().snapshot(
     ArtifactsDoc,
     c.var.conversation.id,
     BACKGROUND_CONTEXT
