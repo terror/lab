@@ -5,7 +5,7 @@ import { field, text } from './format';
 import { PreviewList } from './previews';
 import type { ToolRenderer } from './types';
 
-type Setting = Exclude<keyof Preferences, 'hints'>;
+type Setting = keyof Preferences;
 
 const labels = {
   chatSort: (value) => ['Sort chats by', text(value) ?? ''],

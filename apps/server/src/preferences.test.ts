@@ -13,11 +13,6 @@ test('preferences are shared by the settings and the agent', async () => {
 
   const initial = await call(headers, 'GET', '/preferences');
 
-  const claims = [
-    await call(headers, 'POST', '/preferences/hints', { id: 'foo' }),
-    await call(headers, 'POST', '/preferences/hints', { id: 'foo' }),
-  ];
-
   const patched = await call(headers, 'PATCH', '/preferences', {
     personality: 'quiet',
     theme: 'light',
@@ -25,10 +20,6 @@ test('preferences are shared by the settings and the agent', async () => {
 
   const invalid = await call(headers, 'PATCH', '/preferences', {
     theme: 'foo',
-  });
-
-  const quiet = await call(headers, 'POST', '/preferences/hints', {
-    id: 'bar',
   });
 
   script(
@@ -39,19 +30,15 @@ test('preferences are shared by the settings and the agent', async () => {
   const id = await chat(headers, { content: 'baz' });
 
   expect({
-    claims: claims.map(({ body }) => body.fresh),
     final: (await call(headers, 'GET', '/preferences')).body,
     initial: initial.body,
     invalid: invalid.status,
     outputs: await toolOutputs(headers, id),
     patched: patched.body,
-    quiet: quiet.body.fresh,
   }).toEqual({
-    claims: [true, false],
     final: {
       preferences: {
         chatSort: 'title',
-        hints: ['foo'],
         lineNumbers: true,
         personality: 'quiet',
         theme: 'light',
@@ -60,7 +47,6 @@ test('preferences are shared by the settings and the agent', async () => {
     initial: {
       preferences: {
         chatSort: 'activity',
-        hints: [],
         lineNumbers: false,
         personality: 'default',
         theme: 'system',
@@ -73,17 +59,15 @@ test('preferences are shared by the settings and the agent', async () => {
     patched: {
       preferences: {
         chatSort: 'activity',
-        hints: ['foo'],
         lineNumbers: false,
         personality: 'quiet',
         theme: 'light',
       },
     },
-    quiet: false,
   });
 });
 
-test('preferences saved before a setting existed get its default', async () => {
+test('stored preferences omit retired settings and fill missing defaults', async () => {
   const headers = await signIn();
 
   const { body } = await call(headers, 'GET', '/auth/get-session');
@@ -91,14 +75,13 @@ test('preferences saved before a setting existed get its default', async () => {
   await harness.commit(async (tx) => {
     const doc = await tx.doc(PreferencesDoc, body.user.id, null);
 
-    Object.assign(doc, { theme: 'dark' });
+    Object.assign(doc, { hints: ['foo'], theme: 'dark' });
     delete (doc as Partial<typeof doc>).personality;
   }, BACKGROUND_CONTEXT);
 
   expect((await call(headers, 'GET', '/preferences')).body).toEqual({
     preferences: {
       chatSort: 'activity',
-      hints: [],
       lineNumbers: false,
       personality: 'default',
       theme: 'dark',

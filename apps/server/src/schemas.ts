@@ -67,11 +67,8 @@ export type Attachment = z.infer<typeof attachmentSchema>;
 
 export const sortSchema = z.enum(CHAT_SORTS);
 
-export const HINT_LIMIT = 100;
-
 export const preferencesSchema = z.object({
   chatSort: sortSchema,
-  hints: z.array(z.string().min(1).max(64)).max(HINT_LIMIT),
   lineNumbers: z.boolean(),
   personality: z.enum(PERSONALITIES),
   theme: z.enum(THEMES),

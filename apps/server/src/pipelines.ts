@@ -2,7 +2,6 @@ import { flushHelperUsage } from './helper-usage';
 import { historyPipeline } from './history';
 import { libraryPipeline } from './library-items';
 import { projectionPipeline } from './projections';
-import { toolUsePipeline } from './tool-use';
 import { usagePipeline } from './usage';
 
 type Pipeline = {
@@ -17,7 +16,6 @@ const pipelines: readonly Pipeline[] = [
   { flush: flushHelperUsage },
   libraryPipeline,
   historyPipeline,
-  toolUsePipeline,
 ];
 
 export function backfillAll() {

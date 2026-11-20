@@ -1,8 +1,6 @@
 import { Toaster } from '@/components/ui/sonner';
-import { preferencesQueryOptions } from '@/lib/preferences';
 import { queryClient } from '@/lib/query-client';
-import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
-import { defaultPreferences } from '@lab/server/schemas';
+import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { QueryClient } from '@tanstack/react-query';
 import {
   RouterProvider,
@@ -223,24 +221,4 @@ test('the search box points at the selected result', async () => {
   await expect
     .element(input)
     .toHaveAttribute('aria-activedescendant', selected.element().id);
-});
-
-test('opening search counts the palette as tried', async () => {
-  const fetch = stubWorkspace();
-
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  await openSearch(client);
-
-  await expect
-    .poll(() =>
-      fetch.mock.calls.flatMap(([input, init]) =>
-        requestUrl(input).pathname === '/api/preferences/hints'
-          ? [init?.body]
-          : []
-      )
-    )
-    .toEqual([JSON.stringify({ id: 'palette' })]);
 });

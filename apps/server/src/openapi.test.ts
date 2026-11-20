@@ -25,7 +25,6 @@ test('the api is described with openapi', async () => {
       type: 'object',
     },
     tags: [
-      'Capabilities',
       'Changelog',
       'Computer',
       'Connectors',

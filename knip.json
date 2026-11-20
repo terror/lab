@@ -10,7 +10,25 @@
       "ignoreDependencies": ["expo-updates"]
     },
     "apps/server": {
-      "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"]
+      "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"],
+      "entry": ["src/server.ts!"],
+      "project": ["src/**/*.ts!", "test/**/*.ts", "!src/**/*.test.ts!"]
+    },
+    "apps/web": {
+      "entry": [
+        "src/main.tsx!",
+        "src/foundations/*.mdx!",
+        "src/foundations/{swatches,token-table}.tsx!"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx,css,mdx}!",
+        "!src/**/*.test.{ts,tsx}!",
+        "!src/**/*.stories.tsx!",
+        "!src/test/**!"
+      ]
+    },
+    "packages/db": {
+      "entry": ["src/index.ts!", "src/migrate.ts!"]
     }
   }
 }

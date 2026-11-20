@@ -13,6 +13,7 @@
     "db:migrate": "bun run --filter @lab/db migrate",
     "dev": "bun run --parallel --filter '@lab/*' dev",
     "knip": "knip",
+    "knip:production": "knip --production --include files",
     "lint": "oxlint",
     "start": "bun run --filter @lab/server start",
     "storybook": "bun run --filter @lab/web storybook",
