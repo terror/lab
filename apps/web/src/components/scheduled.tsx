@@ -105,7 +105,7 @@ function TaskSummary({
       ) : (
         <TaskClock
           paused={!task.enabled}
-          progress={progress(task, now)}
+          progress={progress(task, Math.floor(now / 60_000) * 60_000)}
           since={task.lastRunAt ?? undefined}
           turns={turns}
         />
@@ -237,10 +237,12 @@ function SchedulePrompt() {
 export function Scheduled() {
   const [filter, setFilter] = useState<Filter>('active');
 
+  const busy = (useUnreadChats().data?.running ?? 0) > 0;
+
   const schedules = useQuery({
     ...schedulesQueryOptions,
     refetchInterval: ({ state }) =>
-      state.data?.tasks.some(({ running }) => running) ? 2_000 : 60_000,
+      busy || state.data?.tasks.some(({ running }) => running) ? 2_000 : 60_000,
   });
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
