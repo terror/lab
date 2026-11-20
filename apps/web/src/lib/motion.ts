@@ -22,6 +22,11 @@ export const fade = {
   leave: { duration: 0.12, ease: easeIn },
 } as const satisfies Record<string, Transition>;
 
+export const roll = {
+  duration: 500,
+  easing: `cubic-bezier(${easeOut.join(', ')})`,
+} as const;
+
 export const stagger = 0.03;
 
 export function rise(index: number) {

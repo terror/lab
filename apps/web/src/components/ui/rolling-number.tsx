@@ -1,3 +1,4 @@
+import { roll } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
 import NumberFlow, { type Format } from '@number-flow/react';
@@ -22,6 +23,8 @@ function RollingNumber({
       data-slot='rolling-number'
       format={format}
       locales='en-US'
+      spinTiming={roll}
+      transformTiming={roll}
       value={value}
     />
   );

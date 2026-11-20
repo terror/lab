@@ -6,25 +6,22 @@ import { expect, test } from 'vitest';
 
 import { RollingNumber } from './rolling-number';
 
+async function animated(personality: 'default' | 'quiet') {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, {
+    ...defaultPreferences,
+    personality,
+  });
+
+  const { screen } = await renderWithQuery(<RollingNumber value={1} />, client);
+
+  const flow = screen.container.querySelector('number-flow-react');
+
+  return flow !== null && 'animated' in flow && flow.animated;
+}
+
 test('a rolling number holds still when Lab is quiet', async () => {
-  async function animated(personality: 'default' | 'quiet') {
-    const client = new QueryClient();
-
-    client.setQueryData(preferencesQueryOptions.queryKey, {
-      ...defaultPreferences,
-      personality,
-    });
-
-    const { screen } = await renderWithQuery(
-      <RollingNumber value={1} />,
-      client
-    );
-
-    const flow = screen.container.querySelector('number-flow-react');
-
-    return flow !== null && 'animated' in flow && flow.animated;
-  }
-
   expect(await animated('default')).toBe(true);
   expect(await animated('quiet')).toBe(false);
 });
