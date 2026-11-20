@@ -1,5 +1,6 @@
 import { markOutline } from '@/components/lab-mark';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import * as React from 'react';
 
 const interior =
@@ -60,7 +61,8 @@ function Flask({
   value: number;
 }) {
   const id = React.useId();
-  const [poured, setPoured] = React.useState(!pour);
+  const quiet = useQuiet();
+  const [poured, setPoured] = React.useState(!pour || quiet);
 
   React.useEffect(() => {
     let frame = requestAnimationFrame(() => {
