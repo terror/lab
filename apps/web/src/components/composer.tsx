@@ -27,13 +27,14 @@ import { useAdmin } from '@/lib/profile';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowUp, CornerDownRight, Mic, Square } from 'lucide-react';
+import { ArrowUp, Mic, Square } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import {
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  type ComponentProps,
   type Dispatch,
   type KeyboardEvent,
   type Ref,
@@ -91,8 +92,21 @@ function DictateButton({
   listening: boolean;
   onClick: () => void;
 }) {
+  const button = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    const mic = button.current;
+
+    return () => {
+      if (document.activeElement === mic) {
+        mic?.form?.querySelector('textarea')?.focus();
+      }
+    };
+  }, []);
+
   return (
     <IconButton
+      ref={button}
       aria-pressed={listening}
       className={cn(
         'rounded-full',
@@ -108,23 +122,21 @@ function DictateButton({
   );
 }
 
-function QueueButton({ disabled }: { disabled: boolean }) {
+function DraftAction({
+  hint,
+  keys,
+  ...props
+}: ComponentProps<typeof Button> & { hint: string; keys: string }) {
+  const touch = useMediaQuery('(pointer: coarse)');
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          aria-label='Send'
-          className='rounded-full'
-          disabled={disabled}
-          size='icon'
-          type='submit'
-        >
-          <ArrowUp aria-hidden='true' />
-        </Button>
+        <Button size='sm' {...props} />
       </TooltipTrigger>
       <TooltipContent>
-        Send after this answer
-        <Kbd>↵</Kbd>
+        {hint}
+        {!touch && <Kbd>{keys}</Kbd>}
       </TooltipContent>
     </Tooltip>
   );
@@ -316,7 +328,9 @@ export function Composer({
   const dictationError =
     dictation.state.kind === 'failed' ? dictation.state.message : undefined;
 
-  const steering = running === true && !empty && onSteer !== undefined;
+  const drafting = running === true && !empty;
+
+  const steering = drafting && onSteer !== undefined;
 
   const stoppable = running === true && onStop !== undefined;
 
@@ -441,42 +455,42 @@ export function Composer({
         <div className='flex items-center gap-2 px-3 pb-3'>
           <AttachMenu disabled={disabled} intake={intake} />
           <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>
-            <ModelPicker
-              disabled={disabled}
-              onChange={onModelChange}
-              value={model}
-            />
-            {steering && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-keyshortcuts='Meta+Enter'
-                    aria-label='Steer'
-                    className='rounded-full'
-                    disabled={disabled || submitting === true}
-                    onClick={() => submit(true)}
-                    size='icon'
-                    type='button'
-                    variant='outline'
-                  >
-                    <CornerDownRight aria-hidden='true' />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Steer the current answer
-                  <Kbd>⌘↵</Kbd>
-                </TooltipContent>
-              </Tooltip>
+            {!drafting && (
+              <ModelPicker
+                disabled={disabled}
+                onChange={onModelChange}
+                value={model}
+              />
             )}
-            {dictation.supported && (
+            {dictation.supported && (!drafting || listening) && (
               <DictateButton
                 disabled={disabled === true}
                 listening={listening}
                 onClick={listening ? dictation.stop : dictation.start}
               />
             )}
+            {steering && (
+              <DraftAction
+                aria-keyshortcuts='Meta+Enter'
+                disabled={disabled || submitting === true}
+                hint='Steer the current answer'
+                keys='⌘↵'
+                onClick={() => submit(true)}
+                type='button'
+                variant='secondary'
+              >
+                Steer
+              </DraftAction>
+            )}
             {stoppable && !empty && (
-              <QueueButton disabled={disabled || submitting === true} />
+              <DraftAction
+                disabled={disabled || submitting === true}
+                hint='Send after this answer'
+                keys='↵'
+                type='submit'
+              >
+                Queue
+              </DraftAction>
             )}
             <SendOrStop
               disabled={disabled || empty || submitting === true}
