@@ -79,6 +79,7 @@ function TrashRow({ index, item }: { index: number; item: TrashItem }) {
     <MotionListRow
       className='overflow-hidden'
       exit='exit'
+      inert={!present}
       variants={{ exit }}
       actions={
         <>
