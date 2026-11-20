@@ -5,7 +5,6 @@ import {
   Activity,
   LiveSteps,
   StepStatus,
-  timeWorked,
   ToolCards,
   Worked,
 } from '@/components/tool-steps';
@@ -17,8 +16,10 @@ import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
 import { cheerFor, useCheer } from '@/lib/cheer';
 import type { ModelChoice } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
+import type { Clock } from '@/lib/presence';
 import { runFailureTitles } from '@/lib/run-failure';
-import type { Part, Span } from '@/lib/transcript';
+import { steps, worked as timeWorked } from '@/lib/spans';
+import type { Part, Round, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
@@ -131,8 +132,11 @@ function Segments({
 
 export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
 
+const noRounds: readonly Round[] = [];
+
 export function AssistantMessage({
   activity,
+  clock,
   failure,
   latest = false,
   model,
@@ -142,6 +146,7 @@ export function AssistantMessage({
   progress,
   results,
   retrying = false,
+  rounds = noRounds,
   slip = false,
   span,
   streaming,
@@ -149,6 +154,7 @@ export function AssistantMessage({
   working = false,
 }: {
   activity?: string;
+  clock?: Clock;
   failure?: RunFailureReason;
   latest?: boolean;
   model?: ModelChoice;
@@ -158,6 +164,7 @@ export function AssistantMessage({
   progress: ReadonlyMap<string, ToolProgress>;
   results: ReadonlyMap<string, ToolResult>;
   retrying?: boolean;
+  rounds?: readonly Round[];
   slip?: boolean;
   span?: Span;
   streaming: boolean;
@@ -238,10 +245,10 @@ export function AssistantMessage({
         </AnimatePresence>
         {last && !live && (
           <Worked
-            calls={calls}
             mark={marked ? marks[cheer] : undefined}
             progress={progress}
             results={results}
+            rows={steps(parts, rounds, results)}
             worked={worked}
             working={working}
           />
@@ -251,13 +258,16 @@ export function AssistantMessage({
           <StepStatus
             activity={activity}
             call={current}
+            clock={clock}
             progress={progress.get(current.id)}
             result={results.get(current.id)}
             working={working}
           />
         )}
         <Segments segments={all.slice(split)} {...shared} />
-        {activity !== undefined && !inSlot && <Activity status={activity} />}
+        {activity !== undefined && !inSlot && (
+          <Activity clock={clock} status={activity} />
+        )}
         {failure && (
           <RunFailure mark={retrying ? 'recover' : broken} reason={failure} />
         )}

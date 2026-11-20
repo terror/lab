@@ -11,6 +11,7 @@ const meta = preview.meta({
         'idle',
         'assemble',
         'thinking',
+        'pondering',
         'done',
         'proud',
         'handoff',
@@ -34,7 +35,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'The Lab mark as the one working indicator, for the activity line and the sidebar. Idle is still. Assemble plays once on the home greeting. Thinking loops while the agent works and halves its pace after 5 seconds. Done hops once, and error slips apart and stays apart. Under reduced motion nothing moves: assemble fades in, thinking dims, and error shows its end pose.',
+          'The Lab mark as the one working indicator, for the activity line and the sidebar. Idle is still. Assemble plays once on the home greeting. Thinking loops while the agent works and halves its pace after 5 seconds. Pondering tilts the neck and drifts slowly while the model thinks with no tool running. Done hops once, and error slips apart and stays apart. Under reduced motion nothing moves: assemble fades in, thinking dims, pondering holds its tilt, and error shows its end pose.',
       },
     },
   },
@@ -50,6 +51,20 @@ export const Assemble = meta.story({
 
 export const Thinking = meta.story({
   args: { state: 'thinking' },
+  render: (args) => (
+    <div className='flex items-center gap-6'>
+      <LiveMark {...args} className='size-10' />
+      <span className='flex items-center gap-2 text-sm text-muted-foreground'>
+        <LiveMark {...args} className='size-3.5' />
+        Thinking
+      </span>
+    </div>
+  ),
+});
+
+export const Pondering = meta.story({
+  args: { state: 'pondering' },
+  decorators: [themes],
   render: (args) => (
     <div className='flex items-center gap-6'>
       <LiveMark {...args} className='size-10' />

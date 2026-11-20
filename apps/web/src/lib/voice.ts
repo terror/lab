@@ -1,27 +1,17 @@
 import type { Pose } from '@/components/ui/empty-state';
-import { useEffect, useState } from 'react';
 
 import { usePreference } from './preferences';
 import { hash } from './seed';
 
 type Voice = {
   greeting: undefined;
-  thinking: number;
+  stall: undefined;
 };
 
 type Lines<T> = {
   plain: (context: T) => string;
   pool: (context: T) => readonly string[];
 };
-
-const waits = [
-  ['Thinking'],
-  ['Stirring it in', 'Turning it over', 'Letting it settle'],
-  ['Still on it'],
-  ['You can leave this, I’ll mark it when it’s done'],
-];
-
-const waitAfter = [4_000, 20_000, 90_000];
 
 const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
   greeting: {
@@ -35,9 +25,9 @@ const voice: { [K in keyof Voice]: Lines<Voice[K]> } = {
       'What can I help with?',
     ],
   },
-  thinking: {
-    plain: () => 'Thinking',
-    pool: (tier) => waits[tier] ?? ['Thinking'],
+  stall: {
+    plain: () => 'the model is slow right now',
+    pool: () => ['still on it, the model is slow right now'],
   },
 };
 
@@ -61,34 +51,6 @@ export function useQuiet() {
   const [personality] = usePreference('personality');
 
   return personality === 'quiet';
-}
-
-export function useThinking(turn: string | undefined) {
-  const quiet = useQuiet();
-  const [reached, setReached] = useState<{ tier: number; turn?: string }>({
-    tier: 0,
-  });
-
-  useEffect(() => {
-    if (turn === undefined) {
-      return undefined;
-    }
-
-    const timers = waitAfter.map((after, index) =>
-      setTimeout(() => setReached({ tier: index + 1, turn }), after)
-    );
-
-    return () => {
-      for (const timer of timers) {
-        clearTimeout(timer);
-      }
-    };
-  }, [turn]);
-
-  return say('thinking', reached.turn === turn ? reached.tier : 0, {
-    quiet,
-    seed: turn ?? '',
-  });
 }
 
 type Copy = { description: string; title: string };

@@ -169,13 +169,22 @@ export type Row =
       kind: 'assistant';
       model?: ModelKey;
       parts: readonly Part[];
+      rounds?: readonly Round[];
       span?: Span;
       streaming?: boolean;
     }
-  | { bubble: UserBubble; entryId: number; key: string; kind: 'user' }
+  | {
+      bubble: UserBubble;
+      entryId: number;
+      key: string;
+      kind: 'user';
+      sent?: number;
+    }
   | { key: string; kind: 'compaction' };
 
 export type Span = { end: number; start: number };
+
+export type Round = { at: number; parts: number; span: Span };
 
 function joined(first: Span | undefined, second: Span | undefined) {
   if (!first || !second) {
@@ -186,6 +195,16 @@ function joined(first: Span | undefined, second: Span | undefined) {
     end: Math.max(first.end, second.end),
     start: Math.min(first.start, second.start),
   };
+}
+
+function shifted(
+  first: readonly Round[] | undefined,
+  second: readonly Round[] | undefined,
+  by: number
+) {
+  const moved = second?.map((round) => ({ ...round, at: round.at + by }));
+
+  return first && moved ? [...first, ...moved] : (first ?? moved);
 }
 
 export function visible(parts: readonly Part[]) {
@@ -223,6 +242,7 @@ function rowsFor(item: TranscriptItem): Row[] {
             kind: 'assistant',
             model,
             parts: message.content,
+            rounds: [{ at: 0, parts: message.content.length, span }],
             span,
           },
         ]
@@ -248,7 +268,15 @@ function rowsFor(item: TranscriptItem): Row[] {
     return [];
   }
 
-  return [{ bubble, entryId: item.entry.id, key, kind: 'user' }];
+  return [
+    {
+      bubble,
+      entryId: item.entry.id,
+      key,
+      kind: 'user',
+      sent: message?.timestamp,
+    },
+  ];
 }
 
 function messageBubble(
@@ -346,6 +374,7 @@ export function mergeReplies(rows: readonly Row[]) {
       merged[merged.length - 1] = {
         ...last,
         parts: [...last.parts, ...row.parts],
+        rounds: shifted(last.rounds, row.rounds, last.parts.length),
         span: joined(last.span, row.span),
       };
     } else {
@@ -397,6 +426,7 @@ export function streamRows(
       key: last.key,
       kind: 'assistant',
       parts: [...last.row.parts, ...partial],
+      rounds: last.row.rounds,
       span: last.row.span,
       streaming: true,
     };

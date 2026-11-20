@@ -3,7 +3,6 @@ import { expect } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
 import { themes } from '../../.storybook/themes';
-import { useThinking } from '../lib/voice';
 import { AssistantMessage } from './assistant-message';
 import { Activity } from './tool-steps';
 import { ToolConversation } from './tools';
@@ -133,7 +132,14 @@ function RapidActivity() {
 export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
 
 function Waiting() {
-  return <Activity status={useThinking('foo')} />;
+  const [clock] = useState(() => ({
+    at: Date.now(),
+    linked: true,
+    start: Date.now(),
+    waited: 0,
+  }));
+
+  return <Activity clock={clock} status='Thinking' />;
 }
 
 export const LongWait = meta.story({

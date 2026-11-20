@@ -2,10 +2,9 @@ import { preferencesQueryOptions } from '@/lib/preferences';
 import { renderHookWithQuery } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient } from '@tanstack/react-query';
-import { act } from 'react';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 
-import { say, useEmpty, useThinking } from './voice';
+import { say, useEmpty } from './voice';
 
 test('greetings vary between work prompts', () => {
   const greetings = Array.from({ length: 40 }, (_, index) =>
@@ -30,53 +29,15 @@ test('a quiet greeting is a fixed work prompt', () => {
   );
 });
 
-test('a long wait climbs from thinking to a note that it can be left', async () => {
-  vi.useFakeTimers();
-
-  const client = new QueryClient();
-
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
-
-  try {
-    let turn = 'foo';
-
-    const { rerender, result } = await renderHookWithQuery(
-      () => useThinking(turn),
-      client
-    );
-
-    const lines = [result.current];
-
-    for (const after of [4_000, 16_000, 70_000]) {
-      await act(() => vi.advanceTimersByTime(after));
-
-      lines.push(result.current);
-    }
-
-    turn = 'bar';
-
-    await rerender();
-
-    lines.push(result.current);
-
-    expect(lines).toEqual([
-      'Thinking',
-      'Stirring it in',
-      'Still on it',
-      'You can leave this, I’ll mark it when it’s done',
-      'Thinking',
-    ]);
-  } finally {
-    vi.useRealTimers();
-  }
-});
-
-test('a quiet wait always says thinking', () => {
+test('a stall says the model is slow, and drops the reassurance when quiet', () => {
   expect(
-    [0, 1, 2, 3].map((tier) =>
-      say('thinking', tier, { quiet: true, seed: 'foo' })
+    [false, true].map((quiet) =>
+      say('stall', undefined, { quiet, seed: 'foo' })
     )
-  ).toEqual(['Thinking', 'Thinking', 'Thinking', 'Thinking']);
+  ).toEqual([
+    'still on it, the model is slow right now',
+    'the model is slow right now',
+  ]);
 });
 
 async function emptyTrash(personality: 'default' | 'quiet') {
