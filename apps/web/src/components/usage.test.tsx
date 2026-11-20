@@ -83,7 +83,7 @@ test('focusing a day writes it into the caption', async ({
 
   const screen = await renderUsage();
 
-  const day = screen.getByRole('button', { name: 'Jan 3: $1.00' });
+  const day = screen.getByRole('button', { name: 'Jan 3: $1.00, 5 tokens' });
 
   await expect.element(day).toBeVisible();
 

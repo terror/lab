@@ -19,7 +19,7 @@ import { type Format } from '@number-flow/react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { z } from 'zod';
 
 const ranges = [
@@ -97,53 +97,97 @@ function Caption({ day, daily }: { day: Day | undefined; daily: Day[] }) {
 }
 
 function SpendChart({ daily, rise }: { daily: Day[]; rise: boolean }) {
-  const [day, setDay] = useState<Day>();
+  const label = useId();
+  const bars = useRef<HTMLDivElement>(null);
+
+  const [pointed, setPointed] = useState<string>();
+  const [focused, setFocused] = useState<string>();
+
+  const shown = pointed ?? focused;
+  const day = daily.find(({ date }) => date === shown);
 
   const max = Math.max(0, ...daily.map(({ cost }) => cost));
 
   const first = daily[0];
   const last = daily.at(-1);
 
-  const tapped = useRef<Day>(undefined);
+  useEffect(() => {
+    if (pointed === undefined) {
+      return undefined;
+    }
 
-  const leave = (entry: Day) => {
-    setDay((current) => (current === entry ? undefined : current));
+    const away = (event: PointerEvent) => {
+      if (
+        !(event.target instanceof Node) ||
+        !bars.current?.contains(event.target)
+      ) {
+        setPointed(undefined);
+      }
+    };
+
+    document.addEventListener('pointerdown', away);
+
+    return () => document.removeEventListener('pointerdown', away);
+  }, [pointed]);
+
+  const dateAt = (event: React.PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+
+    const index = Math.floor(
+      ((event.clientX - box.left) / box.width) * daily.length
+    );
+
+    return daily[Math.min(Math.max(index, 0), daily.length - 1)]?.date;
   };
 
   return (
-    <figure className='flex flex-col gap-3'>
+    <figure aria-labelledby={label} className='flex flex-col gap-3'>
       <figcaption className='flex flex-col gap-x-4 text-sm sm:flex-row sm:items-baseline sm:justify-between'>
-        <span className='font-medium text-muted-foreground'>Daily spend</span>
-        <AnimatePresence initial={false} mode='wait'>
-          <Caption key={day?.date ?? 'total'} day={day} daily={daily} />
-        </AnimatePresence>
+        <span className='font-medium text-muted-foreground' id={label}>
+          Daily spend
+        </span>
+        <span className='min-w-0 truncate'>
+          <AnimatePresence initial={false} mode='wait'>
+            <Caption key={day?.date ?? 'total'} day={day} daily={daily} />
+          </AnimatePresence>
+        </span>
       </figcaption>
-      <div className='flex h-40 items-end gap-0.5 border-b'>
+      <div
+        ref={bars}
+        className='flex h-40 touch-pan-y items-end gap-0.5 border-b'
+        onPointerCancel={() => setPointed(undefined)}
+        onPointerDown={(event) => {
+          if (event.pointerType === 'touch') {
+            const date = dateAt(event);
+
+            setPointed((current) => (current === date ? undefined : date));
+          }
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType !== 'touch') {
+            setPointed(undefined);
+          }
+        }}
+        onPointerMove={(event) => {
+          if (event.pointerType !== 'touch' || event.buttons > 0) {
+            setPointed(dateAt(event));
+          }
+        }}
+      >
         {daily.map((entry) => (
           <button
             key={entry.date}
-            aria-label={`${calendarDate(entry.date)}: ${formatSpend(entry.cost)}`}
+            aria-label={`${calendarDate(entry.date)}: ${formatSpend(entry.cost)}, ${compact.format(entry.tokens)} tokens`}
             className='group flex h-full min-w-0 flex-1 items-end focus-ring-inset'
-            onBlur={() => leave(entry)}
-            onClick={(event) => {
-              if (tapped.current === entry) {
-                event.currentTarget.blur();
-                setDay(undefined);
-              } else {
-                setDay(entry);
-              }
-            }}
-            onFocus={() => setDay(entry)}
-            onPointerDown={(event) => {
-              tapped.current =
-                event.pointerType === 'touch' && day === entry
-                  ? entry
-                  : undefined;
-            }}
-            onPointerEnter={() => setDay(entry)}
-            onPointerLeave={(event) => {
-              if (event.pointerType !== 'touch') {
-                leave(entry);
+            data-active={entry.date === shown || undefined}
+            onBlur={() =>
+              setFocused((current) =>
+                current === entry.date ? undefined : current
+              )
+            }
+            onFocus={(event) => {
+              if (event.currentTarget.matches(':focus-visible')) {
+                setFocused(entry.date);
               }
             }}
             type='button'
@@ -153,8 +197,8 @@ function SpendChart({ daily, rise }: { daily: Day[]; rise: boolean }) {
               className={cn(
                 'min-h-0.5 w-full origin-bottom rounded-t-sm transition-colors',
                 entry.cost > 0
-                  ? 'bg-foreground/50 group-hover:bg-foreground group-focus-visible:bg-foreground'
-                  : 'bg-foreground/10 group-hover:bg-foreground/25'
+                  ? 'bg-foreground/50 group-data-active:bg-foreground'
+                  : 'bg-foreground/10 group-data-active:bg-foreground/25'
               )}
               initial={rise && { scaleY: 0 }}
               style={{
