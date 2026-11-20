@@ -115,7 +115,7 @@ function RailMark({
   const done = useMoment('rail.done');
   const pop = useMoment('rail.attention').on;
 
-  const working = (unread.data?.running ?? 0) > 0;
+  const working = (unread.data?.runs?.length ?? 0) > 0;
 
   const attention =
     (unread.data?.chats.length ?? 0) + (unread.data?.waiting.length ?? 0) > 0;

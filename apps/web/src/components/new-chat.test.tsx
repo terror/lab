@@ -38,7 +38,7 @@ async function renderHome({
   start = () => Response.json({ id: 1 }, { status: 201 }),
   tasks = [],
   tried = false,
-  unread = () => Response.json({ chats: [], running: 0, waiting: [] }),
+  unread = () => Response.json({ chats: [], runs: [], waiting: [] }),
   user = 'foo',
 }: {
   chats?: object[];
@@ -314,8 +314,34 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
     unread: () =>
       Response.json({
         chats: [finished(1)],
-        running: 1,
-        waiting: [{ id: 2, title: 'baz' }],
+        runs: [
+          {
+            id: 3,
+            startedAt: null,
+            step: { count: 3, index: 2, label: 'qux' },
+            title: 'quux',
+            tool: null,
+          },
+          {
+            id: 4,
+            startedAt: null,
+            step: null,
+            title: null,
+            tool: 'web_search',
+          },
+        ],
+        waiting: [
+          {
+            ask: {
+              callId: 'corge',
+              kind: 'question',
+              options: ['grault', 'garply'],
+              question: 'waldo',
+            },
+            id: 2,
+            title: 'baz',
+          },
+        ],
       }),
   });
 
@@ -323,11 +349,17 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
 
   await expect
     .poll(() => list.element().textContent)
-    .toBe('bazNeeds youReviewfoo 1Unreadbar1m1m1 chat running');
+    .toBe(
+      'bazNeeds youwaldoReviewfoo 1Unreadbar1m1mquuxRunningStep 2 of 3 · quxUntitled chatRunningSearching the web'
+    );
 
   const focused = [];
 
-  for (const name of ['1 chat finished', '1 needs you', '1 is still running']) {
+  for (const name of [
+    '1 chat finished',
+    '1 needs you',
+    '2 are still running',
+  ]) {
     await screen.getByRole('button', { name }).click();
 
     focused.push(document.activeElement?.textContent);
@@ -337,8 +369,8 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
     screen.container.querySelector('[data-slot=brief]')?.textContent,
     focused,
   ]).toEqual([
-    '1chat finished and 1needs you. 1is still running.',
-    ['foo 1Unreadbar', 'Review', '1 chat running'],
+    '1chat finished and 1needs you. 2are still running.',
+    ['foo 1Unreadbar', 'Review', 'quuxRunningStep 2 of 3 · qux'],
   ]);
 });
 
@@ -349,7 +381,7 @@ test('a quiet brief is plain counts', async () => {
     unread: () =>
       Response.json({
         chats: [finished(1), finished(2)],
-        running: 1,
+        runs: [{ id: 9, startedAt: null, step: null, title: null, tool: null }],
         waiting: [{ id: 3, title: 'baz' }],
       }),
   });
@@ -368,7 +400,7 @@ test('a long list stops at six until it is expanded, and clearing it says so', a
 
   const { fetch, screen } = await renderHome({
     chats: returning,
-    unread: () => Response.json({ chats, running: 0, waiting: [] }),
+    unread: () => Response.json({ chats, runs: [], waiting: [] }),
   });
 
   const list = screen.getByRole('list', { name: 'Activity' });
@@ -417,7 +449,7 @@ test('news that arrives late never moves the message box', async () => {
   news.resolve(
     Response.json({
       chats: [finished(1), finished(2)],
-      running: 1,
+      runs: [{ id: 9, startedAt: null, step: null, title: null, tool: null }],
       waiting: [{ id: 3, title: 'baz' }],
     })
   );
@@ -498,7 +530,7 @@ test('marking everything read with a double-click leaves what is below where it 
 
   const { router, screen } = await renderHome({
     chats: returning,
-    unread: () => Response.json({ chats, running: 0, waiting: [] }),
+    unread: () => Response.json({ chats, runs: [], waiting: [] }),
   });
 
   const tile = screen.getByRole('link', { name: 'qux Last chat' });
