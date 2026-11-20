@@ -1,7 +1,7 @@
 import { plural } from '@/lib/format';
 import { Globe } from 'lucide-react';
 
-import { count, field, quoted, text } from './format';
+import { count, field, quoted, text, times } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -16,6 +16,7 @@ export const webRenderers = {
       return passage ? <PreviewPassage>{passage}</PreviewPassage> : undefined;
     },
     summary: ({ details }) => text(field(details, 'domain')),
+    tally: (pages) => `read ${plural(pages, 'page')}`,
     title: ({ active, details }) => {
       const title = text(field(details, 'title'));
 
@@ -25,6 +26,7 @@ export const webRenderers = {
 
       return title ? `Read “${title}”` : 'Read a page';
     },
+    yields: 'source',
   },
   web_search: {
     icon: Globe,
@@ -51,6 +53,7 @@ export const webRenderers = {
 
       return found === undefined ? undefined : plural(found, 'result');
     },
+    tally: times('searched'),
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} the web${quoted(args.query)}`,
   },

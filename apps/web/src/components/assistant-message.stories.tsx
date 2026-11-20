@@ -4,7 +4,6 @@ import { expect } from 'storybook/test';
 import preview from '../../.storybook/preview';
 import { themes } from '../../.storybook/themes';
 import { AssistantMessage } from './assistant-message';
-import { Activity } from './tool-steps';
 import { ToolConversation } from './tools';
 
 const answer = `Here is a **three day** plan.
@@ -126,7 +125,16 @@ function RapidActivity() {
     return () => clearInterval(timer);
   }, []);
 
-  return <Activity status={steps[step % steps.length] ?? ''} />;
+  return (
+    <AssistantMessage
+      activity={steps[step % steps.length]}
+      parts={[]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={false}
+      working
+    />
+  );
 }
 
 export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
@@ -139,7 +147,16 @@ function Waiting() {
     waited: 0,
   }));
 
-  return <Activity clock={clock} status='Thinking' />;
+  return (
+    <AssistantMessage
+      clock={clock}
+      parts={[]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={false}
+      working
+    />
+  );
 }
 
 export const LongWait = meta.story({

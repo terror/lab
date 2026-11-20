@@ -8,7 +8,6 @@ import { expect, test, vi } from 'vitest';
 import '@/index.css';
 
 import { AssistantMessage, type ToolResult } from './assistant-message';
-import { Activity } from './tool-steps';
 
 const parts = [
   {
@@ -51,11 +50,13 @@ test('a finished turn folds only its steps behind how long it worked', async () 
     </TooltipProvider>
   );
 
-  const fold = screen.getByRole('button', {
-    name: 'Worked for 2m 31s · 2 actions · 1 failed',
-  });
+  const fold = screen.getByRole('button', { name: '2 steps' });
 
   await expect.element(fold).toHaveAttribute('aria-expanded', 'false');
+  await expect.element(screen.getByText('Worked for 2m 31s')).toBeVisible();
+  await expect
+    .element(screen.getByRole('button', { name: '1 failed' }))
+    .toBeVisible();
   await expect.element(screen.getByText('bar')).toBeVisible();
   await expect.element(screen.getByText('baz')).toBeVisible();
   await expect
@@ -67,7 +68,7 @@ test('a finished turn folds only its steps behind how long it worked', async () 
   await expect.element(screen.getByText('Couldn’t read a page')).toBeVisible();
 });
 
-test('a running turn lists its finished steps above its current one', async () => {
+test('a running turn says what it is doing on one line and keeps its steps folded', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -84,13 +85,13 @@ test('a running turn lists its finished steps above its current one', async () =
     />
   );
 
-  await expect
-    .element(screen.getByRole('status'))
-    .toHaveTextContent('Reading a page');
-  await expect
-    .element(screen.getByRole('button'))
-    .toHaveTextContent('Searched the web for “foo”');
+  await expect.element(screen.getByText('Reading a page')).toBeVisible();
+  await expect.element(screen.getByRole('status')).toHaveTextContent('Working');
   await expect.element(screen.getByText('bar')).toBeVisible();
+
+  expect(
+    screen.container.querySelectorAll('[data-slot=trace-line]')
+  ).toHaveLength(0);
 });
 
 test('a pending question waits for an answer instead of working', async () => {
@@ -182,13 +183,13 @@ function turn(finished: readonly string[]) {
   );
 }
 
-function ticks(container: HTMLElement) {
-  return [...container.querySelectorAll('button [data-slot=trace-line]')].map(
-    (line) => [line.textContent, line.getAttribute('data-tick')]
-  );
+function verb(container: HTMLElement) {
+  const shown = container.querySelector('[data-slot=run-line-verb]');
+
+  return [shown?.textContent, shown?.getAttribute('data-tick')];
 }
 
-test('only a step that finishes while the chat is open ticks', async () => {
+test('the verb flips to the past tense, ticked, when its step settles while the chat is open', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -197,9 +198,7 @@ test('only a step that finishes while the chat is open ticks', async () => {
 
   const opened = await renderWithQuery(turn(['a']));
 
-  await expect.poll(() => ticks(opened.screen.container)).toHaveLength(1);
-
-  const before = ticks(opened.screen.container);
+  const before = verb(opened.screen.container);
 
   await opened.screen.unmount();
 
@@ -207,12 +206,15 @@ test('only a step that finishes while the chat is open ticks', async () => {
 
   await watched.screen.rerender(turn(['a']));
 
-  await expect.poll(() => ticks(watched.screen.container)).toHaveLength(1);
+  await expect
+    .poll(() => verb(watched.screen.container))
+    .toEqual(['Searched the web for “foo”', 'true']);
 
-  expect([...before, ...ticks(watched.screen.container)]).toEqual([
-    ['Searched the web for “foo”', null],
-    ['Searched the web for “foo”', 'true'],
-  ]);
+  await expect
+    .poll(() => verb(watched.screen.container))
+    .toEqual(['Reading a page', null]);
+
+  expect(before).toEqual(['Reading a page', null]);
 });
 
 test('a turn between steps says it is thinking', async () => {
@@ -224,12 +226,13 @@ test('a turn between steps says it is thinking', async () => {
 
   const { screen } = await renderWithQuery(turn(['a', 'b']));
 
+  await expect.element(screen.getByText('Thinking').first()).toBeVisible();
   await expect
     .element(screen.getByRole('status'))
     .toHaveTextContent('Thinking');
 });
 
-test('a turn shows how long it worked as soon as its reply starts', async () => {
+test('a turn that is writing its reply says so on the same line', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
@@ -247,14 +250,11 @@ test('a turn shows how long it worked as soon as its reply starts', async () => 
     />
   );
 
-  await expect
-    .element(
-      screen.getByRole('button', {
-        name: 'Worked for 5s · 2 actions · 1 failed',
-      })
-    )
-    .toBeVisible();
-  await expect.element(screen.getByRole('status')).not.toBeInTheDocument();
+  await expect.element(screen.getByRole('status')).toHaveTextContent('Writing');
+
+  expect(
+    screen.container.querySelector('[data-slot=run-line-verb]')?.textContent
+  ).toBe('Writing');
 });
 
 test('time spent waiting for an answer is not counted as work', async () => {
@@ -274,11 +274,12 @@ test('time spent waiting for an answer is not counted as work', async () => {
             name: 'ask_user',
             type: 'toolCall',
           },
+          parts[0],
           { text: 'qux', type: 'text' },
         ]}
         progress={new Map()}
         results={
-          new Map([
+          new Map<string, ToolResult>([
             [
               'a',
               {
@@ -295,9 +296,7 @@ test('time spent waiting for an answer is not counted as work', async () => {
     </TooltipProvider>
   );
 
-  await expect
-    .element(screen.getByRole('button', { name: 'Worked for 5s · 1 action' }))
-    .toBeVisible();
+  await expect.element(screen.getByText('Worked for 5s')).toBeVisible();
 });
 
 test('unfinished actions settle as stopped once the turn ends', async () => {
@@ -317,16 +316,17 @@ test('unfinished actions settle as stopped once the turn ends', async () => {
     />
   );
 
-  await screen
-    .getByRole('button', { name: 'Worked for 5s · 2 actions · 2 stopped' })
-    .click();
+  await expect
+    .element(screen.getByRole('button', { name: '2 stopped' }))
+    .toBeVisible();
+
+  await screen.getByRole('button', { name: '2 steps' }).click();
 
   expect(
     [...screen.container.querySelectorAll('[data-slot=trace-line]')].map(
       (line) => [line.getAttribute('data-status'), line.textContent]
     )
   ).toEqual([
-    [null, 'Worked for 5s · 2 actions · 2 stopped'],
     ['pending', 'Searching the web for “foo”· Stopped'],
     ['pending', 'Reading a page· Stopped'],
   ]);
@@ -377,7 +377,7 @@ test('a turn that finishes in a hidden tab hops once the tab is back', async () 
 
   await expect.poll(mark).toBe('proud');
 
-  expect([working, held]).toEqual(['thinking', 'idle']);
+  expect([working, held]).toEqual(['idle', 'idle']);
 });
 
 function approval(decision?: 'approved') {
@@ -453,10 +453,12 @@ test('a pending approval keeps its plain dot when Lab is quiet', async () => {
   const { screen } = await renderWithQuery(approval(), client);
 
   expect(
-    [...screen.container.querySelectorAll('output [data-slot]')].map((mark) =>
-      mark.getAttribute('data-slot')
-    )
-  ).toEqual(['trace-line', 'trace-icon', 'dot', 'trace-title']);
+    [
+      ...screen.container.querySelectorAll(
+        '[data-slot=run-line-mark] [data-slot]'
+      ),
+    ].map((mark) => mark.getAttribute('data-slot'))
+  ).toEqual(['dot']);
 });
 
 test('a finished turn shows no mark when Lab is quiet', async () => {
@@ -469,13 +471,7 @@ test('a finished turn shows no mark when Lab is quiet', async () => {
 
   const { screen } = await renderWithQuery(reply(false), client);
 
-  await expect
-    .element(
-      screen.getByRole('button', {
-        name: 'Worked for 2m 31s · 2 actions · 1 failed',
-      })
-    )
-    .toBeVisible();
+  await expect.element(screen.getByText('Worked for 2m 31s')).toBeVisible();
 
   expect(screen.container.querySelector('[data-slot=live-mark]')).toBeNull();
 });
@@ -615,14 +611,18 @@ test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
 
 function thinkingSince(at: number) {
   return (
-    <Activity
+    <AssistantMessage
       clock={{ at, linked: true, start: 100_000, waited: 0 }}
-      status='foo'
+      parts={parts.slice(0, 1)}
+      progress={new Map()}
+      results={new Map([['a', { output: '', status: 'done' }]])}
+      streaming={false}
+      working
     />
   );
 }
 
-test('a thinking line starts as the mark alone, then counts, stalls and says it can be left', async ({
+test('a run’s line starts as the mark alone, then counts, sums up, stalls and says it can be left', async ({
   onTestFinished,
 }) => {
   vi.useFakeTimers({ toFake: ['Date', 'clearTimeout', 'setTimeout'] });
@@ -635,15 +635,12 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
   const { screen } = await renderWithQuery(thinkingSince(100_000));
 
   const shown = () => {
-    const activity = screen.container.querySelector('[data-slot=activity]');
+    const line = screen.container.querySelector('[data-slot=run-line]');
 
     return [
-      activity?.querySelector('.sr-only') === null,
-      activity
-        ?.querySelector('[data-slot=live-mark]')
-        ?.getAttribute('data-state'),
-      activity?.getAttribute('data-stalled'),
-      activity?.textContent,
+      line?.querySelector('[data-slot=live-mark]')?.getAttribute('data-state'),
+      line?.getAttribute('data-stalled'),
+      line?.querySelector('[data-slot=run-line-row]')?.textContent,
     ];
   };
 
@@ -651,9 +648,9 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
 
   for (const [wait, at] of [
     [2_000, 100_000],
-    [8_000, 100_000],
-    [10_000, 100_000],
-    [40_000, 100_000],
+    [8_000, 110_000],
+    [20_000, 110_000],
+    [30_000, 110_000],
     [0, 160_000],
   ] as const) {
     vi.advanceTimersByTime(wait);
@@ -664,22 +661,20 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
   }
 
   expect(seen).toEqual([
-    [false, 'pondering', null, 'foo'],
-    [true, 'pondering', null, 'foo'],
-    [true, 'pondering', 'true', 'foo·10s'],
+    ['pondering', null, 'Thinking'],
+    ['pondering', null, 'ThinkingThinking'],
+    ['pondering', null, 'Thinking·10s·1 step·searched onceThinking'],
     [
-      true,
       'pondering',
       'true',
-      'foo·20s·still on it, the model is slow right now',
+      'Thinking·30s·1 step·still on it, the model is slow right nowThinking',
     ],
     [
-      true,
       'pondering',
       'true',
-      'foo·1m 0s·still on it, the model is slow right now·You can leave this',
+      'Thinking·1m 0s·1 step·You can leave this·still on it, the model is slow right nowThinking',
     ],
-    [true, 'pondering', null, 'foo·1m 0s·You can leave this'],
+    ['pondering', null, 'Thinking·1m 0s·1 step·You can leave thisThinking'],
   ]);
 });
 
@@ -718,16 +713,12 @@ test('a finished turn’s steps say how long they took and where the model thoug
     </TooltipProvider>
   );
 
-  await screen
-    .getByRole('button', { name: 'Worked for 16s · 2 actions' })
-    .click();
+  await screen.getByRole('button', { name: '2 steps' }).click();
 
   expect(
-    [
-      ...screen.container.querySelectorAll(
-        '[data-slot=trace-collapsible-content-inner] [data-slot=trace-line]'
-      ),
-    ].map((row) => row.textContent)
+    [...screen.container.querySelectorAll('[data-slot=trace-line]')].map(
+      (row) => row.textContent
+    )
   ).toEqual([
     'Thought· 4s',
     'Searched the web for “foo”· 2s',
@@ -736,34 +727,156 @@ test('a finished turn’s steps say how long they took and where the model thoug
   ]);
 });
 
-function timed(status: string) {
+test('a short one-step turn’s receipt is the step itself', async () => {
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <AssistantMessage
+        parts={parts.slice(0, 2)}
+        progress={new Map()}
+        results={
+          new Map([
+            ['a', { details: { count: 3 }, output: 'baz', status: 'done' }],
+          ])
+        }
+        span={{ end: 2_000, start: 0 }}
+        streaming={false}
+      />
+    </TooltipProvider>
+  );
+
+  const line = screen.container.querySelector('[data-slot=run-line-row]');
+
+  await screen
+    .getByRole('button', { name: 'Searched the web for “foo”' })
+    .click();
+
+  await expect.element(screen.getByText('baz')).toBeVisible();
+
+  expect(line?.textContent).toBe('Searched the web for “foo”·3 results');
+});
+
+test('a receipt links to what the turn read and made, and washes the result it made', async () => {
+  const { screen } = await renderWithQuery(
+    <TooltipProvider>
+      <AssistantMessage
+        parts={[
+          parts[2],
+          {
+            arguments: { prompt: 'foo' },
+            id: 'c',
+            name: 'image_generate',
+            type: 'toolCall',
+          },
+          { text: 'bar', type: 'text' },
+        ]}
+        progress={new Map()}
+        results={
+          new Map<string, ToolResult>([
+            ['b', { output: '', status: 'done' }],
+            [
+              'c',
+              {
+                details: { name: 'foo.png', uploadId: 'baz' },
+                output: '',
+                status: 'done',
+              },
+            ],
+          ])
+        }
+        span={{ end: 20_000, start: 0 }}
+        streaming={false}
+      />
+    </TooltipProvider>
+  );
+
+  await screen.getByRole('button', { name: '1 file' }).click();
+
+  const made = screen.container.querySelector('#result-c');
+
+  expect({
+    focused: document.activeElement === made,
+    line: screen.container.querySelector('[data-slot=run-line-row]')
+      ?.textContent,
+    located: made?.hasAttribute('data-located'),
+    open: screen
+      .getByRole('button', { name: '2 steps' })
+      .element()
+      .getAttribute('aria-expanded'),
+  }).toEqual({
+    focused: true,
+    line: 'Worked for 20s·2 steps·1 source·1 file',
+    located: true,
+    open: 'false',
+  });
+
+  await screen.getByRole('button', { name: '1 source' }).click();
+
+  await expect
+    .element(screen.getByRole('button', { name: '2 steps' }))
+    .toHaveAttribute('aria-expanded', 'true');
+});
+
+test('a model backing off shows on the line with its countdown and reason', async ({
+  onTestFinished,
+}) => {
+  vi.useFakeTimers({ toFake: ['Date', 'clearTimeout', 'setTimeout'] });
+  vi.setSystemTime(100_000);
+
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+
+  const { screen } = await renderWithQuery(
+    <AssistantMessage
+      backoff={{ at: 104_000, error: 'foo' }}
+      clock={{ at: 100_000, linked: true, start: 100_000, waited: 0 }}
+      parts={[]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={false}
+      working
+    />
+  );
+
+  expect(
+    screen.container.querySelector('[data-slot=run-line-row]')?.textContent
+  ).toBe('Retrying·in 4s·fooRetrying');
+});
+
+function writing(activity: string) {
   return (
-    <Activity
+    <AssistantMessage
+      activity={activity}
       clock={{ at: Date.now(), linked: true, start: 0, waited: 0 }}
-      status={status}
+      parts={[]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={false}
+      working
     />
   );
 }
 
 test('the seconds follow a new verb at once instead of waiting behind the old one', async () => {
-  const { screen } = await renderWithQuery(timed('foo foo foo foo foo foo'));
+  const { screen } = await renderWithQuery(writing('foo foo foo foo foo foo'));
 
-  await screen.rerender(timed('bar'));
+  await screen.rerender(writing('bar'));
 
   const gap = () => {
-    const verb = [
-      ...screen.container.querySelectorAll('[data-slot=trace-title]'),
-    ].find((title) => title.textContent === 'bar');
+    const shown = [
+      ...screen.container.querySelectorAll('[data-slot=run-line-verb]'),
+    ].find((line) => line.textContent === 'bar');
 
-    const timer = screen.getByRole('timer').element();
+    const dot = shown?.parentElement?.nextElementSibling;
 
     return (
-      verb &&
+      shown &&
+      dot &&
       Math.round(
-        timer.getBoundingClientRect().left - verb.getBoundingClientRect().right
+        dot.getBoundingClientRect().left - shown.getBoundingClientRect().right
       )
     );
   };
 
-  await expect.poll(gap).toBe(12);
+  await expect.poll(gap).toBe(4);
 });

@@ -447,6 +447,7 @@ export const artifactRenderers = {
     icon: LayoutTemplate,
     inline: artifactCard('artifact_create'),
     title: artifactTitle('Building an artifact', 'Built'),
+    yields: 'file',
   },
   artifact_read: {
     icon: LayoutTemplate,

@@ -1,7 +1,7 @@
 import { formatBytes, plural, shortDate } from '@/lib/format';
 import { FileText, Search } from 'lucide-react';
 
-import { count, field, quoted, readRange, text } from './format';
+import { count, field, quoted, readRange, text, times } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -22,6 +22,7 @@ export const libraryRenderers = {
     },
     icon: FileText,
     summary: ({ details }) => readRange(details),
+    tally: (files) => `read ${plural(files, 'file')}`,
     title: ({ active, details }) => {
       const name = text(field(details, 'name'));
 
@@ -31,6 +32,7 @@ export const libraryRenderers = {
 
       return name ? `Read ${name}` : 'Read a file';
     },
+    yields: 'source',
   },
   library_search: {
     preview: ({ details }) => {
@@ -56,6 +58,7 @@ export const libraryRenderers = {
 
       return found === undefined ? undefined : plural(found, 'file');
     },
+    tally: times('searched your library'),
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} your library${quoted(args.query)}`,
   },

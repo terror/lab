@@ -25,5 +25,6 @@ export const imageRenderers = {
     icon: ImagePlus,
     inline: (view) => <SavedFile {...view} />,
     title: (view) => titles[mode(view)](view),
+    yields: 'file',
   },
 } satisfies Record<string, ToolRenderer>;

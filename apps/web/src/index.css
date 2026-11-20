@@ -20,6 +20,8 @@
   --animate-title-wash: title-wash var(--motion-story) var(--ease-in)
     var(--motion-slow) backwards;
   --animate-word-in: word-in var(--motion-base) var(--ease-out) backwards;
+  --animate-locate-wash: locate-wash var(--motion-story) var(--ease-in)
+    var(--motion-story) backwards;
   --animate-develop: develop 900ms var(--ease-out);
   --animate-retry: retry 460ms var(--ease-out);
   --animate-dissolve-wipe: dissolve-wipe var(--motion-slow) var(--ease-in)
@@ -30,6 +32,12 @@
   @keyframes title-wash {
     from {
       background-color: var(--spark-yellow-wash);
+    }
+  }
+
+  @keyframes locate-wash {
+    from {
+      background-color: var(--spark-blue-wash);
     }
   }
 
@@ -1380,21 +1388,43 @@
   transform-origin: 16px 18px;
 }
 
-[data-slot='activity'] {
+[data-slot='run-line'] {
   transition: --stall var(--motion-fast) linear;
 }
 
-[data-slot='activity'][data-stalled] [data-slot='live-mark'] {
+[data-slot='run-line'][data-stalled] [data-slot='live-mark'] {
   filter: saturate(calc(1 - 0.75 * var(--stall)));
   opacity: calc(1 - 0.25 * var(--stall));
 }
 
-[data-slot='activity'] [data-slot='trace-title'] {
+[data-slot='run-line-verb'] {
   --shimmer-color: color-mix(
     in oklab,
     var(--muted-foreground) calc(var(--stall) * 100%),
     var(--foreground)
   );
+}
+
+[data-slot='run-line-toggle']:focus-visible {
+  outline-style: none;
+}
+
+[data-slot='run-line-toggle']:focus-visible::after {
+  border-radius: var(--radius-control);
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+[data-modality='pointer'] [data-slot='run-line-toggle']:focus-visible::after {
+  outline-style: none;
+}
+
+[data-slot='run-line-verb'][data-tick] {
+  animation: trace-tick 1020ms var(--ease-out) both;
+}
+
+[data-located] {
+  animation: var(--animate-locate-wash);
 }
 
 [data-slot='live-mark'][data-state='broken']

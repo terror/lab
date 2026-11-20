@@ -2,7 +2,7 @@ import { conversationTitle } from '@/lib/conversations';
 import { plural, shortDate } from '@/lib/format';
 import { MessageSquareText, MessagesSquare } from 'lucide-react';
 
-import { count, field, quoted, readRange, text } from './format';
+import { count, field, quoted, readRange, text, times } from './format';
 import { PreviewList, PreviewPassage } from './previews';
 import { type ToolRenderer } from './types';
 
@@ -17,6 +17,7 @@ export const chatRenderers = {
       return passage ? <PreviewPassage>{passage}</PreviewPassage> : undefined;
     },
     summary: ({ details }) => readRange(details),
+    tally: (chats) => `read ${plural(chats, 'chat')}`,
     title: ({ active, details }) => {
       const title = text(field(details, 'title'));
 
@@ -26,6 +27,7 @@ export const chatRenderers = {
 
       return title ? `Read “${title}”` : 'Read a chat';
     },
+    yields: 'source',
   },
   chat_search: {
     icon: MessagesSquare,
@@ -52,6 +54,7 @@ export const chatRenderers = {
 
       return found === undefined ? undefined : plural(found, 'chat');
     },
+    tally: times('searched your chats'),
     title: ({ active, args }) =>
       `${active ? 'Searching' : 'Searched'} your chats${quoted(args.query)}`,
   },

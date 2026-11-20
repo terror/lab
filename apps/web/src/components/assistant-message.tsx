@@ -1,30 +1,24 @@
 import { Markdown } from '@/components/markdown';
 import { MessageActions, type Retry } from '@/components/message-actions';
 import { Plan } from '@/components/plan';
-import {
-  Activity,
-  LiveSteps,
-  StepStatus,
-  ToolCards,
-  Worked,
-} from '@/components/tool-steps';
+import { type Retry as Backoff, Run } from '@/components/run';
+import { ToolCards } from '@/components/tool-steps';
 import type { ToolProgress, ToolResult } from '@/components/tools';
 import { LiveMark } from '@/components/ui/live-mark';
 import { Message, MessageContent } from '@/components/ui/message';
 import { StatusIcon } from '@/components/ui/status-icon';
 import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
-import { cheerFor, useCheer } from '@/lib/cheer';
 import type { ModelChoice } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
 import type { Clock } from '@/lib/presence';
 import { runFailureTitles } from '@/lib/run-failure';
-import { steps, worked as timeWorked } from '@/lib/spans';
+import { steps } from '@/lib/spans';
 import type { Part, Round, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
-import { AnimatePresence, m } from 'motion/react';
+import { m } from 'motion/react';
 import { type ReactNode, useState } from 'react';
 
 export type { ToolProgress, ToolResult };
@@ -134,8 +128,26 @@ export type ShownPlan = { editable: boolean; steps: readonly PlanStep[] };
 
 const noRounds: readonly Round[] = [];
 
+function Arrival({ children, late }: { children: ReactNode; late: boolean }) {
+  const [glide] = useState(late);
+  const [settled, setSettled] = useState(!late);
+
+  return (
+    <m.div
+      animate={{ height: 'auto', opacity: 1 }}
+      className={cn('-mb-3', !settled && 'overflow-hidden')}
+      initial={glide ? { height: 0, opacity: 0 } : false}
+      onAnimationComplete={() => setSettled(true)}
+      transition={{ ...fade.base, height: spring.glide }}
+    >
+      <div className='pb-3'>{children}</div>
+    </m.div>
+  );
+}
+
 export function AssistantMessage({
   activity,
+  backoff,
   clock,
   failure,
   latest = false,
@@ -154,6 +166,7 @@ export function AssistantMessage({
   working = false,
 }: {
   activity?: string;
+  backoff?: Backoff;
   clock?: Clock;
   failure?: RunFailureReason;
   latest?: boolean;
@@ -171,8 +184,6 @@ export function AssistantMessage({
   versions?: ReactNode;
   working?: boolean;
 }) {
-  const cheer = useCheer(working);
-  const quiet = useQuiet();
   const [mended, setMended] = useState(false);
 
   if (retrying && !mended) {
@@ -187,87 +198,45 @@ export function AssistantMessage({
 
   const split = all.findLastIndex(({ kind }) => kind === 'tools') + 1;
 
-  const calls = all
-    .slice(0, split)
-    .flatMap((segment) => (segment.kind === 'tools' ? segment.calls : []));
+  const ledger = steps(parts, rounds, results);
 
-  const replying = all.slice(split).some(({ kind }) => kind === 'text');
+  const wrote = all.some(({ kind }) => kind === 'text');
 
-  const last = calls.at(-1);
+  const shown = split > 0 || (working && !wrote);
 
-  const current = calls.findLast(({ id }) => !results.has(id)) ?? last;
+  const [hidden, setHidden] = useState(!shown);
 
-  const inSlot = current !== undefined && !replying;
-
-  const live = working && !replying;
-
-  const finished = calls.filter(({ id }) => results.has(id));
+  if (!shown && !hidden) {
+    setHidden(true);
+  }
 
   const shared = { parts, progress, results, streaming, working };
-
-  const worked = timeWorked(span, calls, results);
-
-  const marks = {
-    cheer: cheerFor(worked ?? 0, calls.length),
-    held: 'idle',
-    rest: 'idle',
-    working: 'thinking',
-  } as const;
-
-  const marked = !quiet && (working || (latest && failure === undefined));
 
   const broken = slip && !mended ? 'error' : 'broken';
 
   return (
     <Message>
       <MessageContent className='gap-3 text-base'>
+        {shown && (
+          <Arrival late={hidden}>
+            <Run
+              activity={activity}
+              clock={clock}
+              failed={failure !== undefined}
+              latest={latest}
+              progress={progress}
+              results={results}
+              retry={backoff}
+              span={span}
+              steps={ledger}
+              working={working}
+              writing={streaming && parts.at(-1)?.type === 'text'}
+            />
+          </Arrival>
+        )}
         <Segments segments={all.slice(0, split)} {...shared} />
-        <AnimatePresence initial={false}>
-          {live && (
-            <m.div
-              key='steps'
-              animate={{ height: 'auto', opacity: 1 }}
-              className={cn(
-                '-m-1 overflow-hidden p-1',
-                finished.length === 0 && 'hidden'
-              )}
-              exit={{ height: 0, opacity: 0 }}
-              initial={{ height: 0, opacity: 0 }}
-              transition={{ ...fade.fast, height: spring.glide }}
-            >
-              <LiveSteps
-                calls={finished}
-                progress={progress}
-                results={results}
-              />
-            </m.div>
-          )}
-        </AnimatePresence>
-        {last && !live && (
-          <Worked
-            mark={marked ? marks[cheer] : undefined}
-            progress={progress}
-            results={results}
-            rows={steps(parts, rounds, results)}
-            worked={worked}
-            working={working}
-          />
-        )}
         {plan && <Plan {...plan} />}
-        {inSlot && (working || activity !== undefined) && (
-          <StepStatus
-            activity={activity}
-            call={current}
-            clock={clock}
-            progress={progress.get(current.id)}
-            result={results.get(current.id)}
-            working={working}
-          />
-        )}
         <Segments segments={all.slice(split)} {...shared} />
-        {activity !== undefined && !inSlot && (
-          <Activity clock={clock} status={activity} />
-        )}
         {failure && (
           <RunFailure mark={retrying ? 'recover' : broken} reason={failure} />
         )}

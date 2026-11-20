@@ -213,6 +213,18 @@ test('a streaming reply joins the last reply or starts the next one', () => {
   ]);
 });
 
+test('a run that has written nothing yet still has a reply row to hold its line', () => {
+  expect([
+    streamRows(keyRows([user('a')]), [], true),
+    streamRows(keyRows([user('a'), reply('b', 'foo')]), [], true),
+    streamRows(keyRows([user('a')]), [], false),
+  ]).toEqual([
+    [keyed(user('a')), streamed('reply-a-1', [])],
+    [keyed(user('a')), { key: 'reply-a-1', row: reply('b', 'foo') }],
+    [keyed(user('a'))],
+  ]);
+});
+
 test('tool history lists every call with its result details', () => {
   expect(
     toolHistory(
