@@ -335,15 +335,14 @@ function DockLive({ onJump, ...run }: Live & { onJump: () => void }) {
   if (asking) {
     return (
       <RunTab
-        aria-label={['Needs you', prompt].filter(Boolean).join(': ')}
         onClick={() => {
           if (!(target && locate(target))) {
             onJump();
           }
         }}
       >
-        <RunLine mark={mark}>
-          <RunLineVerb className='text-status-attention-ink'>
+        <RunLine fit mark={mark}>
+          <RunLineVerb className='shrink-0 text-status-attention-ink'>
             Needs you
           </RunLineVerb>
           {prompt && <RunLineNote>{prompt}</RunLineNote>}
@@ -353,14 +352,15 @@ function DockLive({ onJump, ...run }: Live & { onJump: () => void }) {
   }
 
   return (
-    <RunTab aria-label='Show what Lab is doing' onClick={onJump}>
-      <RunLine mark={mark} stall={stall}>
+    <RunTab onClick={onJump}>
+      <span className='sr-only'>Show what Lab is doing: </span>
+      <RunLine fit mark={mark} stall={stall}>
         <Verb
           label={label}
           live={pose === 'pondering' || pose === 'working'}
           tick={tick}
         />
-        {timed && <RunLineTime>{duration(elapsed)}</RunLineTime>}
+        {timed && <RunLineTime roomy>{duration(elapsed)}</RunLineTime>}
       </RunLine>
     </RunTab>
   );
@@ -645,7 +645,7 @@ export function Dock({
         <m.div
           key='dock'
           animate={{ opacity: 1, y: 0 }}
-          className='absolute bottom-full left-12 flex max-w-2/5 translate-y-px'
+          className='absolute bottom-full left-8 flex w-max max-w-1/3 translate-y-px'
           exit={{ opacity: 0, transition: fade.leave, y: 8 }}
           initial={{ opacity: 0, y: 8 }}
           transition={{ ...fade.base, y: spring.snap }}
@@ -653,8 +653,9 @@ export function Dock({
           {working ? (
             <DockLive {...run} calls={calls} onJump={onJump} />
           ) : (
-            <RunTab aria-label='Show the finished run' onClick={onJump}>
-              <RunLine mark={<LiveMark className='size-3.5' state={hop} />}>
+            <RunTab onClick={onJump}>
+              <span className='sr-only'>Show the finished run: </span>
+              <RunLine fit mark={<LiveMark className='size-3.5' state={hop} />}>
                 <RunLineVerb>
                   {total === undefined
                     ? 'Worked'

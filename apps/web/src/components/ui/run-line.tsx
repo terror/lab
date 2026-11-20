@@ -18,11 +18,16 @@ function Separator({ className }: { className?: string }) {
 function RunLine({
   children,
   className,
+  fit = false,
   mark,
   stall = 0,
   style,
   ...props
-}: React.ComponentProps<'div'> & { mark?: React.ReactNode; stall?: number }) {
+}: React.ComponentProps<'div'> & {
+  fit?: boolean;
+  mark?: React.ReactNode;
+  stall?: number;
+}) {
   return (
     <div
       data-slot='run-line'
@@ -45,7 +50,10 @@ function RunLine({
       )}
       <div
         data-slot='run-line-row'
-        className='@container relative flex h-6.5 min-w-0 flex-1 items-center gap-x-1 overflow-hidden whitespace-nowrap'
+        className={cn(
+          'relative flex h-6.5 min-w-0 items-center gap-x-1 overflow-hidden whitespace-nowrap',
+          !fit && '@container flex-1'
+        )}
       >
         {children}
       </div>
@@ -73,14 +81,22 @@ function RunLineVerb({
   );
 }
 
-function RunLineTime({ className, ...props }: React.ComponentProps<'span'>) {
+function RunLineTime({
+  className,
+  roomy = false,
+  ...props
+}: React.ComponentProps<'span'> & { roomy?: boolean }) {
   return (
     <>
-      <Separator />
+      <Separator className={cn(roomy && 'max-sm:hidden')} />
       <span
         data-slot='run-line-time'
         role='timer'
-        className={cn('shrink-0 tabular-nums', className)}
+        className={cn(
+          'shrink-0 tabular-nums',
+          roomy && 'max-sm:hidden',
+          className
+        )}
         {...props}
       />
     </>

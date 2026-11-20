@@ -103,9 +103,9 @@ test('the run line docks on the composer when it is out of view or Lab needs you
 
   viewport()?.scrollTo(0, 100_000);
 
-  await expect.poll(tab).toBe('Reading a page');
+  await expect.poll(tab).toBe('Show what Lab is doing: Reading a page');
 
-  await screen.getByRole('button', { name: 'Show what Lab is doing' }).click();
+  await screen.getByRole('button', { name: /^Show what Lab is doing/ }).click();
 
   await expect.poll(tab).toBe(undefined);
 

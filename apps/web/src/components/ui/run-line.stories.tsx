@@ -124,14 +124,15 @@ export const Narrow = meta.story({
 export const Docked = meta.story({
   render: () => (
     <div className='flex items-end gap-3'>
-      <RunTab aria-label='Show what Lab is doing'>
-        <RunLine mark={<LiveMark className='size-3.5' state='thinking' />}>
+      <RunTab>
+        <span className='sr-only'>Show what Lab is doing: </span>
+        <RunLine fit mark={<LiveMark className='size-3.5' state='thinking' />}>
           <RunLineVerb live>Reading carris.pt/avisos</RunLineVerb>
           <RunLineTime>34s</RunLineTime>
         </RunLine>
       </RunTab>
-      <RunTab aria-label='Needs you: Which neighbourhood?'>
-        <RunLine mark={<LiveMark className='size-3.5' state='waiting' />}>
+      <RunTab>
+        <RunLine fit mark={<LiveMark className='size-3.5' state='waiting' />}>
           <RunLineVerb className='text-status-attention-ink'>
             Needs you
           </RunLineVerb>
