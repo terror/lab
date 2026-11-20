@@ -39,6 +39,14 @@ function respond(
       return Response.json({ admin });
     }
 
+    if (init?.method === 'PATCH' && typeof init.body === 'string') {
+      return Response.json({
+        instructions: JSON.parse(init.body).instructions,
+        memories: [],
+        referenceChats: false,
+      });
+    }
+
     return Response.json({
       instructions: '',
       memories: [],
@@ -160,4 +168,32 @@ test('the picture menu opens by keyboard and shows an upload in progress', async
 
   await expect.element(edit).toBeEnabled();
   await expect.element(edit).toHaveAttribute('aria-busy', 'false');
+});
+
+test('instructions offer Save once edited and say when they are saved', async () => {
+  respond(false);
+
+  const { screen } = await renderWithQuery(<Profile />);
+
+  const field = screen.getByRole('textbox', { name: 'Custom instructions' });
+  const save = screen.getByRole('button', { name: 'Save' });
+
+  await expect.element(field).toBeVisible();
+  expect(save.query()).toBeNull();
+
+  await field.fill('foo');
+  await save.click();
+
+  await expect
+    .poll(() => screen.getByRole('status').element().textContent)
+    .toBe('Saved');
+  await expect.element(field).toHaveValue('foo');
+  expect(save.query()).toBeNull();
+
+  await field.fill('bar');
+
+  await expect
+    .poll(() => screen.getByRole('status').element().textContent)
+    .toBe('');
+  await expect.element(save).toBeEnabled();
 });
