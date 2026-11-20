@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
 
@@ -23,7 +23,7 @@ export function ImageCard({
   src: string;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const quiet = useQuiet();
+  const develop = useMoment('image.develop', { when: loaded }).on;
 
   return (
     <Dialog>
@@ -35,7 +35,7 @@ export function ImageCard({
           alt={name}
           className={cn(
             'block max-w-full object-contain opacity-0 transition-opacity duration-base data-loaded:opacity-100',
-            !quiet && 'motion-safe:data-loaded:animate-develop',
+            develop && 'motion-safe:animate-develop',
             className
           )}
           data-loaded={loaded || undefined}
