@@ -1,6 +1,8 @@
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import { useId, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 
+import { plural } from './format';
+
 export const runFailureTitles: Record<RunFailureReason, string> = {
   aborted: 'Stopped',
   faulted: 'Couldn’t finish this answer',
@@ -13,6 +15,26 @@ export const runFailureTitles: Record<RunFailureReason, string> = {
   restart_limit: 'Couldn’t finish this answer after several tries',
   turn_limit: 'Couldn’t finish within the tool use limit for one answer',
 };
+
+export function runEnding(
+  reason: RunFailureReason,
+  { steps, wrote }: { steps: number; wrote: boolean }
+) {
+  const kept = [
+    ...(steps > 0 ? [plural(steps, 'finished step')] : []),
+    ...(wrote ? ['the partial answer'] : []),
+  ];
+
+  const several = steps > 1 || kept.length > 1;
+
+  return {
+    kept:
+      kept.length > 0
+        ? `${kept.join(' and ')} ${several ? 'are' : 'is'} kept`
+        : undefined,
+    title: runFailureTitles[reason],
+  };
+}
 
 const listeners = new Set<() => void>();
 

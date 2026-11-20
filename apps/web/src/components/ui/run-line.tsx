@@ -103,13 +103,17 @@ function RunLineTime({
   );
 }
 
-function RunLineNote({ className, ...props }: React.ComponentProps<'span'>) {
+function RunLineNote({
+  className,
+  roomy = false,
+  ...props
+}: React.ComponentProps<'span'> & { roomy?: boolean }) {
   return (
     <>
-      <Separator />
+      <Separator className={cn(roomy && 'max-sm:hidden')} />
       <span
         data-slot='run-line-note'
-        className={cn('min-w-0 truncate', className)}
+        className={cn('min-w-0 truncate', roomy && 'max-sm:hidden', className)}
         {...props}
       />
     </>
