@@ -128,7 +128,10 @@ async function openRuntime(): Promise<Runtime> {
 
     startStreams();
     opened.resume();
-    cleanup.unshift(startScheduler());
+    const scheduler = startScheduler();
+
+    cleanup.unshift(scheduler.stop);
+    await scheduler.ready;
 
     return { close, harness: opened };
   } catch (error) {

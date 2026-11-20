@@ -112,7 +112,8 @@ async function submitTask(row: Row, requestId: string, tx: Transaction) {
   }
 
   const submitted = await harness().commit(
-    (tx) => tx.submissionByRequest(conversation.id, requestId),
+    (transaction) =>
+      transaction.submissionByRequest(conversation.id, requestId),
     BACKGROUND_CONTEXT
   );
 
@@ -198,19 +199,21 @@ export function startScheduler() {
   let pending: Promise<void> | undefined;
 
   function poll() {
-    pending ??= runDueTasks()
+    return (pending ??= runDueTasks()
       .catch(console.error)
       .finally(() => {
         pending = undefined;
-      });
+      }));
   }
 
-  poll();
+  const ready = poll();
+  const timer = setInterval(() => void poll(), POLL_MS);
 
-  const timer = setInterval(poll, POLL_MS);
-
-  return async () => {
-    clearInterval(timer);
-    await pending;
+  return {
+    ready,
+    stop: async () => {
+      clearInterval(timer);
+      await pending;
+    },
   };
 }
