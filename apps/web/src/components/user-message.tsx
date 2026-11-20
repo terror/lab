@@ -241,17 +241,22 @@ export function QueuedMessage({
   onCancel: () => void;
 }) {
   return (
-    <div className='flex items-center justify-end gap-1 opacity-60'>
-      <Button
-        aria-label='Cancel queued message'
-        className='text-muted-foreground'
-        onClick={onCancel}
-        size='icon-xs'
-        variant='ghost'
-      >
-        <X aria-hidden='true' />
-      </Button>
-      <UserMessage bubble={bubble} />
+    <div className='flex flex-col items-end gap-1'>
+      <div className='w-full opacity-60'>
+        <UserMessage bubble={bubble} />
+      </div>
+      <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+        Queued
+        <Button
+          aria-label='Cancel queued message'
+          className='text-muted-foreground'
+          onClick={onCancel}
+          size='icon-xs'
+          variant='ghost'
+        >
+          <X aria-hidden='true' />
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fn } from 'storybook/test';
+import { expect, fn } from 'storybook/test';
 
 import preview from '../../.storybook/preview';
 import type { Attachment } from '../lib/attachments';
@@ -53,4 +53,24 @@ export const Running = meta.story({ render: () => <Harness running /> });
 
 export const Steering = meta.story({
   render: () => <Harness initial='Focus on temples' running />,
+});
+
+export const SteeringOnPhone = meta.story({
+  globals: { viewport: { value: 'phone' } },
+  parameters: {
+    layout: 'fullscreen',
+    viewport: {
+      options: {
+        phone: { name: 'Phone', styles: { height: '667px', width: '375px' } },
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.scrollWidth).toBe(canvasElement.clientWidth);
+  },
+  render: () => (
+    <div className='p-6'>
+      <Harness initial='Focus on temples' running />
+    </div>
+  ),
 });

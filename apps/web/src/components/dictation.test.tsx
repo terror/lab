@@ -42,8 +42,8 @@ class FakeRecognition extends EventTarget {
   }
 }
 
-function Harness() {
-  const [draft, setDraft] = useState('foo');
+function Harness({ initial, running }: { initial: string; running: boolean }) {
+  const [draft, setDraft] = useState(initial);
 
   return (
     <TooltipProvider>
@@ -55,18 +55,24 @@ function Harness() {
         onDraftChange={setDraft}
         onModelChange={() => undefined}
         onSubmit={() => undefined}
+        running={running}
       />
     </TooltipProvider>
   );
 }
 
-async function render(recognition: typeof FakeRecognition | undefined) {
+async function render(
+  recognition: typeof FakeRecognition | undefined,
+  { initial = 'foo', running = false } = {}
+) {
   stubFetch(() => Response.json({ default: null, models: [] }));
 
   vi.stubGlobal('SpeechRecognition', recognition);
   vi.stubGlobal('webkitSpeechRecognition', undefined);
 
-  return (await renderWithQuery(<Harness />)).screen;
+  return (
+    await renderWithQuery(<Harness initial={initial} running={running} />)
+  ).screen;
 }
 
 test('dictation adds what you say to the draft until you stop it', async () => {
@@ -129,4 +135,22 @@ test('typing while dictating keeps what you type', async () => {
   await expect
     .element(screen.getByLabelText('Message'))
     .toHaveValue('foo barx');
+});
+
+test('during a run the mic stays until dictation stops, then hands focus to the message', async () => {
+  const screen = await render(FakeRecognition, { initial: '', running: true });
+
+  await screen.getByRole('button', { name: 'Dictate' }).click();
+
+  FakeRecognition.current?.emit('result', {
+    results: [[{ transcript: 'foo' }]],
+  });
+
+  await screen.getByRole('button', { name: 'Stop dictation' }).click();
+
+  await expect
+    .poll(() => document.activeElement)
+    .toBe(screen.getByLabelText('Message').element());
+
+  expect(screen.getByRole('button', { name: 'Dictate' }).query()).toBeNull();
 });

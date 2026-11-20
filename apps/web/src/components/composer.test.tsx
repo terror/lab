@@ -8,14 +8,18 @@ import { Composer } from './composer';
 
 const matchMedia = window.matchMedia.bind(window);
 
-async function enter(pointer: 'coarse' | 'fine') {
-  stubFetch(() => Response.json({ default: null, models: [] }));
-
+function point(pointer: 'coarse' | 'fine') {
   vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
     query === '(pointer: coarse)'
       ? matchMedia(pointer === 'coarse' ? 'all' : 'not all')
       : matchMedia(query)
   );
+}
+
+async function enter(pointer: 'coarse' | 'fine') {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  point(pointer);
 
   const onSubmit = vi.fn();
 
@@ -49,12 +53,16 @@ test('enter sends on desktop and adds a line on touch screens', async () => {
   expect([await enter('fine'), await enter('coarse')]).toEqual([[['foo']], []]);
 });
 
-test('a run can be stopped while a draft waits', async () => {
-  stubFetch(() => Response.json({ default: null, models: [] }));
-
-  const onStop = vi.fn();
-
-  const { screen } = await renderWithQuery(
+function drafting({
+  onSteer = () => undefined,
+  onStop = () => undefined,
+  onSubmit = () => undefined,
+}: {
+  onSteer?: (content: string) => void;
+  onStop?: () => void;
+  onSubmit?: (content: string) => void;
+}) {
+  return (
     <TooltipProvider>
       <Composer
         attachments={[]}
@@ -63,32 +71,75 @@ test('a run can be stopped while a draft waits', async () => {
         onAttachmentsChange={() => undefined}
         onDraftChange={() => undefined}
         onModelChange={() => undefined}
-        onSteer={() => undefined}
+        onSteer={onSteer}
         onStop={onStop}
-        onSubmit={() => undefined}
+        onSubmit={onSubmit}
         running
       />
     </TooltipProvider>
   );
+}
 
-  await screen.getByRole('button', { name: 'Stop' }).click();
+test('a draft that waits during a run can be steered or queued, and the run stopped', async () => {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  const onSteer = vi.fn();
+  const onStop = vi.fn();
+  const onSubmit = vi.fn();
+
+  const { screen } = await renderWithQuery(
+    drafting({ onSteer, onStop, onSubmit })
+  );
+
+  for (const name of ['Steer', 'Queue', 'Stop']) {
+    await screen.getByRole('button', { name }).click();
+  }
 
   expect({
-    buttons: [...screen.container.querySelectorAll('button')].map((button) =>
-      button.getAttribute('aria-label')
+    buttons: [...screen.container.querySelectorAll('button')].map(
+      (button) => button.getAttribute('aria-label') ?? button.textContent
     ),
+    queued: onSubmit.mock.calls,
+    steered: onSteer.mock.calls,
     stops: onStop.mock.calls.length,
   }).toEqual({
-    buttons: [
-      'Add photos and files',
-      'Model',
-      'Steer',
-      'Dictate',
-      'Send',
-      'Stop',
-    ],
+    buttons: ['Add photos and files', 'Steer', 'Queue', 'Stop'],
+    queued: [['foo']],
+    steered: [['foo']],
     stops: 1,
   });
+});
+
+async function hints(pointer: 'coarse' | 'fine', steer: string, queue: string) {
+  stubFetch(() => Response.json({ default: null, models: [] }));
+
+  point(pointer);
+
+  const { screen } = await renderWithQuery(drafting({}));
+
+  for (const [name, hint] of [
+    ['Steer', steer],
+    ['Queue', queue],
+  ] as const) {
+    const button = screen.getByRole('button', { name });
+
+    button.element().focus();
+
+    await expect.element(button).toHaveAccessibleDescription(hint);
+  }
+
+  await screen.unmount();
+
+  vi.restoreAllMocks();
+}
+
+test('steer and queue name their shortcuts only where there is a keyboard', async () => {
+  await hints(
+    'fine',
+    'Steer the current answer ⌘↵',
+    'Send after this answer ↵'
+  );
+  await hints('coarse', 'Steer the current answer', 'Send after this answer');
 });
 
 test('slash commands run from the composer', async () => {
