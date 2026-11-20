@@ -47,9 +47,9 @@ test('the agent waits for the user to answer its question', async () => {
 
 async function untilWaiting(headers: Headers) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const { body } = await call(headers, 'GET', '/conversations');
+    const { body } = await call(headers, 'GET', '/conversations/unread');
 
-    if (body.conversations[0]?.waiting) {
+    if (body.waiting[0]?.ask) {
       return;
     }
 
@@ -124,10 +124,125 @@ test('a chat is listed as waiting while its question is unanswered', async () =>
       },
       unread: {
         chats: [],
-        running: 0,
-        waiting: [{ id: body.id, title: null }],
+        runs: [],
+        waiting: [
+          {
+            ask: {
+              callId,
+              kind: 'question',
+              options: ['bar', 'baz'],
+              question: 'foo',
+            },
+            id: body.id,
+            title: null,
+          },
+        ],
       },
     },
+  });
+});
+
+test('a chat waiting on an approval lists what it asks to do', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall(
+      'schedule_create',
+      {
+        cron: '0 9 * * *',
+        description: 'Every day at 9am',
+        prompt: 'bar',
+        title: 'foo',
+      },
+      'baz'
+    ),
+    fauxAssistantMessage('qux')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  const { unread } = await lists(headers);
+
+  await call(headers, 'POST', `/conversations/${body.id}/answers`, {
+    answer: 'denied',
+    callId: 'baz',
+  });
+
+  await settle(body.id);
+
+  expect(unread.waiting).toEqual([
+    {
+      ask: {
+        action: 'Schedule “foo”',
+        callId: 'baz',
+        kind: 'approval',
+        summary: ['Every day at 9am (0 9 * * *, UTC)', 'bar'],
+      },
+      id: body.id,
+      title: null,
+    },
+  ]);
+});
+
+test('an answer is refused for a call that is not waiting, and once another answer was taken', async () => {
+  const headers = await signIn();
+
+  script(
+    toolCall('ask_user', { options: ['bar', 'baz'], question: 'foo' }, 'qux'),
+    fauxAssistantMessage('quux')
+  );
+
+  const { body } = await call(headers, 'POST', '/conversations', {
+    content: 'foo',
+  });
+
+  await untilWaiting(headers);
+
+  const path = `/conversations/${body.id}/answers`;
+
+  const unknown = await call(headers, 'POST', path, {
+    answer: 'bar',
+    callId: 'corge',
+  });
+
+  const first = await call(headers, 'POST', path, {
+    answer: 'bar',
+    callId: 'qux',
+  });
+
+  const second = await call(headers, 'POST', path, {
+    answer: 'baz',
+    callId: 'qux',
+  });
+
+  await settle(body.id);
+
+  const late = await call(headers, 'POST', path, {
+    answer: 'bar',
+    callId: 'qux',
+  });
+
+  const refused = {
+    body: { error: 'This is no longer waiting for an answer.' },
+    status: 409,
+  };
+
+  expect({
+    first: first.status,
+    late,
+    outputs: await toolOutputs(headers, body.id),
+    second,
+    unknown,
+  }).toEqual({
+    first: 204,
+    late: refused,
+    outputs: ['The user answered: bar'],
+    second: refused,
+    unknown: refused,
   });
 });
 

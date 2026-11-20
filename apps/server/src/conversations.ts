@@ -39,7 +39,13 @@ import { found } from './found';
 import { harness } from './harness';
 import { imageAt, stripImages, stripView } from './images';
 import { rateLimit } from './limits';
-import { listConversations, listSchema, listUnread, running } from './listing';
+import {
+  awaited,
+  listConversations,
+  listSchema,
+  listUnread,
+  running,
+} from './listing';
 import {
   DRAFT_BYTES,
   MESSAGE_BYTES,
@@ -108,6 +114,8 @@ const entriesQuery = validator(
 );
 
 const listQuery = validator('query', listSchema);
+
+const STALE_ANSWER = 'This is no longer waiting for an answer.';
 
 const answering = validator(
   'json',
@@ -452,15 +460,25 @@ const conversations = new Hono()
 
       const { answer, callId } = c.req.valid('json');
 
+      if (!(await awaited(conversation.id, callId))) {
+        throw new HTTPException(409, { message: STALE_ANSWER });
+      }
+
       if (answer !== DENIED) {
         await checkSpend(c.get('user').id);
       }
 
-      await conversation.commit(async (tx) => {
+      const settled = await conversation.commit(async (tx) => {
         const doc = await tx.doc(QuestionsDoc, conversation.id);
 
         doc.answers[callId] ??= answer;
+
+        return doc.answers[callId];
       }, BACKGROUND_CONTEXT);
+
+      if (settled !== answer) {
+        throw new HTTPException(409, { message: STALE_ANSWER });
+      }
 
       return c.body(null, 204);
     }

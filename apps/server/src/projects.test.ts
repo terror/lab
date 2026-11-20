@@ -3,6 +3,7 @@ import { expect, test } from 'bun:test';
 
 import { signIn } from '../test/auth';
 import {
+  answer,
   call,
   chat,
   create,
@@ -115,15 +116,9 @@ test('the agent changes project instructions only once the user approves', async
     await call(headers, 'POST', '/conversations', { content: 'foo' })
   ).body.id;
 
-  await call(headers, 'POST', `/conversations/${chatId}/answers`, {
-    answer: 'denied',
-    callId: 'foo',
-  });
+  await answer(headers, chatId, 'foo', 'denied');
 
-  await call(headers, 'POST', `/conversations/${chatId}/answers`, {
-    answer: 'approved',
-    callId: 'bar',
-  });
+  await answer(headers, chatId, 'bar', 'approved');
 
   await settle(chatId);
 

@@ -1,4 +1,5 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
+import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { AgentDoc, type ConversationId } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import { expect, spyOn, test } from 'bun:test';
@@ -6,6 +7,7 @@ import { eq, inArray } from 'drizzle-orm';
 
 import { signIn } from '../test/auth';
 import { call, create, idle, raw, settle } from '../test/client';
+import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { harness } from './harness';
 import { MESSAGE_LENGTH } from './messages';
@@ -997,20 +999,31 @@ test('unread conversations from the last day are listed with a preview', async (
         title: 'foo',
       },
     ],
-    running: 0,
+    runs: [],
     waiting: [],
   });
 
   await call(headers, 'POST', `/conversations/${id}/read`);
 
   expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
-    body: { chats: [], running: 0, waiting: [] },
+    body: { chats: [], runs: [], waiting: [] },
     status: 200,
   });
 });
 
-test('running conversations are counted instead of listed as unread', async () => {
+test('running conversations are listed with their start and plan step instead of as unread', async () => {
   const headers = await signIn();
+
+  script(
+    toolCall('plan_update', {
+      steps: [
+        { status: 'done', text: 'foo' },
+        { status: 'active', text: 'bar' },
+        { status: 'pending', text: 'baz' },
+      ],
+    }),
+    fauxAssistantMessage('qux')
+  );
 
   const id = await create(headers);
 
@@ -1026,8 +1039,22 @@ test('running conversations are counted instead of listed as unread', async () =
     ],
   });
 
-  expect(await call(headers, 'GET', '/conversations/unread')).toEqual({
-    body: { chats: [], running: 1, waiting: [] },
-    status: 200,
-  });
+  const { body } = await call(headers, 'GET', '/conversations/unread');
+
+  expect([typeof body.runs[0].startedAt, body]).toEqual([
+    'string',
+    {
+      chats: [],
+      runs: [
+        {
+          id,
+          startedAt: body.runs[0].startedAt,
+          step: { count: 3, index: 2, label: 'bar' },
+          title: 'foo',
+          tool: null,
+        },
+      ],
+      waiting: [],
+    },
+  ]);
 });

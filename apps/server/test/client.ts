@@ -46,6 +46,32 @@ export async function create(headers: Headers) {
   return body.id as number;
 }
 
+export async function answer(
+  headers: Headers,
+  id: number,
+  callId: string,
+  value: string
+) {
+  for (let attempt = 0; attempt < 250; attempt += 1) {
+    const { body } = await call(headers, 'GET', '/conversations/unread');
+
+    const waiting = (
+      body.waiting as { ask: { callId: string } | null; id: number }[]
+    ).find((chat) => chat.id === id);
+
+    if (waiting?.ask?.callId === callId) {
+      return call(headers, 'POST', `/conversations/${id}/answers`, {
+        answer: value,
+        callId,
+      });
+    }
+
+    await Bun.sleep(20);
+  }
+
+  throw new Error('Not waiting');
+}
+
 export async function settle(id?: number) {
   if (id !== undefined) {
     await idle(id);
