@@ -1,6 +1,8 @@
 import { markOutline } from '@/components/lab-mark';
+import { story } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useQuiet } from '@/lib/voice';
+import { useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
 const interior =
@@ -39,13 +41,14 @@ type Tone = 'near' | 'over';
 
 function Bar({ tone, value }: { tone?: Tone; value: number }) {
   return (
-    <div className='h-1.5 overflow-hidden rounded-full bg-foreground/10'>
+    <div className='h-1.5 overflow-hidden rounded-full bg-foreground/10 forced-colors:border'>
       <div
         className={cn(
-          'h-full rounded-full bg-foreground transition-all',
+          'h-full rounded-full bg-foreground transition-[width] duration-base ease-out motion-reduce:transition-none forced-colors:bg-[CanvasText]',
+          tone === 'near' && 'bg-spark-coral',
           tone === 'over' && 'bg-destructive'
         )}
-        style={{ width: `${Math.min(1, value) * 100}%` }}
+        style={{ width: `${value * 100}%` }}
       />
     </div>
   );
@@ -62,15 +65,33 @@ function Flask({
 }) {
   const id = React.useId();
   const quiet = useQuiet();
-  const [poured, setPoured] = React.useState(!pour || quiet);
+  const reduced = useReducedMotion();
+  const still = !pour || quiet || reduced === true;
+
+  const [poured, setPoured] = React.useState(still);
+  const [settled, setSettled] = React.useState(still);
 
   React.useEffect(() => {
+    if (poured) {
+      return undefined;
+    }
+
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => setPoured(true));
     });
 
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [poured]);
+
+  React.useEffect(() => {
+    if (!poured || settled) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setSettled(true), story * 1000);
+
+    return () => clearTimeout(timer);
+  }, [poured, settled]);
 
   const level = poured ? surface(value) : 29;
 
@@ -88,7 +109,10 @@ function Flask({
       </defs>
       <g clipPath={`url(#${id})`}>
         <g
-          className='transition-transform duration-story ease-out motion-reduce:transition-none'
+          className={cn(
+            'transition-transform ease-out motion-reduce:transition-none',
+            settled ? 'duration-base' : 'duration-story'
+          )}
           style={{ transform: `translateY(${level}px)` }}
         >
           <rect
@@ -98,15 +122,15 @@ function Flask({
             height='32'
             width='32'
           />
-          <rect
-            className={cn(
-              tone === 'near' && 'fill-spark-coral',
-              tone === 'over' && 'fill-destructive',
-              !tone && 'fill-foreground/40'
-            )}
-            height='2'
-            width='32'
-          />
+          {tone && (
+            <rect
+              className={
+                tone === 'near' ? 'fill-spark-coral' : 'fill-destructive'
+              }
+              height='2'
+              width='32'
+            />
+          )}
         </g>
       </g>
       <path
@@ -114,14 +138,14 @@ function Flask({
         d={markOutline}
         strokeWidth='2'
       />
-      {tone === 'over' && (
+      {tone === 'over' && settled && (
         <rect
           className='fill-destructive'
           data-part='drop'
-          height='3'
-          width='3'
+          height='2'
+          width='2'
           x='22'
-          y='-2'
+          y='0'
         />
       )}
     </svg>
@@ -134,6 +158,7 @@ function Meter({
   pour = false,
   tone,
   value,
+  valueText,
   variant = 'bar',
 }: {
   className?: string;
@@ -141,14 +166,18 @@ function Meter({
   pour?: boolean;
   tone?: Tone;
   value: number;
+  valueText?: string;
   variant?: 'bar' | 'flask';
 }) {
+  const share = Number.isFinite(value) ? Math.min(Math.max(value, 0), 1) : 0;
+
   return (
     <div
       aria-label={label}
       aria-valuemax={100}
       aria-valuemin={0}
-      aria-valuenow={Math.round(Math.min(1, Math.max(0, value)) * 100)}
+      aria-valuenow={Math.round(share * 100)}
+      aria-valuetext={valueText}
       className={className}
       data-slot='meter'
       data-tone={tone}
@@ -156,9 +185,9 @@ function Meter({
       role='meter'
     >
       {variant === 'flask' ? (
-        <Flask pour={pour} tone={tone} value={value} />
+        <Flask pour={pour} tone={tone} value={share} />
       ) : (
-        <Bar tone={tone} value={value} />
+        <Bar tone={tone} value={share} />
       )}
     </div>
   );
