@@ -436,8 +436,6 @@ function ConversationView({ id }: { id: number }) {
 
   const rows = useMemo(() => streamRows(keyed, partial), [keyed, partial]);
 
-  useNote('versions', versions.size > 0);
-
   const navigate = useNavigate();
 
   const lastReply = useMemo(() => {
@@ -498,7 +496,24 @@ function ConversationView({ id }: { id: number }) {
     [plan, running]
   );
 
-  useNote('plan', shownPlan !== undefined);
+  const idle = composer.draft === '';
+
+  const [planned, setPlanned] = useState(false);
+
+  if (
+    !planned &&
+    running &&
+    (plan?.steps.some(({ status }) => status !== 'done') ?? false)
+  ) {
+    setPlanned(true);
+  }
+
+  useNote('plan', planned && idle);
+
+  useNote(
+    'versions',
+    !running && idle && [...versions.values()].some(({ index }) => index > 0)
+  );
 
   const branching = branch.isPending ? ignoreBranch : branch.mutate;
 

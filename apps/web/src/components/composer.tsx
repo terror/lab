@@ -493,7 +493,7 @@ export function Composer({
       )}
       <NoModels />
       <MarginNote className='absolute inset-x-0 top-full px-5 pt-1.5'>
-        {note && notes[note.id]}
+        {note && <span className='block truncate'>{notes[note.id]}</span>}
       </MarginNote>
     </form>
   );
