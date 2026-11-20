@@ -69,6 +69,25 @@ test('deleted conversations are purged from storage', async () => {
 
   await db.insert(schema.conversationDeletion).values({ id: drop });
 
+  const storage = new DatabaseSync(path);
+
+  try {
+    storage.exec('update durable_schema set version = 3');
+
+    expect(await purgeDeleted(path).catch((error: unknown) => error)).toEqual(
+      new Error('Unsupported pi-durable SQLite storage format')
+    );
+    expect(
+      await db
+        .select({ id: schema.conversationDeletion.id })
+        .from(schema.conversationDeletion)
+    ).toEqual([{ id: drop }]);
+
+    storage.exec('update durable_schema set version = 2');
+  } finally {
+    storage.close();
+  }
+
   expect(await purgeDeleted(path)).toEqual([drop]);
 
   expect(stored(path)).toEqual([[keep], [keep], [keep], [keep]]);
@@ -128,8 +147,8 @@ test('fork parents and missing stores are handled by the purge', async () => {
   await harness.close(BACKGROUND_CONTEXT);
 
   expect([
-    purgeConversations(path, [root, child]),
+    await purgeConversations(path, [root, child]),
     stored(path)[0],
-    purgeConversations(join(tmpdir(), 'missing', 'lab.sqlite'), [root]),
+    await purgeConversations(join(tmpdir(), 'missing', 'lab.sqlite'), [root]),
   ]).toEqual([[], [root, child, grandchild], [root]]);
 });

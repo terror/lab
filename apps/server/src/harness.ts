@@ -32,7 +32,7 @@ export async function purgeDeleted(path: string) {
     .select({ id: schema.conversationDeletion.id })
     .from(schema.conversationDeletion);
 
-  const purged = purgeConversations(
+  const purged = await purgeConversations(
     path,
     deleted.map(({ id }) => id)
   );

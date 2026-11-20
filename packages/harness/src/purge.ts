@@ -1,7 +1,17 @@
+import {
+  applySqliteMigrations,
+  CURRENT_SQLITE_SCHEMA_VERSION,
+  SQLITE_MIGRATIONS,
+} from '@earendil-works/pi-durable/storage/sqlite';
+import { openNodeSqliteDatabase } from '@earendil-works/pi-durable/storage/sqlite/node';
 import { existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
 const PURGED = 'temp.lab_purge';
+
+const storageSchema = `select type, name, sql from sqlite_schema
+  where name not glob 'sqlite_*' and type <> 'index'
+  order by type, name`;
 
 const scoped = `
   (scope_kind = 'conversation' and owner_id in (select id from ${PURGED}))
@@ -38,14 +48,31 @@ const deletions = [
   `delete from conversations where id in (select id from ${PURGED})`,
 ];
 
-function hasConversations(database: DatabaseSync) {
-  return (
-    database
-      .prepare(
-        "select 1 from sqlite_master where type = 'table' and name = 'conversations'"
-      )
-      .get() !== undefined
-  );
+async function supportedSchemas() {
+  if (CURRENT_SQLITE_SCHEMA_VERSION !== 2) {
+    throw new Error('Unsupported pi-durable SQLite storage version');
+  }
+
+  const database = await openNodeSqliteDatabase(':memory:');
+
+  try {
+    const schemas = new Map<string, number>();
+
+    for (const migration of SQLITE_MIGRATIONS) {
+      await applySqliteMigrations(
+        database,
+        SQLITE_MIGRATIONS.filter(({ version }) => version <= migration.version)
+      );
+      schemas.set(
+        JSON.stringify(await database.all(storageSchema)),
+        migration.version
+      );
+    }
+
+    return schemas;
+  } finally {
+    await database.close();
+  }
 }
 
 function prune(database: DatabaseSync): void {
@@ -56,7 +83,7 @@ function prune(database: DatabaseSync): void {
   }
 }
 
-export function purgeConversations(path: string, ids: readonly number[]) {
+export async function purgeConversations(path: string, ids: readonly number[]) {
   if (ids.length === 0) {
     return [];
   }
@@ -65,24 +92,38 @@ export function purgeConversations(path: string, ids: readonly number[]) {
     return [...ids];
   }
 
+  const schemas = await supportedSchemas();
   const database = new DatabaseSync(path);
 
   try {
-    if (!hasConversations(database)) {
-      return [...ids];
-    }
-
     database.exec('pragma busy_timeout = 5000');
-    database.exec('pragma secure_delete = on');
-    database.exec(`create temp table lab_purge (id integer primary key)`);
-
-    const insert = database.prepare(
-      `insert or ignore into ${PURGED} (id) values (?)`
-    );
-
     database.exec('begin immediate');
 
     try {
+      const schema = database.prepare(storageSchema).all();
+
+      if (schema.length === 0) {
+        database.exec('commit');
+        return [...ids];
+      }
+
+      const version = schemas.get(JSON.stringify(schema));
+
+      if (
+        version === undefined ||
+        database.prepare('select version from durable_schema').get()
+          ?.version !== version
+      ) {
+        throw new Error('Unsupported pi-durable SQLite storage format');
+      }
+
+      database.exec('pragma secure_delete = on');
+      database.exec(`create temp table lab_purge (id integer primary key)`);
+
+      const insert = database.prepare(
+        `insert or ignore into ${PURGED} (id) values (?)`
+      );
+
       for (const id of ids) {
         insert.run(id);
       }
