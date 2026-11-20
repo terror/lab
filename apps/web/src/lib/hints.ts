@@ -11,6 +11,12 @@ import { useQuiet } from './voice';
 
 const NOTE_MS = 12_000;
 
+export const notes: Record<string, string> = {
+  plan: 'I’ll tick these off as I go.',
+  project: 'Instructions here apply to every chat.',
+  versions: 'Your first answer is still here, under ‹ ›.',
+};
+
 type Note = { id: string; retire: () => void };
 
 type Session = {

@@ -44,6 +44,7 @@ import {
   useDraft,
 } from '@/lib/conversations';
 import { useArrivals } from '@/lib/glide';
+import { useNote } from '@/lib/hints';
 import {
   type ModelChoice,
   setConversationModel,
@@ -435,6 +436,8 @@ function ConversationView({ id }: { id: number }) {
 
   const rows = useMemo(() => streamRows(keyed, partial), [keyed, partial]);
 
+  useNote('versions', versions.size > 0);
+
   const navigate = useNavigate();
 
   const lastReply = useMemo(() => {
@@ -494,6 +497,8 @@ function ConversationView({ id }: { id: number }) {
         : undefined,
     [plan, running]
   );
+
+  useNote('plan', shownPlan !== undefined);
 
   const branching = branch.isPending ? ignoreBranch : branch.mutate;
 
