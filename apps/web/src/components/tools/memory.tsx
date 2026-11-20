@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
+import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { Bookmark, BookmarkX } from 'lucide-react';
 
 import { field, text } from './format';
@@ -36,9 +36,9 @@ function MemoryChip({
   forgotten?: boolean;
   text: string;
 }) {
-  const quiet = useQuiet();
+  const saved = useMoment('memory.saved').on;
 
-  const flourish = !forgotten && !quiet;
+  const flourish = !forgotten && saved;
 
   return (
     <div className='flex min-w-0 animate-in items-center gap-2 text-sm duration-base fade-in'>

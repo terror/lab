@@ -1,10 +1,6 @@
 const hues = ['coral', 'blue', 'yellow'];
 
 export async function confetti(from: Element) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return;
-  }
-
   const { default: fire } = await import('canvas-confetti');
 
   const rect = from.getBoundingClientRect();

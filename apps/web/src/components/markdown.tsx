@@ -1,6 +1,6 @@
+import { useMoment } from '@/lib/moment';
 import { usePreference } from '@/lib/preferences';
 import { useDark } from '@/lib/theme';
-import { useQuiet } from '@/lib/voice';
 import { Suspense, use, useEffect, useRef, useState } from 'react';
 import type { DiagramPlugin, StreamdownProps } from 'streamdown';
 
@@ -144,7 +144,7 @@ export function Markdown({
 }) {
   const [lineNumbers] = usePreference('lineNumbers');
   const [streamed] = useState(streaming);
-  const quiet = useQuiet();
+  const caret = useMoment('chat.caret').on;
   const scrollers = useScrollers();
 
   return (
@@ -156,7 +156,7 @@ export function Markdown({
           animated={
             streaming && { animation: 'fadeIn', duration: 240, sep: 'word' }
           }
-          data-streaming={streamed && !quiet ? streaming : undefined}
+          data-streaming={streamed && caret ? streaming : undefined}
           isAnimating={streaming}
           lineNumbers={lineNumbers}
           parseIncompleteMarkdown={streaming}

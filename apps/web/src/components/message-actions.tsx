@@ -2,8 +2,8 @@ import { ModelPicker } from '@/components/model-picker';
 import { IconButton } from '@/components/ui/icon-button';
 import { MessageFooter } from '@/components/ui/message';
 import type { ModelChoice } from '@/lib/models';
+import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { RotateCcw, Shuffle, Square, Volume2 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
@@ -41,7 +41,7 @@ function CopyIcon({ copied, quiet }: { copied: boolean; quiet: boolean }) {
 
 function CopyAction({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const quiet = useQuiet();
+  const fold = useMoment('copy.fold').on;
 
   useEffect(() => {
     if (!copied) {
@@ -62,7 +62,7 @@ function CopyAction({ text }: { text: string }) {
           void navigator.clipboard.writeText(text).then(() => setCopied(true));
         }}
       >
-        <CopyIcon copied={copied} quiet={quiet} />
+        <CopyIcon copied={copied} quiet={!fold} />
       </IconButton>
       <span aria-live='polite' className='sr-only'>
         {copied ? 'Copied' : ''}
@@ -134,7 +134,7 @@ function RetryActions({
   spin: boolean;
 }) {
   const [turns, setTurns] = useState(0);
-  const quiet = useQuiet();
+  const spins = useMoment('retry.spin').on;
 
   return (
     <>
@@ -150,7 +150,7 @@ function RetryActions({
           aria-hidden='true'
           className={cn(
             'size-4',
-            turns > 0 && spin && !quiet && 'motion-safe:animate-retry'
+            turns > 0 && spin && spins && 'motion-safe:animate-retry'
           )}
         />
       </IconButton>

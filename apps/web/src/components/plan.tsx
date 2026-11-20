@@ -5,10 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dot } from '@/components/ui/dot';
 import { ProgressCount } from '@/components/ui/progress-count';
-import { confetti } from '@/lib/confetti';
 import { editPlan } from '@/lib/conversations';
+import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import { PLAN_LIMIT, type PlanStep, STEP_LENGTH } from '@lab/server/schemas';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
@@ -272,26 +271,11 @@ export function Plan({
 
   const count = useRef<HTMLSpanElement>(null);
 
-  const finished = useRef(complete);
-
-  const celebrated = useRef(false);
-
-  const quiet = useQuiet();
-
-  useEffect(() => {
-    if (
-      complete &&
-      !finished.current &&
-      !celebrated.current &&
-      count.current &&
-      !quiet
-    ) {
-      celebrated.current = true;
-      void confetti(count.current);
-    }
-
-    finished.current = complete;
-  }, [complete, quiet]);
+  useMoment('plan.complete', {
+    anchor: count,
+    subject: conversationId ?? 0,
+    when: complete,
+  });
 
   const stepKeys = keys(shown);
 
