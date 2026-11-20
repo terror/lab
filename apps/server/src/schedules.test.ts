@@ -1,3 +1,4 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
 import { expect, spyOn, test } from 'bun:test';
@@ -15,6 +16,7 @@ import {
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
+import { harness } from './harness';
 import { models } from './models';
 import { runDueTasks } from './scheduler';
 
@@ -291,4 +293,34 @@ test('running a task with no provider asks for one', async () => {
     body: { error: 'Add a provider in settings to start chatting' },
     status: 400,
   });
+});
+
+test('a task says whether its chat is running', async () => {
+  const headers = await signIn();
+
+  await ask(headers, 'approved');
+
+  const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+  const inspection = await harness.inspect(BACKGROUND_CONTEXT);
+
+  spyOn(harness, 'inspect').mockResolvedValueOnce({
+    ...inspection,
+    tasks: [
+      {
+        record: { background: false, conversationId: created.conversationId },
+        state: { kind: 'running' },
+      } as (typeof inspection.tasks)[number],
+    ],
+  });
+
+  const { tasks } = (await call(headers, 'GET', '/schedules')).body;
+
+  expect({
+    before: created.running,
+    during: tasks.map(({ id, running }: { id: number; running: boolean }) => ({
+      id,
+      running,
+    })),
+  }).toEqual({ before: false, during: [{ id: created.id, running: true }] });
 });

@@ -2,6 +2,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { LoadError } from '@/components/load-error';
 import { StartComposer } from '@/components/start-composer';
 import { Button } from '@/components/ui/button';
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +12,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListRow, ListSkeleton } from '@/components/ui/list-row';
+import { LiveMark } from '@/components/ui/live-mark';
 import { Page, PageHeader } from '@/components/ui/page';
 import { Pills } from '@/components/ui/pills';
 import { SectionHeading } from '@/components/ui/section-heading';
-import { conversationsQueryKey } from '@/lib/conversations';
+import { TaskClock } from '@/components/ui/task-clock';
+import { conversationsQueryKey, useUnreadChats } from '@/lib/conversations';
 import {
   type ScheduledTask,
   deleteTask,
@@ -24,10 +27,10 @@ import {
   useScheduleAction,
 } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
-import { type EmptyView, useEmpty } from '@/lib/voice';
+import { type EmptyView, useEmpty, useQuiet } from '@/lib/voice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Clock, Ellipsis } from 'lucide-react';
+import { Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 
 type Filter = 'active' | 'all' | 'paused';
@@ -74,19 +77,47 @@ function schedule(task: ScheduledTask, now: number) {
   return `${task.description} · Next run ${untilRun(task.nextRunAt, now)}`;
 }
 
-function TaskSummary({ now, task }: { now: number; task: ScheduledTask }) {
+function progress({ lastRunAt, nextRunAt }: ScheduledTask, now: number) {
+  if (!lastRunAt || !nextRunAt) {
+    return undefined;
+  }
+
+  const last = Date.parse(lastRunAt);
+
+  return (now - last) / (Date.parse(nextRunAt) - last);
+}
+
+function TaskSummary({
+  now,
+  task,
+  turns,
+  unread,
+}: {
+  now: number;
+  task: ScheduledTask;
+  turns: number;
+  unread: boolean;
+}) {
   return (
     <>
-      <Clock
-        aria-hidden='true'
-        className='size-4 shrink-0 text-muted-foreground'
-      />
+      {task.running ? (
+        <LiveMark className='size-4' state='thinking' />
+      ) : (
+        <TaskClock
+          paused={!task.enabled}
+          progress={progress(task, Math.floor(now / 60_000) * 60_000)}
+          since={task.lastRunAt ?? undefined}
+          turns={turns}
+        />
+      )}
       <span className='flex min-w-0 flex-col'>
         <span className='truncate font-medium'>{task.title}</span>
         <span className='truncate text-muted-foreground'>
           {schedule(task, now)}
         </span>
       </span>
+      {task.running && <span className='sr-only'>Running</span>}
+      {unread && <span className='sr-only'>Unread</span>}
     </>
   );
 }
@@ -107,6 +138,31 @@ function TaskRow({ now, task }: { now: number; task: ScheduledTask }) {
   const remove = useScheduleAction(deleteTask);
 
   const [confirming, setConfirming] = useState(false);
+
+  const quiet = useQuiet();
+
+  const [wound, setWound] = useState({ enabled: task.enabled, turns: 0 });
+
+  if (wound.enabled !== task.enabled) {
+    setWound({
+      enabled: task.enabled,
+      turns: task.enabled && !quiet ? wound.turns + 1 : wound.turns,
+    });
+  }
+
+  const unreadChats = useUnreadChats();
+
+  const unread =
+    !task.running &&
+    (unreadChats.data?.chats ?? []).some(
+      ({ id }) => id === task.conversationId
+    );
+
+  const summary = (
+    <TaskSummary now={now} task={task} turns={wound.turns} unread={unread} />
+  );
+
+  const status = unread && <Dot tone='attention' />;
 
   const actions = (
     <>
@@ -153,16 +209,16 @@ function TaskRow({ now, task }: { now: number; task: ScheduledTask }) {
 
   if (task.conversationId === null) {
     return (
-      <ListRow actions={actions}>
-        <TaskSummary now={now} task={task} />
+      <ListRow actions={actions} status={status}>
+        {summary}
       </ListRow>
     );
   }
 
   return (
-    <ListRow actions={actions} asChild>
+    <ListRow actions={actions} asChild status={status}>
       <Link params={{ id: task.conversationId }} to='/c/$id'>
-        <TaskSummary now={now} task={task} />
+        {summary}
       </Link>
     </ListRow>
   );
@@ -181,9 +237,12 @@ function SchedulePrompt() {
 export function Scheduled() {
   const [filter, setFilter] = useState<Filter>('active');
 
+  const busy = (useUnreadChats().data?.running ?? 0) > 0;
+
   const schedules = useQuery({
     ...schedulesQueryOptions,
-    refetchInterval: 60_000,
+    refetchInterval: ({ state }) =>
+      busy || state.data?.tasks.some(({ running }) => running) ? 2_000 : 60_000,
   });
 
   const tasks = schedules.data?.tasks.filter(filters[filter].keep) ?? [];
