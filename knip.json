@@ -11,7 +11,7 @@
     },
     "apps/server": {
       "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"],
-      "entry": ["src/server.ts!"],
+      "entry": ["src/server.ts!", "test/runtime-server.ts"],
       "project": ["src/**/*.ts!", "test/**/*.ts", "!src/**/*.test.ts!"]
     },
     "apps/web": {
