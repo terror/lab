@@ -9,13 +9,13 @@ import { Message, MessageContent } from '@/components/ui/message';
 import { StatusIcon } from '@/components/ui/status-icon';
 import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
 import type { ModelChoice } from '@/lib/models';
+import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import type { Clock } from '@/lib/presence';
 import { runFailureTitles } from '@/lib/run-failure';
 import { steps } from '@/lib/spans';
 import type { Part, Round, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
 import type { PlanStep } from '@lab/server/schemas';
 import { m } from 'motion/react';
@@ -60,14 +60,14 @@ export function RunFailure({
   mark?: 'broken' | 'error' | 'recover';
   reason: RunFailureReason;
 }) {
-  const quiet = useQuiet();
+  const slipped = useMoment('run.failure');
 
   const stopped = reason === 'aborted';
 
   return (
     <TraceLine role='alert' status={stopped ? undefined : 'error'}>
       <TraceIcon>
-        {stopped || quiet ? (
+        {stopped || !slipped.on ? (
           <StatusIcon status={stopped ? 'stopped' : 'failed'} />
         ) : (
           <LiveMark className='size-3.5' state={mark} />

@@ -558,7 +558,9 @@ function ConversationView({ id }: { id: number }) {
 
   const failure = live?.runFailure?.reason;
 
-  const slip = useSlip(running, failure);
+  const slipped = useSlip(running, failure);
+
+  const slip = useMoment('run.slip', { when: slipped }).on && slipped;
 
   const failedReply =
     failure !== undefined && last?.kind === 'assistant' ? last : undefined;
