@@ -614,7 +614,12 @@ test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
 });
 
 function thinkingSince(at: number) {
-  return <Activity clock={{ at, start: 100_000, waited: 0 }} status='foo' />;
+  return (
+    <Activity
+      clock={{ at, linked: true, start: 100_000, waited: 0 }}
+      status='foo'
+    />
+  );
 }
 
 test('a thinking line starts as the mark alone, then counts, stalls and says it can be left', async ({
@@ -648,7 +653,8 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
     [2_000, 100_000],
     [8_000, 100_000],
     [10_000, 100_000],
-    [40_000, 160_000],
+    [40_000, 100_000],
+    [0, 160_000],
   ] as const) {
     vi.advanceTimersByTime(wait);
 
@@ -660,14 +666,20 @@ test('a thinking line starts as the mark alone, then counts, stalls and says it 
   expect(seen).toEqual([
     [false, 'pondering', null, 'foo'],
     [true, 'pondering', null, 'foo'],
-    [true, 'pondering', 'true', 'foo10s'],
+    [true, 'pondering', 'true', 'foo·10s'],
     [
       true,
       'pondering',
       'true',
-      'foo20sstill on it, the model is slow right now',
+      'foo·20s·still on it, the model is slow right now',
     ],
-    [true, 'pondering', null, 'foo1m 0sYou can leave this'],
+    [
+      true,
+      'pondering',
+      'true',
+      'foo·1m 0s·still on it, the model is slow right now·You can leave this',
+    ],
+    [true, 'pondering', null, 'foo·1m 0s·You can leave this'],
   ]);
 });
 
@@ -722,4 +734,36 @@ test('a finished turn’s steps say how long they took and where the model thoug
     'Waited on the model· 9s',
     'Read a page',
   ]);
+});
+
+function timed(status: string) {
+  return (
+    <Activity
+      clock={{ at: Date.now(), linked: true, start: 0, waited: 0 }}
+      status={status}
+    />
+  );
+}
+
+test('the seconds follow a new verb at once instead of waiting behind the old one', async () => {
+  const { screen } = await renderWithQuery(timed('foo foo foo foo foo foo'));
+
+  await screen.rerender(timed('bar'));
+
+  const gap = () => {
+    const verb = [
+      ...screen.container.querySelectorAll('[data-slot=trace-title]'),
+    ].find((title) => title.textContent === 'bar');
+
+    const timer = screen.getByRole('timer').element();
+
+    return (
+      verb &&
+      Math.round(
+        timer.getBoundingClientRect().left - verb.getBoundingClientRect().right
+      )
+    );
+  };
+
+  await expect.poll(gap).toBe(12);
 });

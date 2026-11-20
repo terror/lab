@@ -11,10 +11,30 @@ export type Step =
   | { call: Call; kind: 'tool'; span?: Span }
   | { key: string; kind: 'thought' | 'waited'; span: Span };
 
-const NOTABLE_MS = 3_000;
+export const NOTABLE_MS = 3_000;
+
+const LONG_CALL = 2_000;
 
 function isCall(part: Part): part is Call {
   return part.type === 'toolCall';
+}
+
+function authored(call: Call) {
+  return JSON.stringify(call.arguments).length >= LONG_CALL;
+}
+
+function pauseFor(
+  parts: readonly Part[],
+  calls: readonly Call[],
+  span: Span
+): 'thought' | 'waited' | undefined {
+  const long = span.end - span.start >= NOTABLE_MS;
+
+  if (calls.length === 0 || calls.some(authored) || !long) {
+    return undefined;
+  }
+
+  return parts.some((part) => part.type === 'thinking') ? 'thought' : 'waited';
 }
 
 function roundSteps(
@@ -25,9 +45,9 @@ function roundSteps(
 ) {
   const calls = parts.filter(isCall);
 
-  const wrote = parts.some((part) => part.type === 'text' && part.text);
+  const pause = pauseFor(parts, calls, span);
 
-  const thought = parts.some((part) => part.type === 'thinking') && !wrote;
+  const credited = pause ? undefined : (calls.find(authored) ?? calls[0]);
 
   const gap = from !== undefined && span.start - from >= NOTABLE_MS;
 
@@ -35,20 +55,23 @@ function roundSteps(
     ...(gap
       ? [
           {
-            key: `waited-${span.start}`,
+            key: `gap-${span.start}`,
             kind: 'waited' as const,
             span: { end: span.start, start: from },
           },
         ]
       : []),
-    ...(thought && span.end - span.start >= NOTABLE_MS
-      ? [{ key: `thought-${span.start}`, kind: 'thought' as const, span }]
-      : []),
-    ...calls.map((call) => ({
-      call,
-      kind: 'tool' as const,
-      span: results.get(call.id)?.span,
-    })),
+    ...(pause ? [{ key: `round-${span.start}`, kind: pause, span }] : []),
+    ...calls.map((call) => {
+      const ran = results.get(call.id)?.span;
+
+      return {
+        call,
+        kind: 'tool' as const,
+        span:
+          ran && call === credited ? { end: ran.end, start: span.start } : ran,
+      };
+    }),
   ];
 
   const until = Math.max(

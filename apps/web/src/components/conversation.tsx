@@ -530,8 +530,13 @@ function ConversationView({ id }: { id: number }) {
 
   const clock = useMemo(
     () =>
-      timing && { at: pulse.at, start: timing.start, waited: timing.waited },
-    [pulse.at, timing]
+      timing && {
+        at: pulse.at,
+        linked: pulse.open,
+        start: timing.start,
+        waited: timing.waited,
+      },
+    [pulse.at, pulse.open, timing]
   );
 
   const thinking =

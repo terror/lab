@@ -134,6 +134,7 @@ export const RapidSteps = meta.story({ render: () => <RapidActivity /> });
 function Waiting() {
   const [clock] = useState(() => ({
     at: Date.now(),
+    linked: true,
     start: Date.now(),
     waited: 0,
   }));

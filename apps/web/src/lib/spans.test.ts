@@ -4,21 +4,25 @@ import { expect, test } from 'vitest';
 import { runTiming, steps } from './spans';
 import type { Part, Row } from './transcript';
 
-function call(id: string, name = 'foo') {
-  return { arguments: {}, id, name, type: 'toolCall' } as const;
+function call(id: string, name = 'foo', content = '') {
+  return { arguments: { content }, id, name, type: 'toolCall' } as const;
 }
 
 function done(span?: ToolResult['span']): ToolResult {
   return { output: '', span, status: 'done' };
 }
 
-test('a turn’s steps include long thoughts and waits on the model between its tools', () => {
+test('a turn’s steps say where the model thought, where it kept Lab waiting, and which calls it spent time writing', () => {
+  const long = call('e', 'foo', 'bar'.repeat(700));
+
   const parts: Part[] = [
     { thinking: 'foo', type: 'thinking' },
     call('a'),
     { text: 'bar', type: 'text' },
     call('b'),
     call('c'),
+    long,
+    call('d'),
   ];
 
   expect(
@@ -27,22 +31,28 @@ test('a turn’s steps include long thoughts and waits on the model between its 
       [
         { at: 0, parts: 2, span: { end: 4_000, start: 0 } },
         { at: 2, parts: 2, span: { end: 11_000, start: 10_000 } },
+        { at: 4, parts: 1, span: { end: 17_000, start: 12_000 } },
+        { at: 5, parts: 1, span: { end: 40_000, start: 17_000 } },
       ],
       new Map([
         ['a', done({ end: 6_000, start: 4_000 })],
         ['b', done()],
+        ['e', done({ end: 41_000, start: 40_000 })],
       ])
     )
   ).toEqual([
-    { key: 'thought-0', kind: 'thought', span: { end: 4_000, start: 0 } },
+    { key: 'round-0', kind: 'thought', span: { end: 4_000, start: 0 } },
     { call: call('a'), kind: 'tool', span: { end: 6_000, start: 4_000 } },
-    {
-      key: 'waited-10000',
-      kind: 'waited',
-      span: { end: 10_000, start: 6_000 },
-    },
+    { key: 'gap-10000', kind: 'waited', span: { end: 10_000, start: 6_000 } },
     { call: call('b'), kind: 'tool' },
+    {
+      key: 'round-12000',
+      kind: 'waited',
+      span: { end: 17_000, start: 12_000 },
+    },
     { call: call('c'), kind: 'tool' },
+    { call: long, kind: 'tool', span: { end: 41_000, start: 17_000 } },
+    { call: call('d'), kind: 'tool' },
   ]);
 });
 

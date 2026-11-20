@@ -25,7 +25,7 @@ import { useAhem, useAnswer } from '@/lib/asking';
 import { plural } from '@/lib/format';
 import { fade, spring } from '@/lib/motion';
 import { type Clock, usePresence } from '@/lib/presence';
-import type { Step } from '@/lib/spans';
+import { NOTABLE_MS, type Step } from '@/lib/spans';
 import { useSteady } from '@/lib/steady';
 import { duration } from '@/lib/time';
 import type { Part } from '@/lib/transcript';
@@ -92,8 +92,10 @@ type CallProps = {
   working: boolean;
 };
 
+const TIMED_MS = NOTABLE_MS / 3;
+
 function took(span: { end: number; start: number } | undefined) {
-  return span && span.end - span.start >= 1_000
+  return span && span.end - span.start >= TIMED_MS
     ? duration(span.end - span.start)
     : undefined;
 }
@@ -281,7 +283,7 @@ function Pause({ kind, span }: Extract<Step, { kind: 'thought' | 'waited' }>) {
   return (
     <TraceLine className='h-6.5'>
       <TraceIcon>
-        <StatusIcon status='done' />
+        <span className='size-1 rounded-full bg-muted-foreground/60' />
       </TraceIcon>
       <TraceTitle>{pauses[kind]}</TraceTitle>
       <TraceDescription>· {duration(span.end - span.start)}</TraceDescription>
@@ -361,9 +363,23 @@ export function Worked({
 
 const STATUS_HOLD_MS = 800;
 
-const poses = { pondering: 'pondering', working: 'thinking' } as const;
+const poses = {
+  pondering: 'pondering',
+  waiting: 'waiting',
+  working: 'thinking',
+  writing: 'idle',
+} as const;
 
-const aside = "relative before:absolute before:-left-2 before:content-['·']";
+function Aside({ children, className, ...props }: ComponentProps<'span'>) {
+  return (
+    <span className={cn('relative', className)} {...props}>
+      <span aria-hidden='true' className='absolute -left-2'>
+        ·
+      </span>
+      {children}
+    </span>
+  );
+}
 
 export function Activity({
   clock,
@@ -380,17 +396,13 @@ export function Activity({
 
   const label = useSteady(status, STATUS_HOLD_MS);
 
-  const { band, elapsed, slow, stall } = usePresence(clock, {
+  const { band, elapsed, pose, slow, stall } = usePresence(clock, {
     tool,
     waiting: false,
     writing: false,
   });
 
   const timed = band === 'summary' || band === 'leave';
-
-  const leave = band === 'leave' ? 'You can leave this' : undefined;
-
-  const note = slow ? say('stall', undefined, { quiet, seed: '' }) : leave;
 
   return (
     <div
@@ -400,15 +412,12 @@ export function Activity({
       style={{ '--stall': stall } as CSSProperties}
     >
       <TraceIcon className='h-5'>
-        <LiveMark
-          className='size-3.5'
-          state={mark ?? poses[tool ? 'working' : 'pondering']}
-        />
+        <LiveMark className='size-3.5' state={mark ?? poses[pose]} />
       </TraceIcon>
       <div className='flex min-w-0 flex-1 flex-wrap gap-x-3 overflow-x-clip text-sm text-muted-foreground'>
         <div className='flex max-w-full min-w-0 gap-x-3'>
-          <output className='flex min-w-0'>
-            <AnimatePresence initial={false} mode='wait'>
+          <output className='relative flex min-w-0'>
+            <AnimatePresence initial={false} mode='popLayout'>
               <m.span
                 key={label}
                 animate={{ opacity: 1, y: 0 }}
@@ -429,18 +438,13 @@ export function Activity({
             </AnimatePresence>
           </output>
           {timed && (
-            <span
-              className={cn(
-                aside,
-                'shrink-0 text-muted-foreground/70 tabular-nums'
-              )}
-              role='timer'
-            >
+            <Aside className='shrink-0 tabular-nums' role='timer'>
               {duration(elapsed)}
-            </span>
+            </Aside>
           )}
         </div>
-        {note && <output className={aside}>{note}</output>}
+        {slow && <Aside>{say('stall', undefined, { quiet, seed: '' })}</Aside>}
+        {band === 'leave' && <Aside>You can leave this</Aside>}
       </div>
     </div>
   );

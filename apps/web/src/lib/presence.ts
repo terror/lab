@@ -26,7 +26,12 @@ export type Presence = {
   stall: number;
 };
 
-export type Clock = { at: number; start: number; waited: number };
+export type Clock = {
+  at: number;
+  linked: boolean;
+  start: number;
+  waited: number;
+};
 
 const DRIFT_STEP_MS = 100;
 
@@ -75,8 +80,14 @@ export function presenceFor(elapsed: number, events: Events): Presence {
   };
 }
 
-function untilNext(now: number, { at, start, waited }: Clock) {
-  const quiet = now - at;
+function quietFor(now: number, { at, linked }: Clock) {
+  return linked ? now - at : 0;
+}
+
+function untilNext(now: number, clock: Clock) {
+  const { start, waited } = clock;
+
+  const quiet = quietFor(now, clock);
 
   const second =
     SECOND - ((((now - start - waited) % SECOND) + SECOND) % SECOND);
@@ -130,6 +141,6 @@ export function usePresence(
 
   return presenceFor(Math.max(0, current - clock.start - clock.waited), {
     ...events,
-    quiet: current - clock.at,
+    quiet: quietFor(current, clock),
   });
 }

@@ -36,7 +36,7 @@ async function loadEntries(
   return page as unknown as Page<EntryRecord, Cursor>;
 }
 
-type Pulse = { at: number; began: number; fresh: boolean };
+type Pulse = { at: number; began: number; fresh: boolean; open: boolean };
 
 export function useConversation(id: number) {
   const [view, setView] = useState<TranscriptView>();
@@ -46,6 +46,7 @@ export function useConversation(id: number) {
     at: Date.now(),
     began: Date.now(),
     fresh: false,
+    open: true,
   }));
   const transcript = useRef<ConversationTranscript>(undefined);
 
@@ -62,21 +63,37 @@ export function useConversation(id: number) {
 
     let base: ConversationView | undefined;
 
-    let run = { began: Date.now(), fresh: false, running: false };
+    let run: {
+      began: number;
+      fresh: boolean;
+      id?: number | string;
+      running: boolean;
+    } = { began: Date.now(), fresh: false, running: false };
 
     const live = () => base?.docs['pi.live'] as LiveState | undefined;
 
     const beat = (fresh: boolean) => {
       const at = Date.now();
 
-      const running = live()?.run !== undefined;
+      const started = live()?.run;
 
-      if (running !== run.running) {
-        run = { began: at, fresh, running };
+      const input = started?.inputs?.[0];
+
+      const next =
+        input !== undefined && run.id !== undefined && input !== run.id;
+
+      if ((started !== undefined) !== run.running || next) {
+        run = { began: at, fresh, id: input, running: started !== undefined };
       }
 
-      setPulse({ at, began: run.began, fresh: run.fresh });
+      run.id ??= input;
+
+      setPulse({ at, began: run.began, fresh: run.fresh, open: true });
     };
+
+    source.addEventListener('error', () => {
+      setPulse((last) => ({ ...last, open: false }));
+    });
 
     source.addEventListener('value', (event) => {
       base = JSON.parse(event.data);

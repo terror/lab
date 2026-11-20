@@ -63,7 +63,10 @@ test('a run’s clock ticks its presence along and leaves out time spent waiting
   vi.setSystemTime(100_000);
 
   const { result } = await renderHook(() =>
-    usePresence({ at: 100_000, start: 94_000, waited: 6_000 }, thinking)
+    usePresence(
+      { at: 100_000, linked: true, start: 94_000, waited: 6_000 },
+      thinking
+    )
   );
 
   const seen = [result.current];
@@ -100,4 +103,24 @@ test('a run’s clock ticks its presence along and leaves out time spent waiting
     },
     { band: 'leave', elapsed: 60_000, pose: 'pondering', slow: true, stall: 1 },
   ]);
+});
+
+test('a dropped connection is not mistaken for a slow model', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(100_000);
+
+  const { result } = await renderHook(() =>
+    usePresence(
+      { at: 70_000, linked: false, start: 70_000, waited: 0 },
+      thinking
+    )
+  );
+
+  expect(result.current).toEqual({
+    band: 'summary',
+    elapsed: 30_000,
+    pose: 'pondering',
+    slow: false,
+    stall: 0,
+  });
 });
