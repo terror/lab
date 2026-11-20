@@ -17,16 +17,23 @@ function RollingNumber({
   const quiet = useQuiet();
 
   return (
-    <NumberFlow
-      animated={animated && !quiet}
-      className={cn('tabular-nums', className)}
-      data-slot='rolling-number'
-      format={format}
-      locales='en-US'
-      spinTiming={roll}
-      transformTiming={roll}
-      value={value}
-    />
+    <>
+      <span className='sr-only'>
+        {new Intl.NumberFormat('en-US', format).format(value)}
+      </span>
+      <NumberFlow
+        animated={animated && !quiet}
+        aria-hidden='true'
+        className={cn('tabular-nums', className)}
+        data-slot='rolling-number'
+        format={format}
+        locales='en-US'
+        opacityTiming={roll.fade}
+        spinTiming={roll.turn}
+        transformTiming={roll.turn}
+        value={value}
+      />
+    </>
   );
 }
 
