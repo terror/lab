@@ -489,15 +489,18 @@ function Footer({ ask, scope }: { ask: boolean; scope: boolean }) {
 }
 
 function Palette({
+  drafted,
   onDone,
   onNewProject,
   onTry,
 }: {
+  drafted: boolean;
   onDone: () => void;
   onNewProject: () => void;
-  onTry: ((prompt: string) => void) | undefined;
+  onTry: (prompt: string) => void;
 }) {
   const [model] = useChatModel();
+  const [tryable] = useState(!drafted);
 
   const start = useStartChat({ inlineError: false });
 
@@ -620,7 +623,7 @@ function Palette({
           <EmptyQuery
             onDone={onDone}
             onNewProject={onNewProject}
-            onTry={onTry}
+            onTry={tryable ? onTry : undefined}
           />
         )}
         {sections.map(({ hidden, id, label, rows }) => (
@@ -744,12 +747,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         title='Search'
       >
         <Palette
+          drafted={draft.trim() !== ''}
           onDone={close}
           onNewProject={() => {
             close();
             setEditing({ kind: 'new' });
           }}
-          onTry={draft.trim() === '' ? onTry : undefined}
+          onTry={onTry}
         />
       </CommandDialog>
       <ProjectDialog
