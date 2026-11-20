@@ -169,12 +169,19 @@ export function startRuntime(): Promise<Runtime> {
       return state.closed.then(startRuntime);
     case 'stopped': {
       const ready = openRuntime().catch((error: unknown) => {
-        state = { kind: 'stopped' };
+        if (state.kind === 'started' && state.ready === ready) {
+          state = { kind: 'stopped' };
+        }
+
         throw error;
       });
 
       state = { kind: 'started', ready };
       return ready;
+    }
+    default: {
+      const exhaustive: never = state;
+      return exhaustive;
     }
   }
 }

@@ -46,13 +46,35 @@ test('runtime restarts, cleans failed startup, and drains delegated helper usage
 
   expect(harness).toThrow('The server runtime has not started');
 
-  spyOn(projectionPipeline, 'backfill').mockRejectedValueOnce(new Error('foo'));
+  const cleanupStarted = Promise.withResolvers<void>();
+  const finishCleanup = Promise.withResolvers<void>();
 
-  expect(startRuntime()).rejects.toThrow('foo');
+  spyOn(projectionPipeline, 'backfill').mockImplementationOnce(async () => {
+    const opened = harness();
+    const close = opened.close.bind(opened);
 
-  expect(harness).toThrow('The server runtime has not started');
+    spyOn(opened, 'close').mockImplementationOnce(async (context) => {
+      await close(context);
+      cleanupStarted.resolve();
+      await finishCleanup.promise;
+    });
 
-  const runtime = await startRuntime();
+    throw new Error('foo');
+  });
+
+  const failure = startRuntime().catch((error: unknown) =>
+    error instanceof Error ? error.message : error
+  );
+
+  await cleanupStarted.promise;
+
+  const retry = startRuntime();
+
+  finishCleanup.resolve();
+
+  expect(await failure).toBe('foo');
+
+  const runtime = await retry;
 
   expect(await startRuntime()).toBe(runtime);
 
