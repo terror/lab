@@ -1,6 +1,8 @@
+import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { schema } from '@lab/db';
-import { expect, spyOn, test } from 'bun:test';
+import { ScheduledChatsDoc } from '@lab/harness';
+import { expect, mock, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -15,8 +17,10 @@ import {
 import { script, toolCall } from '../test/models';
 import { db } from './db';
 import { env } from './env';
+import { harness, openLabHarness } from './harness';
 import { models } from './models';
-import { runDueTasks } from './scheduler';
+import { startPipelines } from './pipelines';
+import { runDueTasks, startScheduler } from './scheduler';
 
 const task = {
   cron: '0 9 * * *',
@@ -43,6 +47,24 @@ async function ask(headers: Headers, answer: string) {
   await settle(body.id);
 
   return { id: body.id, outputs: await toolOutputs(headers, body.id) };
+}
+
+async function messages(headers: Headers, id: number) {
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/entries?order=ascending`
+  );
+
+  return z
+    .object({
+      items: z.array(
+        z.object({ data: z.unknown().optional(), kind: z.string() })
+      ),
+    })
+    .parse(body)
+    .items.filter(({ kind }) => kind === 'lab.message')
+    .map(({ data }) => z.object({ text: z.string() }).parse(data).text);
 }
 
 test('scheduled tasks need approval and run once when due', async () => {
@@ -219,6 +241,223 @@ test('tasks skip runs while their chat is in the trash', async () => {
       stored: id,
     },
   });
+});
+
+test('scheduled occurrences survive failed submission and failed acknowledgement', async () => {
+  async function runCase(
+    fresh: boolean,
+    phase: 'before' | 'created' | 'accepted'
+  ) {
+    const headers = await signIn();
+
+    const original = await ask(headers, 'approved');
+
+    const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+    const due = new Date('2026-01-01T00:00:00Z');
+    const now = new Date('2026-01-01T00:00:30Z');
+
+    const [row] = await db
+      .update(schema.scheduledTask)
+      .set({
+        conversationId: fresh ? null : original.id,
+        nextRunAt: due,
+      })
+      .where(eq(schema.scheduledTask.id, created.id))
+      .returning();
+
+    if (!row) {
+      throw new Error('No scheduled task');
+    }
+
+    const failure = new Error('foo');
+    const errors = spyOn(console, 'error').mockImplementation(() => undefined);
+    const transaction = db.transaction.bind(db);
+
+    function fail() {
+      if (phase === 'accepted') {
+        return spyOn(db, 'transaction').mockImplementationOnce((run, config) =>
+          transaction(async (tx) => {
+            await run(tx);
+            throw failure;
+          }, config)
+        );
+      }
+
+      if (phase === 'created') {
+        const create = harness.createConversation.bind(harness);
+
+        return spyOn(harness, 'createConversation').mockImplementationOnce(
+          async (options, context) => {
+            await create(options, context);
+            throw failure;
+          }
+        );
+      }
+
+      return fresh
+        ? spyOn(models, 'getAvailable').mockRejectedValueOnce(failure)
+        : spyOn(harness, 'commit').mockRejectedValueOnce(failure);
+    }
+
+    const failing = fail();
+
+    await runDueTasks(now);
+    failing.mockRestore();
+
+    const [pending] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+    const target = (
+      await harness.snapshot(ScheduledChatsDoc, row.ownerId, BACKGROUND_CONTEXT)
+    )?.[String(row.id)];
+
+    await settle(target ?? original.id);
+    await harness.close(BACKGROUND_CONTEXT);
+    await openLabHarness();
+    startPipelines();
+
+    await Promise.all([runDueTasks(now), runDueTasks(now)]);
+
+    const [ran] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+    await settle(ran.conversationId);
+
+    expect({
+      chats: (await call(headers, 'GET', '/conversations')).body.conversations
+        .length,
+      errors: errors.mock.calls,
+      messages: await messages(headers, ran.conversationId),
+      pending: [pending.lastRunAt, pending.nextRunAt],
+      ran: [ran.lastRunAt, ran.nextRunAt],
+      reused:
+        fresh && phase !== 'before' ? ran.conversationId === target : true,
+    }).toEqual({
+      chats: fresh ? 2 : 1,
+      errors: [[failure]],
+      messages: fresh ? ['bar'] : ['foo', 'bar'],
+      pending: [null, due.toISOString()],
+      ran: [now.toISOString(), '2026-01-01T09:00:00.000Z'],
+      reused: true,
+    });
+
+    await call(headers, 'DELETE', `/schedules/${created.id}`);
+
+    expect(
+      await harness.snapshot(ScheduledChatsDoc, row.ownerId, BACKGROUND_CONTEXT)
+    ).toEqual({});
+
+    errors.mockRestore();
+  }
+
+  await runCase(false, 'before');
+  await runCase(false, 'accepted');
+  await runCase(true, 'before');
+  await runCase(true, 'created');
+  await runCase(true, 'accepted');
+});
+
+test('polls recheck tasks paused or deleted after selection', async () => {
+  async function runCase(method: 'PATCH' | 'DELETE') {
+    const headers = await signIn();
+    const original = await ask(headers, 'approved');
+    const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+    await db
+      .update(schema.scheduledTask)
+      .set({ nextRunAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(schema.scheduledTask.id, created.id));
+
+    const transaction = db.transaction.bind(db);
+    const interrupted = spyOn(db, 'transaction').mockImplementationOnce(
+      async (run, config) => {
+        await call(headers, method, `/schedules/${created.id}`, {
+          enabled: false,
+        });
+
+        return transaction(run, config);
+      }
+    );
+
+    await runDueTasks(new Date('2026-01-01T00:00:30Z'));
+    interrupted.mockRestore();
+    await settle(original.id);
+
+    expect(await messages(headers, original.id)).toEqual(['foo']);
+
+    const manual = await call(headers, 'POST', `/schedules/${created.id}/run`);
+
+    await settle(original.id);
+
+    expect(manual).toEqual(
+      method === 'PATCH'
+        ? {
+            body: {
+              task: {
+                ...created,
+                enabled: false,
+                lastRunAt: expect.any(String),
+                nextRunAt: null,
+              },
+            },
+            status: 200,
+          }
+        : { body: { error: 'Scheduled task not found' }, status: 404 }
+    );
+
+    expect(await messages(headers, original.id)).toEqual(
+      method === 'PATCH' ? ['foo', 'bar'] : ['foo']
+    );
+
+    await call(headers, 'DELETE', `/schedules/${created.id}`);
+  }
+
+  await runCase('PATCH');
+  await runCase('DELETE');
+});
+
+test('stopping the scheduler drains its poll without overlapping ticks', async () => {
+  const headers = await signIn();
+  const original = await ask(headers, 'approved');
+  const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
+
+  await db
+    .update(schema.scheduledTask)
+    .set({ nextRunAt: new Date('2026-01-01T00:00:00Z') })
+    .where(eq(schema.scheduledTask.id, created.id));
+
+  const transaction = db.transaction.bind(db);
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const transactions = spyOn(db, 'transaction').mockImplementationOnce(
+    async (run, config) => {
+      entered.resolve();
+      await release.promise;
+      return transaction(run, config);
+    }
+  );
+  const timer = spyOn(globalThis, 'setInterval');
+  const stopped = mock(() => undefined);
+  const stop = startScheduler();
+
+  await entered.promise;
+  timer.mock.calls[0]?.[0]();
+
+  const stopping = stop().then(() => stopped());
+
+  await Bun.sleep(0);
+
+  expect([stopped.mock.calls.length, transactions.mock.calls.length]).toEqual([
+    0, 1,
+  ]);
+
+  release.resolve();
+  await stopping;
+  await stop();
+  await settle(original.id);
+
+  expect(await messages(headers, original.id)).toEqual(['foo', 'bar']);
+
+  await call(headers, 'DELETE', `/schedules/${created.id}`);
 });
 
 test('changing what a task does asks first, and removed users’ tasks stop', async () => {

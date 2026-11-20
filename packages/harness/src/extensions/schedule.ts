@@ -59,6 +59,11 @@ export const ProfileDoc = userDoc<{ timezone: string }>(
   () => ({ timezone: 'UTC' })
 );
 
+export const ScheduledChatsDoc = userDoc<Record<string, ConversationId>>(
+  'lab.user.scheduled-chats',
+  () => ({})
+);
+
 function line(task: ScheduledTask) {
   const state = task.enabled
     ? `next run ${task.nextRunAt ?? 'not scheduled'}`

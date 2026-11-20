@@ -1,13 +1,10 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { schema } from '@lab/db';
 import { ProfileDoc } from '@lab/harness';
-import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 
 import { requireUser } from './auth';
-import { db } from './db';
 import { found } from './found';
 import { harness } from './harness';
 import { rateLimit } from './limits';
@@ -15,13 +12,10 @@ import {
   deleteTask,
   knownTimezone,
   listTasks,
-  toTask,
   updateTask,
 } from './schedule-access';
 import { runTask } from './scheduler';
 import { idParam, validator } from './validator';
-
-const table = schema.scheduledTask;
 
 const change = validator('json', z.object({ enabled: z.boolean() }));
 
@@ -64,31 +58,11 @@ const schedules = new Hono()
       task: found(result.kind === 'updated' ? result.task : undefined, MISSING),
     });
   })
-  .post('/:id/run', rateLimit('messages'), idParam, async (c) => {
-    const [row] = await db
-      .select()
-      .from(table)
-      .where(
-        and(
-          eq(table.id, c.req.valid('param').id),
-          eq(table.ownerId, c.get('user').id)
-        )
-      );
-
-    if (!(await runTask(found(row, MISSING)))) {
-      throw new HTTPException(409, {
-        message: 'This task’s chat is in the Trash',
-      });
-    }
-
-    const [updated] = await db
-      .update(table)
-      .set({ lastRunAt: new Date() })
-      .where(eq(table.id, c.req.valid('param').id))
-      .returning();
-
-    return c.json({ task: found(updated && toTask(updated), MISSING) });
-  })
+  .post('/:id/run', rateLimit('messages'), idParam, async (c) =>
+    c.json({
+      task: await runTask(c.get('user').id, c.req.valid('param').id),
+    })
+  )
   .delete('/:id', idParam, async (c) => {
     found(await deleteTask(c.get('user').id, c.req.valid('param').id), MISSING);
 
