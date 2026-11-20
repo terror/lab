@@ -613,6 +613,7 @@ function ConversationView({ id }: { id: number }) {
             }
           }
           running={running}
+          tips
         />
       </ComposerDock>
     </div>
