@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { Pills } from '@/components/ui/pills';
-import { useCapabilities } from '@/lib/capabilities';
+import { tryPrompt, useCapabilities } from '@/lib/capabilities';
 import {
   conversationTitle,
   useDraft,
@@ -30,7 +30,7 @@ import {
 } from '@/lib/settings';
 import { useDark, useTheme } from '@/lib/theme';
 import { ago, untilRun } from '@/lib/time';
-import { useNavigate } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Command as CommandPrimitive } from 'cmdk';
 import {
   Clock,
@@ -132,6 +132,7 @@ type Row = {
   onSelect: () => void;
   snippet?: Segment[] | null;
   title: string;
+  verb?: string;
 };
 
 function Highlighted({ segments }: { segments: readonly Segment[] }) {
@@ -182,7 +183,7 @@ function ResultRow({ row }: { row: Row }) {
               {row.keys ? <Keys keys={row.keys} /> : row.meta}
             </span>
             <span className='hidden items-center gap-1.5 group-data-selected:flex'>
-              Open <Kbd>↵</Kbd>
+              {row.verb ?? 'Open'} <Kbd>↵</Kbd>
             </span>
           </span>
         </span>
@@ -347,9 +348,9 @@ function EmptyQuery({
 }: {
   onDone: () => void;
   onNewProject: () => void;
-  onTry: (prompt: string) => void;
+  onTry: ((prompt: string) => void) | undefined;
 }) {
-  const capabilities = useCapabilities();
+  const capabilities = useCapabilities(onTry !== undefined);
   const pinned = usePinnedConversations();
   const recents = useLatestChats();
   const projects = useProjects();
@@ -420,16 +421,17 @@ function EmptyQuery({
     .map(({ icon, id, label, prompt = '' }) => ({
       icon,
       key: `try-${id}`,
-      onSelect: () => onTry(prompt),
+      onSelect: () => onTry?.(prompt),
       title: label,
+      verb: 'Try',
     }));
 
   return (
     <>
       <Group heading='Recent' rows={recent} />
+      <Group heading='Try' rows={tries} />
       <Group heading='Go to' rows={destinationRows} />
       <Group heading='Actions' rows={actions} />
-      <Group heading='Try' rows={tries} />
     </>
   );
 }
@@ -493,7 +495,7 @@ function Palette({
 }: {
   onDone: () => void;
   onNewProject: () => void;
-  onTry: (prompt: string) => void;
+  onTry: ((prompt: string) => void) | undefined;
 }) {
   const [model] = useChatModel();
 
@@ -672,7 +674,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectEditing>();
 
-  const [, setDraft] = useDraft('new');
+  const [draft] = useDraft('new');
+  const home = useLocation({ select: ({ pathname }) => pathname === '/' });
   const trying = useRef(false);
 
   const openSearch = useCallback(() => setOpen(true), []);
@@ -680,12 +683,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   const onTry = useCallback(
     (prompt: string) => {
-      setDraft(prompt);
+      tryPrompt(prompt);
       trying.current = true;
       setOpen(false);
-      void navigate({ state: { blank: true }, to: '/' });
+
+      if (!home) {
+        void navigate({ to: '/' });
+      }
     },
-    [navigate, setDraft]
+    [home, navigate]
   );
 
   useSeen('palette', open);
@@ -743,7 +749,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
             close();
             setEditing({ kind: 'new' });
           }}
-          onTry={onTry}
+          onTry={draft.trim() === '' ? onTry : undefined}
         />
       </CommandDialog>
       <ProjectDialog

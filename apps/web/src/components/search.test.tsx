@@ -276,6 +276,8 @@ test('an empty query offers two untried things, and trying one drafts a new chat
       'recent-2',
       'recent-3',
       'recent-4',
+      'try-schedules',
+      'try-images',
       'go-library',
       'go-scheduled',
       'go-trash',
@@ -288,8 +290,6 @@ test('an empty query offers two untried things, and trying one drafts a new chat
       'new-chat',
       'new-project',
       'theme',
-      'try-schedules',
-      'try-images',
     ]);
 
   await userEvent.click(
@@ -298,9 +298,8 @@ test('an empty query offers two untried things, and trying one drafts a new chat
 
   await expect
     .poll(() => ({
-      blank: router.state.location.state.blank,
       draft: window.localStorage.getItem('lab:foo:draft:new'),
       pathname: router.state.location.pathname,
     }))
-    .toEqual({ blank: true, draft: '"Make an image of …"', pathname: '/' });
+    .toEqual({ draft: '"Make an image of …"', pathname: '/' });
 });

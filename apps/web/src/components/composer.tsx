@@ -369,11 +369,14 @@ export function Composer({
 
     const command = event.metaKey || event.ctrlKey;
 
+    const { selectionEnd, selectionStart, value } = event.currentTarget;
+
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
       !event.nativeEvent.isComposing &&
-      (command || !touch)
+      (command || !touch) &&
+      value.slice(selectionStart, selectionEnd) !== '…'
     ) {
       event.preventDefault();
       submit(steering && command);

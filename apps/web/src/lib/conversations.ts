@@ -19,7 +19,7 @@ import { call, callIfFound, client } from './client';
 import type { ModelChoice } from './models';
 import { useRefreshMutation } from './mutations';
 import { usePreference } from './preferences';
-import { removeStored, usePersistentState } from './storage';
+import { removeStored, usePersistentState, writeStored } from './storage';
 
 export type ConversationSort = z.infer<typeof sortSchema>;
 
@@ -259,6 +259,10 @@ function draftKey(id: DraftId) {
 
 export function clearDraft(id: number) {
   removeStored(draftKey(id));
+}
+
+export function writeDraft(id: DraftId, text: string) {
+  writeStored(draftKey(id), text);
 }
 
 export function useDraft(id: DraftId) {

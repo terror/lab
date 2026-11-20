@@ -2,14 +2,21 @@ import { HomeMark } from '@/components/home-mark';
 import { StartComposer } from '@/components/start-composer';
 import { Suggestions } from '@/components/suggestions';
 import { UnreadChips } from '@/components/unread-chips';
+import { useBlank } from '@/lib/capabilities';
 import { startChatKey, useDraft, useLatestChats } from '@/lib/conversations';
 import { holdGlide } from '@/lib/glide';
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { say, useQuiet } from '@/lib/voice';
 import { useIsMutating } from '@tanstack/react-query';
-import { useLocation } from '@tanstack/react-router';
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { z } from 'zod';
 
 const visitSchema = z.object({ at: z.number() });
@@ -91,15 +98,10 @@ export function NewChat({ user }: { user: { id: string } }) {
   const input = useRef<HTMLTextAreaElement>(null);
   const composer = useRef<HTMLDivElement>(null);
   const starting = useIsMutating({ mutationKey: startChatKey }) > 0;
-  const blank = useLocation({
-    select: ({ state }) => (state.blank === true ? state.key : undefined),
-  });
 
-  useEffect(() => {
-    if (blank !== undefined) {
-      select(input.current, input.current?.value ?? '');
-    }
-  }, [blank]);
+  useBlank(
+    useCallback(() => select(input.current, input.current?.value ?? ''), [])
+  );
 
   useLayoutEffect(() => {
     const top = composer.current?.getBoundingClientRect().top;
