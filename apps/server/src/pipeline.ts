@@ -7,7 +7,8 @@ import type {
 } from '@earendil-works/pi-durable';
 import { schema } from '@lab/db';
 import * as Sentry from '@sentry/bun';
-import { and, eq } from 'drizzle-orm';
+import { SQL } from 'bun';
+import { DrizzleQueryError, and, eq } from 'drizzle-orm';
 
 import { db } from './db';
 import { harness } from './harness';
@@ -133,9 +134,21 @@ export async function backfill(
 
 type Keyed = { conversationId: number; entryId: number };
 
+function invalidData(error: unknown) {
+  const cause = error instanceof DrizzleQueryError ? error.cause : error;
+
+  return (
+    cause instanceof SQL.PostgresError && cause.errno?.startsWith('22') === true
+  );
+}
+
 function skip(pipeline: string, row: Keyed, error: unknown) {
+  if (!invalidData(error)) {
+    throw error;
+  }
+
   console.error(
-    `Skipped entry ${row.entryId} of conversation ${row.conversationId} in the ${pipeline} backfill`,
+    `Skipped entry ${row.entryId} of conversation ${row.conversationId} in the ${pipeline} pipeline`,
     error
   );
 
@@ -169,31 +182,26 @@ export function entryPipeline<Row extends Keyed>({
   const record = async (entries: readonly EntryRecord[]) => {
     const built = await build(entries);
 
-    if (built.length > 0) {
-      await store(built);
-    }
-  };
-
-  const visit = async (page: readonly EntryRecord[]) => {
-    const built = await build(page.filter(keep));
-
     if (built.length === 0) {
       return;
     }
 
-    const stored = await store(built).then(
-      () => true,
-      () => false
-    );
+    try {
+      await store(built);
 
-    if (stored) {
       return;
+    } catch (error) {
+      if (!invalidData(error)) {
+        throw error;
+      }
     }
 
     for (const row of built) {
       await store([row]).catch((error: unknown) => skip(name, row, error));
     }
   };
+
+  const visit = (page: readonly EntryRecord[]) => record(page.filter(keep));
 
   return {
     backfill: async () => {
