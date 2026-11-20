@@ -31,8 +31,8 @@ export const stagger = 0.03;
 
 export const story = 0.5;
 
-export function dissolve(order = 0) {
-  const delay = story + Math.min(order, 5) * stagger;
+export function dissolve(order = 0, still = false) {
+  const delay = (still ? 0 : story) + Math.min(order, 5) * stagger;
 
   return {
     height: 0,

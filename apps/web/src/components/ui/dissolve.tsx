@@ -39,7 +39,7 @@ function Dissolve({
     <span
       data-active={dissolving || undefined}
       data-slot='dissolve'
-      className='group/dissolve relative flex min-w-0 flex-1'
+      className='group/dissolve relative flex w-fit min-w-0'
       style={{ '--dissolve-delay': `${delay}s` } as React.CSSProperties}
     >
       <span

@@ -9,6 +9,7 @@ import { useState } from 'react';
 import preview from '../../../.storybook/preview';
 import { themes } from '../../../.storybook/themes';
 import { dissolve } from '../../lib/motion';
+import { useQuiet } from '../../lib/voice';
 import { Button } from './button';
 import { Dissolve } from './dissolve';
 
@@ -24,12 +25,13 @@ const names = ['foo', 'bar', 'baz'];
 function Row({ index, name }: { index: number; name: string }) {
   const present = useIsPresent();
   const emptying = usePresenceData() === true;
+  const quiet = useQuiet();
 
   return (
     <m.li
       className='overflow-hidden'
       exit='gone'
-      variants={{ gone: (all: boolean) => dissolve(all ? index : 0) }}
+      variants={{ gone: (all: boolean) => dissolve(all ? index : 0, quiet) }}
     >
       <Dissolve
         active={!present}
