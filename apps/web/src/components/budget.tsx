@@ -49,6 +49,7 @@ function Flask({ limit, spent }: { limit: number; spent: number }) {
       pour={pour}
       tone={budgetLevel({ limit, spent })}
       value={spent / limit}
+      className='order-first'
       valueText={`${formatSpend(spent)} of ${formatSpend(limit)}`}
       variant='flask'
     />
@@ -168,7 +169,6 @@ export function BudgetPanel() {
   return (
     <Card className='gap-4' variant='outline'>
       <div className='flex items-start gap-5'>
-        {limit !== null && <Flask limit={limit} spent={spent} />}
         <div className='flex min-w-0 flex-1 flex-col gap-4'>
           <div className='flex flex-col gap-1'>
             <h2 className='text-sm font-medium'>Monthly budget</h2>
@@ -178,6 +178,7 @@ export function BudgetPanel() {
           </div>
           {limit !== null && <Spent limit={limit} spent={spent} />}
         </div>
+        {limit !== null && <Flask limit={limit} spent={spent} />}
       </div>
       <BudgetForm budget={budget.data} />
     </Card>
