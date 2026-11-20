@@ -20,14 +20,19 @@ function HomeFrame({
       )}
       {...props}
     >
-      <div className='mx-auto flex w-full max-w-3xl flex-col px-6 pb-12'>
+      <div className='mx-auto flex w-full max-w-3xl flex-col px-6 pb-12 phone:min-h-full phone:pb-0'>
         <div
           data-slot='home-above'
-          className='flex min-h-home-anchor shrink-0 flex-col items-center justify-end gap-4 pb-7 text-center'
+          className='flex min-h-home-anchor shrink-0 flex-col items-center justify-end gap-4 pb-7 text-center phone:min-h-0 phone:pt-10'
         >
           {above}
         </div>
-        <div data-slot='home-anchor'>{children}</div>
+        <div
+          data-slot='home-anchor'
+          className='phone:sticky phone:bottom-0 phone:z-10 phone:order-last phone:mt-auto phone:bg-background phone:pt-2 phone:pb-6'
+        >
+          {children}
+        </div>
         {below}
       </div>
     </div>
