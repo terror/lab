@@ -1,3 +1,4 @@
+import '@/index.css';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { QueryClient } from '@tanstack/react-query';
 import { expect, test } from 'vitest';
@@ -33,6 +34,55 @@ test('choosing an option answers the question once', async () => {
     calls: 1,
     path: '/api/conversations/7/answers',
   });
+});
+
+async function sections(active: boolean) {
+  const { screen } = await renderWithQuery(
+    <QuestionCard
+      active={active}
+      answer={undefined}
+      callId='qux'
+      conversationId={7}
+      options={['bar']}
+      question='foo'
+    />
+  );
+
+  const card = screen.getByRole('group', { name: 'foo' }).element();
+
+  const shown = [...(card.firstElementChild?.children ?? [])].map(
+    ({ textContent }) => textContent
+  );
+
+  await screen.unmount();
+
+  return shown;
+}
+
+test('a question says it needs you only while it can be answered', async () => {
+  expect([await sections(true), await sections(false)]).toEqual([
+    ['Needs youfoo', 'bar', 'Send'],
+    ['foo', 'bar', 'Send'],
+  ]);
+});
+
+test('a question keeps unbroken text inside its card', async () => {
+  const { screen } = await renderWithQuery(
+    <div className='w-80'>
+      <QuestionCard
+        active
+        answer={undefined}
+        callId='qux'
+        conversationId={7}
+        options={['bar'.repeat(60)]}
+        question={'foo'.repeat(60)}
+      />
+    </div>
+  );
+
+  const card = screen.getByRole('group').element();
+
+  expect([card.scrollWidth, card.clientWidth]).toEqual([320, 320]);
 });
 
 test('answering refreshes which chats need you', async () => {

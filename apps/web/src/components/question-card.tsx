@@ -1,7 +1,7 @@
 import { Answered } from '@/components/answered';
 import { ErrorMessage } from '@/components/error-message';
+import { NeedsYou } from '@/components/needs-you';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAnswer } from '@/lib/conversations';
 import { Check } from 'lucide-react';
@@ -78,8 +78,7 @@ export function QuestionCard({
       }
       prompt={question}
     >
-      <Card className='gap-3' variant='outline'>
-        <p className='text-sm font-medium'>{question}</p>
+      <NeedsYou active={active} title={question}>
         <QuestionOptions
           disabled={locked}
           onPick={send.mutate}
@@ -101,7 +100,7 @@ export function QuestionCard({
           </Button>
         </form>
         {send.error && <ErrorMessage>{send.error.message}</ErrorMessage>}
-      </Card>
+      </NeedsYou>
     </Answered>
   );
 }
