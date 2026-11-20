@@ -840,7 +840,7 @@ test('the seconds follow a new verb at once instead of waiting behind the old on
   await expect.poll(gap).toBe(4);
 });
 
-test('a stopped reply says when it stopped and what it keeps', async () => {
+test('a stopped reply says what it keeps', async () => {
   stubFetch(() => Response.json({ default: null, models: [] }));
 
   const { screen } = await renderWithQuery(
@@ -860,6 +860,6 @@ test('a stopped reply says when it stopped and what it keeps', async () => {
   await expect
     .element(screen.getByRole('alert'))
     .toHaveTextContent(
-      'Stopped at 19s · 1 finished step and the partial answer are kept'
+      'Stopped · 1 finished step and the partial answer are kept'
     );
 });

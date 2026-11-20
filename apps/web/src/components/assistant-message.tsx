@@ -13,7 +13,7 @@ import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import type { Clock } from '@/lib/presence';
 import { runEnding } from '@/lib/run-failure';
-import { steps, worked } from '@/lib/spans';
+import { steps } from '@/lib/spans';
 import type { Part, Round, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
@@ -54,13 +54,11 @@ function segments(parts: readonly Part[]) {
 }
 
 export function RunFailure({
-  at,
-  mark = 'broken',
   finished = 0,
+  mark = 'broken',
   reason,
   wrote = false,
 }: {
-  at?: number;
   finished?: number;
   mark?: 'broken' | 'error' | 'recover';
   reason: RunFailureReason;
@@ -70,7 +68,7 @@ export function RunFailure({
 
   const stopped = reason === 'aborted';
 
-  const { kept, title } = runEnding(reason, { at, steps: finished, wrote });
+  const { kept, title } = runEnding(reason, { steps: finished, wrote });
 
   return (
     <div
@@ -271,7 +269,6 @@ export function AssistantMessage({
         <Segments segments={all.slice(split)} {...shared} />
         {failure && (
           <RunFailure
-            at={worked(span, calls, results)}
             finished={
               calls.filter(({ id }) => results.get(id)?.status === 'done')
                 .length

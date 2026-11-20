@@ -2,7 +2,6 @@ import type { RunFailureReason } from '@earendil-works/pi-durable';
 import { useId, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 
 import { plural } from './format';
-import { duration } from './time';
 
 export const runFailureTitles: Record<RunFailureReason, string> = {
   aborted: 'Stopped',
@@ -17,14 +16,10 @@ export const runFailureTitles: Record<RunFailureReason, string> = {
   turn_limit: 'Couldn’t finish within the tool use limit for one answer',
 };
 
-const SECOND = 1_000;
-
 export function runEnding(
   reason: RunFailureReason,
-  { at, steps, wrote }: { at?: number; steps: number; wrote: boolean }
+  { steps, wrote }: { steps: number; wrote: boolean }
 ) {
-  const timed = reason === 'aborted' && at !== undefined && at >= SECOND;
-
   const kept = [
     ...(steps > 0 ? [plural(steps, 'finished step')] : []),
     ...(wrote ? ['the partial answer'] : []),
@@ -37,7 +32,7 @@ export function runEnding(
       kept.length > 0
         ? `${kept.join(' and ')} ${several ? 'are' : 'is'} kept`
         : undefined,
-    title: timed ? `Stopped at ${duration(at)}` : runFailureTitles[reason],
+    title: runFailureTitles[reason],
   };
 }
 
