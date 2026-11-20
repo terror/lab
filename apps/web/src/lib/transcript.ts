@@ -411,15 +411,29 @@ export function keyRows(rows: readonly Row[]) {
   return { next: `reply-${user}-${count + 1}`, rows: keyed };
 }
 
+const noParts: readonly Part[] = [];
+
 export function streamRows(
   { next, rows }: ReturnType<typeof keyRows>,
-  partial: readonly Part[]
+  partial: readonly Part[],
+  running = false
 ) {
-  if (!visible(partial)) {
-    return rows;
-  }
-
   const last = rows.at(-1);
+
+  if (!visible(partial)) {
+    if (!running || last?.row.kind === 'assistant') {
+      return rows;
+    }
+
+    const pending: Row = {
+      key: next,
+      kind: 'assistant',
+      parts: noParts,
+      streaming: true,
+    };
+
+    return [...rows, { key: next, row: pending }];
+  }
 
   if (last?.row.kind === 'assistant') {
     const row: Row = {

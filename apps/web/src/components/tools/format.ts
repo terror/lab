@@ -16,6 +16,11 @@ export function count(value: unknown) {
   return typeof value === 'number' ? value : undefined;
 }
 
+export function times(verb: string) {
+  return (total: number) =>
+    total === 1 ? `${verb} once` : `${verb} ${total} times`;
+}
+
 export function quoted(value: unknown) {
   const content = text(value);
 

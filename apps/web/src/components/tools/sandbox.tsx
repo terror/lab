@@ -1,7 +1,7 @@
 import { DocumentCard } from '@/components/document-card';
 import { FileChip } from '@/components/file-chip';
 import { ImageCard } from '@/components/image-card';
-import { formatBytes } from '@/lib/format';
+import { formatBytes, plural } from '@/lib/format';
 import { uploadUrl } from '@/lib/uploads';
 import {
   Download,
@@ -99,6 +99,7 @@ export const sandboxRenderers = {
         ? undefined
         : `exit ${code}${time ? ` · ${time}` : ''}`;
     },
+    tally: (commands) => `ran ${plural(commands, 'command')}`,
     title: ({ active, args }) => {
       const command = text(args.command)?.split('\n')[0] ?? 'a command';
 
@@ -133,6 +134,7 @@ export const sandboxRenderers = {
 
       return name ? `Saved ${name} to your library` : 'Saved a file';
     },
+    yields: 'file',
   },
   sandbox_upload: {
     icon: Upload,

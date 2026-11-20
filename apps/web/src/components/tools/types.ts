@@ -39,7 +39,9 @@ type ToolLabel = {
   actions?: ReactNode;
   icon: LucideIcon;
   summary?: (view: ToolView) => string | undefined;
+  tally?: (count: number) => string;
   title: (view: ToolView) => string;
+  yields?: 'file' | 'source';
 };
 
 export type ToolRenderer = ToolLabel &

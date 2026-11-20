@@ -10,7 +10,7 @@ import { ChatHeader } from '@/components/chat-header';
 import { Composer } from '@/components/composer';
 import { ComposerDock } from '@/components/composer-dock';
 import { LoadMore } from '@/components/load-more';
-import { Activity } from '@/components/tool-steps';
+import { type Retry as Backoff, Summarizing } from '@/components/run';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,35 +83,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { LoaderCircle } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-function useSecondsUntil(at: number) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return Math.max(0, Math.ceil((at - now) / 1_000));
-}
-
-function RetryStatus({ retry }: { retry: { at: number; error: string } }) {
-  const seconds = useSecondsUntil(retry.at);
-
-  const when = seconds > 0 ? `in ${seconds}s` : 'now';
-
-  return (
-    <output className='flex flex-col gap-1 text-sm text-muted-foreground'>
-      <span className='motion-safe:animate-pulse'>Retrying {when}…</span>
-      <span className='text-xs wrap-break-word'>{retry.error}</span>
-    </output>
-  );
-}
-
 const noParts: readonly Part[] = [];
 
 const TranscriptRow = memo(function TranscriptRow({
   activity,
+  backoff,
   clock,
   failed,
   failure,
@@ -130,6 +106,7 @@ const TranscriptRow = memo(function TranscriptRow({
   working,
 }: {
   activity: string | undefined;
+  backoff: Backoff | undefined;
   clock: Clock | undefined;
   failed: boolean;
   failure: RunFailureReason | undefined;
@@ -199,6 +176,7 @@ const TranscriptRow = memo(function TranscriptRow({
     return (
       <AssistantMessage
         activity={activity}
+        backoff={backoff}
         clock={clock}
         failure={failure}
         latest={latest}
@@ -440,7 +418,14 @@ function ConversationView({ id }: { id: number }) {
     [committed, forks, id]
   );
 
-  const rows = useMemo(() => streamRows(keyed, partial), [keyed, partial]);
+  const phase = runPhase(live, answering);
+
+  const running = phase.kind !== 'idle';
+
+  const rows = useMemo(
+    () => streamRows(keyed, partial, running),
+    [keyed, partial, running]
+  );
 
   const navigate = useNavigate();
 
@@ -489,10 +474,6 @@ function ConversationView({ id }: { id: number }) {
   const queued = queuedMessages(inbox);
 
   const composer = useChatComposer(id, queued);
-
-  const phase = runPhase(live, answering);
-
-  const running = phase.kind !== 'idle';
 
   const shownPlan = useMemo(
     () =>
@@ -559,13 +540,9 @@ function ConversationView({ id }: { id: number }) {
     [pulse.at, pulse.open, timing]
   );
 
-  const thinking =
-    phase.kind === 'thinking' ? (activity ?? 'Thinking') : undefined;
+  const busy = running && phase.kind !== 'finishing';
 
   const last = rows.at(-1)?.row;
-
-  const inline =
-    thinking !== undefined && last?.kind === 'assistant' ? last : undefined;
 
   const failure = live?.runFailure?.reason;
 
@@ -597,9 +574,18 @@ function ConversationView({ id }: { id: number }) {
                     scrollAnchor={row === anchor}
                   >
                     <TranscriptRow
-                      activity={row === inline ? thinking : undefined}
-                      clock={running && row === last ? clock : undefined}
-                      latest={row === latest && !running}
+                      activity={
+                        row === last && phase.kind === 'thinking'
+                          ? activity
+                          : undefined
+                      }
+                      backoff={
+                        row === last && phase.kind === 'retrying'
+                          ? phase.retry
+                          : undefined
+                      }
+                      clock={busy && row === last ? clock : undefined}
+                      latest={row === latest && !busy}
                       failed={earlier.isError || gap.isError}
                       failure={row === failedReply ? failure : undefined}
                       loading={earlier.isPending || gap.isPending}
@@ -617,18 +603,12 @@ function ConversationView({ id }: { id: number }) {
                       row={row}
                       slip={row === failedReply && slip}
                       versions={versions.get(row)}
-                      working={running && row === last}
+                      working={busy && row === last}
                     />
                   </MessageScrollerItem>
                 ))}
-                {phase.kind === 'retrying' && (
-                  <RetryStatus retry={phase.retry} />
-                )}
-                {thinking !== undefined && inline === undefined && (
-                  <Activity clock={clock} status={thinking} />
-                )}
                 {!running && (live?.compactions?.length ?? 0) > 0 && (
-                  <Activity status='Summarizing earlier messages' tool />
+                  <Summarizing />
                 )}
                 {failure !== undefined && failedReply === undefined && (
                   <RunFailure

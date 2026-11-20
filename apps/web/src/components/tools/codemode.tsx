@@ -68,6 +68,7 @@ export const codemodeRenderers = {
 
       return plural(calls.length, 'tool call');
     },
+    tally: (scripts) => `ran ${plural(scripts, 'script')}`,
     title: ({ active }) => (active ? 'Running a script' : 'Ran a script'),
   },
 } satisfies Record<string, ToolRenderer>;
