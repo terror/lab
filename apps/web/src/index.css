@@ -22,6 +22,10 @@
   --animate-word-in: word-in var(--motion-base) var(--ease-out) backwards;
   --animate-develop: develop 900ms var(--ease-out);
   --animate-retry: retry 460ms var(--ease-out);
+  --animate-dissolve-wipe: dissolve-wipe var(--motion-slow) var(--ease-in)
+    var(--dissolve-delay, 0s) both;
+  --animate-dissolve-grain: dissolve-grain var(--motion-base) var(--ease-in)
+    both;
 
   @keyframes title-wash {
     from {
@@ -32,6 +36,28 @@
   @keyframes word-in {
     from {
       opacity: 0;
+    }
+  }
+
+  @keyframes dissolve-wipe {
+    from {
+      clip-path: inset(0 0 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 100%);
+    }
+  }
+
+  @keyframes dissolve-grain {
+    from {
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(14px);
     }
   }
 
