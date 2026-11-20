@@ -31,9 +31,9 @@ export function appSeed(conversationId: number, artifactId: string) {
   return `app:${conversationId}:${artifactId}` as const;
 }
 
-type Activity = { asking: number };
+type Activity = { asking: number; saved: number };
 
-const idle: Activity = { asking: 0 };
+const idle: Activity = { asking: 0, saved: 0 };
 
 const activities = new Map<string, Activity>();
 
@@ -82,6 +82,14 @@ export function artifactCalls(conversationId: number, artifactId: string) {
     return next;
   };
 
+  const write = async (run: () => Promise<unknown>) => {
+    const result = await inOrder(run);
+
+    report(seed, (activity) => ({ ...activity, saved: activity.saved + 1 }));
+
+    return result;
+  };
+
   const methods = new Map<string, Method>([
     [
       'ask',
@@ -92,20 +100,26 @@ export function artifactCalls(conversationId: number, artifactId: string) {
           );
         }
 
-        report(seed, ({ asking }) => ({ asking: asking + 1 }));
+        report(seed, (activity) => ({
+          ...activity,
+          asking: activity.asking + 1,
+        }));
 
         try {
           return (await call(artifact.ask.$post({ json: { prompt }, param })))
             .text;
         } finally {
-          report(seed, ({ asking }) => ({ asking: asking - 1 }));
+          report(seed, (activity) => ({
+            ...activity,
+            asking: activity.asking - 1,
+          }));
         }
       }),
     ],
     [
       'store.delete',
       method(keyed, ({ key }) =>
-        inOrder(() => call(artifact.state.$delete({ param, query: { key } })))
+        write(() => call(artifact.state.$delete({ param, query: { key } })))
       ),
     ],
     [
@@ -120,7 +134,7 @@ export function artifactCalls(conversationId: number, artifactId: string) {
     [
       'store.set',
       method(keyed.extend({ value: z.string() }), ({ key, value }) =>
-        inOrder(() =>
+        write(() =>
           call(artifact.state.$put({ json: { value }, param, query: { key } }))
         )
       ),
