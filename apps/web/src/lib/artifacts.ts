@@ -170,13 +170,6 @@ export function usePins(projectId: number | null) {
   });
 }
 
-export function useRecentPins() {
-  return useQuery({
-    ...pinsQueryOptions,
-    select: ({ pins }) => pins.toReversed(),
-  });
-}
-
 export function usePin(conversationId: number, artifactId: string) {
   return useQuery({
     ...pinsQueryOptions,
