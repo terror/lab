@@ -9,6 +9,7 @@ import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Kbd } from '@/components/ui/kbd';
+import { MarginNote } from '@/components/ui/margin-note';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +19,7 @@ import type { Attachment } from '@/lib/attachments';
 import { useTip } from '@/lib/capabilities';
 import { type CommandContext, type SlashCommand } from '@/lib/commands';
 import { useDictation } from '@/lib/dictation';
+import { notes, useCurrentNote } from '@/lib/hints';
 import { useMediaQuery } from '@/lib/media';
 import { type ModelChoice, modelsQueryOptions } from '@/lib/models';
 import { fade, spring } from '@/lib/motion';
@@ -286,6 +288,7 @@ export function Composer({
   tips?: boolean;
 }) {
   const [attachError, setAttachError] = useState<string>();
+  const note = useCurrentNote();
   const [focused, setFocused] = useState(false);
   const touch = useMediaQuery('(pointer: coarse)');
 
@@ -423,6 +426,7 @@ export function Composer({
                 dictation.cancel();
               }
 
+              note?.retire();
               onDraftChange(event.target.value);
             }}
             onFocus={() => setFocused(true)}
@@ -488,6 +492,9 @@ export function Composer({
         </ErrorMessage>
       )}
       <NoModels />
+      <MarginNote className='absolute inset-x-0 top-full px-5 pt-1.5'>
+        {note && <span className='block truncate'>{notes[note.id]}</span>}
+      </MarginNote>
     </form>
   );
 }

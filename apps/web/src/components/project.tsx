@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Unavailable } from '@/components/unavailable';
 import { usePins } from '@/lib/artifacts';
 import { useConversations } from '@/lib/conversations';
+import { useNote } from '@/lib/hints';
 import { useProject } from '@/lib/projects';
 import { useEmpty } from '@/lib/voice';
 import { useParams } from '@tanstack/react-router';
@@ -33,8 +34,10 @@ function ProjectComposer({ id, name }: { id: number; name: string }) {
   );
 }
 
-function ProjectChats({ id }: { id: number }) {
+function ProjectChats({ id, instructed }: { id: number; instructed: boolean }) {
   const chats = useConversations({ project: id });
+
+  useNote('project', !instructed && (chats.data?.length ?? 0) >= 3);
 
   const emptyState = useEmpty('project');
 
@@ -141,7 +144,10 @@ export function Project() {
             <ProjectApps id={id} />
             <section className='flex flex-col gap-2'>
               <SectionHeading>Chats</SectionHeading>
-              <ProjectChats id={id} />
+              <ProjectChats
+                id={id}
+                instructed={current.instructions.trim() !== ''}
+              />
             </section>
           </>
         )}

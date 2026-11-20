@@ -44,6 +44,7 @@ import {
   useDraft,
 } from '@/lib/conversations';
 import { useArrivals } from '@/lib/glide';
+import { useNote } from '@/lib/hints';
 import {
   type ModelChoice,
   setConversationModel,
@@ -493,6 +494,25 @@ function ConversationView({ id }: { id: number }) {
         ? { editable: running, steps: plan.steps }
         : undefined,
     [plan, running]
+  );
+
+  const idle = composer.draft === '';
+
+  const [planned, setPlanned] = useState(false);
+
+  if (
+    !planned &&
+    running &&
+    (plan?.steps.some(({ status }) => status !== 'done') ?? false)
+  ) {
+    setPlanned(true);
+  }
+
+  useNote('plan', planned && idle);
+
+  useNote(
+    'versions',
+    !running && idle && [...versions.values()].some(({ index }) => index > 0)
   );
 
   const branching = branch.isPending ? ignoreBranch : branch.mutate;

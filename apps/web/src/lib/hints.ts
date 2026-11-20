@@ -11,6 +11,12 @@ import { useQuiet } from './voice';
 
 const NOTE_MS = 12_000;
 
+export const notes: Record<string, string> = {
+  plan: 'I’ll tick these off as I go.',
+  project: 'Instructions here apply to every chat.',
+  versions: 'Earlier versions stay, next to your message.',
+};
+
 type Note = { id: string; retire: () => void };
 
 type Session = {
@@ -18,7 +24,7 @@ type Session = {
   done: boolean;
   note?: Note;
   taught?: string;
-  until?: number;
+  left?: number;
 };
 
 let session: Session = { confirmed: false, done: false };
@@ -156,34 +162,40 @@ export function useHint(id: string, eligible: boolean) {
 
 export function useNote(id: string, eligible: boolean) {
   const { retire, show } = useHint(id, eligible);
+  const visible = useVisible();
+
+  const shown = show && visible;
 
   useEffect(() => {
-    if (!show) {
+    if (!shown) {
       return undefined;
     }
 
-    const until = session.until ?? Date.now() + NOTE_MS;
+    const left = session.left ?? NOTE_MS;
 
-    if (until <= Date.now()) {
+    if (left <= 0) {
       retire();
 
       return undefined;
     }
 
+    const until = Date.now() + left;
+
     const note = { id, retire };
 
-    update({ note, until });
+    update({ note });
 
-    const timer = setTimeout(retire, until - Date.now());
+    const timer = setTimeout(retire, left);
 
     return () => {
       clearTimeout(timer);
 
-      if (session.note === note) {
-        update({ note: undefined });
-      }
+      update({
+        left: until - Date.now(),
+        note: session.note === note ? undefined : session.note,
+      });
     };
-  }, [id, retire, show]);
+  }, [id, retire, shown]);
 
   return retire;
 }
