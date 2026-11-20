@@ -20,8 +20,14 @@ import {
   useSettingsSections,
 } from '@/lib/settings';
 import { type Theme, useTheme } from '@/lib/theme';
+import { useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
-import { Link, useSearch } from '@tanstack/react-router';
+import {
+  Link,
+  useCanGoBack,
+  useRouter,
+  useSearch,
+} from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -166,7 +172,31 @@ function SettingsList({ sections }: { sections: SettingsSection[] }) {
   );
 }
 
+function BackToChat() {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+
+  return (
+    <Button asChild size='sm' variant='quiet'>
+      <Link
+        onClick={(event) => {
+          if (canGoBack) {
+            event.preventDefault();
+            router.history.back();
+          }
+        }}
+        to='/'
+      >
+        <ChevronLeft aria-hidden='true' />
+        Back to chat
+      </Link>
+    </Button>
+  );
+}
+
 export function Settings() {
+  useDocumentTitle('Settings');
+
   const requested = settingsSearchSchema.parse(
     useSearch({ strict: false })
   ).section;
@@ -179,24 +209,29 @@ export function Settings() {
   const Panel = panels[section ?? 'appearance'];
 
   return (
-    <div className='@container min-h-0 flex-1 overflow-y-auto'>
-      <div className='flex'>
-        <SettingsNav current={section ?? 'appearance'} sections={sections} />
-        {!section && <SettingsList sections={sections} />}
-        <Page className={cn(!section && 'hidden @2xl:flex')}>
-          <Button
-            asChild
-            className='-mb-4 -ml-2 self-start @2xl:hidden'
-            size='sm'
-            variant='quiet'
-          >
-            <Link replace to='/settings'>
-              <ChevronLeft aria-hidden='true' />
-              Settings
-            </Link>
-          </Button>
-          <Panel />
-        </Page>
+    <div className='@container flex h-svh flex-col bg-background'>
+      <header className='flex shrink-0 items-center border-b px-2 py-2'>
+        <BackToChat />
+      </header>
+      <div className='min-h-0 flex-1 overflow-y-auto'>
+        <div className='mx-auto flex w-full max-w-5xl'>
+          <SettingsNav current={section ?? 'appearance'} sections={sections} />
+          {!section && <SettingsList sections={sections} />}
+          <Page className={cn(!section && 'hidden @2xl:flex')}>
+            <Button
+              asChild
+              className='-mb-4 -ml-2 self-start @2xl:hidden'
+              size='sm'
+              variant='quiet'
+            >
+              <Link replace to='/settings'>
+                <ChevronLeft aria-hidden='true' />
+                Settings
+              </Link>
+            </Button>
+            <Panel />
+          </Page>
+        </div>
       </div>
     </div>
   );

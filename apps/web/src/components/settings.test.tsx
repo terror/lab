@@ -64,6 +64,29 @@ test('a settings section can be linked to directly', async () => {
   await expect
     .element(screen.getByRole('link', { name: 'Settings' }))
     .toHaveAttribute('href', '/settings');
+
+  await expect
+    .element(screen.getByRole('link', { name: 'Back to chat' }))
+    .toHaveAttribute('href', '/');
+});
+
+test('back to chat returns to where settings was opened from', async () => {
+  stubFetch(() => Response.json({ admin: false }));
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: createRootRoute({ component: Settings }),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  router.history.push('/?section=appearance');
+
+  await screen.getByRole('link', { name: 'Back to chat' }).click();
+
+  await expect
+    .poll(() => [router.state.location.href, router.history.canGoBack()])
+    .toEqual(['/', false]);
 });
 
 test('on a narrow screen the section list opens a section', async () => {
