@@ -192,6 +192,20 @@ function RunLineChevron({
   );
 }
 
+function RunTab({ className, ...props }: React.ComponentProps<'button'>) {
+  return (
+    <button
+      data-slot='run-tab'
+      className={cn(
+        'flex h-8 max-w-full min-w-0 cursor-pointer items-center rounded-t-card border border-b-0 bg-background px-3 text-left transition-colors hover:bg-muted',
+        className
+      )}
+      type='button'
+      {...props}
+    />
+  );
+}
+
 export {
   RunLine,
   RunLineChevron,
@@ -201,4 +215,5 @@ export {
   RunLineTime,
   RunLineToggle,
   RunLineVerb,
+  RunTab,
 };

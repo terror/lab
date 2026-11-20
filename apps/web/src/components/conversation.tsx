@@ -10,7 +10,14 @@ import { ChatHeader } from '@/components/chat-header';
 import { Composer } from '@/components/composer';
 import { ComposerDock } from '@/components/composer-dock';
 import { LoadMore } from '@/components/load-more';
-import { type Retry as Backoff, Summarizing } from '@/components/run';
+import {
+  asks,
+  type Retry as Backoff,
+  cheerOf,
+  Dock,
+  RunHead,
+  Summarizing,
+} from '@/components/run';
 import { ToolConversation, ToolHistory } from '@/components/tools';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,15 +52,17 @@ import {
 } from '@/lib/conversations';
 import { useArrivals } from '@/lib/glide';
 import { useNote } from '@/lib/hints';
+import { useInView } from '@/lib/in-view';
 import {
   type ModelChoice,
   setConversationModel,
   usePreferredModel,
 } from '@/lib/models';
+import { useMoment } from '@/lib/moment';
 import type { Clock } from '@/lib/presence';
 import { useSlip } from '@/lib/run-failure';
 import { runPhase } from '@/lib/run-phase';
-import { runTiming } from '@/lib/spans';
+import { runTiming, steps } from '@/lib/spans';
 import {
   cachedRows,
   type Gap,
@@ -91,6 +100,7 @@ const TranscriptRow = memo(function TranscriptRow({
   clock,
   failed,
   failure,
+  hop,
   latest,
   loading,
   onBranch,
@@ -110,6 +120,7 @@ const TranscriptRow = memo(function TranscriptRow({
   clock: Clock | undefined;
   failed: boolean;
   failure: RunFailureReason | undefined;
+  hop: 'done' | 'proud' | undefined;
   latest: boolean;
   loading: boolean;
   onBranch: ((request: BranchRequest) => void) | undefined;
@@ -179,6 +190,7 @@ const TranscriptRow = memo(function TranscriptRow({
         backoff={backoff}
         clock={clock}
         failure={failure}
+        hop={hop}
         latest={latest}
         model={row.model}
         onRetry={retry}
@@ -551,6 +563,30 @@ function ConversationView({ id }: { id: number }) {
   const failedReply =
     failure !== undefined && last?.kind === 'assistant' ? last : undefined;
 
+  const [head, setHead] = useState<HTMLElement | null>(null);
+
+  const seen = useInView(head);
+
+  const reply = last?.kind === 'assistant' ? last : undefined;
+
+  const ledger = useMemo(
+    () => (reply ? steps(reply.parts, reply.rounds ?? [], results) : []),
+    [reply, results]
+  );
+
+  const activityNow = phase.kind === 'thinking' ? activity : undefined;
+
+  const backoff = phase.kind === 'retrying' ? phase.retry : undefined;
+
+  const hop = useMoment(
+    failure === undefined ? cheerOf(ledger, reply?.span, results) : undefined,
+    { when: !busy }
+  );
+
+  const docked = busy
+    ? !seen || asks(ledger, progress, results)
+    : hop.on && !seen;
+
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <MessageScroller className='flex-1'>
@@ -561,68 +597,65 @@ function ConversationView({ id }: { id: number }) {
           >
             <ToolConversation value={id}>
               <ToolHistory value={history}>
-                {rows.map(({ key, row }, index) => (
-                  <MessageScrollerItem
-                    key={key}
-                    className={cn(
-                      row === anchor &&
-                        arrived(key) &&
-                        'animate-in duration-base fade-in slide-in-from-bottom-1'
-                    )}
-                    eager={index >= rows.length - EAGER_ROWS}
-                    messageId={key}
-                    scrollAnchor={row === anchor}
-                  >
-                    <TranscriptRow
-                      activity={
-                        row === last && phase.kind === 'thinking'
-                          ? activity
-                          : undefined
-                      }
-                      backoff={
-                        row === last && phase.kind === 'retrying'
-                          ? phase.retry
-                          : undefined
-                      }
-                      clock={busy && row === last ? clock : undefined}
-                      latest={row === latest && !busy}
-                      failed={earlier.isError || gap.isError}
-                      failure={row === failedReply ? failure : undefined}
-                      loading={earlier.isPending || gap.isPending}
-                      onBranch={onBranch}
-                      onEarlier={onEarlier}
-                      onGap={onGap}
-                      plan={ownsPlan(row, plan?.callId) ? shownPlan : undefined}
-                      progress={progress}
-                      results={results}
-                      retrying={
-                        row.kind === 'assistant' &&
-                        row.entryId !== undefined &&
-                        row.entryId === retried
-                      }
-                      row={row}
-                      slip={row === failedReply && slip}
-                      versions={versions.get(row)}
-                      working={busy && row === last}
+                <RunHead value={setHead}>
+                  {rows.map(({ key, row }, index) => (
+                    <MessageScrollerItem
+                      key={key}
+                      className={cn(
+                        row === anchor &&
+                          arrived(key) &&
+                          'animate-in duration-base fade-in slide-in-from-bottom-1'
+                      )}
+                      eager={index >= rows.length - EAGER_ROWS}
+                      messageId={key}
+                      scrollAnchor={row === anchor}
+                    >
+                      <TranscriptRow
+                        activity={row === last ? activityNow : undefined}
+                        backoff={row === last ? backoff : undefined}
+                        hop={row === latest && seen ? hop.mark : undefined}
+                        clock={busy && row === last ? clock : undefined}
+                        latest={row === latest && !busy}
+                        failed={earlier.isError || gap.isError}
+                        failure={row === failedReply ? failure : undefined}
+                        loading={earlier.isPending || gap.isPending}
+                        onBranch={onBranch}
+                        onEarlier={onEarlier}
+                        onGap={onGap}
+                        plan={
+                          ownsPlan(row, plan?.callId) ? shownPlan : undefined
+                        }
+                        progress={progress}
+                        results={results}
+                        retrying={
+                          row.kind === 'assistant' &&
+                          row.entryId !== undefined &&
+                          row.entryId === retried
+                        }
+                        row={row}
+                        slip={row === failedReply && slip}
+                        versions={versions.get(row)}
+                        working={busy && row === last}
+                      />
+                    </MessageScrollerItem>
+                  ))}
+                  {!running && (live?.compactions?.length ?? 0) > 0 && (
+                    <Summarizing />
+                  )}
+                  {failure !== undefined && failedReply === undefined && (
+                    <RunFailure
+                      mark={slip ? 'error' : 'broken'}
+                      reason={failure}
                     />
-                  </MessageScrollerItem>
-                ))}
-                {!running && (live?.compactions?.length ?? 0) > 0 && (
-                  <Summarizing />
-                )}
-                {failure !== undefined && failedReply === undefined && (
-                  <RunFailure
-                    mark={slip ? 'error' : 'broken'}
-                    reason={failure}
-                  />
-                )}
-                {queued.map(({ bubble, submission }) => (
-                  <QueuedMessage
-                    key={bubble.id}
-                    bubble={bubble}
-                    onCancel={() => cancel.mutate(submission)}
-                  />
-                ))}
+                  )}
+                  {queued.map(({ bubble, submission }) => (
+                    <QueuedMessage
+                      key={bubble.id}
+                      bubble={bubble}
+                      onCancel={() => cancel.mutate(submission)}
+                    />
+                  ))}
+                </RunHead>
               </ToolHistory>
             </ToolConversation>
           </MessageScrollerContent>
@@ -632,7 +665,25 @@ function ConversationView({ id }: { id: number }) {
           size='icon'
         />
       </MessageScroller>
-      <ComposerDock className='mx-auto w-full max-w-3xl px-6 pb-6'>
+      <ComposerDock className='relative mx-auto w-full max-w-3xl px-6 pb-6'>
+        <ToolHistory value={history}>
+          <Dock
+            activity={activityNow}
+            clock={clock}
+            hop={hop.mark}
+            onJump={() => head?.scrollIntoView({ block: 'center' })}
+            progress={progress}
+            results={results}
+            retry={backoff}
+            shown={docked}
+            span={reply?.span}
+            steps={ledger}
+            working={busy}
+            writing={
+              reply?.streaming === true && reply.parts.at(-1)?.type === 'text'
+            }
+          />
+        </ToolHistory>
         <Composer
           {...composer}
           commandContext={commandContext}
