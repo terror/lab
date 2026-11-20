@@ -9,7 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { type PinnedApp, usePin, usePinUpdate } from '@/lib/artifacts';
+import { usePeeking } from '@/components/ui/peek';
+import {
+  type PinnedApp,
+  useArtifactActivity,
+  usePin,
+  usePinUpdate,
+} from '@/lib/artifacts';
 import { usePath } from '@/lib/location';
 import { useProjects } from '@/lib/projects';
 import { Link } from '@tanstack/react-router';
@@ -42,6 +48,16 @@ export function AppLink({
       </Link>
     </MotionSidebarRow>
   );
+}
+
+export function useAppStatus(
+  conversationId: number | undefined,
+  artifactId: string
+) {
+  const activity = useArtifactActivity(conversationId, artifactId);
+  const asking = usePeeking(activity.asking > 0);
+
+  return { asking, status: asking ? 'Asking Lab' : undefined };
 }
 
 function placement(pin: PinnedApp | undefined) {

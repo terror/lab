@@ -1,4 +1,4 @@
-import { PinMenu } from '@/components/artifact-apps';
+import { PinMenu, useAppStatus } from '@/components/artifact-apps';
 import { type FrameCall, SandboxFrame } from '@/components/sandbox-frame';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Peek } from '@/components/ui/peek';
 import { Sigil } from '@/components/ui/sigil';
+import { StatusNote } from '@/components/ui/status-note';
 import { appSeed, artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
 import { plural } from '@/lib/format';
@@ -197,10 +199,12 @@ function FullScreen({
   artifact,
   onCall,
   onClose,
+  status,
 }: {
   artifact: Shown;
   onCall?: FrameCall;
   onClose: () => void;
+  status?: string;
 }) {
   const html = useLibraryImages(artifact.html);
 
@@ -218,7 +222,10 @@ function FullScreen({
         style={{ height: '90dvh', maxWidth: 'min(72rem, calc(100vw - 2rem))' }}
       >
         <DialogHeader>
-          <DialogTitle>{artifact.title}</DialogTitle>
+          <div className='flex min-w-0 items-center gap-2'>
+            <DialogTitle className='truncate'>{artifact.title}</DialogTitle>
+            <StatusNote>{status}</StatusNote>
+          </div>
           <DialogDescription className='sr-only'>
             Full screen view of the artifact
           </DialogDescription>
@@ -284,6 +291,7 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
 
   const conversationId = useContext(ToolConversation);
   const [draft, setDraft] = useDraft(conversationId ?? 'new');
+  const { asking, status } = useAppStatus(conversationId, artifact.id);
 
   const onCall = useMemo(
     () =>
@@ -313,13 +321,15 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
   }, [callId]);
 
   return (
-    <section aria-label={title} className='group/artifact'>
+    <section aria-label={title} className='group/artifact relative'>
+      <Peek className='right-4' rise={!quiet} shown={asking} />
       <Card className='gap-0 overflow-hidden p-0' variant='inset'>
         <header className='flex items-center gap-2 px-4 py-2'>
           <h3 className='truncate text-sm font-medium'>{title}</h3>
           {version > 1 && (
             <span className='text-xs text-muted-foreground'>v{version}</span>
           )}
+          <StatusNote>{status}</StatusNote>
           <div className='ml-auto flex items-center gap-1 hover-reveal group-focus-within/artifact:opacity-100 group-hover/artifact:opacity-100'>
             <Button
               aria-label={showCode ? 'Show preview' : 'Show code'}
@@ -400,6 +410,7 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
             artifact={artifact}
             onCall={onCall}
             onClose={() => setFullScreen(false)}
+            status={status}
           />
         )}
       </Card>
