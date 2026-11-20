@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
 import { failedTitle, type ToolRecord, toolRenderer } from './tools';
+import { issueLines } from './tools/errors';
 
 function line(
   name: string,
@@ -126,5 +127,34 @@ test('a failed tool says what it couldn’t do', () => {
     'Couldn’t run foo',
     'Couldn’t search the web for “foo”',
     'Foo bar failed',
+  ]);
+});
+
+function issue(path: (number | string)[], keyword = 'required') {
+  return { keyword, message: 'foo', path };
+}
+
+test('validation issues read as plain language', () => {
+  expect(
+    issueLines([
+      issue(['tasks', 0, 'title']),
+      issue(['tasks', 1, 'title']),
+      issue(['tasks', 2, 'title']),
+      issue(['tasks', 4, 'title']),
+      issue(['tasks', 4, 'title']),
+      issue(['tasks', 5], 'type'),
+      issue(['tasks', 6], 'type'),
+      issue(['entries', 0, 'changes', 1, 'text'], 'unevaluatedProperties'),
+      issue(['queries', 2], 'unevaluatedItems'),
+      issue(['bar'], 'type'),
+      issue([], 'type'),
+    ])
+  ).toEqual([
+    'Tasks 1–3 and 5: title is missing',
+    'Tasks 6 and 7 are invalid (foo)',
+    'Entry 1, Change 2: text is not expected',
+    'Query 3 is not expected',
+    'bar is invalid (foo)',
+    'The request is invalid (foo)',
   ]);
 });

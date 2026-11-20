@@ -1,5 +1,8 @@
+import { toolErrorSchema } from '@lab/server/schemas';
 import { useState } from 'react';
 
+import { ToolFailure } from './errors';
+import { field } from './format';
 import { FooterButton, PreviewPassage, Raw } from './previews';
 import { toolRenderer } from './registry';
 import { type ToolView } from './types';
@@ -20,7 +23,13 @@ export function ToolBody(props: ToolView & { name: string }) {
 
   const renderer = toolRenderer(props.name);
 
-  const preview = renderer.preview?.(props);
+  const error = toolErrorSchema.safeParse(field(props.details, 'error')).data;
+
+  const preview = error ? (
+    <ToolFailure error={error} />
+  ) : (
+    renderer.preview?.(props)
+  );
 
   return (
     <>

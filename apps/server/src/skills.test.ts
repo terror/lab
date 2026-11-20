@@ -127,7 +127,7 @@ test('the agent creates, reads, updates, and deletes skills', async () => {
       { description: 'foo', instructions: 'bar', name: 'baz' },
       { description: 'foo', instructions: 'qux', name: 'baz' },
       { description: 'foo', instructions: 'qux', name: 'baz' },
-      undefined,
+      { description: undefined, instructions: undefined, name: undefined },
     ],
     outputs: [
       '# baz\n\nbar',

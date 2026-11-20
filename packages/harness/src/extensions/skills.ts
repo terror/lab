@@ -127,7 +127,7 @@ function result(
   approval: Approval
 ) {
   if (change.kind !== 'saved') {
-    return { ...failure(failures[change.kind]), details: { approval } };
+    return failure(failures[change.kind], { approval });
   }
 
   const { skill } = change;

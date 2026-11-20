@@ -1,4 +1,5 @@
 import { MODEL_THINKING_LEVELS } from '@earendil-works/pi-ai/providers/model-schema';
+import { TOOL_ERROR_KINDS, type ToolError } from '@lab/harness/errors';
 import { PLAN_LIMIT, PLAN_STATUSES, STEP_LENGTH } from '@lab/harness/plan';
 import {
   CHAT_SORTS,
@@ -16,6 +17,11 @@ export {
   type PlanStep,
 } from '@lab/harness/plan';
 export { defaultPreferences } from '@lab/harness/preferences';
+export {
+  type ToolError,
+  type ToolErrorKind,
+  type ToolIssue,
+} from '@lab/harness/errors';
 import { z } from 'zod';
 
 export const imageTypes = [
@@ -93,3 +99,15 @@ export const planStepsSchema = z
     })
   )
   .max(PLAN_LIMIT);
+
+export const toolErrorSchema = z.object({
+  issues: z.array(
+    z.object({
+      keyword: z.string(),
+      message: z.string(),
+      path: z.array(z.union([z.number(), z.string()])),
+    })
+  ),
+  kind: z.enum(TOOL_ERROR_KINDS),
+  message: z.string(),
+}) satisfies z.ZodType<ToolError>;

@@ -1,16 +1,28 @@
 import type { Context } from '@earendil-works/chord/context';
 import type { JsonValue } from '@earendil-works/chord/json';
 import type {
+  JsonObject,
   ToolExecutionApi,
   ToolExecutionResult,
 } from '@earendil-works/pi-durable';
+
+import type { ToolError } from '../errors';
 
 export function text(value: string) {
   return [{ text: value, type: 'text' as const }];
 }
 
-export function failure(message: string): ToolExecutionResult {
-  return { isError: true, output: text(message) };
+export function failure(
+  message: string,
+  details: JsonObject = {}
+): ToolExecutionResult {
+  const error = { issues: [], kind: 'failed', message } satisfies ToolError;
+
+  return {
+    details: { ...details, error },
+    isError: true,
+    output: text(message),
+  };
 }
 
 export function listing<T extends JsonValue>(
