@@ -25,7 +25,7 @@ function Frame() {
   const [arrived, setArrived] = useState(false);
 
   return (
-    <div className='flex h-150 w-full max-w-96 flex-col rounded-card border'>
+    <div className='flex h-150 w-80 flex-col rounded-card border'>
       <HomeFrame
         above={
           <>
