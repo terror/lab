@@ -12,7 +12,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { useArtifact } from '@/lib/artifacts';
+import { appSeed, useArtifact } from '@/lib/artifacts';
 import { type User, useUser } from '@/lib/auth';
 import { conversationTitle, useConversationSummary } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
@@ -222,6 +222,21 @@ function usePageTitle(selected: number | undefined) {
   return pageTitles[path] ?? project?.name ?? app.data?.title ?? chat ?? 'Lab';
 }
 
+function useTab(selected: number | undefined) {
+  const title = usePageTitle(selected);
+  const { artifactId, conversationId } = useParams({ strict: false });
+  const app = useArtifact(conversationId, artifactId);
+
+  if (!app.data || conversationId === undefined || artifactId === undefined) {
+    return { title };
+  }
+
+  return {
+    seed: appSeed(conversationId, artifactId),
+    title: `${title} · Lab`,
+  };
+}
+
 function WorkspaceLayout({
   desktop,
   selected,
@@ -245,7 +260,9 @@ export function Workspace() {
 
   useTimezoneReport();
 
-  useDocumentTitle(usePageTitle(selected));
+  const tab = useTab(selected);
+
+  useDocumentTitle(tab.title, tab.seed);
 
   return <WorkspaceLayout desktop={desktop} selected={selected} user={user} />;
 }
