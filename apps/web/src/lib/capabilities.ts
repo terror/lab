@@ -10,7 +10,7 @@ import {
   Search,
   UsersRound,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { call, client } from './client';
 import { useHint, useLedger } from './hints';
@@ -124,5 +124,15 @@ export function useTip(enabled: boolean, idle: boolean) {
     enabled && idle && picked !== undefined
   );
 
-  return { retire, tip: show ? picked?.tip : undefined };
+  const tip = show ? picked?.tip : undefined;
+
+  useEffect(() => {
+    if (tip === undefined) {
+      return undefined;
+    }
+
+    return retire;
+  }, [retire, tip]);
+
+  return tip;
 }

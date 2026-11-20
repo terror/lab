@@ -308,7 +308,7 @@ export function Composer({
       !listening
   );
 
-  const cue = useTip(watching, idle);
+  const tip = useTip(watching, idle);
 
   const dictationError =
     dictation.state.kind === 'failed' ? dictation.state.message : undefined;
@@ -411,20 +411,13 @@ export function Composer({
             disabled={disabled}
             maxRows={12}
             minRows={1}
-            aria-description={cue.tip}
-            onBlur={() => {
-              setFocused(false);
-
-              if (cue.tip) {
-                cue.retire();
-              }
-            }}
+            aria-description={tip}
+            onBlur={() => setFocused(false)}
             onChange={(event) => {
               if (listening) {
                 dictation.cancel();
               }
 
-              cue.retire();
               onDraftChange(event.target.value);
             }}
             onFocus={() => setFocused(true)}
@@ -434,9 +427,7 @@ export function Composer({
             ref={inputRef}
             value={draft}
           />
-          {tips && draft === '' && (
-            <Placeholder text={cue.tip ?? placeholder} />
-          )}
+          {tips && draft === '' && <Placeholder text={tip ?? placeholder} />}
         </div>
         <div className='flex items-center gap-2 px-3 pb-3'>
           <AttachMenu disabled={disabled} intake={intake} />
