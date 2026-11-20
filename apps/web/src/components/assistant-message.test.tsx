@@ -612,7 +612,7 @@ test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
 function thinkingSince(at: number) {
   return (
     <AssistantMessage
-      clock={{ at, start: 100_000, waited: 0 }}
+      clock={{ at, linked: true, start: 100_000, waited: 0 }}
       parts={parts.slice(0, 1)}
       progress={new Map()}
       results={new Map([['a', { output: '', status: 'done' }]])}
@@ -650,7 +650,8 @@ test('a run’s line starts as the mark alone, then counts, sums up, stalls and 
     [2_000, 100_000],
     [8_000, 110_000],
     [20_000, 110_000],
-    [30_000, 160_000],
+    [30_000, 110_000],
+    [0, 160_000],
   ] as const) {
     vi.advanceTimersByTime(wait);
 
@@ -666,13 +667,14 @@ test('a run’s line starts as the mark alone, then counts, sums up, stalls and 
     [
       'pondering',
       'true',
-      'Thinking·30s·1 step·still on it, the model is slow right nowThinking. still on it, the model is slow right now',
+      'Thinking·30s·1 step·still on it, the model is slow right nowThinking',
     ],
     [
       'pondering',
-      null,
-      'Thinking·1m 0s·1 step·You can leave thisThinking. You can leave this',
+      'true',
+      'Thinking·1m 0s·1 step·You can leave this·still on it, the model is slow right nowThinking',
     ],
+    ['pondering', null, 'Thinking·1m 0s·1 step·You can leave thisThinking'],
   ]);
 });
 
@@ -827,7 +829,7 @@ test('a model backing off shows on the line with its countdown and reason', asyn
   const { screen } = await renderWithQuery(
     <AssistantMessage
       backoff={{ at: 104_000, error: 'foo' }}
-      clock={{ at: 100_000, start: 100_000, waited: 0 }}
+      clock={{ at: 100_000, linked: true, start: 100_000, waited: 0 }}
       parts={[]}
       progress={new Map()}
       results={new Map()}
@@ -839,4 +841,42 @@ test('a model backing off shows on the line with its countdown and reason', asyn
   expect(
     screen.container.querySelector('[data-slot=run-line-row]')?.textContent
   ).toBe('Retrying·in 4s·fooRetrying');
+});
+
+function writing(activity: string) {
+  return (
+    <AssistantMessage
+      activity={activity}
+      clock={{ at: Date.now(), linked: true, start: 0, waited: 0 }}
+      parts={[]}
+      progress={new Map()}
+      results={new Map()}
+      streaming={false}
+      working
+    />
+  );
+}
+
+test('the seconds follow a new verb at once instead of waiting behind the old one', async () => {
+  const { screen } = await renderWithQuery(writing('foo foo foo foo foo foo'));
+
+  await screen.rerender(writing('bar'));
+
+  const gap = () => {
+    const shown = [
+      ...screen.container.querySelectorAll('[data-slot=run-line-verb]'),
+    ].find((line) => line.textContent === 'bar');
+
+    const dot = shown?.parentElement?.nextElementSibling;
+
+    return (
+      shown &&
+      dot &&
+      Math.round(
+        dot.getBoundingClientRect().left - shown.getBoundingClientRect().right
+      )
+    );
+  };
+
+  await expect.poll(gap).toBe(4);
 });

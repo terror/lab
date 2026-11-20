@@ -20,7 +20,7 @@ import {
   TraceLine,
   TraceTitle,
 } from '@/components/ui/trace';
-import type { Step } from '@/lib/spans';
+import { NOTABLE_MS, type Step } from '@/lib/spans';
 import { duration } from '@/lib/time';
 import type { Part } from '@/lib/transcript';
 import { useContext, useState } from 'react';
@@ -86,8 +86,10 @@ type CallProps = {
   working: boolean;
 };
 
+const TIMED_MS = NOTABLE_MS / 3;
+
 function took(span: { end: number; start: number } | undefined) {
-  return span && span.end - span.start >= 1_000
+  return span && span.end - span.start >= TIMED_MS
     ? duration(span.end - span.start)
     : undefined;
 }
@@ -198,7 +200,7 @@ export function Pause({
   return (
     <TraceLine className='h-6.5'>
       <TraceIcon>
-        <StatusIcon status='done' />
+        <span className='size-1 rounded-full bg-muted-foreground/60' />
       </TraceIcon>
       <TraceTitle>{pauses[kind]}</TraceTitle>
       <TraceDescription>· {duration(span.end - span.start)}</TraceDescription>

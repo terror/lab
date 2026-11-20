@@ -196,15 +196,13 @@ function LiveLine({
 
   const timed = (band === 'summary' || band === 'leave') && !paused;
 
-  const leave = band === 'leave' ? 'You can leave this' : undefined;
+  const stalled = slow && !paused;
 
-  const stalled = slow ? say('stall', undefined, { quiet, seed: '' }) : leave;
-
-  const note = paused ? undefined : stalled;
+  const leave = band === 'leave' && !paused;
 
   const steps = timed && calls.length > 0;
 
-  const summary = timed && note === undefined ? tallies(done).join(' · ') : '';
+  const summary = timed && !stalled && !leave ? tallies(done).join(' · ') : '';
 
   const now = clock && clock.start + clock.waited + elapsed;
 
@@ -222,7 +220,7 @@ function LiveLine({
       stall={stall}
     >
       {(band !== 'mark' || paused) && (
-        <AnimatePresence initial={false} mode='wait'>
+        <AnimatePresence initial={false} mode='popLayout'>
           <m.span
             key={label}
             animate={{ opacity: 1, y: 0 }}
@@ -245,14 +243,17 @@ function LiveLine({
         <RunLineToggle compact>{plural(calls.length, 'step')}</RunLineToggle>
       )}
       {retry && <RunLineNote>{countdown(retry, now)}</RunLineNote>}
-      {note && <RunLineNote>{note}</RunLineNote>}
+      {leave && <RunLineNote>You can leave this</RunLineNote>}
+      {stalled && (
+        <RunLineNote className='shrink-100'>
+          {say('stall', undefined, { quiet, seed: '' })}
+        </RunLineNote>
+      )}
       {retry && <RunLineSummary>{retry.error}</RunLineSummary>}
       {summary && <RunLineSummary>{summary}</RunLineSummary>}
       {steps && <RunLineChevron open={open} />}
       <output className='sr-only'>
-        {[retry ? 'Retrying' : (stages[pose] ?? verb), note]
-          .filter(Boolean)
-          .join('. ')}
+        {retry ? 'Retrying' : (stages[pose] ?? verb)}
       </output>
     </RunLine>
   );
