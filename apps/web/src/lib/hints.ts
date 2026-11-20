@@ -155,6 +155,7 @@ export function useHint(id: string, eligible: boolean) {
   const retire = useCallback(() => retireTaught(id), [id]);
 
   return {
+    pending: ready || (eligible && taught === id && !confirmed && !done),
     retire,
     show: eligible && taught === id && confirmed && !done && !quiet,
   };

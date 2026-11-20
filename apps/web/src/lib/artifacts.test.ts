@@ -87,15 +87,15 @@ test('an app counts as asking Lab while its lab.ask is pending', async () => {
       )
   );
 
-  const { result } = await renderHook(() => useArtifactActivity(1, 'foo'));
+  const { result } = await renderHook(() => useArtifactActivity(2, 'foo'));
 
-  const asked = artifactCalls(1, 'foo')('ask', { prompt: 'bar' }, true);
+  const asked = artifactCalls(2, 'foo')('ask', { prompt: 'bar' }, true);
 
-  await expect.poll(() => result.current).toEqual({ asking: 1 });
+  await expect.poll(() => result.current).toEqual({ asking: 1, saved: 0 });
 
   answers[0]?.();
 
   await asked;
 
-  await expect.poll(() => result.current).toEqual({ asking: 0 });
+  await expect.poll(() => result.current).toEqual({ asking: 0, saved: 0 });
 });
