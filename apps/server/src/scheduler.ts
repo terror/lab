@@ -21,6 +21,19 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const POLL_MS = 30_000;
 
+let pendingAdmissions = Promise.resolve();
+
+function admit<T>(run: () => Promise<T>) {
+  const result = pendingAdmissions.then(run);
+
+  pendingAdmissions = result.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return result;
+}
+
 async function scheduledChat(row: Row) {
   const known = (
     await harness.snapshot(ScheduledChatsDoc, row.ownerId, BACKGROUND_CONTEXT)
@@ -126,33 +139,35 @@ async function submitTask(row: Row, requestId: string, tx: Transaction) {
 }
 
 export function runTask(ownerId: string, id: number) {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select()
-      .from(table)
-      .where(and(eq(table.id, id), eq(table.ownerId, ownerId)))
-      .for('update');
+  return admit(() =>
+    db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(table)
+        .where(and(eq(table.id, id), eq(table.ownerId, ownerId)))
+        .for('update');
 
-    const conversationId = await submitTask(
-      found(row, 'Scheduled task not found'),
-      crypto.randomUUID(),
-      tx
-    );
+      const conversationId = await submitTask(
+        found(row, 'Scheduled task not found'),
+        crypto.randomUUID(),
+        tx
+      );
 
-    if (conversationId === undefined) {
-      throw new HTTPException(409, {
-        message: 'This task’s chat is in the Trash',
-      });
-    }
+      if (conversationId === undefined) {
+        throw new HTTPException(409, {
+          message: 'This task’s chat is in the Trash',
+        });
+      }
 
-    const [updated] = await tx
-      .update(table)
-      .set({ conversationId, lastRunAt: new Date() })
-      .where(eq(table.id, id))
-      .returning();
+      const [updated] = await tx
+        .update(table)
+        .set({ conversationId, lastRunAt: new Date() })
+        .where(eq(table.id, id))
+        .returning();
 
-    return toTask(found(updated, 'Scheduled task not found'));
-  });
+      return toTask(found(updated, 'Scheduled task not found'));
+    })
+  );
 }
 
 export async function runDueTasks(now = new Date()) {
@@ -161,8 +176,8 @@ export async function runDueTasks(now = new Date()) {
   const rows = await db.select({ id: table.id }).from(table).where(due);
 
   for (const { id } of rows) {
-    await db
-      .transaction(async (tx) => {
+    await admit(() =>
+      db.transaction(async (tx) => {
         const [row] = await tx
           .select()
           .from(table)
@@ -188,7 +203,7 @@ export async function runDueTasks(now = new Date()) {
           })
           .where(eq(table.id, id));
       })
-      .catch(console.error);
+    ).catch(console.error);
   }
 }
 
@@ -210,5 +225,6 @@ export function startScheduler() {
   return async () => {
     clearInterval(timer);
     await pending;
+    await pendingAdmissions;
   };
 }

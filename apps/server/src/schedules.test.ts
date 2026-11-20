@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { signIn } from '../test/auth';
 import {
   call,
+  create,
   pendingToolCall,
   settle,
   toolDetails,
@@ -20,7 +21,8 @@ import { env } from './env';
 import { harness, openLabHarness } from './harness';
 import { models } from './models';
 import { startPipelines } from './pipelines';
-import { runDueTasks, startScheduler } from './scheduler';
+import { requireOwner } from './records';
+import { runDueTasks, runTask, startScheduler } from './scheduler';
 
 const task = {
   cron: '0 9 * * *',
@@ -319,11 +321,11 @@ test('scheduled occurrences survive failed submission and failed acknowledgement
       }
 
       if (phase === 'created') {
-        const create = harness.createConversation.bind(harness);
+        const createConversation = harness.createConversation.bind(harness);
 
         return spyOn(harness, 'createConversation').mockImplementationOnce(
           async (options, context) => {
-            await create(options, context);
+            await createConversation(options, context);
             throw failure;
           }
         );
@@ -451,9 +453,84 @@ test('polls recheck tasks paused or deleted after selection', async () => {
   await runCase('DELETE');
 });
 
-test('stopping the scheduler drains its poll without overlapping ticks', async () => {
+test('concurrent manual runs leave connections available for submission', async () => {
+  const count = 10;
+
+  async function runCase(distinct: boolean) {
+    const headers = await signIn();
+    const conversationId = await create(headers);
+    const ownerId = await requireOwner(conversationId);
+    const rows = await db
+      .insert(schema.scheduledTask)
+      .values(
+        Array.from({ length: distinct ? count : 1 }, () => ({
+          ...task,
+          conversationId,
+          ownerId,
+        }))
+      )
+      .returning();
+
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const transaction = db.transaction.bind(db);
+    let active = 0;
+    const transactions = spyOn(db, 'transaction').mockImplementation(
+      (run, config) =>
+        transaction(async (tx) => {
+          active += 1;
+
+          try {
+            expect(active).toBe(1);
+            entered.resolve();
+            await release.promise;
+            return await run(tx);
+          } finally {
+            active -= 1;
+          }
+        }, config)
+    );
+
+    const runs = Promise.allSettled(
+      rows.flatMap((row) =>
+        Array.from({ length: count / rows.length }, () =>
+          runTask(ownerId, row.id)
+        )
+      )
+    );
+
+    await entered.promise;
+    await Bun.sleep(0);
+    release.resolve();
+
+    const completed = await runs;
+
+    transactions.mockRestore();
+    await settle(conversationId);
+
+    expect({
+      completed: completed.map(({ status }) => status),
+      messages: await messages(headers, conversationId),
+      schedules: (await call(headers, 'GET', '/schedules')).body.tasks.length,
+    }).toEqual({
+      completed: Array.from({ length: count }, () => 'fulfilled'),
+      messages: ['foo', ...Array.from({ length: count }, () => 'bar')],
+      schedules: distinct ? count : 1,
+    });
+
+    for (const row of rows) {
+      await call(headers, 'DELETE', `/schedules/${row.id}`);
+    }
+  }
+
+  await runCase(false);
+  await runCase(true);
+});
+
+test('stopping the scheduler drains its poll and queued manual runs', async () => {
   const headers = await signIn();
   const original = await ask(headers, 'approved');
+  const ownerId = await requireOwner(original.id);
   const [created] = (await call(headers, 'GET', '/schedules')).body.tasks;
 
   await db
@@ -464,13 +541,19 @@ test('stopping the scheduler drains its poll without overlapping ticks', async (
   const transaction = db.transaction.bind(db);
   const entered = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
-  const transactions = spyOn(db, 'transaction').mockImplementationOnce(
-    async (run, config) => {
+  const manualEntered = Promise.withResolvers<void>();
+  const manualRelease = Promise.withResolvers<void>();
+  const transactions = spyOn(db, 'transaction')
+    .mockImplementationOnce(async (run, config) => {
       entered.resolve();
       await release.promise;
       return transaction(run, config);
-    }
-  );
+    })
+    .mockImplementationOnce(async (run, config) => {
+      manualEntered.resolve();
+      await manualRelease.promise;
+      return transaction(run, config);
+    });
   const timer = spyOn(globalThis, 'setInterval');
   const stopped = mock(() => undefined);
   const stop = startScheduler();
@@ -478,6 +561,7 @@ test('stopping the scheduler drains its poll without overlapping ticks', async (
   await entered.promise;
   timer.mock.calls[0]?.[0]();
 
+  const manual = runTask(ownerId, created.id);
   const stopping = stop().then(() => stopped());
 
   await Bun.sleep(0);
@@ -487,11 +571,17 @@ test('stopping the scheduler drains its poll without overlapping ticks', async (
   ]);
 
   release.resolve();
-  await stopping;
+  await manualEntered.promise;
+  await Bun.sleep(0);
+
+  expect(stopped.mock.calls).toEqual([]);
+
+  manualRelease.resolve();
+  await Promise.all([stopping, manual]);
   await stop();
   await settle(original.id);
 
-  expect(await messages(headers, original.id)).toEqual(['foo', 'bar']);
+  expect(await messages(headers, original.id)).toEqual(['foo', 'bar', 'bar']);
 
   await call(headers, 'DELETE', `/schedules/${created.id}`);
 });
