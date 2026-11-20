@@ -10,6 +10,7 @@
       "ignoreDependencies": ["expo-updates"]
     },
     "apps/server": {
+      "entry": ["test/runtime-server.ts"],
       "ignoreDependencies": ["@earendil-works/pi-codemode", "chart.js", "d3"]
     }
   }
