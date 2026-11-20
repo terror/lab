@@ -48,7 +48,7 @@ test('runtime restarts, cleans failed startup, and drains delegated helper usage
 
   spyOn(projectionPipeline, 'backfill').mockRejectedValueOnce(new Error('foo'));
 
-  await expect(startRuntime()).rejects.toThrow('foo');
+  expect(startRuntime()).rejects.toThrow('foo');
 
   expect(harness).toThrow('The server runtime has not started');
 
@@ -74,11 +74,15 @@ test('runtime restarts, cleans failed startup, and drains delegated helper usage
 
   expect(runtime.close()).toBe(closing);
 
+  const reopening = startRuntime();
+
   await runtime.harness.closed;
 
   release.resolve();
   await transaction;
   await closing;
+
+  expect((await reopening).harness).not.toBe(runtime.harness);
 
   expect(
     await db

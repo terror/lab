@@ -24,7 +24,7 @@ import { imageAccess } from './image-access';
 import { libraryAccess } from './library-access';
 import { models } from './models';
 import { backfillAll, flushAll, startPipelines } from './pipelines';
-import { projectAccess } from './project-access';
+import { projectAccess } from './project-tools';
 import { requireOwner, trackOwners } from './records';
 import { registry } from './registry';
 import { createSandboxAccess } from './sandbox';
@@ -62,7 +62,12 @@ type Runtime = {
   close: () => Promise<void>;
 };
 
-let current: Promise<Runtime> | undefined;
+type State =
+  | { kind: 'stopped' }
+  | { kind: 'started'; ready: Promise<Runtime> }
+  | { kind: 'stopping'; closed: Promise<void> };
+
+let state: State = { kind: 'stopped' };
 
 async function openRuntime(): Promise<Runtime> {
   await purgeDeleted(env.LAB_STORAGE_PATH);
@@ -88,8 +93,12 @@ async function openRuntime(): Promise<Runtime> {
 
   let closing: Promise<void> | undefined;
 
-  const close = () =>
-    (closing ??= (async () => {
+  const close = () => {
+    if (closing) {
+      return closing;
+    }
+
+    closing = (async () => {
       const errors: unknown[] = [];
 
       for (const operation of cleanup) {
@@ -100,12 +109,17 @@ async function openRuntime(): Promise<Runtime> {
         }
       }
 
-      current = undefined;
+      state = { kind: 'stopped' };
 
       if (errors.length > 0) {
         throw new AggregateError(errors, 'Failed to close the server runtime');
       }
-    })());
+    })();
+
+    state = { kind: 'stopping', closed: closing };
+
+    return closing;
+  };
 
   try {
     releases.push(installHarness(opened));
@@ -138,7 +152,8 @@ async function openRuntime(): Promise<Runtime> {
     await close().catch((cleanupError: unknown) => {
       throw new AggregateError(
         [error, cleanupError],
-        'Failed to start the server runtime'
+        'Failed to start the server runtime',
+        { cause: error }
       );
     });
 
@@ -146,9 +161,20 @@ async function openRuntime(): Promise<Runtime> {
   }
 }
 
-export function startRuntime() {
-  return (current ??= openRuntime().catch((error: unknown) => {
-    current = undefined;
-    throw error;
-  }));
+export function startRuntime(): Promise<Runtime> {
+  switch (state.kind) {
+    case 'started':
+      return state.ready;
+    case 'stopping':
+      return state.closed.then(startRuntime);
+    case 'stopped': {
+      const ready = openRuntime().catch((error: unknown) => {
+        state = { kind: 'stopped' };
+        throw error;
+      });
+
+      state = { kind: 'started', ready };
+      return ready;
+    }
+  }
 }

@@ -81,13 +81,13 @@ const parents = new Map<number, number>();
 
 const knownChats = new Map<number, Promise<Chat>>();
 
-export async function trackOwners(harness: Harness) {
-  const remember = (record: ConversationRecord) => {
-    if (record.owner) {
-      parents.set(record.id, record.owner.conversationId);
-    }
-  };
+function remember(record: ConversationRecord) {
+  if (record.owner) {
+    parents.set(record.id, record.owner.conversationId);
+  }
+}
 
+export async function trackOwners(harness: Harness) {
   const observation = harness.observeCommits({
     advance: ({ changes }) => {
       for (const change of changes) {

@@ -8,7 +8,10 @@ import { startRuntime } from './runtime';
 export async function startServer() {
   initSentry();
 
-  const runtime = await startRuntime();
+  const runtime = await startRuntime().catch(async (error: unknown) => {
+    await db.$client.close();
+    throw error;
+  });
 
   const server = await Promise.try(() =>
     Bun.serve({

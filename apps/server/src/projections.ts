@@ -37,7 +37,7 @@ async function latestMessage(
   return latestMessage(conversation, page.next);
 }
 
-function changes(changes: readonly CommitChange[]) {
+function projected(changes: readonly CommitChange[]) {
   const updates = new Map<number, Columns>();
 
   for (const change of changes) {
@@ -83,7 +83,7 @@ async function project(updates: readonly (readonly [number, Columns])[]) {
   }
 }
 
-const observer = observe(changes, project);
+const observer = observe(projected, project);
 
 export const projectionPipeline = {
   backfill: projectAll,

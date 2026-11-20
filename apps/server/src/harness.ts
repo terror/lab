@@ -10,9 +10,11 @@ export async function purgeDeleted(path: string) {
     .select({ id: schema.conversationDeletion.id })
     .from(schema.conversationDeletion);
 
-  const purged = await purgeConversations(
-    path,
-    deleted.map(({ id }) => id)
+  const purged = await Promise.resolve(
+    purgeConversations(
+      path,
+      deleted.map(({ id }) => id)
+    )
   );
 
   if (purged.length > 0) {
