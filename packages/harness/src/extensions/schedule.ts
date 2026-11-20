@@ -1,5 +1,6 @@
 import {
   type ConversationId,
+  type ToolExecutionApi,
   type ToolExecutionResult,
   defineExtension,
   defineTool,
@@ -38,9 +39,9 @@ export type ScheduleUpdate =
 
 export type ScheduleAccess = {
   create(
-    conversationId: ConversationId,
+    call: Pick<ToolExecutionApi, 'conversationId' | 'taskId'>,
     input: ScheduleInput
-  ): Promise<ScheduledTask>;
+  ): Promise<ScheduledTask | undefined>;
   delete(
     conversationId: ConversationId,
     id: number
@@ -168,9 +169,20 @@ export function schedule(access: ScheduleAccess, owner: Owner) {
         };
       }
 
-      const task = await once(api, 'task', context, () =>
-        access.create(api.conversationId, { ...args, timezone: zone })
+      const task = await once(
+        api,
+        'task',
+        context,
+        async () =>
+          (await access.create(api, { ...args, timezone: zone })) ?? null
       );
+
+      if (!task) {
+        return {
+          ...failure('This scheduled task was deleted.'),
+          details: { approval },
+        };
+      }
 
       return {
         details: { approval, task },
