@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { Attachment } from '@/lib/attachments';
+import { useTip } from '@/lib/capabilities';
 import { type CommandContext, type SlashCommand } from '@/lib/commands';
 import { useDictation } from '@/lib/dictation';
 import { useMediaQuery } from '@/lib/media';
@@ -27,6 +28,7 @@ import { Link } from '@tanstack/react-router';
 import { ArrowUp, CornerDownRight, Mic, Square } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -38,6 +40,8 @@ import {
 } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { toast } from 'sonner';
+
+const IDLE_MS = 5000;
 
 const noCommandContext: CommandContext = {
   conversationId: undefined,
@@ -184,6 +188,50 @@ function SendOrStop({
   );
 }
 
+function useIdle(active: boolean) {
+  const [idle, setIdle] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setIdle(true), IDLE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      setIdle(false);
+    };
+  }, [active]);
+
+  return active && idle;
+}
+
+function Placeholder({ text }: { text: string }) {
+  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
+
+  const transition = reduced ? { duration: 0 } : fade.base;
+
+  return (
+    <span
+      aria-hidden='true'
+      className='pointer-events-none absolute inset-x-0 top-0 grid px-5 pt-4 leading-relaxed text-muted-foreground peer-disabled:opacity-50'
+    >
+      <AnimatePresence initial={false}>
+        <m.span
+          key={text}
+          animate={{ opacity: 1, transition }}
+          className='col-start-1 row-start-1'
+          exit={{ opacity: 0, transition }}
+          initial={{ opacity: 0 }}
+        >
+          {text}
+        </m.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
 export function Composer({
   attachments,
   commandContext = noCommandContext,
@@ -201,6 +249,7 @@ export function Composer({
   placeholder = 'Ask anything…',
   running,
   submitting,
+  tips,
 }: {
   attachments: Attachment[];
   commandContext?: CommandContext;
@@ -218,12 +267,22 @@ export function Composer({
   placeholder?: string;
   running?: boolean;
   submitting?: boolean;
+  tips?: boolean;
 }) {
   const [attachError, setAttachError] = useState<string>();
+  const [focused, setFocused] = useState(false);
   const touch = useMediaQuery('(pointer: coarse)');
 
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
+
+  const idle = useIdle(
+    tips === true && focused && empty && !touch && disabled !== true
+  );
+
+  const cue = useTip(tips === true, idle);
+
+  const hint = cue.tip ?? placeholder;
 
   const dictation = useDictation({ draft, onDraftChange });
 
@@ -319,26 +378,35 @@ export function Composer({
           attachments={attachments}
           onAttachmentsChange={onAttachmentsChange}
         />
-        <TextareaAutosize
-          {...commands.textbox}
-          aria-label='Message'
-          className='max-h-72 resize-none bg-transparent px-5 pt-4 pb-2 leading-relaxed placeholder:text-muted-foreground disabled:opacity-50'
-          disabled={disabled}
-          maxRows={12}
-          minRows={1}
-          onChange={(event) => {
-            if (listening) {
-              dictation.cancel();
-            }
+        <div className='relative flex flex-col'>
+          <TextareaAutosize
+            {...commands.textbox}
+            aria-label='Message'
+            className={cn(
+              'peer max-h-72 resize-none bg-transparent px-5 pt-4 pb-2 leading-relaxed placeholder:text-muted-foreground disabled:opacity-50',
+              tips && 'placeholder:text-transparent'
+            )}
+            disabled={disabled}
+            maxRows={12}
+            minRows={1}
+            onBlur={() => setFocused(false)}
+            onChange={(event) => {
+              if (listening) {
+                dictation.cancel();
+              }
 
-            onDraftChange(event.target.value);
-          }}
-          onKeyDown={onKeyDown}
-          onPaste={intake.onPaste}
-          placeholder={placeholder}
-          ref={inputRef}
-          value={draft}
-        />
+              cue.retire();
+              onDraftChange(event.target.value);
+            }}
+            onFocus={() => setFocused(true)}
+            onKeyDown={onKeyDown}
+            onPaste={intake.onPaste}
+            placeholder={hint}
+            ref={inputRef}
+            value={draft}
+          />
+          {tips && draft === '' && <Placeholder text={hint} />}
+        </div>
         <div className='flex items-center gap-2 px-3 pb-3'>
           <AttachMenu disabled={disabled} intake={intake} />
           <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>

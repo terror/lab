@@ -10,9 +10,12 @@ import {
   Search,
   UsersRound,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import { call, client } from './client';
-import { useLedger } from './hints';
+import { useHint, useLedger } from './hints';
+
+const TIPS = 3;
 
 type Tried = InferResponseType<typeof client.capabilities.$get, 200>['tried'];
 
@@ -78,8 +81,8 @@ const capabilitiesQueryOptions = queryOptions({
       .tried,
 });
 
-export function useCapabilities() {
-  const { data } = useQuery(capabilitiesQueryOptions);
+export function useCapabilities(enabled = true) {
+  const { data } = useQuery({ ...capabilitiesQueryOptions, enabled });
   const { loaded, seen } = useLedger();
 
   if (!data || !loaded) {
@@ -92,4 +95,31 @@ export function useCapabilities() {
     ...capability,
     tried: tried[capability.id],
   }));
+}
+
+export function useTip(enabled: boolean, idle: boolean) {
+  const capabilities = useCapabilities(enabled);
+  const { seen } = useLedger();
+  const [picked, setPicked] = useState<Capability>();
+
+  const tips = seen.filter((id) => id.startsWith('tip:')).length;
+
+  const next =
+    tips < TIPS
+      ? capabilities?.find(
+          ({ id, tip, tried }) =>
+            tip !== undefined && !tried && !seen.includes(`tip:${id}`)
+        )
+      : undefined;
+
+  if (idle && next && picked === undefined) {
+    setPicked(next);
+  }
+
+  const { retire, show } = useHint(
+    `tip:${picked?.id}`,
+    enabled && idle && picked !== undefined
+  );
+
+  return { retire, tip: show ? picked?.tip : undefined };
 }
