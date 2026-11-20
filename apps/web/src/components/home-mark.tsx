@@ -120,6 +120,16 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
 
   const busy = (unread.data?.runs?.length ?? 0) + waiting.length > 0;
 
+  const pile = busy || (unread.data?.chats?.length ?? 0) > 0;
+
+  const [piled, setPiled] = useState(false);
+
+  if (pile && !piled) {
+    setPiled(true);
+  }
+
+  const caught = useMoment('home.caught-up', { when: piled && !pile });
+
   const lively = idle && !busy;
 
   const leaning = useLean(draft) && lively;
@@ -193,7 +203,10 @@ export function HomeMark({ assemble }: { assemble: boolean }) {
           className='flex origin-bottom'
           transition={spring.lively}
         >
-          <LiveMark className='size-10' state={toy ?? states[pose]} />
+          <LiveMark
+            className='size-10'
+            state={toy ?? caught.mark ?? states[pose]}
+          />
         </m.span>
       </m.span>
     </LazyMotion>
