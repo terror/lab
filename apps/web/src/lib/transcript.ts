@@ -359,36 +359,27 @@ export function mergeReplies(rows: readonly Row[]) {
 type KeyedRow = { key: string; row: Row };
 
 export function keyRows(rows: readonly Row[]) {
-  const keyed = rows.reduce<{
-    count: number;
-    rows: KeyedRow[];
-    user: string;
-  }>(
-    (state, row) => {
-      if (row.kind === 'user') {
-        return {
-          count: 0,
-          rows: [...state.rows, { key: row.key, row }],
-          user: row.key,
-        };
-      }
+  const keyed: KeyedRow[] = [];
 
-      if (row.kind === 'assistant') {
-        const count = state.count + 1;
+  let count = 0;
 
-        return {
-          count,
-          rows: [...state.rows, { key: `reply-${state.user}-${count}`, row }],
-          user: state.user,
-        };
-      }
+  let user = 'start';
 
-      return { ...state, rows: [...state.rows, { key: row.key, row }] };
-    },
-    { count: 0, rows: [], user: 'start' }
-  );
+  for (const row of rows) {
+    if (row.kind === 'user') {
+      count = 0;
+      user = row.key;
+    } else if (row.kind === 'assistant') {
+      count += 1;
+    }
 
-  return { next: `reply-${keyed.user}-${keyed.count + 1}`, rows: keyed.rows };
+    keyed.push({
+      key: row.kind === 'assistant' ? `reply-${user}-${count}` : row.key,
+      row,
+    });
+  }
+
+  return { next: `reply-${user}-${count + 1}`, rows: keyed };
 }
 
 export function streamRows(
