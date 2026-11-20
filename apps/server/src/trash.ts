@@ -7,7 +7,6 @@ import { found } from './found';
 import {
   emptyTrash,
   listTrash,
-  previewTrash,
   purgeFromTrash,
   restoreFromTrash,
 } from './trash-items';
@@ -28,13 +27,6 @@ const trash = new Hono()
       items: await listTrash(c.get('user').id),
     })
   )
-  .get('/:kind/:id/preview', params, async (c) => {
-    const { id, kind } = c.req.valid('param');
-
-    return c.json(
-      found(await previewTrash(kind, c.get('user').id, id), 'Not in the trash')
-    );
-  })
   .post('/:kind/:id/restore', params, async (c) => {
     const { id, kind } = c.req.valid('param');
 

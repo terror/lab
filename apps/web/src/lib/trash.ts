@@ -29,18 +29,6 @@ function param({ id, kind }: TrashRef) {
   return { param: { id: String(id), kind } };
 }
 
-export function trashPreviewQueryOptions(item: TrashRef) {
-  return queryOptions({
-    queryKey: [...trashQueryKey, item.kind, item.id, 'preview'],
-    queryFn: async ({ signal }) =>
-      call(
-        client.trash[':kind'][':id'].preview.$get(param(item), {
-          init: { signal },
-        })
-      ),
-  });
-}
-
 export async function restoreFromTrash(item: TrashRef) {
   await call(client.trash[':kind'][':id'].restore.$post(param(item)));
 }
