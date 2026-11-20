@@ -1,6 +1,11 @@
-import { PinMenu, useAppStatus } from '@/components/artifact-apps';
+import {
+  PinMenu,
+  useAppStatus,
+  useSeenVersion,
+} from '@/components/artifact-apps';
 import { SandboxFrame } from '@/components/sandbox-frame';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { RollingNumber } from '@/components/ui/rolling-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusNote } from '@/components/ui/status-note';
 import { Unavailable } from '@/components/unavailable';
@@ -8,7 +13,27 @@ import { artifactCalls, useArtifact } from '@/lib/artifacts';
 import { useLibraryImages } from '@/lib/library';
 import { Link, useParams } from '@tanstack/react-router';
 import { MessageSquare } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+function Version({ from, version }: { from: number; version: number }) {
+  const [shown, setShown] = useState(from);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(version));
+
+    return () => cancelAnimationFrame(frame);
+  }, [version]);
+
+  if (version < 2) {
+    return undefined;
+  }
+
+  return (
+    <span className='text-xs text-muted-foreground'>
+      v<RollingNumber value={shown} />
+    </span>
+  );
+}
 
 function AppPage({
   artifactId,
@@ -22,6 +47,7 @@ function AppPage({
   const html = useLibraryImages(artifact.data?.content ?? '');
 
   const { status } = useAppStatus(conversationId, artifactId);
+  const from = useSeenVersion(conversationId, artifactId);
 
   const onCall = useMemo(
     () => artifactCalls(conversationId, artifactId),
@@ -45,12 +71,18 @@ function AppPage({
     );
   }
 
-  const { title } = artifact.data;
+  const { title, version } = artifact.data;
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <header className='flex h-12 shrink-0 items-center gap-2 px-4'>
         <h1 className='truncate text-sm font-medium'>{title}</h1>
+        {from !== undefined && (
+          <Version
+            from={Math.min(from ?? version, version)}
+            version={version}
+          />
+        )}
         <StatusNote>{status}</StatusNote>
         <div className='ml-auto flex items-center gap-1'>
           <Button asChild size='icon' variant='quiet'>

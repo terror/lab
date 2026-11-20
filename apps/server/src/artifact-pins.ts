@@ -17,6 +17,7 @@ export async function listPins(ownerId: string) {
       artifactId: table.artifactId,
       conversationId: table.conversationId,
       projectId: table.projectId,
+      seenVersion: table.seenVersion,
     })
     .from(table)
     .innerJoin(
@@ -43,7 +44,9 @@ export async function listPins(ownerId: string) {
 
       const artifact = doc?.artifacts[row.artifactId];
 
-      return artifact ? [{ ...row, title: artifact.title }] : [];
+      return artifact
+        ? [{ ...row, title: artifact.title, version: artifact.version }]
+        : [];
     })
   );
 
@@ -54,7 +57,8 @@ export async function pinArtifact(
   ownerId: string,
   conversationId: number,
   artifactId: string,
-  projectId: number | null
+  projectId: number | null,
+  version: number
 ) {
   if (projectId !== null) {
     const [project] = await db
@@ -75,13 +79,35 @@ export async function pinArtifact(
 
   await db
     .insert(table)
-    .values({ artifactId, conversationId, ownerId, projectId })
+    .values({
+      artifactId,
+      conversationId,
+      ownerId,
+      projectId,
+      seenVersion: version,
+    })
     .onConflictDoUpdate({
       set: { projectId },
       target: [table.conversationId, table.artifactId],
     });
 
   return true;
+}
+
+export async function seeArtifact(
+  conversationId: number,
+  artifactId: string,
+  version: number
+) {
+  await db
+    .update(table)
+    .set({ seenVersion: version })
+    .where(
+      and(
+        eq(table.conversationId, conversationId),
+        eq(table.artifactId, artifactId)
+      )
+    );
 }
 
 export async function unpinArtifact(

@@ -1,4 +1,5 @@
 import { MotionSidebarRow, useRowPresence } from '@/components/sidebar-row';
+import { Dot } from '@/components/ui/dot';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ import { useHint } from '@/lib/hints';
 import { usePath } from '@/lib/location';
 import { useMediaQuery } from '@/lib/media';
 import { useProjects } from '@/lib/projects';
+import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { Pin, PinOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -36,8 +38,16 @@ export function AppLink({
 
   const active = path === `/apps/${app.conversationId}/${app.artifactId}`;
 
+  const fresh = app.seenVersion !== null && app.seenVersion < app.version;
+
   return (
-    <MotionSidebarRow {...presence} asChild selected={active}>
+    <MotionSidebarRow
+      {...presence}
+      asChild
+      className={cn(fresh && 'font-medium')}
+      selected={active}
+      status={fresh && <Dot tone='attention' />}
+    >
       <Link
         aria-current={active ? 'page' : undefined}
         onClick={onSelect}
@@ -48,6 +58,7 @@ export function AppLink({
         to='/apps/$conversationId/$artifactId'
       >
         <span className='truncate'>{app.title}</span>
+        {fresh && <span className='sr-only'>Updated</span>}
       </Link>
     </MotionSidebarRow>
   );
@@ -144,6 +155,38 @@ export function useAppStatus(
   const { first, saved } = useSaved(activity.saved, asking);
 
   return { asking, status: statusText({ asking, first, saved }) };
+}
+
+export function useSeenVersion(
+  conversationId: number | undefined,
+  artifactId: string
+) {
+  const pin = usePin(conversationId ?? 0, artifactId);
+  const { see } = usePinUpdate(conversationId ?? 0, artifactId);
+  const [from, setFrom] = useState<number | null>();
+
+  const seen = pin.data?.seenVersion;
+  const version = pin.data?.version;
+
+  if (pin.isSuccess && from === undefined) {
+    setFrom(seen ?? null);
+  }
+
+  const behind =
+    conversationId !== undefined &&
+    version !== undefined &&
+    seen !== undefined &&
+    (seen ?? 0) < version;
+
+  const { mutate } = see;
+
+  useEffect(() => {
+    if (behind) {
+      mutate();
+    }
+  }, [behind, mutate]);
+
+  return from;
 }
 
 function placement(pin: PinnedApp | undefined) {

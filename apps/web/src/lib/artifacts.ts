@@ -201,6 +201,7 @@ export function usePinUpdate(conversationId: number, artifactId: string) {
         call(pin.$put({ json: { projectId }, param })),
       options
     ),
+    see: useRefreshMutation(() => call(pin.seen.$post({ param })), options),
     unpin: useRefreshMutation(() => call(pin.$delete({ param })), options),
   };
 }

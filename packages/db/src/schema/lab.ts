@@ -326,6 +326,7 @@ export const artifactPin = pgTable(
     projectId: integer('project_id').references(() => project.id, {
       onDelete: 'cascade',
     }),
+    seenVersion: integer('seen_version'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [
