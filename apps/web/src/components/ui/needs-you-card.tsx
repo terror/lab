@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/card';
-import { LiveMark } from '@/components/ui/live-mark';
+import { Dot } from '@/components/ui/dot';
 import { cn } from '@/lib/utils';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
@@ -8,7 +8,7 @@ function NeedsYouCard({
   actions,
   children,
   className,
-  glyph = <LiveMark className='size-4' state='waiting' />,
+  glyph = <Dot tone='attention' />,
   label = 'Needs you',
   link,
   title,

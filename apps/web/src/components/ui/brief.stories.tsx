@@ -12,7 +12,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'One sentence that says what happened while you were away. Each count is a button that jumps to its items, and a count rolls when it changes. Only the count that needs you carries a dot. Pass still to Brief for the plain form, which lists the counts and never rolls. The sentence is a polite live region, so a screen reader hears it again when a count changes. On a touch screen a count’s hit area reaches 44px into free space, and a tap on a count always lands on that count.',
+          'One sentence that says where Lab’s work stands. Each count is a button that jumps to its items, and a count rolls when it changes. Only the count that needs you carries a dot. Pass still to Brief for the plain form, which lists the counts and never rolls. The sentence is a polite live region, so a screen reader hears it again when a count changes. On a touch screen a count’s hit area reaches 44px into free space, and a tap on a count always lands on that count.',
       },
     },
   },
@@ -28,7 +28,6 @@ function Sentence() {
   return (
     <div className='flex w-96 flex-col items-center gap-4 text-center'>
       <Brief>
-        While you were out,{' '}
         <BriefToken count={finished}>
           {finished === 1 ? 'chat finished' : 'chats finished'}
         </BriefToken>{' '}

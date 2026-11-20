@@ -11,7 +11,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'A tile for picking something back up: a glyph in a well, a title, and one line that says what it is. The glyph is monochrome. A tile is a button; pass link to make it open a page instead. Lay tiles out four across where each gets about 180px, and two across on a phone.',
+          'A tile for picking something back up: a title and one line that says what it is, with at most a small monochrome icon for its kind. A tile is a button; pass link to make it open a page instead. Lay tiles out four across where each gets about 180px, and two across on a phone.',
       },
     },
   },

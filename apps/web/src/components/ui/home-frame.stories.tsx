@@ -13,7 +13,7 @@ const meta = preview.meta({
     docs: {
       description: {
         component:
-          'The frame of the home page. The message box’s top edge sits at --home-anchor: 38% of the panel’s height, and never less than 17rem, which holds the mark, a two-line greeting and a three-line brief. What goes above it grows upward from that line and what goes below hangs from it, so content that arrives late never moves the box you are about to type in. The frame fills its parent, so give that a height.',
+          'The frame of the home page. The message box’s top edge sits at --home-anchor: 38% of the panel’s height, and never less than 17rem, which holds the mark, a two-line heading and a three-line brief. What goes above it grows upward from that line and what goes below hangs from it, so content that arrives late never moves the box you are about to type in. The frame fills its parent, so give that a height.',
       },
     },
   },

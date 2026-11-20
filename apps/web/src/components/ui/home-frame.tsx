@@ -23,7 +23,7 @@ function HomeFrame({
       <div className='mx-auto flex w-full max-w-3xl flex-col px-6 pb-12'>
         <div
           data-slot='home-above'
-          className='flex min-h-home-anchor flex-col items-center justify-end gap-4 pb-7 text-center'
+          className='flex h-home-anchor shrink-0 flex-col items-center justify-end gap-4 pb-7 text-center'
         >
           {above}
         </div>

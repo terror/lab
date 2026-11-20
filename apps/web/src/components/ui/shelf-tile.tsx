@@ -4,7 +4,7 @@ import * as React from 'react';
 
 type Tile = {
   className?: string;
-  glyph: React.ReactNode;
+  glyph?: React.ReactNode;
   meta?: React.ReactNode;
   title: React.ReactNode;
 };
@@ -26,12 +26,14 @@ function ShelfTile({
   )) {
   const body = (
     <>
-      <span
-        data-slot='shelf-tile-glyph'
-        className="flex size-9 shrink-0 items-center justify-center rounded-[calc(var(--radius-menu)-0.5rem)] border bg-background text-muted-foreground [&_svg:not([class*='size-'])]:size-4"
-      >
-        {glyph}
-      </span>
+      {glyph ? (
+        <span
+          data-slot='shelf-tile-glyph'
+          className="mt-0.5 flex size-4 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg:not([class*='size-'])]:size-4"
+        >
+          {glyph}
+        </span>
+      ) : null}
       <span className='flex min-w-0 flex-col'>
         <span className='truncate font-medium'>{title}</span>
         {meta ? (
@@ -42,7 +44,7 @@ function ShelfTile({
   );
 
   const classes = cn(
-    'flex min-h-13 w-full min-w-0 items-center gap-2.5 rounded-menu p-2 text-left text-sm transition-colors hover:bg-muted',
+    'flex min-h-13 w-full min-w-0 items-center gap-3 rounded-menu px-3 py-2 text-left text-sm transition-colors hover:bg-muted',
     className
   );
 
