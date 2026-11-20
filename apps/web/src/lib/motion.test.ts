@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 import { cdp } from 'vitest/browser';
 
-import { fade, stagger, useMaxFeatures } from './motion';
+import { fade, stagger, story, useMaxFeatures } from './motion';
 import max from './motion-max';
 
 test('tween durations and stagger match the stylesheet tokens', () => {
@@ -22,10 +22,12 @@ test('tween durations and stagger match the stylesheet tokens', () => {
     base: seconds('base'),
     fast: seconds('fast'),
     stagger: seconds('stagger'),
+    story: seconds('story'),
   }).toEqual({
     base: fade.base.duration,
     fast: fade.fast.duration,
     stagger,
+    story,
   });
 
   probe.remove();

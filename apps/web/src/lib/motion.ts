@@ -31,6 +31,19 @@ export const stagger = 0.03;
 
 export const story = 0.5;
 
+export function dissolve(order = 0) {
+  const delay = story + Math.min(order, 5) * stagger;
+
+  return {
+    height: 0,
+    opacity: 0,
+    transition: {
+      height: { ...spring.glide, delay },
+      opacity: { ...fade.leave, delay },
+    },
+  } as const;
+}
+
 export function rise(index: number) {
   const delay = Math.min(index, 5) * stagger;
 
