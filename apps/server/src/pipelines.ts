@@ -1,3 +1,5 @@
+import type { CommitObservation } from '@earendil-works/pi-durable';
+
 import { flushHelperUsage } from './helper-usage';
 import { historyPipeline } from './history';
 import { libraryPipeline } from './library-items';
@@ -47,4 +49,3 @@ export function startPipelines() {
 
   return stop;
 }
-import type { CommitObservation } from '@earendil-works/pi-durable';
