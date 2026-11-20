@@ -11,7 +11,7 @@ import { createMiddleware } from 'hono/factory';
 import { z } from 'zod';
 
 import { ASK_PROMPT_LENGTH, askModel } from './artifact-ask';
-import { pinArtifact, unpinArtifact } from './artifact-pins';
+import { pinArtifact, seeArtifact, unpinArtifact } from './artifact-pins';
 import { deleteValue, readValue, saveValue } from './artifact-state';
 import { ownedChat } from './chat-actions';
 import { found } from './found';
@@ -83,9 +83,25 @@ const artifacts = new Hono()
           c.get('user').id,
           c.var.conversation.id,
           c.req.valid('param').artifactId,
-          c.req.valid('json').projectId
+          c.req.valid('json').projectId,
+          c.var.artifact.version
         ),
         'Project not found'
+      );
+
+      return c.body(null, 204);
+    }
+  )
+  .post(
+    '/:artifactId/pin/seen',
+    artifactParams,
+    ownedChat,
+    artifact,
+    async (c) => {
+      await seeArtifact(
+        c.var.conversation.id,
+        c.req.valid('param').artifactId,
+        c.var.artifact.version
       );
 
       return c.body(null, 204);

@@ -1,0 +1,1 @@
+ALTER TABLE "artifact_pin" ADD COLUMN "seen_version" integer;

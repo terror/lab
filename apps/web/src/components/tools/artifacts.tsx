@@ -1,4 +1,8 @@
-import { PinMenu, useAppStatus } from '@/components/artifact-apps';
+import {
+  PinMenu,
+  useAppStatus,
+  useSeenVersion,
+} from '@/components/artifact-apps';
 import { type FrameCall, SandboxFrame } from '@/components/sandbox-frame';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -294,6 +298,8 @@ function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
   const conversationId = useContext(ToolConversation);
   const [draft, setDraft] = useDraft(conversationId ?? 'new');
   const { asking, status } = useAppStatus(conversationId, artifact.id);
+
+  useSeenVersion(conversationId, artifact.id);
 
   const onCall = useMemo(
     () =>

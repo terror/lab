@@ -253,6 +253,13 @@
       "when": 1795051123706,
       "tag": "0035_tool_use",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795203342556,
+      "tag": "0036_artifact_pin_seen_version",
+      "breakpoints": true
     }
   ]
 }

@@ -46,9 +46,18 @@ function renderSidebar({
             artifactId: 'qux',
             conversationId: 2,
             projectId: null,
+            seenVersion: 1,
             title: 'baz',
+            version: 2,
           },
-          { artifactId: 'quux', conversationId: 3, projectId: 7, title: 'qux' },
+          {
+            artifactId: 'quux',
+            conversationId: 3,
+            projectId: 7,
+            seenVersion: 1,
+            title: 'qux',
+            version: 1,
+          },
         ],
       });
     }
@@ -352,12 +361,21 @@ test('pinned chats keep loading past the first page', async () => {
   ).toEqual(['corge', 'grault']);
 });
 
-test('apps pinned to the sidebar link to their pages', async () => {
+test('apps pinned to the sidebar link to their pages, marked when updated since last opened', async () => {
   const { screen } = await renderSidebar();
 
-  await expect
-    .element(screen.getByRole('link', { name: 'baz' }))
-    .toHaveAttribute('href', '/apps/2/qux');
+  const link = screen.getByRole('link', { name: /^baz/ });
+
+  await expect.element(link).toHaveAttribute('href', '/apps/2/qux');
+
+  expect([
+    link.element().textContent,
+    link
+      .element()
+      .closest('[data-slot=list-row]')
+      ?.querySelector('[data-slot=dot]')
+      ?.getAttribute('data-tone'),
+  ]).toEqual(['bazUpdated', 'attention']);
 
   await expect.element(screen.getByText('qux')).not.toBeInTheDocument();
 });

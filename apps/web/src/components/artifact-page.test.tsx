@@ -16,7 +16,7 @@ import { expect, test } from 'vitest';
 
 import { ArtifactPage } from './artifact-page';
 
-function renderPage(artifactId: string) {
+function renderPage(artifactId: string, version = 1, pinned = true) {
   const state = { failing: false };
 
   const fetch = stubFetch(({ pathname }) => {
@@ -32,17 +32,26 @@ function renderPage(artifactId: string) {
 
     if (pathname === '/api/conversations/pins') {
       return Response.json({
-        pins: [
-          { artifactId: 'bar', conversationId: 1, projectId: 7, title: 'baz' },
-        ],
+        pins: pinned
+          ? [
+              {
+                artifactId: 'bar',
+                conversationId: 1,
+                projectId: 7,
+                seenVersion: 1,
+                title: 'baz',
+                version,
+              },
+            ]
+          : [],
       });
     }
 
     if (pathname === '/api/conversations/1/artifacts/bar') {
-      return Response.json({ content: '<p>foo</p>', title: 'baz', version: 1 });
+      return Response.json({ content: '<p>foo</p>', title: 'baz', version });
     }
 
-    if (pathname === '/api/conversations/1/artifacts/bar/pin') {
+    if (pathname.startsWith('/api/conversations/1/artifacts/bar/pin')) {
       return new Response(null, { status: 204 });
     }
 
@@ -161,4 +170,51 @@ test('an app link whose id is not an artifact id fetches nothing', async () => {
   await expect.element(screen.getByText('Not Found')).toBeVisible();
 
   expect(fetchedPaths(fetch)).toEqual([]);
+});
+
+test('an app updated since it was last opened shows its new version and is marked seen', async () => {
+  const { fetch, rendered } = renderPage('bar', 2);
+
+  const { screen } = await rendered;
+
+  await expect
+    .poll(() => screen.getByRole('banner').element().textContent)
+    .toBe('bazv2');
+
+  await expect
+    .poll(() =>
+      fetch.mock.calls.flatMap(([input, init]) =>
+        init?.method === 'POST' ? [requestUrl(input).pathname] : []
+      )
+    )
+    .toEqual(['/api/conversations/1/artifacts/bar/pin/seen']);
+});
+
+test('an unpinned app shows its version without rolling up to it', async () => {
+  const texts: (string | null)[] = [];
+
+  const observer = new MutationObserver(() =>
+    texts.push(document.querySelector('header')?.textContent ?? null)
+  );
+
+  observer.observe(document.body, {
+    characterData: true,
+    childList: true,
+    subtree: true,
+  });
+
+  const { fetch, rendered } = renderPage('bar', 2, false);
+
+  const { screen } = await rendered;
+
+  await expect
+    .poll(() => screen.getByRole('banner').element().textContent)
+    .toBe('bazv2');
+
+  observer.disconnect();
+
+  expect({
+    posts: fetch.mock.calls.filter(([, init]) => init?.method === 'POST'),
+    rolled: texts.some((text) => text?.includes('v0') || text?.includes('v1')),
+  }).toEqual({ posts: [], rolled: false });
 });
