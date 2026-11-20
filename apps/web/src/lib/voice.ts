@@ -1,5 +1,6 @@
 import type { Pose } from '@/components/ui/empty-state';
 
+import { useMoment } from './moment';
 import { usePreference } from './preferences';
 import { hash } from './seed';
 
@@ -152,8 +153,8 @@ const empties = {
 export type EmptyView = keyof typeof empties;
 
 export function useEmpty(view: EmptyView): Copy & { pose?: Pose } {
-  const quiet = useQuiet();
+  const spoken = useMoment('empty.voice').on;
   const { plain, pose, voiced } = empties[view];
 
-  return quiet ? plain : { ...voiced, pose };
+  return spoken ? { ...voiced, pose } : plain;
 }
