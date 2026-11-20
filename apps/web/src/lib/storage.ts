@@ -52,7 +52,14 @@ export function setStorageUser(id: string) {
   }
 
   window.localStorage.setItem(userKey, JSON.stringify(id));
+
+  const before = user;
+
   user = id;
+
+  return () => {
+    user = before;
+  };
 }
 
 function notify() {

@@ -132,21 +132,33 @@ test('a session budget belongs to one user in one tab until midnight', async () 
   });
 });
 
-test('a refused request leaves a playing moment alone', async () => {
-  const { result } = await renderHookWithQuery(
+test('asking again leaves a playing moment alone, whether the budget or a hidden tab says no', async () => {
+  const fizz = await renderHookWithQuery(
     () => useMoment('home.fizz'),
     preferring('default')
   );
 
-  await act(() => result.current.play());
+  const hop = await renderHookWithQuery(
+    () => useMoment('run.done'),
+    preferring('default')
+  );
 
-  const marks = [result.current.mark];
+  await act(() => fizz.result.current.play());
+  await act(() => hop.result.current.play());
 
-  await act(() => result.current.play());
+  const marks = [[fizz.result.current.mark, hop.result.current.mark]];
 
-  marks.push(result.current.mark);
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
 
-  expect(marks).toEqual(['fizz', 'fizz']);
+  await act(() => fizz.result.current.play());
+  await act(() => hop.result.current.play());
+
+  marks.push([fizz.result.current.mark, hop.result.current.mark]);
+
+  expect(marks).toEqual([
+    ['fizz', 'done'],
+    ['fizz', 'done'],
+  ]);
 });
 
 function Row({ finished }: { finished: boolean }) {
@@ -426,6 +438,18 @@ test('a moment goes off when its subject goes away and stays off when it comes b
   }
 
   expect(on).toEqual([true, false, false]);
+});
+
+test('a subject that never equals itself is still one subject', async () => {
+  const { result } = await renderHookWithQuery(
+    () => useMoment('empty.enter', { subject: Number.NaN }),
+    preferring('default')
+  );
+
+  expect({
+    kept: Object.keys(ledger(window.sessionStorage)),
+    on: result.current.on,
+  }).toEqual({ kept: ['empty.enter/NaN'], on: true });
 });
 
 test('a moment with nowhere to show its effect, or nowhere to keep its count, plays nothing and spends nothing', async () => {

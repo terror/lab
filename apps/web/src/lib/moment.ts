@@ -266,7 +266,11 @@ export function useMoment<Id extends MomentId>(
 
   const [scope, setScope] = useState({ id, ready, subject });
 
-  if (scope.id !== id || scope.ready !== ready || scope.subject !== subject) {
+  if (
+    scope.id !== id ||
+    scope.ready !== ready ||
+    !Object.is(scope.subject, subject)
+  ) {
     setScope({ id, ready, subject });
     setState(rest);
   }
@@ -326,7 +330,7 @@ export function useMoment<Id extends MomentId>(
     const { hidden }: Moment = moments[current.id];
 
     if (hidden === 'wait') {
-      setState(pending);
+      setState((held) => (held.phase === 'rest' ? pending : held));
     }
 
     return false;
@@ -335,7 +339,7 @@ export function useMoment<Id extends MomentId>(
   useLayoutEffect(() => {
     const cue = cued && eligible ? (subject ?? true) : false;
 
-    if (cue === false || cue === asked.current) {
+    if (cue === false || Object.is(cue, asked.current)) {
       return;
     }
 

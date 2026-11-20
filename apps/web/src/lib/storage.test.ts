@@ -26,3 +26,17 @@ test('the first user to sign in clears what was kept for no one in particular', 
     window.sessionStorage.getItem('lab:foo:moments'),
   ]).toEqual([null, '"baz"', null]);
 });
+
+test('a borrowed storage user is handed back', () => {
+  setStorageUser('foo');
+
+  const restore = setStorageUser('bar');
+
+  writeStored('baz', 'qux');
+  restore();
+
+  expect([
+    readStored('baz', z.string(), ''),
+    window.localStorage.getItem('lab:bar:baz'),
+  ]).toEqual(['', '"qux"']);
+});
