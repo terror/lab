@@ -3,7 +3,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { tryPrompt } from '@/lib/capabilities';
 import { glideOrigin } from '@/lib/glide';
 import { setStorageUser } from '@/lib/storage';
-import { renderWithQuery, stubFetch } from '@/test/helpers';
+import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import {
   RouterProvider,
@@ -18,19 +18,37 @@ import { NewChat } from './new-chat';
 
 const DAY = 86_400_000;
 
+function finished(id: number) {
+  return {
+    finishedAt: new Date().toISOString(),
+    id,
+    preview: 'bar',
+    scheduled: false,
+    title: `foo ${id}`,
+  };
+}
+
+const returning = [{ id: 9, projectId: null, title: 'qux', unread: false }];
+
 async function renderHome({
   chats = [],
   personality = 'default',
+  pins = [],
   projects = [],
   start = () => Response.json({ id: 1 }, { status: 201 }),
   tasks = [],
+  tried = false,
+  unread = () => Response.json({ chats: [], running: 0, waiting: [] }),
   user = 'foo',
 }: {
   chats?: object[];
   personality?: string;
+  pins?: object[];
   projects?: object[];
   start?: () => Response | Promise<Response>;
   tasks?: object[];
+  tried?: boolean;
+  unread?: () => Response | Promise<Response>;
   user?: string;
 } = {}) {
   const preferences = { ...defaultPreferences, personality };
@@ -41,8 +59,18 @@ async function renderHome({
   );
 
   const responses: Record<string, unknown> = {
+    '/api/capabilities': {
+      tried: {
+        apps: tried,
+        branches: tried,
+        helpers: tried,
+        images: false,
+        plan: tried,
+        schedules: tried,
+      },
+    },
     '/api/conversations': { conversations: chats, next: null },
-    '/api/conversations/unread': { chats: [], running: 0 },
+    '/api/conversations/pins': { pins },
     '/api/models': { default: null, models: [] },
     '/api/preferences': { preferences },
     '/api/profile': {},
@@ -50,9 +78,13 @@ async function renderHome({
     '/api/schedules': { tasks },
   };
 
-  stubFetch(({ pathname }, init) => {
+  const fetch = stubFetch(({ pathname }, init) => {
     if (init?.method === 'POST' && pathname === '/api/conversations') {
       return start();
+    }
+
+    if (pathname === '/api/conversations/unread') {
+      return unread();
     }
 
     return pathname in responses
@@ -65,11 +97,19 @@ async function renderHome({
   const router = createRouter({
     history: createMemoryHistory(),
     routeTree: rootRoute.addChildren(
-      ['/', '/c/$id', '/projects/$projectId', '/scheduled'].map((path) =>
+      [
+        '/',
+        '/apps/$conversationId/$artifactId',
+        '/c/$id',
+        '/projects/$projectId',
+        '/scheduled',
+      ].map((path) =>
         createRoute({
           component: () => (
             <TooltipProvider>
-              <NewChat user={{ id: user }} />
+              <div className='flex h-screen flex-col'>
+                <NewChat user={{ id: user }} />
+              </div>
             </TooltipProvider>
           ),
           getParentRoute: () => rootRoute,
@@ -81,7 +121,7 @@ async function renderHome({
 
   const { screen } = await renderWithQuery(<RouterProvider router={router} />);
 
-  return { router, screen };
+  return { fetch, router, screen };
 }
 
 test('the mark assembles on the first visit of a session and rests after', async () => {
@@ -213,18 +253,42 @@ test('a quiet home shows the mark at rest on the first visit', async () => {
   ).toBe('idle');
 });
 
-test('a new user gets starters that fill the message box', async () => {
+test('a new user gets starters that preview in the message box and fill it, above the place work will land', async () => {
   const { screen } = await renderHome();
-
-  await screen.getByRole('button', { name: 'Plan a trip' }).click();
 
   const message = screen.getByLabelText('Message');
 
-  await expect.element(message).toHaveValue('Plan a three-day trip to ');
+  const starter = screen.getByRole('button', { name: 'Draw something' });
+
+  await starter.hover();
+
+  await expect
+    .element(message)
+    .toHaveAttribute('placeholder', 'Make an image of …');
+
+  await starter.click();
+
   await expect.element(message).toHaveFocus();
+
+  const box = message.element() as HTMLTextAreaElement;
+
+  expect([
+    box.value,
+    box.selectionStart,
+    box.selectionEnd,
+    screen.getByRole('list', { name: 'Try' }).element().textContent,
+    screen.getByRole('list', { name: 'Try' }).element().nextElementSibling
+      ?.textContent,
+  ]).toEqual([
+    'Make an image of …',
+    17,
+    18,
+    'Make an app that remembersRun something every morningDraw something',
+    'Finished work and questions for you will show up here.',
+  ]);
 });
 
-test('a chat and a project with the same name are both suggested', async () => {
+test('a chat and a project with the same name are both offered', async () => {
   const error = vi.spyOn(console, 'error');
 
   const { screen } = await renderHome({
@@ -232,11 +296,177 @@ test('a chat and a project with the same name are both suggested', async () => {
     projects: [{ id: 2, name: 'foo' }],
   });
 
-  const list = screen.getByRole('list', { name: 'Suggestions' });
+  const list = screen.getByRole('list', { name: 'Pick up' });
 
-  await expect.poll(() => list.element().textContent).toBe('foo foo ');
+  await expect
+    .poll(() => list.element().textContent)
+    .toBe('fooLast chatfooProject');
 
   expect(error).not.toHaveBeenCalled();
+});
+
+test('the brief counts the work, the list sorts it by what needs you, and a count jumps to its items', async () => {
+  const { screen } = await renderHome({
+    chats: returning,
+    unread: () =>
+      Response.json({
+        chats: [finished(1)],
+        running: 1,
+        waiting: [{ id: 2, title: 'baz' }],
+      }),
+  });
+
+  const list = screen.getByRole('list', { name: 'Activity' });
+
+  await expect
+    .poll(() => list.element().textContent)
+    .toBe('bazNeeds youReviewfoo 1Unreadbar1m1m1 chat running');
+
+  const focused = [];
+
+  for (const name of ['1 chat finished', '1 needs you', '1 is still running']) {
+    await screen.getByRole('button', { name }).click();
+
+    focused.push(document.activeElement?.textContent);
+  }
+
+  expect([
+    screen.container.querySelector('[data-slot=brief]')?.textContent,
+    focused,
+  ]).toEqual([
+    '1chat finished and 1needs you. 1is still running.',
+    ['foo 1Unreadbar', 'baz', '1 chat running'],
+  ]);
+});
+
+test('a quiet brief is plain counts', async () => {
+  const { screen } = await renderHome({
+    chats: returning,
+    personality: 'quiet',
+    unread: () =>
+      Response.json({
+        chats: [finished(1), finished(2)],
+        running: 1,
+        waiting: [{ id: 3, title: 'baz' }],
+      }),
+  });
+
+  await expect
+    .element(screen.getByRole('button', { name: '2 finished' }))
+    .toBeVisible();
+
+  expect(screen.container.querySelector('[data-slot=brief]')?.textContent).toBe(
+    '2finished · 1needs you · 1running'
+  );
+});
+
+test('a long list stops at six until it is expanded, and clearing it says so', async () => {
+  let chats = [1, 2, 3, 4, 5, 6, 7, 8].map(finished);
+
+  const { fetch, screen } = await renderHome({
+    chats: returning,
+    unread: () => Response.json({ chats, running: 0, waiting: [] }),
+  });
+
+  const list = screen.getByRole('list', { name: 'Activity' });
+
+  const rows = () => list.element().children.length;
+
+  await expect.poll(rows).toBe(6);
+
+  await screen.getByRole('button', { name: '+2 more' }).click();
+
+  const expanded = [rows(), document.activeElement?.textContent];
+
+  chats = [];
+
+  await screen.getByRole('button', { name: 'Mark all read' }).click();
+
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('All caught up');
+
+  expect([
+    expanded,
+    fetch.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([input]) => requestUrl(input).pathname),
+  ]).toEqual([
+    [8, 'foo 7Unreadbar'],
+    [1, 2, 3, 4, 5, 6, 7, 8].map((id) => `/api/conversations/${id}/read`),
+  ]);
+});
+
+test('news that arrives late never moves the message box', async () => {
+  const news = Promise.withResolvers<Response>();
+
+  const { screen } = await renderHome({
+    chats: returning,
+    unread: () => news.promise,
+  });
+
+  const message = screen.getByLabelText('Message');
+
+  await expect.element(message).toBeVisible();
+
+  const top = () => message.element().getBoundingClientRect().top;
+
+  const before = top();
+
+  news.resolve(
+    Response.json({
+      chats: [finished(1), finished(2)],
+      running: 1,
+      waiting: [{ id: 3, title: 'baz' }],
+    })
+  );
+
+  await expect
+    .element(screen.getByRole('list', { name: 'Activity' }))
+    .toBeVisible();
+
+  expect(top()).toBe(before);
+});
+
+test('on a day with no news, lines to try come from your own things, preview on one line and fill the message box', async () => {
+  const { screen } = await renderHome({
+    chats: [{ id: 1, projectId: 3, title: 'foo', unread: false }],
+    pins: [
+      { artifactId: 'bar', conversationId: 1, projectId: null, title: 'baz' },
+    ],
+    projects: [{ id: 3, name: 'qux' }],
+    tried: true,
+  });
+
+  const list = screen.getByRole('list', { name: 'Try' });
+
+  await expect
+    .poll(() => list.element().textContent)
+    .toBe('Catch up on quxImprove bazDraw something');
+
+  const line = screen.getByRole('button', { name: 'Improve baz' });
+
+  const message = screen.getByLabelText('Message');
+
+  const top = () => line.element().getBoundingClientRect().top;
+
+  const before = top();
+
+  await line.hover();
+
+  await expect
+    .element(message)
+    .toHaveAttribute('placeholder', 'Suggest three improvements for my baz…');
+
+  const after = top();
+
+  await line.click();
+
+  await expect
+    .element(message)
+    .toHaveValue('Suggest three improvements for my baz app.');
+
+  expect(after).toBe(before);
 });
 
 test('a returning user gets their latest chat, its project, and the next task', async () => {
@@ -265,17 +495,17 @@ test('a returning user gets their latest chat, its project, and the next task', 
     ],
   });
 
-  const list = screen.getByRole('list', { name: 'Suggestions' });
+  const list = screen.getByRole('list', { name: 'Pick up' });
 
   await expect
     .poll(() => list.element().textContent)
-    .toBe('bar qux corge in 2 days');
+    .toBe('barLast chatquxProjectcorgeRuns in 2 days');
 
-  await screen.getByRole('button', { name: 'corge in 2 days' }).click();
+  await screen.getByRole('link', { name: 'corge Runs in 2 days' }).click();
 
   await expect.poll(() => router.state.location.pathname).toBe('/scheduled');
 
-  await screen.getByRole('button', { name: 'qux' }).click();
+  await screen.getByRole('link', { name: 'qux Project' }).click();
 
   await expect.poll(() => router.state.location.pathname).toBe('/projects/3');
 });

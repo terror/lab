@@ -113,6 +113,13 @@ export function usePins(projectId: number | null) {
   });
 }
 
+export function useLatestPin() {
+  return useQuery({
+    ...pinsQueryOptions,
+    select: ({ pins }) => pins.at(-1),
+  });
+}
+
 export function usePin(conversationId: number, artifactId: string) {
   return useQuery({
     ...pinsQueryOptions,
