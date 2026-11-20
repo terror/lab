@@ -28,7 +28,12 @@ function ActivityRow({
   const second = Boolean(detail) || Boolean(progress);
 
   const when = time ? (
-    <span className='text-xs whitespace-nowrap text-muted-foreground tabular-nums'>
+    <span
+      className={cn(
+        'text-xs whitespace-nowrap text-muted-foreground tabular-nums',
+        actions ? 'pointer-fine:mr-1.5' : 'mr-1.5'
+      )}
+    >
       {time}
     </span>
   ) : undefined;

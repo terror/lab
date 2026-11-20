@@ -113,10 +113,10 @@ export function usePins(projectId: number | null) {
   });
 }
 
-export function useLatestPin() {
+export function useRecentPins() {
   return useQuery({
     ...pinsQueryOptions,
-    select: ({ pins }) => pins.at(-1),
+    select: ({ pins }) => pins.toReversed(),
   });
 }
 

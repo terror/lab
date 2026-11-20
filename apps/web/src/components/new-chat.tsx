@@ -129,7 +129,7 @@ export function NewChat({ user }: { user: { id: string } }) {
   });
   const hello = shelf.fresh && !quiet;
   const fade = hello || (first && !quiet);
-  const [, setDraft] = useDraft('new');
+  const [draft, setDraft] = useDraft('new');
   const [preview, setPreview] = useState<string>();
   const [expanded, setExpanded] = useState(false);
   const [lit, setLit] = useState<BriefKind>();
@@ -160,7 +160,8 @@ export function NewChat({ user }: { user: { id: string } }) {
 
   const news = counts.finished + counts.needs + counts.running > 0;
 
-  const waiting = shelf.loading || unread.isPending;
+  const waiting =
+    shelf.loading || !(unread.isFetched || unread.failureCount > 0);
 
   const pending = waiting || !shelf.ready;
 
@@ -248,15 +249,16 @@ export function NewChat({ user }: { user: { id: string } }) {
           >
             {shelf.fresh ? (
               <>
+                <p className='rounded-card border border-dashed px-4 py-3.5 text-sm text-muted-foreground'>
+                  Finished work and questions for you will show up here.
+                </p>
                 <Prompts
+                  hidden={draft !== ''}
                   label='Try'
                   lines={shelf.starters ?? []}
                   onPreview={show}
                   onPrompt={prompt}
                 />
-                <p className='rounded-card border border-dashed px-4 py-3.5 text-sm text-muted-foreground'>
-                  Finished work and questions for you will show up here.
-                </p>
               </>
             ) : (
               <>
@@ -268,6 +270,7 @@ export function NewChat({ user }: { user: { id: string } }) {
                 <PickUp {...shelf} />
                 {!news && (
                   <Prompts
+                    hidden={draft !== ''}
                     label='Try'
                     lines={shelf.tries}
                     onPreview={show}

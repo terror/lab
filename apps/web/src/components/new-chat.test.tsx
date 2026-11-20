@@ -253,7 +253,7 @@ test('a quiet home shows the mark at rest on the first visit', async () => {
   ).toBe('idle');
 });
 
-test('a new user gets starters that preview in the message box and fill it, above the place work will land', async () => {
+test('a new user gets starters that preview in the message box and fill it, below the place work will land', async () => {
   const { screen } = await renderHome();
 
   const message = screen.getByLabelText('Message');
@@ -272,18 +272,21 @@ test('a new user gets starters that preview in the message box and fill it, abov
 
   const box = message.element() as HTMLTextAreaElement;
 
+  const list = screen.container.querySelector('[aria-label=Try]');
+
   expect([
     box.value,
     box.selectionStart,
     box.selectionEnd,
-    screen.getByRole('list', { name: 'Try' }).element().textContent,
-    screen.getByRole('list', { name: 'Try' }).element().nextElementSibling
-      ?.textContent,
+    list?.textContent,
+    list && getComputedStyle(list).visibility,
+    list?.previousElementSibling?.textContent,
   ]).toEqual([
     'Make an image of …',
     17,
     18,
     'Make an app that remembersRun something every morningDraw something',
+    'hidden',
     'Finished work and questions for you will show up here.',
   ]);
 });
@@ -335,7 +338,7 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
     focused,
   ]).toEqual([
     '1chat finished and 1needs you. 1is still running.',
-    ['foo 1Unreadbar', 'baz', '1 chat running'],
+    ['foo 1Unreadbar', 'Review', '1 chat running'],
   ]);
 });
 
@@ -428,13 +431,17 @@ test('news that arrives late never moves the message box', async () => {
   expect(top()).toBe(before);
 });
 
-test('on a day with no news, lines to try come from your own things, preview on one line and fill the message box', async () => {
+test('on a day with no news, lines to try come from things not already offered, preview on one line and fill the message box', async () => {
   const { screen } = await renderHome({
     chats: [{ id: 1, projectId: 3, title: 'foo', unread: false }],
     pins: [
       { artifactId: 'bar', conversationId: 1, projectId: null, title: 'baz' },
+      { artifactId: 'qux', conversationId: 1, projectId: null, title: 'corge' },
     ],
-    projects: [{ id: 3, name: 'qux' }],
+    projects: [
+      { id: 3, name: 'qux' },
+      { id: 4, name: 'quux' },
+    ],
     tried: true,
   });
 
@@ -442,7 +449,7 @@ test('on a day with no news, lines to try come from your own things, preview on 
 
   await expect
     .poll(() => list.element().textContent)
-    .toBe('Catch up on quxImprove bazDraw something');
+    .toBe('Catch up on quuxImprove bazDraw something');
 
   const line = screen.getByRole('button', { name: 'Improve baz' });
 
@@ -455,8 +462,10 @@ test('on a day with no news, lines to try come from your own things, preview on 
   await line.hover();
 
   await expect
-    .element(message)
-    .toHaveAttribute('placeholder', 'Suggest three improvements for my baz…');
+    .poll(() => message.element().getAttribute('placeholder')?.at(-1))
+    .toBe('…');
+
+  const shown = message.element().getAttribute('placeholder') ?? '';
 
   const after = top();
 
@@ -466,7 +475,51 @@ test('on a day with no news, lines to try come from your own things, preview on 
     .element(message)
     .toHaveValue('Suggest three improvements for my baz app.');
 
-  expect(after).toBe(before);
+  expect([
+    after - before,
+    'Suggest three improvements for my baz app.'.startsWith(shown.slice(0, -1)),
+    screen.getByRole('list', { name: 'Pick up' }).element().textContent,
+  ]).toEqual([0, true, 'fooLast chatcorgePinned appquxProject']);
+});
+
+test('a failed check for news still shows the page', async () => {
+  const { screen } = await renderHome({
+    chats: returning,
+    unread: () => new Response(null, { status: 500 }),
+  });
+
+  await expect.element(screen.getByRole('heading')).toBeVisible();
+
+  await expect
+    .element(screen.getByRole('list', { name: 'Pick up' }))
+    .toHaveTextContent('quxLast chat');
+});
+
+test('marking everything read with a double-click leaves what is below where it was', async () => {
+  let chats = [1, 2, 3].map(finished);
+
+  const { router, screen } = await renderHome({
+    chats: returning,
+    unread: () => Response.json({ chats, running: 0, waiting: [] }),
+  });
+
+  const tile = screen.getByRole('link', { name: 'qux Last chat' });
+
+  await expect.element(tile).toBeVisible();
+
+  const top = () => tile.element().getBoundingClientRect().top;
+
+  const before = top();
+
+  chats = [];
+
+  await screen.getByRole('button', { name: 'Mark all read' }).dblClick();
+
+  await expect
+    .element(screen.getByRole('status'))
+    .toHaveTextContent('All caught up');
+
+  expect([top() - before, router.state.location.pathname]).toEqual([0, '/']);
 });
 
 test('a returning user gets their latest chat, its project, and the next task', async () => {

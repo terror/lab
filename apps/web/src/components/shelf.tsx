@@ -1,11 +1,13 @@
 import { ShelfTile } from '@/components/ui/shelf-tile';
-import { useLatestPin } from '@/lib/artifacts';
+import { useRecentPins } from '@/lib/artifacts';
 import { useCapabilities } from '@/lib/capabilities';
 import { useLatestChats } from '@/lib/conversations';
 import { useProjects } from '@/lib/projects';
 import { type ScheduledTask, schedulesQueryOptions } from '@/lib/schedules';
 import { untilRun } from '@/lib/time';
-import { useQuery } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   AppWindow,
@@ -28,12 +30,22 @@ function nextTask(tasks: ScheduledTask[]) {
     .at(0);
 }
 
+function settled({
+  failureCount,
+  isFetched,
+}: Pick<UseQueryResult, 'failureCount' | 'isFetched'>) {
+  return isFetched || failureCount > 0;
+}
+
 export function useShelf() {
+  const quiet = useQuiet();
   const chats = useLatestChats();
   const projects = useProjects();
   const tasks = useQuery(schedulesQueryOptions);
-  const pin = useLatestPin();
+  const pins = useRecentPins();
   const capabilities = useCapabilities();
+
+  const [pin, spare] = pins.data ?? [];
 
   const all = chats.data ?? [];
 
@@ -49,34 +61,33 @@ export function useShelf() {
       prompt === undefined ? [] : [{ icon, key: id, label, prompt, tried }]
   );
 
+  const another = listed.find(({ id }) => id !== project?.id);
+
   const tries: (Line | undefined)[] = [
-    project && {
+    another && {
       icon: Folder,
       key: 'project',
-      label: `Catch up on ${project.name}`,
-      prompt: `Catch me up on where ${project.name} stands.`,
+      label: `Catch up on ${another.name}`,
+      prompt: `Catch me up on where ${another.name} stands.`,
     },
-    pin.data && {
+    spare && {
       icon: AppWindow,
       key: 'app',
-      label: `Improve ${pin.data.title}`,
-      prompt: `Suggest three improvements for my ${pin.data.title} app.`,
+      label: `Improve ${spare.title}`,
+      prompt: `Suggest three improvements for my ${spare.title} app.`,
     },
-    lines.find(({ tried }) => !tried),
+    quiet ? undefined : lines.find(({ tried }) => !tried),
   ];
 
   return {
-    chat: all.find(({ title, unread }) => !unread && title !== null),
-    fresh: chats.data?.length === 0,
-    loading: chats.isPending,
-    pin: pin.data,
-    project,
-    ready: !(
-      chats.isPending ||
-      projects.isPending ||
-      tasks.isPending ||
-      pin.isPending
+    chat: all.find(
+      ({ running, title, unread }) => !running && !unread && title !== null
     ),
+    fresh: chats.data?.length === 0,
+    loading: !settled(chats),
+    pin,
+    project,
+    ready: [chats, projects, tasks, pins].every(settled),
     starters: capabilities && lines.slice(0, 3),
     task: nextTask(tasks.data?.tasks ?? []),
     tries: tries.filter((line) => line !== undefined),
@@ -86,11 +97,13 @@ export function useShelf() {
 type Shelf = ReturnType<typeof useShelf>;
 
 export function Prompts({
+  hidden,
   label,
   lines,
   onPreview,
   onPrompt,
 }: {
+  hidden: boolean;
   label: string;
   lines: Line[];
   onPreview: (prompt: string | undefined) => void;
@@ -101,7 +114,10 @@ export function Prompts({
   }
 
   return (
-    <ul aria-label={label} className='-mx-3 flex flex-wrap gap-1'>
+    <ul
+      aria-label={label}
+      className={cn('-mx-3 flex flex-wrap gap-1', hidden && 'invisible')}
+    >
       {lines.map(({ icon: Icon, key, label: title, prompt }) => (
         <li key={key} className='max-w-full min-w-0'>
           <ShelfTile

@@ -65,11 +65,6 @@ function Needs({
           </Button>
         }
         className={cn('transition-colors', lit && 'bg-muted')}
-        renderLink={(name) => (
-          <Link params={{ id: chat.id }} to='/c/$id'>
-            {name}
-          </Link>
-        )}
         title={title}
       />
     </li>
@@ -83,7 +78,7 @@ function Finished({
 }: {
   chat: Unread['chats'][number];
   lit: boolean;
-  onRead: () => void;
+  onRead: (event: React.MouseEvent) => void;
 }) {
   const title = conversationTitle(chat.title);
 
@@ -119,7 +114,7 @@ function Finished({
 function Running({ count, lit }: { count: number; lit: boolean }) {
   return (
     <ActivityRow
-      className={cn(lit && 'bg-muted')}
+      className={cn('hover:bg-transparent', lit && 'bg-muted')}
       data-kind='running'
       glyph={<LiveMark className='size-4' state='thinking' />}
       tabIndex={-1}
@@ -141,7 +136,9 @@ export function Bench({
   const quiet = useQuiet();
   const unread = useUnreadChats();
   const [had, setHad] = useState(false);
+  const [held, setHeld] = useState<number>();
   const list = useRef<HTMLUListElement>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
 
   const read = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(readConversation)),
@@ -155,26 +152,53 @@ export function Bench({
     setHad(true);
   }
 
-  if (items.length === 0) {
-    return had ? (
-      <output className='flex min-h-13 items-center gap-3 text-sm text-muted-foreground'>
-        <span className='flex size-4 items-center justify-center'>
-          <Dot tone='done' />
-        </span>
-        {say('caughtUp', undefined, { quiet, seed: '' })}
-      </output>
-    ) : null;
+  if (items.length === 0 && !had) {
+    return null;
   }
 
   const chats = unread.data?.chats ?? [];
+
+  const mark = (event: React.MouseEvent, ids: number[]) => {
+    if (event.detail > 1) {
+      return;
+    }
+
+    if ((event.nativeEvent as PointerEvent).pointerType === 'mouse') {
+      setHeld(wrapper.current?.offsetHeight);
+    }
+
+    read.mutate(ids);
+  };
 
   const shown =
     expanded || items.length <= VISIBLE + 1 ? items : items.slice(0, VISIBLE);
 
   const hidden = items.length - shown.length;
 
+  if (items.length === 0) {
+    return (
+      <div
+        ref={wrapper}
+        onPointerLeave={() => setHeld(undefined)}
+        style={{ minHeight: held }}
+      >
+        <output className='flex min-h-13 items-center gap-3 text-sm text-muted-foreground'>
+          <span className='flex size-4 items-center justify-center'>
+            <Dot tone='done' />
+          </span>
+          {say('caughtUp', undefined, { quiet, seed: '' })}
+        </output>
+      </div>
+    );
+  }
+
   return (
-    <div className='flex flex-col gap-1'>
+    <div
+      ref={wrapper}
+      className='flex flex-col gap-1'
+      onPointerLeave={() => setHeld(undefined)}
+      style={{ minHeight: held }}
+    >
       <ul ref={list} aria-label='Activity' className='flex flex-col gap-1'>
         {shown.map((item) => {
           if (item.kind === 'needs') {
@@ -193,7 +217,7 @@ export function Bench({
                 key={`finished-${item.chat.id}`}
                 chat={item.chat}
                 lit={lit === 'finished'}
-                onRead={() => read.mutate([item.chat.id])}
+                onRead={(event) => mark(event, [item.chat.id])}
               />
             );
           }
@@ -220,7 +244,12 @@ export function Bench({
           {chats.length > 1 && (
             <Button
               className='ml-auto'
-              onClick={() => read.mutate(chats.map(({ id }) => id))}
+              onClick={(event) =>
+                mark(
+                  event,
+                  chats.map(({ id }) => id)
+                )
+              }
               size='sm'
               variant='quiet'
             >
