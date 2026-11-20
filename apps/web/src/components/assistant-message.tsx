@@ -7,13 +7,13 @@ import type { ToolProgress, ToolResult } from '@/components/tools';
 import { LiveMark } from '@/components/ui/live-mark';
 import { Message, MessageContent } from '@/components/ui/message';
 import { StatusIcon } from '@/components/ui/status-icon';
-import { TraceIcon, TraceLine, TraceTitle } from '@/components/ui/trace';
+import { TraceIcon } from '@/components/ui/trace';
 import type { ModelChoice } from '@/lib/models';
 import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import type { Clock } from '@/lib/presence';
-import { runFailureTitles } from '@/lib/run-failure';
-import { steps } from '@/lib/spans';
+import { runEnding } from '@/lib/run-failure';
+import { steps, worked } from '@/lib/spans';
 import type { Part, Round, Span } from '@/lib/transcript';
 import { cn } from '@/lib/utils';
 import type { RunFailureReason } from '@earendil-works/pi-durable';
@@ -54,27 +54,41 @@ function segments(parts: readonly Part[]) {
 }
 
 export function RunFailure({
+  at,
   mark = 'broken',
+  finished = 0,
   reason,
+  wrote = false,
 }: {
+  at?: number;
+  finished?: number;
   mark?: 'broken' | 'error' | 'recover';
   reason: RunFailureReason;
+  wrote?: boolean;
 }) {
   const slipped = useMoment('run.failure');
 
   const stopped = reason === 'aborted';
 
+  const { kept, title } = runEnding(reason, { at, steps: finished, wrote });
+
   return (
-    <TraceLine role='alert' status={stopped ? undefined : 'error'}>
-      <TraceIcon>
+    <div
+      className='flex min-w-0 items-start gap-2 text-sm text-muted-foreground'
+      role='alert'
+    >
+      <TraceIcon className={cn('h-5', !stopped && 'text-destructive')}>
         {stopped || !slipped.on ? (
           <StatusIcon status={stopped ? 'stopped' : 'failed'} />
         ) : (
           <LiveMark className='size-3.5' state={mark} />
         )}
       </TraceIcon>
-      <TraceTitle>{runFailureTitles[reason]}</TraceTitle>
-    </TraceLine>
+      <p className='min-w-0 wrap-break-word'>
+        <span className={cn(!stopped && 'text-destructive')}>{title}</span>
+        {kept && ` · ${kept}`}
+      </p>
+    </div>
   );
 }
 
@@ -213,6 +227,10 @@ export function AssistantMessage({
 
   const ledger = steps(parts, rounds, results);
 
+  const calls = ledger.flatMap((step) =>
+    step.kind === 'tool' ? [step.call] : []
+  );
+
   const wrote = all.some(({ kind }) => kind === 'text');
 
   const shown = split > 0 || (working && !wrote);
@@ -252,7 +270,16 @@ export function AssistantMessage({
         {plan && <Plan {...plan} />}
         <Segments segments={all.slice(split)} {...shared} />
         {failure && (
-          <RunFailure mark={retrying ? 'recover' : broken} reason={failure} />
+          <RunFailure
+            at={worked(span, calls, results)}
+            finished={
+              calls.filter(({ id }) => results.get(id)?.status === 'done')
+                .length
+            }
+            mark={retrying ? 'recover' : broken}
+            reason={failure}
+            wrote={text.length > 0}
+          />
         )}
         {answer && (
           <MessageActions

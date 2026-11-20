@@ -251,7 +251,7 @@ function Verb({
         key={label}
         animate={{ opacity: 1, y: 0 }}
         className='flex min-w-12 shrink-100'
-        exit={{ opacity: 0, y: -4 }}
+        exit={{ opacity: 0, transition: { duration: 0 } }}
         initial={{ opacity: 0, y: 4 }}
         transition={{ ...fade.base, y: spring.snap }}
       >
@@ -354,7 +354,7 @@ function DockLive({ onJump, ...run }: Live & { onJump: () => void }) {
           <RunLineVerb className='shrink-0 text-status-attention-ink'>
             Needs you
           </RunLineVerb>
-          {prompt && <RunLineNote>{prompt}</RunLineNote>}
+          {prompt && <RunLineNote roomy>{prompt}</RunLineNote>}
         </RunLine>
       </RunTab>
     );
