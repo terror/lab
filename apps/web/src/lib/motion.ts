@@ -29,6 +29,8 @@ export const roll = {
 
 export const stagger = 0.03;
 
+export const story = 0.5;
+
 export function rise(index: number) {
   const delay = Math.min(index, 5) * stagger;
 
