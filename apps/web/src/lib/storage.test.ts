@@ -16,11 +16,13 @@ test('the first user to sign in clears what was kept for no one in particular', 
   window.localStorage.removeItem('lab:user');
   window.localStorage.setItem('lab:draft:new', '"foo"');
   window.localStorage.setItem('bar', '"baz"');
+  window.sessionStorage.setItem('lab:foo:moments', '{}');
 
   setStorageUser('qux');
 
   expect([
     window.localStorage.getItem('lab:draft:new'),
     window.localStorage.getItem('bar'),
-  ]).toEqual([null, '"baz"']);
+    window.sessionStorage.getItem('lab:foo:moments'),
+  ]).toEqual([null, '"baz"', null]);
 });
