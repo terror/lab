@@ -1,4 +1,6 @@
+import { spring } from '@/lib/motion';
 import { useDark } from '@/lib/theme';
+import { m, useReducedMotion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -64,19 +66,27 @@ async function answer(
 }
 
 export function SandboxFrame({
+  arriving = false,
+  from,
+  glide = true,
   height: fixed,
   html,
   onCall,
   onError,
   onSend,
+  preview = false,
   scripts = true,
   title,
 }: {
+  arriving?: boolean;
+  from?: number;
+  glide?: boolean;
   height?: number;
   html: string;
   onCall?: FrameCall;
   onError?: (message: string) => void;
   onSend?: (text: string) => void;
+  preview?: boolean;
   scripts?: boolean;
   title: string;
 }) {
@@ -90,8 +100,13 @@ export function SandboxFrame({
   const sendText = useRef(onSend);
   const handle = useRef(onCall);
 
-  const [height, setHeight] = useState(MIN_HEIGHT);
+  const [height, setHeight] = useState(from ?? MIN_HEIGHT);
+  const [sized, setSized] = useState(false);
+  const [gliding, setGliding] = useState(from !== undefined);
+  const [arrived, setArrived] = useState(false);
   const [closed, setClosed] = useState(false);
+
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     handle.current = onCall;
@@ -140,6 +155,7 @@ export function SandboxFrame({
 
       if (message?.type === 'size') {
         setHeight(Math.min(Math.max(message.height, MIN_HEIGHT), MAX_HEIGHT));
+        setSized(true);
       }
 
       if (message?.type === 'error') {
@@ -176,10 +192,19 @@ export function SandboxFrame({
     );
   }
 
+  const shown = fixed ?? height;
+
   return (
-    <iframe
+    <m.iframe
       allow=''
+      animate={gliding ? { height: shown } : undefined}
       className='block w-full border-0 bg-transparent'
+      data-arriving={(arriving && sized && !arrived) || undefined}
+      data-preview={preview || (arriving && !sized) || undefined}
+      data-slot='sandbox-frame'
+      initial={false}
+      onAnimationComplete={() => sized && setGliding(false)}
+      onAnimationEnd={() => setArrived(true)}
       onLoad={connect}
       ref={frame}
       referrerPolicy='no-referrer'
@@ -187,9 +212,10 @@ export function SandboxFrame({
       src='/frame'
       style={{
         colorScheme: dark ? 'dark' : 'light',
-        height: fixed ?? height,
+        height: gliding ? undefined : shown,
       }}
       title={title}
+      transition={reduced || !glide ? { duration: 0 } : spring.glide}
     />
   );
 }

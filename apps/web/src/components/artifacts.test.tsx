@@ -26,6 +26,47 @@ test('a full-screen artifact opens focused on its dialog so Escape closes it', a
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
 });
 
+function card(active: boolean) {
+  return artifactRenderers.artifact_create.inline({
+    active,
+    args: { content: 'foo', id: 'bar', title: 'baz' },
+    callId: 'qux',
+    details: active ? undefined : { title: 'baz', version: 1 },
+    history: [],
+    output: '',
+  });
+}
+
+test('an artifact built in view switches on from its grey preview height, and one opened later does not', async () => {
+  const { screen } = await renderWithQuery(card(true));
+
+  const frame = () => {
+    const element = screen.container.querySelector('iframe');
+
+    return {
+      height: element?.style.height,
+      preview: element?.hasAttribute('data-preview'),
+    };
+  };
+
+  expect(frame()).toEqual({ height: '360px', preview: true });
+
+  await screen.rerender(card(false));
+
+  expect(frame()).toEqual({ height: '360px', preview: true });
+
+  await screen.unmount();
+
+  const later = await renderWithQuery(card(false));
+
+  expect({
+    height: later.screen.container.querySelector('iframe')?.style.height,
+    preview: later.screen.container
+      .querySelector('iframe')
+      ?.hasAttribute('data-preview'),
+  }).toEqual({ height: '48px', preview: false });
+});
+
 test('a building artifact draws one more cell of its face for every 600 characters', async () => {
   const { screen } = await renderWithQuery(
     <ToolConversation value={7}>

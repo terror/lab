@@ -1664,3 +1664,25 @@
     transform: translate(var(--dx), var(--dy));
   }
 }
+
+[data-slot='sandbox-frame'][data-preview] {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+[data-slot='sandbox-frame'][data-arriving] {
+  animation: switch-on var(--motion-story) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='sandbox-frame'][data-arriving] {
+    animation-duration: var(--motion-base);
+  }
+}
+
+@keyframes switch-on {
+  from {
+    filter: grayscale(1);
+    opacity: 0.6;
+  }
+}
