@@ -4,6 +4,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ListRow } from '@/components/ui/list-row';
@@ -32,6 +34,7 @@ import {
   type LucideIcon,
   Paperclip,
   Plus,
+  SendHorizontal,
   X,
 } from 'lucide-react';
 import {
@@ -205,10 +208,12 @@ type Source = { icon: LucideIcon; label: string; run: () => void };
 
 function SourceMenu({
   disabled,
+  onBackground,
   onCloseAutoFocus,
   sources,
 }: {
   disabled: boolean;
+  onBackground: (() => void) | undefined;
   onCloseAutoFocus: (event: Event) => void;
   sources: Source[];
 }) {
@@ -243,6 +248,16 @@ function SourceMenu({
               {label}
             </DropdownMenuItem>
           ))}
+          {onBackground && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onBackground}>
+                <SendHorizontal aria-hidden='true' />
+                Start in background
+                <DropdownMenuShortcut>⌥↵</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -290,9 +305,11 @@ function SourceMenu({
 export function AttachMenu({
   disabled,
   intake,
+  onBackground,
 }: {
   disabled: boolean | undefined;
   intake: ReturnType<typeof useAttachmentIntake>;
+  onBackground?: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [picking, setPicking] = useState(false);
@@ -324,6 +341,7 @@ export function AttachMenu({
       />
       <SourceMenu
         disabled={disabled || intake.room <= 0}
+        onBackground={onBackground}
         onCloseAutoFocus={(event) => {
           if (openingPicker.current) {
             openingPicker.current = false;

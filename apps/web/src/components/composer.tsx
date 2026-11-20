@@ -271,6 +271,7 @@ export function Composer({
   inputRef,
   model,
   onAttachmentsChange,
+  onBackground,
   onDraftChange,
   onModelChange,
   onSteer,
@@ -289,6 +290,7 @@ export function Composer({
   inputRef?: Ref<HTMLTextAreaElement>;
   model: ModelChoice | undefined;
   onAttachmentsChange: Dispatch<SetStateAction<Attachment[]>>;
+  onBackground?: (content: string) => void;
   onDraftChange: (draft: string) => void;
   onModelChange: (model: ModelChoice) => void;
   onSteer?: (content: string) => void;
@@ -356,6 +358,15 @@ export function Composer({
     onSubmit(content);
   };
 
+  const background = () => {
+    if (empty || submitting || !onBackground) {
+      return;
+    }
+
+    dictation.cancel();
+    onBackground(content);
+  };
+
   const runCommand = async (command: SlashCommand) => {
     onDraftChange('');
     setAttachError(undefined);
@@ -387,6 +398,17 @@ export function Composer({
     const command = event.metaKey || event.ctrlKey;
 
     const { selectionEnd, selectionStart, value } = event.currentTarget;
+
+    if (
+      event.key === 'Enter' &&
+      event.altKey &&
+      onBackground &&
+      !event.nativeEvent.isComposing
+    ) {
+      event.preventDefault();
+      background();
+      return;
+    }
 
     if (
       event.key === 'Enter' &&
@@ -453,7 +475,11 @@ export function Composer({
           {tips && draft === '' && <Placeholder text={tip ?? placeholder} />}
         </div>
         <div className='flex items-center gap-2 px-3 pb-3'>
-          <AttachMenu disabled={disabled} intake={intake} />
+          <AttachMenu
+            disabled={disabled}
+            intake={intake}
+            onBackground={onBackground && background}
+          />
           <div className='ml-auto flex min-w-0 items-center gap-2 pointer-coarse:gap-3'>
             {!drafting && (
               <ModelPicker

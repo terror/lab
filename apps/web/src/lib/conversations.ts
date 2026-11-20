@@ -147,10 +147,14 @@ async function createConversation(
 
 export const startChatKey = [...conversationsQueryKey, 'start'];
 
+const backgroundChatKey = [...conversationsQueryKey, 'background'];
+
 export function useStartChat({
+  background = false,
   inlineError = true,
   projectId,
 }: {
+  background?: boolean;
   inlineError?: boolean;
   projectId?: number;
 } = {}) {
@@ -159,7 +163,7 @@ export function useStartChat({
 
   return useMutation({
     meta: { inlineError },
-    mutationKey: startChatKey,
+    mutationKey: background ? backgroundChatKey : startChatKey,
     mutationFn: ({
       attachments,
       content,
@@ -170,7 +174,10 @@ export function useStartChat({
       model: ModelChoice | undefined;
     }) => createConversation(content, attachments, model, projectId),
     onSuccess: async (id) => {
-      await navigate({ params: { id }, to: '/c/$id' });
+      if (!background) {
+        await navigate({ params: { id }, to: '/c/$id' });
+      }
+
       await queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     },
   });
