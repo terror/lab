@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/trace';
 import { NOTABLE_MS, type Step } from '@/lib/spans';
 import { duration } from '@/lib/time';
-import type { Part } from '@/lib/transcript';
+import type { Part, Span } from '@/lib/transcript';
 import { useContext, useState } from 'react';
 
 export type CallStatus = ToolResult['status'] | 'running';
@@ -88,7 +88,7 @@ type CallProps = {
 
 const TIMED_MS = NOTABLE_MS / 3;
 
-function took(span: { end: number; start: number } | undefined) {
+function took(span: Span | undefined) {
   return span && span.end - span.start >= TIMED_MS
     ? duration(span.end - span.start)
     : undefined;
@@ -113,7 +113,13 @@ export function stepSummary(name: string, view: ToolView, status: CallStatus) {
   return steps[status].label ?? toolRenderer(name).summary?.(view);
 }
 
-export function ToolStep({ call, progress, result, working }: CallProps) {
+export function ToolStep({
+  call,
+  progress,
+  result,
+  span,
+  working,
+}: CallProps & { span?: Span }) {
   const { status, ...view } = useToolView(call, progress, result, working);
 
   const [first] = useState(status);
@@ -124,7 +130,7 @@ export function ToolStep({ call, progress, result, working }: CallProps) {
 
   const ticked = first === 'running' && status === 'done';
 
-  const time = took(result?.span);
+  const time = took(span ?? result?.span);
 
   return (
     <TraceCollapsible>

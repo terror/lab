@@ -245,7 +245,7 @@ function LiveLine({
       {retry && <RunLineNote>{countdown(retry, now)}</RunLineNote>}
       {leave && <RunLineNote>You can leave this</RunLineNote>}
       {stalled && (
-        <RunLineNote className='shrink-100'>
+        <RunLineNote className='shrink-10000'>
           {say('stall', undefined, { quiet, seed: '' })}
         </RunLineNote>
       )}
@@ -474,6 +474,7 @@ export function Run({
                 call={step.call}
                 progress={progress.get(step.call.id)}
                 result={results.get(step.call.id)}
+                span={step.span}
                 working={working}
               />
             ) : (
