@@ -108,6 +108,8 @@ function useThrottled(value: string) {
   return throttled;
 }
 
+const built = new Set<string>();
+
 const CELL_CHARACTERS = 600;
 
 function BuildingFace({ id, length }: { id?: string; length: number }) {
@@ -128,15 +130,21 @@ function BuildingFace({ id, length }: { id?: string; length: number }) {
 }
 
 function Building({
+  callId,
   html,
   id,
   title,
 }: {
+  callId: string;
   html: string;
   id?: string;
   title: string;
 }) {
   const partial = useThrottled(html);
+
+  useEffect(() => {
+    built.add(callId);
+  }, [callId]);
 
   return (
     <Card className='gap-0 overflow-hidden p-0' variant='inset'>
@@ -152,6 +160,7 @@ function Building({
           <SandboxFrame
             height={PREVIEW_HEIGHT}
             html={partial}
+            preview
             scripts={false}
             title={`${title} preview`}
           />
@@ -266,7 +275,9 @@ function Errors({
   );
 }
 
-function Live({ artifact }: { artifact: Shown }) {
+function Live({ artifact, callId }: { artifact: Shown; callId: string }) {
+  const [arrival] = useState(() => built.has(callId));
+  const quiet = useQuiet();
   const [showCode, setShowCode] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -296,6 +307,10 @@ function Live({ artifact }: { artifact: Shown }) {
   const { title, version } = artifact;
 
   const html = useLibraryImages(artifact.html);
+
+  useEffect(() => {
+    built.delete(callId);
+  }, [callId]);
 
   return (
     <section aria-label={title} className='group/artifact'>
@@ -362,6 +377,9 @@ function Live({ artifact }: { artifact: Shown }) {
           <div hidden={showCode}>
             {html !== undefined && (
               <SandboxFrame
+                arriving={arrival && !quiet}
+                from={arrival ? PREVIEW_HEIGHT : undefined}
+                glide={!quiet}
                 html={html}
                 onCall={onCall}
                 onError={onError}
@@ -396,6 +414,7 @@ function artifactCard(name: string) {
 
       return (
         <Building
+          callId={view.callId}
           html={text(field(view.args, 'content')) ?? ''}
           id={text(field(view.args, 'id'))}
           title={title}
@@ -412,7 +431,7 @@ function artifactCard(name: string) {
     return artifact.version < latestVersion(view.history, artifact.id) ? (
       <Superseded artifact={artifact} />
     ) : (
-      <Live artifact={artifact} />
+      <Live artifact={artifact} callId={view.callId} />
     );
   };
 }
