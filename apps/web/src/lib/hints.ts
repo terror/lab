@@ -6,8 +6,8 @@ import {
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { call, client } from './client';
+import { useMoment } from './moment';
 import { preferencesQueryOptions } from './preferences';
-import { useQuiet } from './voice';
 
 const NOTE_MS = 12_000;
 
@@ -131,7 +131,7 @@ function retireTaught(id: string) {
 
 export function useHint(id: string, eligible: boolean) {
   const queryClient = useQueryClient();
-  const quiet = useQuiet();
+  const allowed = useMoment('discovery.hint').on;
   const { loaded, seen } = useLedger();
   const { confirmed, done, taught } = useSession();
   const visible = useVisible();
@@ -140,7 +140,7 @@ export function useHint(id: string, eligible: boolean) {
     eligible &&
     loaded &&
     visible &&
-    !quiet &&
+    allowed &&
     taught === undefined &&
     !seen.includes(id);
 
@@ -157,7 +157,7 @@ export function useHint(id: string, eligible: boolean) {
   return {
     pending: ready || (eligible && taught === id && !confirmed && !done),
     retire,
-    show: eligible && taught === id && confirmed && !done && !quiet,
+    show: eligible && taught === id && confirmed && !done && allowed,
   };
 }
 

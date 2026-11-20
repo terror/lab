@@ -15,7 +15,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { call, client } from './client';
 import { writeDraft } from './conversations';
 import { useHint, useLedger } from './hints';
-import { useQuiet } from './voice';
+import { useMoment } from './moment';
 
 const TIPS = 3;
 
@@ -101,13 +101,13 @@ export function useCapabilities(enabled = true) {
 }
 
 export function useTip(enabled: boolean, idle: boolean) {
-  const quiet = useQuiet();
+  const offered = useMoment('discovery.tip').on;
   const { seen } = useLedger();
   const [picked, setPicked] = useState<Capability>();
 
   const tips = seen.filter((id) => id.startsWith('tip:')).length;
 
-  const capabilities = useCapabilities(enabled && !quiet && tips < TIPS);
+  const capabilities = useCapabilities(enabled && offered && tips < TIPS);
 
   const next =
     tips < TIPS
