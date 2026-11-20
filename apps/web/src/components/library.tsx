@@ -32,10 +32,11 @@ import {
   libraryTextQueryOptions,
   useLibrarySearch,
 } from '@/lib/library';
+import { useMoment } from '@/lib/moment';
 import { fade, spring } from '@/lib/motion';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { useEmpty, useQuiet } from '@/lib/voice';
+import { useEmpty } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
@@ -344,7 +345,7 @@ export function Library() {
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<{ id: number; stepped: boolean }>();
 
-  const quiet = useQuiet();
+  const grows = useMoment('places.grow').on;
 
   const library = useLibrarySearch(filter === 'all' ? undefined : filter);
 
@@ -396,7 +397,7 @@ export function Library() {
                   glide={glide}
                   items={group}
                   onOpen={(id) => setOpen({ id, stepped: false })}
-                  shared={!quiet && open?.stepped !== true}
+                  shared={grows && open?.stepped !== true}
                   title={title}
                 />
               ))}
@@ -412,7 +413,7 @@ export function Library() {
           </div>
           {open && (
             <Viewer
-              grow={!quiet && !open.stepped}
+              grow={grows && !open.stepped}
               hasMore={library.hasNextPage}
               id={open.id}
               items={items}
