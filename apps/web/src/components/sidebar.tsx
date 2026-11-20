@@ -19,9 +19,9 @@ import {
 import type { User } from '@/lib/auth';
 import { useConversations, useUnreadChats } from '@/lib/conversations';
 import { usePath } from '@/lib/location';
+import { useMoment } from '@/lib/moment';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { useQuiet } from '@/lib/voice';
 import {
   Clock,
   LibraryBig,
@@ -30,8 +30,8 @@ import {
   Search,
   SquarePen,
 } from 'lucide-react';
-import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { type AnimationEvent, type ReactNode, useState } from 'react';
+import { AnimatePresence, m } from 'motion/react';
+import { type ReactNode, useLayoutEffect, useState } from 'react';
 
 type Side = 'bottom' | 'right';
 
@@ -104,14 +104,6 @@ function newestFinish(
   return chats && (chats.find(({ id }) => id !== selected)?.finishedAt ?? '');
 }
 
-function railState(hop: boolean, working: boolean) {
-  if (hop) {
-    return 'done';
-  }
-
-  return working ? 'thinking' : 'idle';
-}
-
 function RailMark({
   onToggle,
   selected,
@@ -120,8 +112,8 @@ function RailMark({
   selected: number | undefined;
 }) {
   const unread = useUnreadChats();
-  const reduced = useReducedMotion();
-  const quiet = useQuiet();
+  const done = useMoment('rail.done');
+  const pop = useMoment('rail.attention').on;
 
   const working = (unread.data?.running ?? 0) > 0;
 
@@ -131,27 +123,22 @@ function RailMark({
   const newest = newestFinish(unread.data?.chats, selected);
 
   const [seen, setSeen] = useState(newest);
-  const [hop, setHop] = useState(false);
+  const [fresh, setFresh] = useState<string>();
 
   if (seen !== newest) {
+    const newer = seen !== undefined && newest !== undefined && newest > seen;
+
     setSeen(newest);
-    setHop(
-      !quiet &&
-        !reduced &&
-        seen !== undefined &&
-        newest !== undefined &&
-        newest > seen
-    );
+    setFresh(newer ? newest : undefined);
   }
 
-  const landed = (event: AnimationEvent) => {
-    if (
-      event.target instanceof Element &&
-      event.target.matches('[data-part=sparkle]')
-    ) {
-      setHop(false);
+  const { play } = done;
+
+  useLayoutEffect(() => {
+    if (fresh !== undefined) {
+      play();
     }
-  };
+  }, [fresh, play]);
 
   return (
     <Tooltip>
@@ -164,8 +151,7 @@ function RailMark({
         >
           <LiveMark
             className='size-6 transition-opacity group-hover/mark:opacity-0 group-focus-visible/mark:opacity-0'
-            onAnimationEnd={landed}
-            state={railState(hop, working)}
+            state={done.mark ?? (working ? 'thinking' : 'idle')}
           />
           <PanelLeftOpen
             aria-hidden='true'
@@ -176,8 +162,11 @@ function RailMark({
               <m.span
                 animate={{ scale: 1 }}
                 className='absolute top-1 right-1 flex'
-                initial={quiet ? false : { scale: 0 }}
-                transition={{ ...spring.pop, delay: hop ? 0.74 : 0 }}
+                initial={pop ? { scale: 0 } : false}
+                transition={{
+                  ...spring.pop,
+                  delay: fresh === undefined ? 0 : 0.74,
+                }}
               >
                 <Dot tone='attention' />
               </m.span>
