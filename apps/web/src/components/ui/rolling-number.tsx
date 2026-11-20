@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import NumberFlow, { type Format } from '@number-flow/react';
 
 function RollingNumber({
-  animated,
+  animated = true,
   className,
   format,
   value,
@@ -12,9 +13,11 @@ function RollingNumber({
   format?: Format;
   value: number;
 }) {
+  const quiet = useQuiet();
+
   return (
     <NumberFlow
-      animated={animated}
+      animated={animated && !quiet}
       className={cn('tabular-nums', className)}
       data-slot='rolling-number'
       format={format}

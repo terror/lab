@@ -1,6 +1,6 @@
 import { Dot } from '@/components/ui/dot';
+import { RollingNumber } from '@/components/ui/rolling-number';
 import { cn } from '@/lib/utils';
-import NumberFlow from '@number-flow/react';
 import * as React from 'react';
 
 function Brief({ className, ...props }: React.ComponentProps<'p'>) {
@@ -40,7 +40,7 @@ function BriefToken({
       {...props}
     >
       {tone && <Dot className='self-center' tone={tone} />}
-      <NumberFlow animated={!still} value={count} />
+      <RollingNumber animated={!still} value={count} />
       {children}
     </button>
   );
