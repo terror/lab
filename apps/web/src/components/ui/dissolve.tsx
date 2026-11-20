@@ -5,17 +5,17 @@ import * as React from 'react';
 
 const grains = [
   { size: 3, x: 4, y: 30 },
-  { size: 2, x: 12, y: 62 },
-  { size: 2, x: 21, y: 40 },
-  { size: 3, x: 29, y: 70 },
-  { size: 2, x: 37, y: 28 },
-  { size: 3, x: 46, y: 55 },
-  { size: 2, x: 54, y: 35 },
-  { size: 2, x: 62, y: 68 },
-  { size: 3, x: 70, y: 42 },
-  { size: 2, x: 79, y: 60 },
-  { size: 3, x: 87, y: 32 },
-  { size: 2, x: 95, y: 52 },
+  { size: 2, x: 12, y: 50 },
+  { size: 2, x: 21, y: 38 },
+  { size: 3, x: 29, y: 55 },
+  { size: 2, x: 37, y: 26 },
+  { size: 3, x: 46, y: 46 },
+  { size: 2, x: 54, y: 34 },
+  { size: 2, x: 62, y: 52 },
+  { size: 3, x: 70, y: 40 },
+  { size: 2, x: 79, y: 48 },
+  { size: 3, x: 87, y: 30 },
+  { size: 2, x: 95, y: 44 },
 ];
 
 function Dissolve({
@@ -39,7 +39,7 @@ function Dissolve({
     <span
       data-active={dissolving || undefined}
       data-slot='dissolve'
-      className='group/dissolve relative flex w-fit min-w-0'
+      className='group/dissolve relative flex w-fit max-w-full min-w-0'
       style={{ '--dissolve-delay': `${delay}s` } as React.CSSProperties}
     >
       <span
@@ -51,6 +51,7 @@ function Dissolve({
         {children}
       </span>
       {dissolving &&
+        order <= 5 &&
         grains.map(({ size, x, y }) => (
           <span
             key={x}

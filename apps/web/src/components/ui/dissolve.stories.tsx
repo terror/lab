@@ -3,6 +3,7 @@ import {
   m,
   useIsPresent,
   usePresenceData,
+  useReducedMotion,
 } from 'motion/react';
 import { useState } from 'react';
 
@@ -26,12 +27,17 @@ function Row({ index, name }: { index: number; name: string }) {
   const present = useIsPresent();
   const emptying = usePresenceData() === true;
   const quiet = useQuiet();
+  const reduced = useReducedMotion();
 
   return (
     <m.li
       className='overflow-hidden'
       exit='gone'
-      variants={{ gone: (all: boolean) => dissolve(all ? index : 0, quiet) }}
+      inert={!present}
+      variants={{
+        gone: (all: boolean) =>
+          dissolve(all ? index : 0, quiet || reduced === true),
+      }}
     >
       <Dissolve
         active={!present}
@@ -58,7 +64,7 @@ function Shelf() {
           ))}
         </AnimatePresence>
       </ul>
-      <div className='flex gap-2'>
+      <div className='flex flex-wrap gap-2'>
         <Button
           disabled={rows.length === 0}
           onClick={() => setRows(rows.slice(1))}
