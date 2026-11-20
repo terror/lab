@@ -1,7 +1,6 @@
 import type { Pose } from '@/components/ui/empty-state';
 
 import { useMoment } from './moment';
-import { usePreference } from './preferences';
 import { hash } from './seed';
 
 type Voice = {
@@ -106,12 +105,6 @@ export function brief(counts: Record<BriefKind, number>, quiet: boolean) {
   });
 
   return quiet || parts.length === 0 ? parts : [...parts, { text: '.' }];
-}
-
-export function useQuiet() {
-  const [personality] = usePreference('personality');
-
-  return personality === 'quiet';
 }
 
 type Copy = { description: string; title: string };

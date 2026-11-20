@@ -2,8 +2,7 @@ import '@/index.css';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
 import { conversationsQueryKey } from '@/lib/conversations';
-import { preferencesQueryOptions } from '@/lib/preferences';
-import { useQuiet } from '@/lib/voice';
+import { preferencesQueryOptions, usePreference } from '@/lib/preferences';
 import { renderWithQuery, requestUrl, stubFetch } from '@/test/helpers';
 import { defaultPreferences } from '@lab/server/schemas';
 import { QueryClient, useQuery } from '@tanstack/react-query';
@@ -139,12 +138,12 @@ test('a chat’s first title fades in word by word with a yellow wash', async ()
 
 function Finishing() {
   const [running, setRunning] = useState(true);
-  const quiet = useQuiet();
+  const [personality] = usePreference('personality');
 
   return (
     <>
       <Button onClick={() => setRunning(false)}>qux</Button>
-      <output>{String(quiet)}</output>
+      <output>{personality}</output>
       <ul>
         {[1, 2, 3, 4, 5, 6, 7].map((id) => (
           <ConversationItem
@@ -243,7 +242,7 @@ test('finished chats swap straight to their dots when Lab is quiet, and stay dot
 
   client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
 
-  await expect.element(screen.getByText('false')).toBeVisible();
+  await expect.element(screen.getByText('default')).toBeVisible();
 
   expect(marks()).toEqual(dots);
 });

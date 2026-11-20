@@ -19,6 +19,32 @@ const entries = Object.entries(moments) as [MomentId, Moment][];
 
 const ids = entries.map(([id]) => id);
 
+const sources = Object.entries(
+  import.meta.glob<string>('/src/**/*.{ts,tsx}', {
+    eager: true,
+    import: 'default',
+    query: '?raw',
+  })
+).filter(([path]) => !/\.(stories|test)\.tsx?$/.test(path));
+
+test('every moment is used, and nothing gates a flourish around the registry', () => {
+  const callers = sources
+    .filter(([path]) => path !== '/src/lib/moments.ts')
+    .map(([, text]) => text)
+    .join('\n');
+
+  const naming = (word: string, home: RegExp) =>
+    sources
+      .filter(([path, text]) => !home.test(path) && text.includes(word))
+      .map(([path]) => path);
+
+  expect({
+    bursts: naming('confetti(', /^\/src\/lib\/(confetti|moment)\.ts$/),
+    quiet: naming('useQuiet', /^\/src\/lib\/moment\.ts$/),
+    unused: ids.filter((id) => !callers.includes(`'${id}'`)),
+  }).toEqual({ bursts: [], quiet: [], unused: [] });
+});
+
 test('every moment is filed in order under a surface, says when it plays, and keeps the registry’s limits', () => {
   expect({
     filed: ids.filter((id) => !/^[a-z]+\.[a-z]+(-[a-z]+)*$/.test(id)),

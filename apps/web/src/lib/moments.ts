@@ -120,6 +120,18 @@ export const moments = {
     tier: 'ambient',
     use: 'Copy folds its two sheets into a check.',
   },
+  'discovery.hint': {
+    quiet: 'skip',
+    reduced: 'still',
+    tier: 'run',
+    use: 'A margin note teaches one thing the first time it is useful.',
+  },
+  'discovery.tip': {
+    quiet: 'skip',
+    reduced: 'still',
+    tier: 'run',
+    use: 'An idle composer suggests something you have not tried yet.',
+  },
   'empty.enter': {
     budget: [{ by: 'pose', max: 1, per: 'session' }],
     hidden: 'wait',
