@@ -18,7 +18,7 @@ import { useQuiet } from '@/lib/voice';
 import { type Format } from '@number-flow/react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { AnimatePresence, m } from 'motion/react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { useState } from 'react';
 import { z } from 'zod';
 
@@ -110,7 +110,7 @@ function SpendChart({ daily, rise }: { daily: Day[]; rise: boolean }) {
 
   return (
     <figure className='flex flex-col gap-3'>
-      <figcaption className='flex flex-wrap items-baseline justify-between gap-x-4 text-sm'>
+      <figcaption className='flex flex-col gap-x-4 text-sm sm:flex-row sm:items-baseline sm:justify-between'>
         <span className='font-medium text-muted-foreground'>Daily spend</span>
         <AnimatePresence initial={false} mode='wait'>
           <Caption key={day?.date ?? 'total'} day={day} daily={daily} />
@@ -236,6 +236,7 @@ export function UsagePanel() {
   });
 
   const quiet = useQuiet();
+  const reduced = useReducedMotion();
 
   const [shown, setShown] = useState({ days, risen: false });
 
@@ -299,7 +300,7 @@ export function UsagePanel() {
             <SpendChart
               key={shown.days}
               daily={usage.data.daily}
-              rise={shown.risen && !quiet}
+              rise={shown.risen && !quiet && !reduced}
             />
           </>
         )}
