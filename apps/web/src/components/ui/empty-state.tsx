@@ -1,4 +1,5 @@
 import { markOutline } from '@/components/lab-mark';
+import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
@@ -10,18 +11,10 @@ type Pose =
   | 'stretching'
   | 'tipped';
 
-const entered = new Set<Pose>();
-
 function EmptyGlyph({ pose }: { pose?: Pose }) {
-  const [enter] = React.useState(
-    () => pose !== undefined && pose !== 'tipped' && !entered.has(pose)
-  );
-
-  React.useEffect(() => {
-    if (pose) {
-      entered.add(pose);
-    }
-  }, [pose]);
+  const enter = useMoment('empty.enter', {
+    subject: pose === 'tipped' ? undefined : pose,
+  }).on;
 
   return (
     <svg
