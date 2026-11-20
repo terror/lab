@@ -281,6 +281,21 @@ export const scheduledTask = pgTable(
   ]
 );
 
+export const scheduledTaskCreation = pgTable(
+  'scheduled_task_creation',
+  {
+    taskId: integer('task_id').notNull(),
+    ownerId: text('owner_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    scheduledTaskId: integer('scheduled_task_id').references(
+      () => scheduledTask.id,
+      { onDelete: 'set null' }
+    ),
+  },
+  (table) => [primaryKey({ columns: [table.ownerId, table.taskId] })]
+);
+
 export const artifactState = pgTable(
   'artifact_state',
   {
