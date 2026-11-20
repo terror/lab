@@ -14,6 +14,7 @@ import { useState } from 'react';
 
 import { call, client } from './client';
 import { useHint, useLedger } from './hints';
+import { useQuiet } from './voice';
 
 const TIPS = 3;
 
@@ -98,11 +99,13 @@ export function useCapabilities(enabled = true) {
 }
 
 export function useTip(enabled: boolean, idle: boolean) {
-  const capabilities = useCapabilities(enabled);
+  const quiet = useQuiet();
   const { seen } = useLedger();
   const [picked, setPicked] = useState<Capability>();
 
   const tips = seen.filter((id) => id.startsWith('tip:')).length;
+
+  const capabilities = useCapabilities(enabled && !quiet && tips < TIPS);
 
   const next =
     tips < TIPS

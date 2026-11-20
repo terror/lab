@@ -188,6 +188,8 @@ function SendOrStop({
   );
 }
 
+const activity = ['keydown', 'pointerdown', 'wheel'] as const;
+
 function useIdle(active: boolean) {
   const [idle, setIdle] = useState(false);
 
@@ -196,10 +198,24 @@ function useIdle(active: boolean) {
       return undefined;
     }
 
-    const timer = setTimeout(() => setIdle(true), IDLE_MS);
+    let timer = setTimeout(() => setIdle(true), IDLE_MS);
+
+    const restart = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setIdle(true), IDLE_MS);
+    };
+
+    for (const event of activity) {
+      window.addEventListener(event, restart, { passive: true });
+    }
 
     return () => {
       clearTimeout(timer);
+
+      for (const event of activity) {
+        window.removeEventListener(event, restart);
+      }
+
       setIdle(false);
     };
   }, [active]);
@@ -215,13 +231,13 @@ function Placeholder({ text }: { text: string }) {
   return (
     <span
       aria-hidden='true'
-      className='pointer-events-none absolute inset-x-0 top-0 grid px-5 pt-4 leading-relaxed text-muted-foreground peer-disabled:opacity-50'
+      className='pointer-events-none absolute inset-x-0 top-0 grid px-5 pt-4 leading-relaxed text-muted-foreground select-none peer-disabled:opacity-50'
     >
       <AnimatePresence initial={false}>
         <m.span
           key={text}
           animate={{ opacity: 1, transition }}
-          className='col-start-1 row-start-1'
+          className='col-start-1 row-start-1 truncate'
           exit={{ opacity: 0, transition }}
           initial={{ opacity: 0 }}
         >
@@ -276,17 +292,23 @@ export function Composer({
   const content = draft.trim();
   const empty = !content && attachments.length === 0;
 
-  const idle = useIdle(
-    tips === true && focused && empty && !touch && disabled !== true
-  );
-
-  const cue = useTip(tips === true, idle);
-
-  const hint = cue.tip ?? placeholder;
-
   const dictation = useDictation({ draft, onDraftChange });
 
   const listening = dictation.state.kind === 'listening';
+
+  const watching = tips === true && focused && !touch;
+
+  const idle = useIdle(
+    watching &&
+      draft === '' &&
+      attachments.length === 0 &&
+      disabled !== true &&
+      running !== true &&
+      submitting !== true &&
+      !listening
+  );
+
+  const cue = useTip(watching, idle);
 
   const dictationError =
     dictation.state.kind === 'failed' ? dictation.state.message : undefined;
@@ -389,7 +411,14 @@ export function Composer({
             disabled={disabled}
             maxRows={12}
             minRows={1}
-            onBlur={() => setFocused(false)}
+            aria-description={cue.tip}
+            onBlur={() => {
+              setFocused(false);
+
+              if (cue.tip) {
+                cue.retire();
+              }
+            }}
             onChange={(event) => {
               if (listening) {
                 dictation.cancel();
@@ -401,11 +430,13 @@ export function Composer({
             onFocus={() => setFocused(true)}
             onKeyDown={onKeyDown}
             onPaste={intake.onPaste}
-            placeholder={hint}
+            placeholder={placeholder}
             ref={inputRef}
             value={draft}
           />
-          {tips && draft === '' && <Placeholder text={hint} />}
+          {tips && draft === '' && (
+            <Placeholder text={cue.tip ?? placeholder} />
+          )}
         </div>
         <div className='flex items-center gap-2 px-3 pb-3'>
           <AttachMenu disabled={disabled} intake={intake} />

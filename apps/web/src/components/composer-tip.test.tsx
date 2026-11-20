@@ -77,18 +77,16 @@ test('a composer already used for three tips keeps its placeholder', async () =>
 
   await new Promise((resolve) => setTimeout(resolve, 5500));
 
-  expect(message.element().getAttribute('placeholder')).toBe('Ask anything…');
+  expect(message.element().getAttribute('aria-description')).toBeNull();
 });
 
 test('an idle composer shows one tip a session until a keystroke', async () => {
   const message = await idle([]);
 
-  const placeholder = () => message.element().getAttribute('placeholder');
-
-  const before = placeholder();
+  const tip = () => message.element().getAttribute('aria-description');
 
   await expect
-    .poll(placeholder, { timeout: 7000 })
+    .poll(tip, { timeout: 7000 })
     .toBe('Ask Lab to do something every morning');
 
   await userEvent.keyboard('f');
@@ -96,5 +94,5 @@ test('an idle composer shows one tip a session until a keystroke', async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 5500));
 
-  expect([before, placeholder()]).toEqual(['Ask anything…', 'Ask anything…']);
+  expect(tip()).toBeNull();
 });
