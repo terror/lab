@@ -67,3 +67,66 @@ test('starting a chat sends the prompt and clears the draft', async () => {
     .poll(() => window.localStorage.getItem('lab:foo:draft:scheduled'))
     .toBeNull();
 });
+
+test('option-enter or the menu starts a chat in the background and stays on the page', async () => {
+  const fetch = stubFetch(({ pathname }, init) =>
+    pathname === '/api/conversations' && init?.method === 'POST'
+      ? Response.json({ id: 1 }, { status: 201 })
+      : Response.json({ default: null, models: [] })
+  );
+
+  const rootRoute = createRootRoute();
+
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routeTree: rootRoute.addChildren([
+      createRoute({
+        component: () => (
+          <TooltipProvider>
+            <StartComposer background draft='scheduled' />
+          </TooltipProvider>
+        ),
+        getParentRoute: () => rootRoute,
+        path: '/',
+      }),
+      createRoute({
+        component: () => null,
+        getParentRoute: () => rootRoute,
+        path: '/c/$id',
+      }),
+    ]),
+  });
+
+  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+
+  const message = screen.getByLabelText('Message');
+
+  const started = () =>
+    fetch.mock.calls
+      .filter(
+        ([input, request]) =>
+          request?.method === 'POST' &&
+          requestUrl(input).pathname === '/api/conversations'
+      )
+      .map(
+        ([, request]) =>
+          typeof request?.body === 'string' && JSON.parse(request.body).content
+      );
+
+  await message.fill('foo');
+  await message.click();
+  await userEvent.keyboard('{Alt>}{Enter}{/Alt}');
+
+  await expect.element(message).toHaveValue('');
+
+  await message.fill('bar');
+  await screen.getByRole('button', { name: 'Add photos and files' }).click();
+  await screen.getByRole('menuitem', { name: /^Start in background/ }).click();
+
+  await expect.element(message).toHaveValue('');
+
+  expect([started(), router.state.location.pathname]).toEqual([
+    ['foo', 'bar'],
+    '/',
+  ]);
+});

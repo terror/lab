@@ -243,7 +243,12 @@ export function NewChat({ user }: { user: { id: string } }) {
       }
     >
       <div ref={composer}>
-        <StartComposer draft='new' inputRef={input} placeholder={preview} />
+        <StartComposer
+          background
+          draft='new'
+          inputRef={input}
+          placeholder={preview}
+        />
       </div>
     </HomeFrame>
   );
