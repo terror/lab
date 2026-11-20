@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Meter } from '@/components/ui/meter';
 import { formatSpend } from '@/lib/format';
 import { usePersistentState } from '@/lib/storage';
 import { undoToast } from '@/lib/undo';
@@ -11,6 +12,7 @@ import {
   setBudget,
 } from '@/lib/usage';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type SubmitEvent, useEffect, useState } from 'react';
@@ -22,11 +24,27 @@ const messages = {
   over: 'You’ve passed your monthly budget.',
 };
 
+const pouredKey = 'lab:poured';
+
+function usePour() {
+  const quiet = useQuiet();
+
+  const [pour] = useState(
+    () => !quiet && window.sessionStorage.getItem(pouredKey) === null
+  );
+
+  useEffect(() => {
+    window.sessionStorage.setItem(pouredKey, 'true');
+  }, []);
+
+  return pour;
+}
+
 function month() {
   return new Date().toISOString().slice(0, 7);
 }
 
-function Meter({ limit, spent }: { limit: number; spent: number }) {
+function Spent({ limit, spent }: { limit: number; spent: number }) {
   const level = budgetLevel({ limit, spent });
 
   return (
@@ -41,15 +59,6 @@ function Meter({ limit, spent }: { limit: number; spent: number }) {
         <span className='text-muted-foreground'>
           {Math.round((spent / limit) * 100)}%
         </span>
-      </div>
-      <div className='h-1.5 overflow-hidden rounded-full bg-foreground/10'>
-        <div
-          className={cn(
-            'h-full rounded-full bg-foreground transition-all',
-            level === 'over' && 'bg-destructive'
-          )}
-          style={{ width: `${Math.min(100, (spent / limit) * 100)}%` }}
-        />
       </div>
       {level && (
         <p
@@ -135,22 +144,35 @@ function BudgetForm({ budget }: { budget: Budget }) {
 export function BudgetPanel() {
   const budget = useQuery(budgetQueryOptions);
 
+  const pour = usePour();
+
   if (!budget.data) {
     return null;
   }
 
+  const { limit, spent } = budget.data;
+
   return (
-    <Card className='gap-4' variant='outline'>
-      <div className='flex flex-col gap-1'>
-        <h2 className='text-sm font-medium'>Monthly budget</h2>
-        <p className='text-sm text-muted-foreground'>
-          Get an alert at 80% and 100% of a monthly spend limit.
-        </p>
-      </div>
-      {budget.data.limit !== null && (
-        <Meter limit={budget.data.limit} spent={budget.data.spent} />
+    <Card className='flex-row items-start gap-5' variant='outline'>
+      {limit !== null && (
+        <Meter
+          label='Monthly budget used'
+          pour={pour}
+          tone={budgetLevel(budget.data)}
+          value={spent / limit}
+          variant='flask'
+        />
       )}
-      <BudgetForm budget={budget.data} />
+      <div className='flex min-w-0 flex-1 flex-col gap-4'>
+        <div className='flex flex-col gap-1'>
+          <h2 className='text-sm font-medium'>Monthly budget</h2>
+          <p className='text-sm text-muted-foreground'>
+            Get an alert at 80% and 100% of a monthly spend limit.
+          </p>
+        </div>
+        {limit !== null && <Spent limit={limit} spent={spent} />}
+        <BudgetForm budget={budget.data} />
+      </div>
     </Card>
   );
 }

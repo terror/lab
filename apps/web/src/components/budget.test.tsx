@@ -34,3 +34,14 @@ test('a removed budget comes back with Undo', async () => {
     )
   ).toEqual([JSON.stringify({ limit: null }), JSON.stringify({ limit: 25 })]);
 });
+
+test('the budget flask reads what share of the budget is spent', async () => {
+  stubFetch(() => Response.json({ limit: 25, spent: 20 }));
+
+  const { screen } = await renderWithQuery(<BudgetPanel />);
+
+  const meter = screen.getByRole('meter', { name: 'Monthly budget used' });
+
+  await expect.element(meter).toHaveAttribute('aria-valuenow', '80');
+  await expect.element(meter).toHaveAttribute('data-tone', 'near');
+});
