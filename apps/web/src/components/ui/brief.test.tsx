@@ -8,7 +8,41 @@ import { cdp } from 'vitest/browser';
 
 import { Brief, BriefToken } from './brief';
 
-test('a count in the brief is a button named by its number and words, with a 44px hit area on a touch screen', async ({
+async function renderBrief() {
+  const client = new QueryClient();
+
+  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+
+  const { screen } = await renderWithQuery(
+    <Brief className='w-20'>
+      <BriefToken count={2}>foo</BriefToken>{' '}
+      <BriefToken count={3}>bar</BriefToken>
+    </Brief>,
+    client
+  );
+
+  return {
+    first: screen.getByRole('button', { name: '2 foo' }).element(),
+    screen,
+    second: screen.getByRole('button', { name: '3 bar' }).element(),
+  };
+}
+
+test('with a mouse a count is no wider than its words', async () => {
+  const { first } = await renderBrief();
+
+  const words = document.createRange();
+
+  words.selectNodeContents(first);
+
+  expect(
+    Math.round(
+      first.getBoundingClientRect().right - words.getBoundingClientRect().right
+    )
+  ).toBe(4);
+});
+
+test('on a touch screen a count reaches 44px into free space, and a tap on a count lands on that count', async ({
   onTestFinished,
 }) => {
   await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: true });
@@ -17,24 +51,15 @@ test('a count in the brief is a button named by its number and words, with a 44p
     await cdp().send('Emulation.setTouchEmulationEnabled', { enabled: false });
   });
 
-  const client = new QueryClient();
+  const { first, second } = await renderBrief();
 
-  client.setQueryData(preferencesQueryOptions.queryKey, defaultPreferences);
+  const { bottom, left } = first.getBoundingClientRect();
 
-  const { screen } = await renderWithQuery(
-    <Brief>
-      foo <BriefToken count={2}>bar</BriefToken>
-    </Brief>,
-    client
-  );
-
-  const token = screen.getByRole('button', { name: '2 bar' });
-
-  await expect.element(token).toBeVisible();
-
-  expect(
-    Math.round(
-      Number.parseFloat(getComputedStyle(token.element(), '::after').height)
-    )
-  ).toBe(44);
+  expect([
+    Math.round(Number.parseFloat(getComputedStyle(first, '::after').height)),
+    document.elementFromPoint(left + 4, bottom - 2)?.closest('button')
+      ?.textContent,
+    document.elementFromPoint(left + 4, bottom + 2)?.closest('button')
+      ?.textContent,
+  ]).toEqual([44, first.textContent, second.textContent]);
 });

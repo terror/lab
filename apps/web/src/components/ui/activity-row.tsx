@@ -7,9 +7,10 @@ function ActivityRow({
   className,
   detail,
   glyph,
-  link,
+  label,
   meta,
   progress,
+  renderLink,
   time,
   title,
   ...props
@@ -17,35 +18,45 @@ function ActivityRow({
   actions?: React.ReactNode;
   detail?: React.ReactNode;
   glyph: React.ReactNode;
-  link?: (row: React.ReactNode) => React.ReactElement;
+  label?: string;
   meta?: React.ReactNode;
   progress?: React.ReactNode;
+  renderLink?: (row: React.ReactNode) => React.ReactElement;
   time?: React.ReactNode;
   title: React.ReactNode;
 }) {
+  const second = Boolean(detail) || Boolean(progress);
+
+  const when = time ? (
+    <span className='text-xs whitespace-nowrap text-muted-foreground tabular-nums'>
+      {time}
+    </span>
+  ) : undefined;
+
   const body = (
     <>
       <span
         data-slot='activity-row-glyph'
         className={cn(
           'flex size-4 shrink-0 items-center justify-center',
-          detail !== undefined && 'mt-0.5 self-start'
+          second && 'mt-0.5 self-start'
         )}
       >
         {glyph}
       </span>
       <span className='flex min-w-0 flex-1 flex-col'>
-        <span className='flex min-w-0 items-baseline gap-2'>
-          <span className='truncate font-medium'>{title}</span>
-          {meta && (
-            <span className='min-w-0 shrink-10 truncate text-xs text-muted-foreground'>
+        <span className='flex h-5 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden'>
+          <span className='max-w-full truncate font-medium'>{title}</span>
+          {meta ? (
+            <span className='text-xs whitespace-nowrap text-muted-foreground'>
               {meta}
             </span>
-          )}
+          ) : null}
+          {label && <span className='sr-only'>{label}</span>}
         </span>
-        {detail !== undefined && (
+        {second && (
           <span className='flex min-w-0 items-center gap-2 text-muted-foreground'>
-            <span className='truncate'>{detail}</span>
+            {detail ? <span className='truncate'>{detail}</span> : null}
             {progress}
           </span>
         )}
@@ -56,24 +67,24 @@ function ActivityRow({
   return (
     <ListRow
       actions={
-        actions && (
-          <span className='flex min-w-16 justify-end pointer-coarse:min-w-0'>
-            {actions}
+        actions ? (
+          <span className='grid justify-items-end *:col-start-1 *:row-start-1'>
+            <span
+              aria-hidden='true'
+              className='invisible flex pointer-coarse:hidden'
+            >
+              {when}
+            </span>
+            <span className='flex'>{actions}</span>
           </span>
-        )
+        ) : undefined
       }
-      asChild={link !== undefined}
+      asChild={renderLink !== undefined}
       className={cn('[&_[data-slot=list-row-status]]:justify-end', className)}
-      status={
-        time !== undefined && (
-          <span className='text-xs text-muted-foreground tabular-nums'>
-            {time}
-          </span>
-        )
-      }
+      status={when}
       {...props}
     >
-      {link ? link(body) : body}
+      {renderLink ? renderLink(body) : body}
     </ListRow>
   );
 }

@@ -81,11 +81,15 @@
           },
           {
             "message": "Text takes the ink tier. Raw and wash fail contrast.",
-            "pattern": "(^|:)(text|decoration|caret|placeholder)-status-(attention|live|done)(-wash)?(/|$)"
+            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
+          },
+          {
+            "message": "Ink is full strength. A faded ink fails contrast.",
+            "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
           },
           {
             "message": "A status never colors a border, ring, or outline.",
-            "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-status-"
+            "pattern": "(^|:)!?(inset-)?(border|ring|outline|divide)(-[a-z]+)*-status-"
           }
         ]
       }
@@ -112,19 +116,27 @@
             "patterns": [
               {
                 "message": "Text takes the ink tier. Raw and wash fail contrast.",
-                "pattern": "(^|:)(text|decoration|caret|placeholder)-spark-(coral|blue|yellow)(-wash)?(/|$)"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-spark-(coral|blue|yellow)(-wash)?(/|!|$)"
+              },
+              {
+                "message": "Ink is full strength. A faded ink fails contrast.",
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-spark-(coral|blue|yellow)-ink/"
               },
               {
                 "message": "A spark never colors a border, ring, or outline.",
-                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-spark-"
+                "pattern": "(^|:)!?(inset-)?(border|ring|outline|divide)(-[a-z]+)*-spark-"
               },
               {
                 "message": "Text takes the ink tier. Raw and wash fail contrast.",
-                "pattern": "(^|:)(text|decoration|caret|placeholder)-status-(attention|live|done)(-wash)?(/|$)"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
+              },
+              {
+                "message": "Ink is full strength. A faded ink fails contrast.",
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
               },
               {
                 "message": "A status never colors a border, ring, or outline.",
-                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-status-"
+                "pattern": "(^|:)!?(inset-)?(border|ring|outline|divide)(-[a-z]+)*-status-"
               }
             ]
           }
@@ -140,11 +152,27 @@
             "patterns": [
               {
                 "message": "Text takes the ink tier. Raw and wash fail contrast.",
-                "pattern": "(^|:)(text|decoration|caret|placeholder)-spark-(coral|blue|yellow)(-wash)?(/|$)"
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-spark-(coral|blue|yellow)(-wash)?(/|!|$)"
+              },
+              {
+                "message": "Ink is full strength. A faded ink fails contrast.",
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke)-spark-(coral|blue|yellow)-ink/"
               },
               {
                 "message": "A spark never colors a border, ring, or outline.",
-                "pattern": "(^|:)(border|ring|outline|divide)(-[a-z]+)*-spark-"
+                "pattern": "(^|:)!?(inset-)?(border|ring|outline|divide)(-[a-z]+)*-spark-"
+              },
+              {
+                "message": "Text takes the ink tier. Raw and wash fail contrast.",
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)(-wash)?(/|!|$)"
+              },
+              {
+                "message": "Ink is full strength. A faded ink fails contrast.",
+                "pattern": "(^|:)!?(text|decoration|caret|placeholder|stroke|fill)-status-(attention|live|done)-ink/"
+              },
+              {
+                "message": "A status never colors a border, ring, or outline.",
+                "pattern": "(^|:)!?(inset-)?(border|ring|outline|divide)(-[a-z]+)*-status-"
               }
             ]
           }

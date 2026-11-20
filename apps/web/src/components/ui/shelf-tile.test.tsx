@@ -10,7 +10,7 @@ test('a shelf tile is a button, or the link it is given', async () => {
       <ShelfTile glyph='*' meta='bar' title='foo' />
       <ShelfTile
         glyph='*'
-        link={(tile) => <a href='#qux'>{tile}</a>}
+        renderLink={(tile) => <a href='#qux'>{tile}</a>}
         title='baz'
       />
     </>
