@@ -175,7 +175,7 @@ const settingsRoute = createRoute({
     () => import('@/components/settings'),
     'Settings'
   ),
-  getParentRoute: () => chatRoute,
+  getParentRoute: () => rootRoute,
   path: '/settings',
   validateSearch: (search) => settingsSearchSchema.parse(search),
 });
@@ -188,8 +188,8 @@ const routeTree = rootRoute.addChildren([
     projectRoute,
     conversationRoute,
     appRoute,
-    settingsRoute,
   ]),
+  settingsRoute,
 ]);
 
 export const router = createRouter({
