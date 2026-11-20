@@ -9,10 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { artifactCalls } from '@/lib/artifacts';
+import { Sigil } from '@/components/ui/sigil';
+import { appSeed, artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
 import { plural } from '@/lib/format';
 import { useLibraryImages } from '@/lib/library';
+import { useQuiet } from '@/lib/voice';
 import { Link } from '@tanstack/react-router';
 import {
   AppWindow,
@@ -106,12 +108,40 @@ function useThrottled(value: string) {
   return throttled;
 }
 
-function Building({ html, title }: { html: string; title: string }) {
+const CELL_CHARACTERS = 600;
+
+function BuildingFace({ id, length }: { id?: string; length: number }) {
+  const conversationId = useContext(ToolConversation);
+  const quiet = useQuiet();
+
+  if (conversationId === undefined || !id || quiet) {
+    return undefined;
+  }
+
+  return (
+    <Sigil
+      filled={Math.floor(length / CELL_CHARACTERS) + 1}
+      kind='app'
+      seed={appSeed(conversationId, id)}
+    />
+  );
+}
+
+function Building({
+  html,
+  id,
+  title,
+}: {
+  html: string;
+  id?: string;
+  title: string;
+}) {
   const partial = useThrottled(html);
 
   return (
     <Card className='gap-0 overflow-hidden p-0' variant='inset'>
       <div className='flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground'>
+        <BuildingFace id={id} length={html.length} />
         <span className='truncate'>Building {title}</span>
         <span className='ml-auto tabular-nums'>
           {html.length.toLocaleString()} characters
@@ -367,6 +397,7 @@ function artifactCard(name: string) {
       return (
         <Building
           html={text(field(view.args, 'content')) ?? ''}
+          id={text(field(view.args, 'id'))}
           title={title}
         />
       );

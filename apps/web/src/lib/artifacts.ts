@@ -26,6 +26,10 @@ export function artifactIdParam(value: string) {
   return value;
 }
 
+export function appSeed(conversationId: number, artifactId: string) {
+  return `app:${conversationId}:${artifactId}` as const;
+}
+
 export function artifactCalls(conversationId: number, artifactId: string) {
   const param = { artifactId, id: String(conversationId) };
 
