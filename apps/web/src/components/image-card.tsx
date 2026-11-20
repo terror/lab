@@ -8,29 +8,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMoment } from '@/lib/moment';
 import { cn } from '@/lib/utils';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
 
+const box =
+  'relative block max-w-full self-start overflow-hidden rounded-card ring-1 ring-foreground/10';
+
+type Source = { frame: string; src?: string } | { frame?: string; src: string };
+
 export function ImageCard({
   className,
+  frame,
   name,
   src,
-}: {
-  className?: string;
-  name: string;
-  src: string;
-}) {
-  const [loaded, setLoaded] = useState(false);
+}: Source & { className?: string; name: string }) {
+  const [status, setStatus] = useState<'failed' | 'loaded' | 'loading'>(
+    'loading'
+  );
+  const loaded = status === 'loaded';
   const develop = useMoment('image.develop', { when: loaded }).on;
+
+  const reserved = frame !== undefined && status === 'loading';
+
+  const frameClass = cn(box, reserved && frame);
+
+  const skeleton = reserved && (
+    <Skeleton className='absolute inset-0 h-auto rounded-none' />
+  );
+
+  if (src === undefined) {
+    return <div className={frameClass}>{skeleton}</div>;
+  }
 
   return (
     <Dialog>
-      <DialogTrigger
-        aria-label={`Open ${name}`}
-        className='block max-w-full self-start overflow-hidden rounded-card ring-1 ring-foreground/10'
-      >
+      <DialogTrigger aria-label={`Open ${name}`} className={frameClass}>
+        {skeleton}
         <img
           alt={name}
           className={cn(
@@ -39,7 +55,8 @@ export function ImageCard({
             className
           )}
           data-loaded={loaded || undefined}
-          onLoad={() => setLoaded(true)}
+          onError={() => setStatus('failed')}
+          onLoad={() => setStatus('loaded')}
           src={src}
         />
       </DialogTrigger>

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Peek } from '@/components/ui/peek';
 import { Sigil } from '@/components/ui/sigil';
+import { Skeleton } from '@/components/ui/skeleton';
 import { StatusNote } from '@/components/ui/status-note';
 import { appSeed, artifactCalls } from '@/lib/artifacts';
 import { useDraft } from '@/lib/conversations';
@@ -161,8 +162,8 @@ function Building({
           {html.length.toLocaleString()} characters
         </span>
       </div>
-      {partial.length > 0 && (
-        <div className='px-4 pb-4'>
+      <div className='px-4 pb-4'>
+        {partial.length > 0 ? (
           <SandboxFrame
             height={PREVIEW_HEIGHT}
             html={partial}
@@ -170,8 +171,13 @@ function Building({
             scripts={false}
             title={`${title} preview`}
           />
-        </div>
-      )}
+        ) : (
+          <Skeleton
+            className='rounded-card'
+            style={{ height: PREVIEW_HEIGHT }}
+          />
+        )}
+      </div>
     </Card>
   );
 }
