@@ -3,8 +3,10 @@ import {
   libraryItemUrl,
   libraryThumbnailUrl,
 } from '@/lib/library';
+import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { m } from 'motion/react';
 
 function extension(name: string) {
   const dot = name.lastIndexOf('.');
@@ -46,17 +48,29 @@ function DocumentTile({ item }: { item: LibraryItem }) {
   );
 }
 
-function TileContent({ item }: { item: LibraryItem }) {
+function TileContent({
+  item,
+  layoutId,
+}: {
+  item: LibraryItem;
+  layoutId?: string;
+}) {
   if (item.kind === 'image') {
     return (
       <>
-        <img
-          alt=''
-          className='size-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
-          decoding='async'
-          loading='lazy'
-          src={libraryItemUrl(item.id)}
-        />
+        <m.span
+          className='block size-full'
+          layoutId={layoutId}
+          transition={spring.glide}
+        >
+          <img
+            alt=''
+            className='size-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none'
+            decoding='async'
+            loading='lazy'
+            src={libraryItemUrl(item.id)}
+          />
+        </m.span>
         <span className='absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/60 px-3 pt-6 pb-2 text-left text-xs font-medium text-white hover-reveal group-hover:opacity-100 group-has-focus-visible:opacity-100'>
           {item.name}
         </span>
@@ -74,11 +88,13 @@ function TileContent({ item }: { item: LibraryItem }) {
 export function Tile({
   disabled,
   item,
+  layoutId,
   onOpen,
   selected,
 }: {
   disabled?: boolean;
   item: LibraryItem;
+  layoutId?: string;
   onOpen: () => void;
   selected?: boolean;
 }) {
@@ -94,7 +110,7 @@ export function Tile({
           <Check aria-hidden='true' className='size-3.5' />
         </span>
       )}
-      <TileContent item={item} />
+      <TileContent item={item} layoutId={layoutId} />
       <button
         aria-label={item.name}
         aria-pressed={selected}

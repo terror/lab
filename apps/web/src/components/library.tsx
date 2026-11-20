@@ -35,7 +35,7 @@ import {
 import { fade, spring } from '@/lib/motion';
 import { period } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { useEmpty } from '@/lib/voice';
+import { useEmpty, useQuiet } from '@/lib/voice';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
@@ -90,11 +90,13 @@ function Shelf({
   glide,
   items,
   onOpen,
+  shared,
   title,
 }: {
   glide: boolean;
   items: LibraryItem[];
   onOpen: (id: number) => void;
+  shared: boolean;
   title: string;
 }) {
   const present = useIsPresent();
@@ -111,7 +113,11 @@ function Shelf({
         <AnimatePresence initial={false}>
           {items.map((item) => (
             <Shelved key={item.id} glide={glide}>
-              <Tile item={item} onOpen={() => onOpen(item.id)} />
+              <Tile
+                item={item}
+                layoutId={shared ? `library-${item.id}` : undefined}
+                onOpen={() => onOpen(item.id)}
+              />
             </Shelved>
           ))}
         </AnimatePresence>
@@ -144,14 +150,16 @@ function FilePreview({ id }: { id: number }) {
   );
 }
 
-function ItemPreview({ item }: { item: LibraryItem }) {
+function ItemPreview({ grow, item }: { grow: boolean; item: LibraryItem }) {
   if (item.kind === 'image') {
     return (
       <div className='flex justify-center rounded-xl bg-muted'>
-        <img
+        <m.img
           alt={item.name}
           className='max-h-128 rounded-xl object-contain'
+          layoutId={grow ? `library-${item.id}` : undefined}
           src={libraryItemUrl(item.id)}
+          transition={spring.glide}
         />
       </div>
     );
@@ -170,6 +178,7 @@ function ItemPreview({ item }: { item: LibraryItem }) {
 }
 
 function Viewer({
+  grow,
   hasMore,
   id,
   items,
@@ -177,6 +186,7 @@ function Viewer({
   onLoadMore,
   onOpen,
 }: {
+  grow: boolean;
   hasMore: boolean;
   id: number;
   items: LibraryItem[];
@@ -252,7 +262,7 @@ function Viewer({
             </Link>
           </DialogDescription>
         </DialogHeader>
-        <ItemPreview item={item} />
+        <ItemPreview grow={grow} item={item} />
         <DialogFooter className='sm:justify-between'>
           <div className={cn('flex gap-1', !previous && !next && 'invisible')}>
             <Button
@@ -332,7 +342,9 @@ function TileSkeletons() {
 
 export function Library() {
   const [filter, setFilter] = useState<Filter>('all');
-  const [open, setOpen] = useState<number>();
+  const [open, setOpen] = useState<{ id: number; stepped: boolean }>();
+
+  const quiet = useQuiet();
 
   const library = useLibrarySearch(filter === 'all' ? undefined : filter);
 
@@ -383,7 +395,8 @@ export function Library() {
                   key={title}
                   glide={glide}
                   items={group}
-                  onOpen={setOpen}
+                  onOpen={(id) => setOpen({ id, stepped: false })}
+                  shared={!quiet && open?.stepped !== true}
                   title={title}
                 />
               ))}
@@ -397,6 +410,19 @@ export function Library() {
               )}
             </AnimatePresence>
           </div>
+          {open && (
+            <Viewer
+              grow={!quiet && !open.stepped}
+              hasMore={library.hasNextPage}
+              id={open.id}
+              items={items}
+              onClose={() => setOpen(undefined)}
+              onLoadMore={async () =>
+                (await library.fetchNextPage()).data ?? items
+              }
+              onOpen={(id) => setOpen({ id, stepped: true })}
+            />
+          )}
         </LayoutScope>
         {library.pageError && (
           <LoadError
@@ -406,16 +432,6 @@ export function Library() {
         )}
         {loadMore && !library.pageError && <LoadMore onLoadMore={loadMore} />}
       </Page>
-      {open !== undefined && (
-        <Viewer
-          hasMore={library.hasNextPage}
-          id={open}
-          items={items}
-          onClose={() => setOpen(undefined)}
-          onLoadMore={async () => (await library.fetchNextPage()).data ?? items}
-          onOpen={setOpen}
-        />
-      )}
     </div>
   );
 }
