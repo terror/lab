@@ -30,7 +30,31 @@ function finished(id: number) {
 
 const returning = [{ id: 9, projectId: null, title: 'qux', unread: false }];
 
+const question = {
+  callId: 'corge',
+  kind: 'question',
+  options: ['grault', 'garply'],
+  question: 'waldo',
+};
+
+function asking(ask: object) {
+  return { ask, id: 2, title: 'baz' };
+}
+
+function posted(fetch: ReturnType<typeof stubFetch>) {
+  return fetch.mock.calls
+    .filter(([, init]) => init?.method === 'POST')
+    .map(([input, init]) => [requestUrl(input).pathname, init?.body]);
+}
+
+function settle() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 450);
+  });
+}
+
 async function renderHome({
+  answer = () => new Response(null, { status: 204 }),
   chats = [],
   personality = 'default',
   pins = [],
@@ -41,6 +65,7 @@ async function renderHome({
   unread = () => Response.json({ chats: [], runs: [], waiting: [] }),
   user = 'foo',
 }: {
+  answer?: () => Response;
   chats?: object[];
   personality?: string;
   pins?: object[];
@@ -87,6 +112,10 @@ async function renderHome({
       return unread();
     }
 
+    if (pathname.endsWith('/answers')) {
+      return answer();
+    }
+
     return pathname in responses
       ? Response.json(responses[pathname])
       : new Response(null, { status: 204 });
@@ -119,9 +148,11 @@ async function renderHome({
     ),
   });
 
-  const { screen } = await renderWithQuery(<RouterProvider router={router} />);
+  const { client, screen } = await renderWithQuery(
+    <RouterProvider router={router} />
+  );
 
-  return { fetch, router, screen };
+  return { client, fetch, router, screen };
 }
 
 test('the mark assembles on the first visit of a session and rests after', async () => {
@@ -350,7 +381,7 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
   await expect
     .poll(() => list.element().textContent)
     .toBe(
-      'bazNeeds youwaldoReviewfoo 1Unreadbar1m1mquuxRunningStep 2 of 3 · quxUntitled chatRunningSearching the web'
+      'bazNeeds youwaldograultgarplyOpen chatfoo 1Unreadbar1m1mquuxRunningStep 2 of 3 · quxUntitled chatRunningSearching the web'
     );
 
   const focused = [];
@@ -370,7 +401,7 @@ test('the brief counts the work, the list sorts it by what needs you, and a coun
     focused,
   ]).toEqual([
     '1chat finished and 1needs you. 2are still running.',
-    ['foo 1Unreadbar', 'Review', 'quuxRunningStep 2 of 3 · qux'],
+    ['foo 1Unreadbar', 'Open chat', 'quuxRunningStep 2 of 3 · qux'],
   ]);
 });
 
@@ -631,4 +662,122 @@ test('trying a prompt drafts it and selects its blank', async () => {
       message.selectionEnd,
     ]
   ).toEqual([4, 5]);
+});
+
+test('a question is answered from home once its card has settled, and the card says what was chosen', async () => {
+  const { fetch, screen } = await renderHome({
+    chats: returning,
+    unread: () =>
+      Response.json({ chats: [], runs: [], waiting: [asking(question)] }),
+  });
+
+  const option = screen.getByRole('button', { name: 'grault' });
+
+  await expect.element(option).toBeVisible();
+
+  option.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  const early = posted(fetch);
+
+  await settle();
+
+  await option.click();
+
+  await expect.element(screen.getByText('You chose grault')).toBeVisible();
+
+  expect([early, posted(fetch)]).toEqual([
+    [],
+    [['/api/conversations/2/answers', '{"answer":"grault","callId":"corge"}']],
+  ]);
+});
+
+test('an approval can be reviewed or denied from home, and never approved', async () => {
+  const { fetch, screen } = await renderHome({
+    chats: returning,
+    unread: () =>
+      Response.json({
+        chats: [],
+        runs: [],
+        waiting: [
+          asking({
+            action: 'qux',
+            callId: 'corge',
+            kind: 'approval',
+            summary: ['quux'],
+          }),
+        ],
+      }),
+  });
+
+  const card = screen.getByRole('group', { name: 'baz' });
+
+  await expect.element(card).toBeVisible();
+
+  const offered = [...card.element().querySelectorAll('a, button')].map(
+    (control) => control.textContent
+  );
+
+  await settle();
+
+  await screen.getByRole('button', { name: 'Deny: baz' }).click();
+
+  await expect.element(screen.getByText('You denied this')).toBeVisible();
+
+  expect([offered, posted(fetch)]).toEqual([
+    ['Review', 'Deny'],
+    [['/api/conversations/2/answers', '{"answer":"denied","callId":"corge"}']],
+  ]);
+});
+
+test('an answer that comes too late says so', async () => {
+  const { screen } = await renderHome({
+    answer: () => Response.json({ error: 'foo' }, { status: 409 }),
+    chats: returning,
+    unread: () =>
+      Response.json({ chats: [], runs: [], waiting: [asking(question)] }),
+  });
+
+  const option = screen.getByRole('button', { name: 'garply' });
+
+  await expect.element(option).toBeVisible();
+
+  await settle();
+
+  await option.click();
+
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('foo');
+});
+
+test('the list holds still while the pointer is inside a card that needs you', async () => {
+  let waiting = [asking(question)];
+
+  const { client, fetch, screen } = await renderHome({
+    chats: returning,
+    unread: () => Response.json({ chats: [], runs: [], waiting }),
+  });
+
+  const list = screen.getByRole('list', { name: 'Activity' });
+
+  await screen.getByRole('group', { name: 'baz' }).hover();
+
+  waiting = [{ ask: question, id: 3, title: 'qux' }, ...waiting];
+
+  const asked = () =>
+    fetch.mock.calls.filter(
+      ([input]) => requestUrl(input).pathname === '/api/conversations/unread'
+    ).length;
+
+  const before = asked();
+
+  await client.invalidateQueries();
+
+  await expect.poll(asked).toBeGreaterThan(before);
+
+  const held = list.element().children.length;
+
+  await screen.getByLabelText('Message').hover();
+
+  await expect.poll(() => list.element().children.length).toBe(2);
+
+  expect(held).toBe(1);
 });
