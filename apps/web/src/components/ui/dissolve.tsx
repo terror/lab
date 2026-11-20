@@ -1,5 +1,6 @@
 import { stagger } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useQuiet } from '@/lib/voice';
 import * as React from 'react';
 
 const grains = [
@@ -28,11 +29,15 @@ function Dissolve({
   className?: string;
   order?: number;
 }) {
+  const quiet = useQuiet();
+
   const delay = Math.min(order, 5) * stagger;
+
+  const dissolving = active && !quiet;
 
   return (
     <span
-      data-active={active || undefined}
+      data-active={dissolving || undefined}
       data-slot='dissolve'
       className='group/dissolve relative flex min-w-0 flex-1'
       style={{ '--dissolve-delay': `${delay}s` } as React.CSSProperties}
@@ -45,7 +50,7 @@ function Dissolve({
       >
         {children}
       </span>
-      {active &&
+      {dissolving &&
         grains.map(({ size, x, y }) => (
           <span
             key={x}
