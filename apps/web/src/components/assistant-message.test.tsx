@@ -332,10 +332,11 @@ test('unfinished actions settle as stopped once the turn ends', async () => {
   ]);
 });
 
-function reply(working: boolean) {
+function reply(working: boolean, hop?: 'proud') {
   return (
     <TooltipProvider>
       <AssistantMessage
+        hop={hop}
         latest={!working}
         parts={parts}
         progress={new Map()}
@@ -348,36 +349,25 @@ function reply(working: boolean) {
   );
 }
 
-test('a turn that finishes in a hidden tab hops once the tab is back', async () => {
+test('a finished turn’s mark plays the hop it is handed and otherwise rests', async () => {
   stubFetch(() =>
     Response.json({
       preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
     })
   );
 
-  const visibility = vi
-    .spyOn(document, 'visibilityState', 'get')
-    .mockReturnValue('hidden');
-
-  const { screen } = await renderWithQuery(reply(true));
+  const { screen } = await renderWithQuery(reply(false));
 
   const mark = () =>
     screen.container
       .querySelector('[data-slot=live-mark]')
       ?.getAttribute('data-state');
 
-  const working = mark();
+  const rest = mark();
 
-  await screen.rerender(reply(false));
+  await screen.rerender(reply(false, 'proud'));
 
-  const held = mark();
-
-  visibility.mockReturnValue('visible');
-  document.dispatchEvent(new Event('visibilitychange'));
-
-  await expect.poll(mark).toBe('proud');
-
-  expect([working, held]).toEqual(['idle', 'idle']);
+  expect([rest, mark()]).toEqual(['idle', 'proud']);
 });
 
 function approval(decision?: 'approved') {
@@ -576,37 +566,6 @@ test('Retry spins on a stopped reply but leaves a failed one to its mended mark'
     'retry',
     'none',
   ]);
-});
-
-test('a finished turn hops once and then rests', async ({ onTestFinished }) => {
-  stubFetch(() =>
-    Response.json({
-      preferences: { chatSort: 'activity', lineNumbers: false, theme: 'dark' },
-    })
-  );
-
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-
-  onTestFinished(() => {
-    vi.useRealTimers();
-  });
-
-  const { screen } = await renderWithQuery(reply(true));
-
-  const mark = () =>
-    screen.container
-      .querySelector('[data-slot=live-mark]')
-      ?.getAttribute('data-state');
-
-  await screen.rerender(reply(false));
-
-  const hopped = mark();
-
-  vi.advanceTimersByTime(1_000);
-
-  await screen.rerender(reply(false));
-
-  expect([hopped, mark()]).toEqual(['proud', 'idle']);
 });
 
 function thinkingSince(at: number) {
