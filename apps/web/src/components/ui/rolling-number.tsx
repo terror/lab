@@ -24,7 +24,7 @@ function RollingNumber({
       <NumberFlow
         animated={animated && !quiet}
         aria-hidden='true'
-        className={cn('tabular-nums', className)}
+        className={cn('-my-[0.25em] tabular-nums', className)}
         data-slot='rolling-number'
         format={format}
         locales='en-US'
