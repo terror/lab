@@ -106,6 +106,7 @@ function TaskSummary({
         <TaskClock
           paused={!task.enabled}
           progress={progress(task, now)}
+          since={task.lastRunAt ?? undefined}
           turns={turns}
         />
       )}
