@@ -46,6 +46,8 @@ jobs:
 
           if [ -z "$(gh pr list --head sync-pstack --json number --jq '.[]')" ]; then
             gh pr create \
+              --base master \
+              --head sync-pstack \
               --title 'Sync pstack skills' \
               --body 'Updates the vendored pstack skills from cursor/plugins.'
           fi
