@@ -6,3 +6,5 @@
 
 **lab** is a bespoke durable agent orchestrator built on top of
 [pi durable](https://earendil.com/posts/pi-durable/).
+
+<img width="1667" alt="lab" src="screenshot.png" />
