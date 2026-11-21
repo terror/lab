@@ -17,6 +17,7 @@ import {
   call,
   chat,
   create,
+  raw,
   settle,
   toolDetails,
   toolOutputs,
@@ -180,6 +181,75 @@ test('delegated tasks run in parallel with narrow tools and report back', async 
       { brief: ['baz'], ...offered },
       { brief: ['foo'], ...offered },
     ],
+  });
+});
+
+type Message = { model?: { content: unknown; role: string }[] };
+
+async function follow(owner: Headers, parent: number, agent: number) {
+  const response = await raw(
+    owner,
+    `/conversations/${parent}/subagents/${agent}/events`
+  );
+
+  await response.body?.cancel();
+
+  return response.status;
+}
+
+test('a subagent opens only through the chat that started it', async () => {
+  const headers = await signIn();
+
+  script(delegated, reporting(), reporting(), fauxAssistantMessage('done'));
+
+  const id = await chat(headers, { content: 'foo' });
+
+  const [first = 0] = await subagents(harness, id);
+
+  const other = await create(headers);
+
+  const stranger = await signIn();
+
+  const { body } = await call(
+    headers,
+    'GET',
+    `/conversations/${id}/subagents/${first}/entries?order=ascending`
+  );
+
+  expect({
+    events: [
+      await follow(headers, id, first),
+      await follow(headers, other, first),
+      await follow(stranger, id, first),
+      await follow(headers, id, id),
+    ],
+    messages: (body.items as Message[]).flatMap(({ model = [] }) =>
+      model.map(({ content, role }) => ({ content, role }))
+    ),
+    refused: [
+      (
+        await call(
+          headers,
+          'GET',
+          `/conversations/${other}/subagents/${first}/entries`
+        )
+      ).status,
+      (
+        await call(
+          stranger,
+          'GET',
+          `/conversations/${id}/subagents/${first}/entries`
+        )
+      ).status,
+    ],
+  }).toEqual({
+    events: [200, 404, 404, 404],
+    messages: [
+      { content: 'foo', role: 'user' },
+      { content: '', role: 'system' },
+      { content: [{ text: 'foo report', type: 'text' }], role: 'assistant' },
+    ],
+    refused: [404, 404],
   });
 });
 

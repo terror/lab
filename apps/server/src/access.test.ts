@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import { signIn } from '../test/auth';
-import { call, chat, settle } from '../test/client';
+import { call, chat, settle, toolDetails } from '../test/client';
 import { script, toolCall } from '../test/models';
 import app from './app';
 import { db } from './db';
@@ -234,6 +234,8 @@ async function seed(headers: Headers): Promise<Fixtures> {
       id: 'bar',
       title: secret,
     }),
+    toolCall('delegate', { tasks: [{ prompt: secret, title: secret }] }),
+    fauxAssistantMessage(secret),
     fauxAssistantMessage('baz')
   );
 
@@ -247,6 +249,12 @@ async function seed(headers: Headers): Promise<Fixtures> {
   });
 
   const conversation = `/conversations/${id}`;
+
+  const delegated = (await toolDetails(headers, id)).find(
+    (details) => (details as { subagents?: unknown })?.subagents
+  ) as { subagents: { id: number }[] };
+
+  const agentId = defined(delegated.subagents[0]).id;
 
   const { body: submission } = await call(
     headers,
@@ -339,6 +347,7 @@ async function seed(headers: Headers): Promise<Fixtures> {
       connectors: [{ id: connector, state: `${connector}.foo` }],
       conversations: [
         {
+          agentId,
           artifactId: 'bar',
           entryId,
           id,

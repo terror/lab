@@ -1,4 +1,4 @@
-import { FakeEventSource } from '@/test/helpers';
+import { FakeEventSource, fetchedPaths, stubFetch } from '@/test/helpers';
 import { expect, test, vi } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 
@@ -129,4 +129,36 @@ test('the stream stamps when each run was seen starting, when it last spoke and 
     { at: 7_000, began: 6_000, fresh: true, open: true },
     { at: 8_000, began: 8_000, fresh: true, open: true },
   ]);
+});
+
+test('a subagent’s transcript streams and pages through its chat', async () => {
+  vi.stubGlobal('EventSource', FakeEventSource);
+
+  const fetch = stubFetch(() => Response.json({ items: [] }));
+
+  const { act, result, unmount } = await renderHook(() =>
+    useConversation(1, 2)
+  );
+
+  const source = FakeEventSource.current;
+
+  await act(() => {
+    source?.emit('value', {
+      before: 4,
+      conversation: { id: 2 },
+      docs: {},
+      entries: [],
+    });
+  });
+
+  await act(() => result.current.loadEarlier());
+
+  await unmount();
+
+  expect({ fetched: fetchedPaths(fetch), url: String(source?.url) }).toEqual({
+    fetched: [
+      '/api/conversations/1/subagents/2/entries?limit=50&maxEntryId=4&order=descending',
+    ],
+    url: `${window.location.origin}/api/conversations/1/subagents/2/events`,
+  });
 });

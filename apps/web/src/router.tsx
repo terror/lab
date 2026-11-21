@@ -30,6 +30,7 @@ import {
   createRouter,
   notFound,
 } from '@tanstack/react-router';
+import { z } from 'zod';
 
 function Root() {
   const session = authClient.useSession();
@@ -68,9 +69,22 @@ function NewChatPage() {
 
 function ConversationPage() {
   const { id } = conversationRoute.useParams();
+  const { agent } = conversationRoute.useSearch();
+  const navigate = conversationRoute.useNavigate();
 
-  return <Conversation key={id} id={id} />;
+  return (
+    <Conversation
+      key={id}
+      agent={agent}
+      id={id}
+      onAgent={(next) => void navigate({ search: { agent: next } })}
+    />
+  );
 }
+
+const conversationSearchSchema = z.object({
+  agent: z.number().int().positive().optional().catch(undefined),
+});
 
 function positiveId(value: string) {
   const id = Number(value);
@@ -149,6 +163,7 @@ const conversationRoute = createRoute({
     stringify: ({ id }) => ({ id: String(id) }),
   },
   path: '/c/$id',
+  validateSearch: (search) => conversationSearchSchema.parse(search),
 });
 
 const appRoute = createRoute({

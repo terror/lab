@@ -53,6 +53,29 @@ export const ownedChat = createMiddleware<{
   await next();
 });
 
+export const ownedSubagent = createMiddleware<{
+  Variables: { conversation: Conversation; subagent: Conversation };
+}>(async (c, next) => {
+  const id = Number(c.req.param('agentId')) as ConversationId;
+
+  const record = await harness.commit(
+    (tx) => tx.conversation(id),
+    BACKGROUND_CONTEXT
+  );
+
+  const subagent =
+    record?.owner?.conversationId === c.get('conversation').id &&
+    (await harness.conversation(id, BACKGROUND_CONTEXT));
+
+  if (!subagent) {
+    throw new HTTPException(404, { message: 'Subagent not found' });
+  }
+
+  c.set('subagent', subagent);
+
+  await next();
+});
+
 export async function chatSummary(
   ownerId: string,
   id: number

@@ -16,7 +16,7 @@ import {
   editPlan,
   titleChat,
 } from '@lab/harness';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
@@ -29,6 +29,7 @@ import {
   chatSummary,
   createChat,
   ownedChat,
+  ownedSubagent,
   pinChat,
   readChat,
   renameChat,
@@ -73,6 +74,14 @@ const imageParams = validator(
   })
 );
 
+const subagentParams = validator(
+  'param',
+  z.object({
+    agentId: positiveId,
+    id: positiveId,
+  })
+);
+
 const submissionParams = validator(
   'param',
   z.object({
@@ -103,15 +112,14 @@ const creation = validator(
   DRAFT_BYTES
 );
 
-const entriesQuery = validator(
-  'query',
-  z.object({
-    limit: z.coerce.number().int().min(1).max(100).default(50),
-    maxEntryId: z.coerce.number().int().positive().optional(),
-    minEntryId: z.coerce.number().int().positive().optional(),
-    order: z.enum(['ascending', 'descending']).optional(),
-  })
-);
+const entriesSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  maxEntryId: z.coerce.number().int().positive().optional(),
+  minEntryId: z.coerce.number().int().positive().optional(),
+  order: z.enum(['ascending', 'descending']).optional(),
+});
+
+const entriesQuery = validator('query', entriesSchema);
 
 const listQuery = validator('query', listSchema);
 
@@ -172,6 +180,112 @@ async function watchPlan(conversation: Conversation) {
   return harness.watchDoc(PlanDoc, conversation.id, BACKGROUND_CONTEXT);
 }
 
+async function entryPage(
+  conversation: Conversation,
+  { limit, maxEntryId, minEntryId, order }: z.infer<typeof entriesSchema>
+) {
+  const page = await conversation.entries(
+    {
+      maxEntryId: maxEntryId as EntryId | undefined,
+      minEntryId: minEntryId as EntryId | undefined,
+      order,
+    },
+    limit,
+    undefined,
+    BACKGROUND_CONTEXT
+  );
+
+  return { items: page.items.map(stripImages) };
+}
+
+function streamEvents(
+  c: Context,
+  conversation: Conversation,
+  { chatId, plans, userId }: { chatId: number; plans: boolean; userId: string }
+) {
+  getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
+
+  return streamSSE(c, async (stream) => {
+    const closed = openStream(userId);
+
+    stream.onAbort(() => closed.abort());
+
+    const watch = await conversation.watch(BACKGROUND_CONTEXT);
+
+    const plan = plans ? await watchPlan(conversation) : undefined;
+
+    const status = subscribeStatus(conversation.id, (value) =>
+      stream.writeSSE({ event: 'status', data: value })
+    );
+
+    const stop = () => {
+      status.unsubscribe();
+      void watch.stop();
+      void plan?.stop();
+    };
+
+    if (closed.signal.aborted) {
+      stop();
+      return;
+    }
+
+    closed.signal.addEventListener('abort', stop, { once: true });
+
+    await stream.writeSSE({
+      event: 'value',
+      data: JSON.stringify(stripView(watch.value)),
+    });
+
+    let view = watch.value;
+
+    watch.start(async (call) => {
+      if (call.kind === 'value') {
+        view = applyImmutable(view, call.ops);
+
+        await stream.writeSSE({
+          event: 'ops',
+          data: JSON.stringify(call.ops),
+        });
+
+        void status.report(view);
+      }
+    });
+
+    if (plan) {
+      await stream.writeSSE({
+        event: 'plan',
+        data: JSON.stringify(plan.value),
+      });
+
+      plan.start(async (call) => {
+        if (call.kind === 'value') {
+          await stream.writeSSE({
+            event: 'plan',
+            data: JSON.stringify(call.value),
+          });
+        }
+      });
+    }
+
+    const beat = async () => {
+      if (await watching(c.req.raw.headers, chatId).catch(() => false)) {
+        await stream.write(': ping\n\n');
+      } else {
+        closed.abort();
+      }
+    };
+
+    const heartbeat = setInterval(() => {
+      void beat();
+    }, 25_000);
+
+    await watch.closed;
+
+    clearInterval(heartbeat);
+    closed.abort();
+  });
+}
+
 const conversations = new Hono()
   .use(requireUser)
   .get('/', listQuery, async (c) =>
@@ -229,24 +343,17 @@ const conversations = new Hono()
       title: doc?.title ?? null,
     });
   })
-  .get('/:id/entries', idParam, ownedChat, entriesQuery, async (c) => {
-    const { conversation } = c.var;
-
-    const { limit, maxEntryId, minEntryId, order } = c.req.valid('query');
-
-    const page = await conversation.entries(
-      {
-        maxEntryId: maxEntryId as EntryId | undefined,
-        minEntryId: minEntryId as EntryId | undefined,
-        order,
-      },
-      limit,
-      undefined,
-      BACKGROUND_CONTEXT
-    );
-
-    return c.json({ items: page.items.map(stripImages) });
-  })
+  .get('/:id/entries', idParam, ownedChat, entriesQuery, async (c) =>
+    c.json(await entryPage(c.var.conversation, c.req.valid('query')))
+  )
+  .get(
+    '/:id/subagents/:agentId/entries',
+    subagentParams,
+    ownedChat,
+    ownedSubagent,
+    entriesQuery,
+    async (c) => c.json(await entryPage(c.var.subagent, c.req.valid('query')))
+  )
   .get(
     '/:id/entries/:entryId/images/:index',
     imageParams,
@@ -275,93 +382,25 @@ const conversations = new Hono()
       );
     }
   )
-  .get('/:id/events', idParam, ownedChat, async (c) => {
-    const { conversation } = c.var;
-
-    getBunServer<BunServer>(c)?.timeout(c.req.raw, 0);
-
-    return streamSSE(c, async (stream) => {
-      const closed = openStream(c.get('user').id);
-
-      stream.onAbort(() => closed.abort());
-
-      const watch = await conversation.watch(BACKGROUND_CONTEXT);
-
-      const plan = await watchPlan(conversation);
-
-      const status = subscribeStatus(conversation.id, (value) =>
-        stream.writeSSE({ event: 'status', data: value })
-      );
-
-      const stop = () => {
-        status.unsubscribe();
-        void watch.stop();
-        void plan?.stop();
-      };
-
-      if (closed.signal.aborted) {
-        stop();
-        return;
-      }
-
-      closed.signal.addEventListener('abort', stop, { once: true });
-
-      await stream.writeSSE({
-        event: 'value',
-        data: JSON.stringify(stripView(watch.value)),
-      });
-
-      let view = watch.value;
-
-      watch.start(async (call) => {
-        if (call.kind === 'value') {
-          view = applyImmutable(view, call.ops);
-
-          await stream.writeSSE({
-            event: 'ops',
-            data: JSON.stringify(call.ops),
-          });
-
-          void status.report(view);
-        }
-      });
-
-      if (plan) {
-        await stream.writeSSE({
-          event: 'plan',
-          data: JSON.stringify(plan.value),
-        });
-
-        plan.start(async (call) => {
-          if (call.kind === 'value') {
-            await stream.writeSSE({
-              event: 'plan',
-              data: JSON.stringify(call.value),
-            });
-          }
-        });
-      }
-
-      const beat = async () => {
-        if (
-          await watching(c.req.raw.headers, conversation.id).catch(() => false)
-        ) {
-          await stream.write(': ping\n\n');
-        } else {
-          closed.abort();
-        }
-      };
-
-      const heartbeat = setInterval(() => {
-        void beat();
-      }, 25_000);
-
-      await watch.closed;
-
-      clearInterval(heartbeat);
-      closed.abort();
-    });
-  })
+  .get('/:id/events', idParam, ownedChat, async (c) =>
+    streamEvents(c, c.var.conversation, {
+      chatId: c.var.conversation.id,
+      plans: true,
+      userId: c.get('user').id,
+    })
+  )
+  .get(
+    '/:id/subagents/:agentId/events',
+    subagentParams,
+    ownedChat,
+    ownedSubagent,
+    async (c) =>
+      streamEvents(c, c.var.subagent, {
+        chatId: c.var.conversation.id,
+        plans: false,
+        userId: c.get('user').id,
+      })
+  )
   .post(
     '/:id/messages',
     rateLimit('messages'),

@@ -1,4 +1,5 @@
 import { Markdown } from '@/components/markdown';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProgressCount } from '@/components/ui/progress-count';
@@ -13,28 +14,41 @@ import {
 } from '@/components/ui/trace';
 import { plural } from '@/lib/format';
 import { fade, spring, stagger } from '@/lib/motion';
-import { ChevronRight, Split } from 'lucide-react';
+import { ChevronRight, PanelRight, Split } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 import { field } from './format';
 import { type ToolRenderer, type ToolView } from './types';
 
-type Subagent = {
+export type Subagent = {
+  id?: number;
   status: 'done' | 'failed' | 'running';
   summary?: string;
   title: string;
 };
 
-const states = {
+export const states = {
   done: { label: 'Done', line: undefined },
   failed: { label: 'Failed', line: 'error' },
   running: { label: 'Running', line: undefined },
   stopped: { label: 'Stopped', line: 'pending' },
 } as const;
 
+export const OpenSubagent = createContext<
+  { open: (id: number) => void; shown: number | undefined } | undefined
+>(undefined);
+
+export function laneState(status: Subagent['status'], active: boolean) {
+  return !active && status === 'running' ? 'stopped' : status;
+}
+
+export function reportedSubagents(details: unknown) {
+  return field(details, 'subagents') as Subagent[] | undefined;
+}
+
 function subagents({ args, details }: ToolView): Subagent[] {
-  const reported = field(details, 'subagents') as Subagent[] | undefined;
+  const reported = reportedSubagents(details);
 
   const tasks = Array.isArray(args.tasks)
     ? (args.tasks as { title?: string }[])
@@ -61,13 +75,15 @@ const FOLD_DELAY_MS = 700;
 function Row({
   active,
   index,
-  subagent: { status, summary, title },
+  subagent: { id, status, summary, title },
 }: {
   active: boolean;
   index: number;
   subagent: Subagent;
 }) {
-  const state = !active && status === 'running' ? 'stopped' : status;
+  const opener = useContext(OpenSubagent);
+
+  const state = laneState(status, active);
 
   const { label, line } = states[state];
 
@@ -96,6 +112,32 @@ function Row({
     </TraceLine>
   );
 
+  const reason = state === 'failed' && summary && (
+    <p className='pb-1.5 pl-6 text-sm wrap-break-word text-destructive'>
+      {summary}
+    </p>
+  );
+
+  if (opener && id !== undefined) {
+    return (
+      <>
+        <Button
+          aria-current={opener.shown === id || undefined}
+          className='group/lane -mx-2 h-auto min-w-0 justify-start gap-2 px-2 font-normal aria-current:bg-muted'
+          onClick={() => opener.open(id)}
+          variant='ghost'
+        >
+          {heading}
+          <PanelRight
+            aria-hidden='true'
+            className='ml-auto size-4 text-muted-foreground opacity-0 transition-opacity group-hover/lane:opacity-100 group-aria-current/lane:opacity-100'
+          />
+        </Button>
+        {reason}
+      </>
+    );
+  }
+
   if (!summary) {
     return heading;
   }
@@ -104,9 +146,7 @@ function Row({
     return (
       <>
         {heading}
-        <p className='pb-1.5 pl-6 text-sm wrap-break-word text-destructive'>
-          {summary}
-        </p>
+        {reason}
       </>
     );
   }

@@ -16,20 +16,48 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { call, client } from './client';
 import type { Gap } from './transcript';
 
+function entriesRequest(
+  id: number,
+  agent: number | undefined,
+  query: Record<string, string | undefined>
+) {
+  if (agent === undefined) {
+    return client.conversations[':id'].entries.$get({
+      param: { id: String(id) },
+      query,
+    });
+  }
+
+  return client.conversations[':id'].subagents[':agentId'].entries.$get({
+    param: { agentId: String(agent), id: String(id) },
+    query,
+  });
+}
+
+function eventsUrl(id: number, agent: number | undefined) {
+  if (agent === undefined) {
+    return client.conversations[':id'].events.$url({
+      param: { id: String(id) },
+    });
+  }
+
+  return client.conversations[':id'].subagents[':agentId'].events.$url({
+    param: { agentId: String(agent), id: String(id) },
+  });
+}
+
 async function loadEntries(
   id: number,
+  agent: number | undefined,
   { maxEntryId, minEntryId, order }: Omit<EntryQuery, 'conversationId'>,
   limit: number
 ) {
   const page = await call(
-    client.conversations[':id'].entries.$get({
-      param: { id: String(id) },
-      query: {
-        limit: String(limit),
-        maxEntryId: maxEntryId?.toString(),
-        minEntryId: minEntryId?.toString(),
-        order,
-      },
+    entriesRequest(id, agent, {
+      limit: String(limit),
+      maxEntryId: maxEntryId?.toString(),
+      minEntryId: minEntryId?.toString(),
+      order,
     })
   );
 
@@ -38,7 +66,7 @@ async function loadEntries(
 
 type Pulse = { at: number; began: number; fresh: boolean; open: boolean };
 
-export function useConversation(id: number) {
+export function useConversation(id: number, agent?: number) {
   const [view, setView] = useState<TranscriptView>();
   const [status, setStatus] = useState<string>();
   const [plan, setPlan] = useState<Plan>();
@@ -52,14 +80,12 @@ export function useConversation(id: number) {
 
   useEffect(() => {
     const current = new ConversationTranscript((query, limit) =>
-      loadEntries(id, query, limit)
+      loadEntries(id, agent, query, limit)
     );
 
     transcript.current = current;
 
-    const source = new EventSource(
-      client.conversations[':id'].events.$url({ param: { id: String(id) } })
-    );
+    const source = new EventSource(eventsUrl(id, agent));
 
     let base: ConversationView | undefined;
 
@@ -130,7 +156,7 @@ export function useConversation(id: number) {
     });
 
     return () => source.close();
-  }, [id]);
+  }, [agent, id]);
 
   const loadEarlier = useCallback(async () => {
     if (transcript.current) {
