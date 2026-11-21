@@ -2,6 +2,7 @@ import { renderWithQuery, stubFetch } from '@/test/helpers';
 import { expect, test, vi } from 'vitest';
 
 import { type ToolView, toolRenderer } from './tools';
+import { OpenSubagent } from './tools/delegate';
 
 const view = {
   args: {},
@@ -136,4 +137,41 @@ test('a delegate call counts the subagents that are done and the ones that faile
     '2 subagents2 of 2 done',
     '2 subagents1 of 2 done · 1 failed',
   ]);
+});
+
+test('a delegate lane opens its subagent and marks the one that is open', async () => {
+  const open = vi.fn();
+
+  const { screen } = await renderWithQuery(
+    <OpenSubagent value={{ open, shown: 2 }}>
+      {toolRenderer('delegate').inline?.({
+        ...view,
+        active: true,
+        details: {
+          subagents: [
+            { id: 1, status: 'done', summary: 'baz', title: 'foo' },
+            { id: 2, status: 'failed', summary: 'qux', title: 'bar' },
+          ],
+        },
+      } satisfies ToolView)}
+    </OpenSubagent>
+  );
+
+  await screen.getByRole('button', { name: /^foo/ }).click();
+
+  expect({
+    current: screen
+      .getByRole('button', { name: /^(foo|bar)/ })
+      .elements()
+      .map((lane) => lane.getAttribute('aria-current')),
+    opened: open.mock.calls,
+    rows: screen
+      .getByRole('listitem')
+      .elements()
+      .map((row) => row.textContent),
+  }).toEqual({
+    current: [null, 'true'],
+    opened: [[1]],
+    rows: ['fooDone', 'barFailedqux'],
+  });
 });
